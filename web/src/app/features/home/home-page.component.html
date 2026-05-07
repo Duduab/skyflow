@@ -1,0 +1,143 @@
+<div class="mx-auto grid max-w-5xl gap-6 md:grid-cols-2 md:gap-8">
+  <a
+    routerLink="/worker"
+    class="sf-card-home sf-card-home--worker group shadow-xs"
+  >
+    <span class="sf-card-home__icon-ring" aria-hidden="true">
+      <svg
+        class="sf-card-home__icon"
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M11 6.5h2M11 18h2m-7-5v-2m12 2v-2M5 8h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1Zm0 12h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1Zm12 0h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1Zm0-12h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1Z"
+        />
+      </svg>
+    </span>
+    <span class="sf-card-home__title">{{ 'HOME.WORKER_CARD' | translate }}</span>
+    <p class="sf-card-home__body">{{ 'HOME.WORKER_DESC' | translate }}</p>
+    <span class="sf-card-home__link">
+      {{ 'HOME.WORKER_CTA' | translate }}
+      <svg
+        class="sf-card-home__link-icon"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+        />
+      </svg>
+    </span>
+  </a>
+
+  @if (auth.isAdmin()) {
+    <a
+      routerLink="/admin"
+      class="sf-card-home sf-card-home--admin group shadow-xs"
+    >
+      <span class="sf-card-home__icon-ring" aria-hidden="true">
+        <svg
+          class="sf-card-home__icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 15v5m-3 0h6M4 11h16M5 15h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1Z"
+          />
+        </svg>
+      </span>
+      <span class="sf-card-home__title">{{ 'HOME.ADMIN_CARD' | translate }}</span>
+      <p class="sf-card-home__body">{{ 'HOME.ADMIN_DESC' | translate }}</p>
+      <span class="sf-card-home__link">
+        {{ 'HOME.ADMIN_CTA' | translate }}
+        <svg
+          class="sf-card-home__link-icon"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+          />
+        </svg>
+      </span>
+    </a>
+  } @else {
+    <a
+      routerLink="/login"
+      class="sf-card-home sf-card-home--admin group shadow-xs"
+    >
+      <span class="sf-card-home__icon-ring" aria-hidden="true">
+        <svg
+          class="sf-card-home__icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-4 7a8 8 0 0 0-8 8h16a8 8 0 0 0-8-8Z"
+          />
+        </svg>
+      </span>
+      <span class="sf-card-home__title">{{
+        'HOME.ADMIN_LOGIN_CARD' | translate
+      }}</span>
+      <p class="sf-card-home__body">{{ 'HOME.ADMIN_LOGIN_DESC' | translate }}</p>
+      <span class="sf-card-home__link">
+        {{ 'HOME.ADMIN_LOGIN_CTA' | translate }}
+        <svg
+          class="sf-card-home__link-icon"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+          />
+        </svg>
+      </span>
+    </a>
+  }
+</div>

@@ -43,10 +43,9 @@
 }
 
   <main
-    class="flex-1"
+    class="flex min-h-0 flex-1 flex-col"
     [class.sf-main]="!adminChromeHidden()"
     [class.sf-main--with-bottom-nav]="!adminChromeHidden()"
-    [class.min-h-0]="adminChromeHidden()"
   >
     <router-outlet />
   </main>

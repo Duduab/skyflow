@@ -196,6 +196,23 @@
     "ERR_TITLE": "Please enter a simulation name.",
     "ERR_PROJECT": "No project available — refresh the page."
   },
+  "ADMIN_FILES_PAGE": {
+    "TITLE": "Files by project",
+    "SUB": "Purchase orders and work orders uploaded"
+  },
+  "ADMIN_SETTINGS_PAGE": {
+    "TITLE": "Settings",
+    "SUB": "Language, appearance and profile",
+    "LANG": "Language",
+    "THEME": "Appearance",
+    "PROFILE": "User details (local)",
+    "SAVE": "Save"
+  },
+  "ADMIN_DASH": {
+    "PROJECT_TITLE": "Project",
+    "EXPORT_CSV": "Export CSV",
+    "PICK_PROJECT": "All projects"
+  },
   "ORDER_STATUS": {
     "PENDING": "Pending",
     "IN_PROGRESS": "In progress",
@@ -298,9 +315,14 @@
   },
   "HOME": {
     "WORKER_CARD": "Go to work stations",
+    "WORKER_DESC": "Station reporting, progress tracking, and orders along the production line.",
+    "WORKER_CTA": "Open stations",
     "ADMIN_CARD": "Go to admin",
+    "ADMIN_DESC": "Statistics, projects, scrap overview, and user management.",
+    "ADMIN_CTA": "Open dashboard",
     "ADMIN_LOGIN_CARD": "Admin sign-in",
-    "ADMIN_LOGIN_HINT": "Sign in →"
+    "ADMIN_LOGIN_DESC": "Sign in with an admin account to open the management console.",
+    "ADMIN_LOGIN_CTA": "Sign in"
   },
   "WORKER_HUB": {
     "HERO_SUB": "Pick a station to open its tailored work UI.",
