@@ -1,0 +1,157 @@
+<div
+  class="admin-shell"
+  [class.admin-shell--nav-open]="navOpen()"
+  dir="rtl"
+>
+  <header class="admin-shell__topbar">
+    <button
+      type="button"
+      class="admin-shell__menu-btn"
+      (click)="toggleNav()"
+      [attr.aria-expanded]="navOpen()"
+      aria-controls="admin-nav-sidebar"
+      [attr.aria-label]="
+        (navOpen() ? 'ADMIN_SHELL.CLOSE_MENU' : 'ADMIN_SHELL.OPEN_MENU') | translate
+      "
+    >
+      @if (navOpen()) {
+        <svg class="admin-shell__menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      } @else {
+        <svg class="admin-shell__menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      }
+    </button>
+    <div class="admin-shell__topbar-brand">
+      <span class="admin-shell__topbar-title">SkyFlow</span>
+      <span class="admin-shell__topbar-sub">{{ 'ADMIN_SHELL.SUBTITLE' | translate }}</span>
+    </div>
+  </header>
+
+  @if (navOpen()) {
+    <button
+      type="button"
+      class="admin-shell__backdrop"
+      (click)="closeNav()"
+      [attr.aria-label]="'ADMIN_SHELL.CLOSE_MENU' | translate"
+    ></button>
+  }
+
+  <aside
+    id="admin-nav-sidebar"
+    class="admin-shell__sidebar"
+    aria-label="ניווט ניהול"
+  >
+    <div class="admin-shell__brand">
+      <span class="admin-shell__brand-mark">SkyFlow</span>
+      <span class="admin-shell__brand-sub">{{ 'ADMIN_SHELL.SUBTITLE' | translate }}</span>
+    </div>
+
+    <nav class="admin-shell__nav">
+      <a
+        routerLink="/admin/dashboard"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="admin-shell__link"
+      >
+        <span class="admin-shell__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="9" rx="1" />
+            <rect x="14" y="3" width="7" height="5" rx="1" />
+            <rect x="14" y="12" width="7" height="9" rx="1" />
+            <rect x="3" y="16" width="7" height="5" rx="1" />
+          </svg>
+        </span>
+        {{ 'ADMIN_NAV.DASHBOARD' | translate }}
+      </a>
+      <a
+        routerLink="/admin/projects"
+        routerLinkActive="is-active"
+        class="admin-shell__link"
+      >
+        <span class="admin-shell__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 20h16M6 16h12M8 12h8M10 8h4M12 4h0" />
+          </svg>
+        </span>
+        {{ 'ADMIN_NAV.PROJECTS' | translate }}
+      </a>
+      <a
+        routerLink="/admin/scrap"
+        routerLinkActive="is-active"
+        class="admin-shell__link"
+      >
+        <span class="admin-shell__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+          </svg>
+        </span>
+        {{ 'ADMIN_NAV.SCRAP' | translate }}
+      </a>
+      <a
+        routerLink="/admin/users"
+        routerLinkActive="is-active"
+        class="admin-shell__link"
+      >
+        <span class="admin-shell__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </span>
+        {{ 'ADMIN_NAV.USERS' | translate }}
+      </a>
+      <a
+        routerLink="/admin/simulation"
+        routerLinkActive="is-active"
+        class="admin-shell__link"
+      >
+        <span class="admin-shell__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </span>
+        {{ 'ADMIN_NAV.SIMULATION' | translate }}
+      </a>
+      <a
+        routerLink="/admin/files"
+        routerLinkActive="is-active"
+        class="admin-shell__link"
+      >
+        <span class="admin-shell__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+          </svg>
+        </span>
+        {{ 'ADMIN_NAV.FILES' | translate }}
+      </a>
+    </nav>
+
+    <div class="admin-shell__support">
+      <span class="admin-shell__support-label">{{ 'ADMIN_SHELL.SUPPORT' | translate }}</span>
+      <a routerLink="/admin/settings" routerLinkActive="is-active" class="admin-shell__link admin-shell__link--sub">
+        <span class="admin-shell__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.32.73 1.77.45.45 1.08.73 1.77.73H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </span>
+        {{ 'ADMIN_NAV.SETTINGS' | translate }}
+      </a>
+    </div>
+
+    <a routerLink="/" class="admin-shell__exit">{{ 'ADMIN_SHELL.BACK_APP' | translate }}</a>
+    <button type="button" class="admin-shell__logout" (click)="logout()">
+      {{ 'ADMIN_SHELL.LOGOUT' | translate }}
+    </button>
+  </aside>
+
+  <div class="admin-shell__main">
+    <router-outlet />
+  </div>
+</div>

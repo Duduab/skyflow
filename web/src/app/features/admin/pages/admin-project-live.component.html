@@ -1,0 +1,162 @@
+<div class="admin-live" dir="rtl">
+  <header class="admin-live__top">
+    <div class="admin-live__brand">
+      <div class="admin-live__live-tag" aria-hidden="true">
+        <span class="admin-live__pulse"></span>
+        {{ 'ADMIN_PROJECTS.LIVE_BADGE' | translate }}
+      </div>
+      <h1 class="admin-live__title">{{ 'ADMIN_PROJECTS.LIVE_TITLE' | translate }}</h1>
+      <p class="admin-live__project-name">{{ projectName() }}</p>
+      @if (lastRefresh(); as t) {
+        <p class="admin-live__updated">
+          {{ 'ADMIN_PROJECTS.LIVE_LAST_REFRESH' | translate }}:
+          {{ t | date: 'medium' : undefined : dateLocale() }}
+        </p>
+      }
+      <p class="admin-live__interval">{{ 'ADMIN_PROJECTS.LIVE_POLL_HINT' | translate }}</p>
+    </div>
+    <div class="admin-live__actions">
+      @if (!loading()) {
+        <div
+          class="admin-live__overall"
+          role="group"
+          [attr.aria-label]="'WORKER_HUB.OVERALL_PROGRESS' | translate"
+        >
+          <div class="admin-live__overall-head">
+            <span class="admin-live__overall-label">{{
+              'WORKER_HUB.OVERALL_PROGRESS' | translate
+            }}</span>
+            <span class="admin-live__overall-pct" dir="ltr">{{ averageOverallPercent() }}%</span>
+          </div>
+          <div
+            class="admin-live__overall-track"
+            role="progressbar"
+            [attr.aria-valuenow]="averageOverallPercent()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div
+              class="admin-live__overall-fill"
+              [style.width.%]="averageOverallPercent()"
+            ></div>
+          </div>
+        </div>
+      }
+      <button type="button" class="admin-live__exit sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg" (click)="exit()">
+        {{ 'ADMIN_PROJECTS.LIVE_EXIT' | translate }}
+      </button>
+    </div>
+  </header>
+
+  <section
+    class="admin-live__main"
+    [attr.aria-busy]="loading()"
+    [attr.aria-label]="
+      loading() ? ('ADMIN_PROJECTS.LIVE_MAIN_LOADING' | translate) : ('ADMIN_PROJECTS.LIVE_MAIN' | translate)
+    "
+  >
+    @if (loading()) {
+      <div class="admin-live__loader-wrap">
+        <skyflow-stations-loader live />
+      </div>
+    } @else if (refreshError() || loadProblem()) {
+      <div class="admin-live__state admin-live__state--err">
+        {{ 'ADMIN_PROJECTS.LIVE_ERR' | translate }}
+      </div>
+    } @else if (accessDenied()) {
+      <div class="admin-live__state admin-live__state--warn">
+        <p>{{ 'ADMIN_PROJECTS.LIVE_DENIED' | translate }}</p>
+        <button type="button" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg admin-live__exit" (click)="exit()">
+          {{ 'ADMIN_PROJECTS.LIVE_EXIT' | translate }}
+        </button>
+      </div>
+    } @else {
+      <section class="worker-hub admin-live__hub">
+        <div class="worker-hub__flow">
+        @for (row of stationRows; track $index) {
+          <div class="worker-hub__row">
+            @for (s of row; track s.id) {
+              @let prog = hubProgress(s.id);
+              @let unlocked = stationUnlocked(s.id);
+              <div
+                [class]="'station-card admin-live-card station-card--' + s.id"
+                [class.station-card--locked]="!unlocked"
+                role="article"
+              >
+                <span
+                  class="station-card__index"
+                  [class.station-card__index--done]="prog.percent >= 100"
+                  dir="ltr"
+                  aria-hidden="true"
+                  >{{ s.id }}</span>
+
+                <div class="station-card__hero" aria-hidden="true">
+                  <div class="station-card__hero-bg"></div>
+                  <div class="station-card__hero-grid"></div>
+                  <div class="station-card__hero-glow"></div>
+                </div>
+
+                <div class="station-card__badge" aria-hidden="true">
+                  <svg class="station-card__badge-ring" viewBox="0 0 100 100">
+                    <circle class="station-card__badge-track" cx="50" cy="50" r="42" />
+                    <circle
+                      class="station-card__badge-arc"
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      [attr.stroke-dasharray]="progressCircumference"
+                      [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                  <span class="station-card__badge-num">
+                    <span class="station-card__badge-pct">{{ prog.percent }}</span>
+                    <span class="station-card__badge-pct-sign">%</span>
+                  </span>
+                </div>
+
+                <div class="station-card__panel">
+                  <h2 class="station-card__headline">
+                    {{ 'STATIONS.' + s.id | translate }}
+                  </h2>
+                  @if (stationManagers()[s.id]; as mgr) {
+                    <p class="station-card__mgr">
+                      {{ 'WORKER_HUB.STATION_MANAGER_LABEL' | translate }}:
+                      {{ mgr.firstName }} {{ mgr.lastName }}
+                    </p>
+                  }
+                  <p class="station-card__desc">
+                    {{ 'WORKER_HUB.STATION_DESC_' + s.id | translate }}
+                  </p>
+
+                  <div class="station-card__footer">
+                    <span class="station-card__meta">
+                      <svg class="station-card__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                      {{ 'WORKER_HUB.META_LEFT' | translate }} · #{{ s.id }}
+                    </span>
+                    <span class="station-card__meta station-card__meta--accent">
+                      {{ 'ADMIN_PROJECTS.LIVE_READONLY' | translate }}
+                    </span>
+                  </div>
+
+                  <span class="station-card__cta">
+                    <span class="station-card__cta-label" dir="rtl">{{
+                      unlocked
+                        ? ('ADMIN_PROJECTS.LIVE_STATION_ACTIVE' | translate)
+                        : ('WORKER_HUB.CTA_LOCKED' | translate)
+                    }}</span>
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+      </section>
+    }
+  </section>
+</div>

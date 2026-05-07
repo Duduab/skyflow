@@ -46,6 +46,16 @@ export class WorkerHubComponent implements OnInit {
   readonly orderPreviews = signal<Map<string, OrderPickerPreview>>(new Map());
   readonly loadingOrderPreviews = signal(false);
 
+  /** מנהלי תחנה — תצוגה בלבד (שם על כרטיס) */
+  readonly stationManagers = signal<
+    Partial<
+      Record<
+        number,
+        { firstName: string; lastName: string; photoUrl: string | null }
+      >
+    >
+  >({});
+
   /** שתי תחנות בשורה; תחנה 7 (הרכבה באתר) בשורה אחרונה */
   readonly stationRows: { id: number }[][] = [
     [{ id: 1 }, { id: 2 }],
@@ -82,6 +92,14 @@ export class WorkerHubComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.api
+      .getStationManagers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (m) => this.stationManagers.set(m),
+        error: () => this.stationManagers.set({}),
+      });
+
     this.api
       .getOrders()
       .pipe(takeUntilDestroyed(this.destroyRef))

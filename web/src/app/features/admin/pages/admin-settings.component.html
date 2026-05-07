@@ -1,0 +1,42 @@
+<div class="admin-settings">
+  <header class="admin-page__head">
+    <h1 class="admin-page__title">{{ 'ADMIN_SETTINGS_PAGE.TITLE' | translate }}</h1>
+    <p class="admin-page__sub">{{ 'ADMIN_SETTINGS_PAGE.SUB' | translate }}</p>
+  </header>
+
+  <section class="admin-settings__card sf-panel">
+    <h2>{{ 'ADMIN_SETTINGS_PAGE.LANG' | translate }}</h2>
+    <skyflow-language-switcher />
+  </section>
+
+  <section class="admin-settings__card sf-panel">
+    <h2>{{ 'ADMIN_SETTINGS_PAGE.THEME' | translate }}</h2>
+    <div class="admin-settings__theme-row">
+      <button type="button" class="sf-ui-btn sf-ui-btn--secondary" (click)="setTheme('light')">
+        {{ 'APP.THEME_SWITCH_LIGHT' | translate }}
+      </button>
+      <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="setTheme('dark')">
+        {{ 'APP.THEME_SWITCH_DARK' | translate }}
+      </button>
+    </div>
+  </section>
+
+  <section class="admin-settings__card sf-panel">
+    <h2>{{ 'ADMIN_SETTINGS_PAGE.PROFILE' | translate }}</h2>
+    <label class="admin-settings__field">
+      <span>שם פרטי</span>
+      <input class="sf-input" [(ngModel)]="draftFirst" />
+    </label>
+    <label class="admin-settings__field">
+      <span>שם משפחה</span>
+      <input class="sf-input" [(ngModel)]="draftLast" />
+    </label>
+    <label class="admin-settings__field">
+      <span>URL תמונה (אופציונלי)</span>
+      <input class="sf-input" [(ngModel)]="draftPhoto" type="url" />
+    </label>
+    <button type="button" class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg admin-settings__save" (click)="saveProfile()">
+      {{ 'ADMIN_SETTINGS_PAGE.SAVE' | translate }}
+    </button>
+  </section>
+</div>

@@ -1,0 +1,81 @@
+<div
+  class="stations-loader"
+  [class.stations-loader--live]="live"
+  role="status"
+  aria-live="polite"
+  [attr.aria-label]="'STATIONS_LOADER.ARIA' | translate"
+>
+  @if (!live) {
+    <div class="stations-loader__visual">
+      <div class="stations-loader__orbit">
+        <div class="stations-loader__core"></div>
+        <div class="stations-loader__ring stations-loader__ring--a"></div>
+        <div class="stations-loader__ring stations-loader__ring--b"></div>
+      </div>
+    </div>
+  } @else {
+    <div class="stations-loader__live-nexus" aria-hidden="true">
+      <div class="stations-loader__live-orbit">
+        <span class="stations-loader__live-dot"></span>
+        <span class="stations-loader__live-track"></span>
+      </div>
+    </div>
+  }
+
+  <h2 class="stations-loader__title">
+    {{ (live ? 'STATIONS_LOADER.LIVE_TITLE' : 'STATIONS_LOADER.TITLE') | translate }}
+  </h2>
+  <p class="stations-loader__sub">
+    {{ (live ? 'STATIONS_LOADER.LIVE_SUB' : 'STATIONS_LOADER.SUB') | translate }}
+  </p>
+
+  @if (live) {
+    <div class="stations-loader__hub-skel" aria-hidden="true">
+      @for (row of stationRows; track $index) {
+        <div
+          class="stations-loader__row-skel"
+          [class.stations-loader__row-skel--single]="row.length === 1"
+        >
+          @for (n of row; track n) {
+            <div class="stations-loader__card-skel" [style.--skel-i]="n - 1">
+              <span class="stations-loader__card-idx" dir="ltr">{{ n }}</span>
+              <div class="stations-loader__card-hero">
+                <div class="stations-loader__card-hero-grid"></div>
+                <div class="stations-loader__card-hero-shimmer"></div>
+                <div class="stations-loader__card-badge">
+                  <span class="stations-loader__card-badge-glow"></span>
+                  <svg class="stations-loader__card-badge-svg" viewBox="0 0 100 100">
+                    <circle class="stations-loader__card-badge-track" cx="50" cy="50" r="42" />
+                    <circle
+                      class="stations-loader__card-badge-arc"
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div class="stations-loader__card-panel">
+                <div class="stations-loader__card-line stations-loader__card-line--a"></div>
+                <div class="stations-loader__card-line stations-loader__card-line--b"></div>
+                <div class="stations-loader__card-line stations-loader__card-line--c"></div>
+                <div class="stations-loader__card-cta-skel"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="stations-loader__grid" aria-hidden="true">
+      @for (n of stationNums; track n) {
+        <div class="stations-loader__cell" [style.--i]="n - 1">
+          <span class="stations-loader__cell-num">{{ n }}</span>
+          <span class="stations-loader__cell-shimmer"></span>
+          <span class="stations-loader__cell-ring"></span>
+        </div>
+      }
+    </div>
+  }
+</div>

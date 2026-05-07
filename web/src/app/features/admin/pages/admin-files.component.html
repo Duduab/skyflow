@@ -1,0 +1,42 @@
+@if (loading()) {
+  <p class="admin-page__loading">…</p>
+} @else if (data(); as d) {
+  <header class="admin-page__head">
+    <h1 class="admin-page__title">{{ 'ADMIN_FILES_PAGE.TITLE' | translate }}</h1>
+    <p class="admin-page__sub">{{ 'ADMIN_FILES_PAGE.SUB' | translate }}</p>
+  </header>
+
+  <div class="admin-files-stack">
+    @for (p of d.projects; track p.id) {
+      <section class="admin-files-project sf-panel">
+        <h2 class="admin-files-project__title">{{ p.name }}</h2>
+        <div class="admin-files-grid">
+          <div>
+            <h3>{{ 'ADMIN_PAGE.WORK_ORDERS_COL' | translate }}</h3>
+            <ul>
+              @for (doc of p.workOrders; track doc.id) {
+                <li>
+                  <a [href]="doc.pdfUrl" target="_blank" rel="noopener noreferrer">{{
+                    doc.title
+                  }}</a>
+                </li>
+              }
+            </ul>
+          </div>
+          <div>
+            <h3>{{ 'ADMIN_PAGE.PURCHASE_ORDERS_COL' | translate }}</h3>
+            <ul>
+              @for (doc of p.purchaseOrders; track doc.id) {
+                <li>
+                  <a [href]="doc.pdfUrl" target="_blank" rel="noopener noreferrer">{{
+                    doc.title
+                  }}</a>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      </section>
+    }
+  </div>
+}

@@ -1,0 +1,309 @@
+@if (loading()) {
+  <p class="admin-page__loading">…</p>
+} @else if (snap()) {
+  <header class="admin-page__head">
+    <h1 class="admin-page__title">{{ 'ADMIN_SIM_PAGE.TITLE' | translate }}</h1>
+    <p class="admin-page__sub">{{ 'ADMIN_SIM_PAGE.SUB' | translate }}</p>
+  </header>
+
+  <div class="admin-sim-toolbar">
+    <button
+      type="button"
+      class="admin-sim-new sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg"
+      (click)="openNewModal()"
+      [disabled]="loading() || projectList().length === 0"
+    >
+      {{ 'ADMIN_SIM_PAGE.NEW_SIM' | translate }}
+    </button>
+  </div>
+
+  <div class="admin-sim-layout">
+    <aside class="admin-sim-list-panel" aria-labelledby="sim-list-heading">
+      <h2 id="sim-list-heading" class="admin-sim-list-panel__title">
+        {{ 'ADMIN_SIM_PAGE.MY_SIMULATIONS' | translate }}
+      </h2>
+      @if (simulations().length === 0) {
+        <p class="admin-sim-list-panel__empty">
+          {{ 'ADMIN_SIM_PAGE.LIST_EMPTY' | translate }}
+        </p>
+      } @else {
+        <ul class="admin-sim-list">
+          @for (sim of simulations(); track sim.id) {
+            <li>
+              <div
+                class="admin-sim-list__item"
+                [class.admin-sim-list__item--active]="selectedSimId() === sim.id"
+                role="button"
+                tabindex="0"
+                (click)="selectSim(sim.id)"
+                (keydown.enter)="selectSim(sim.id)"
+                (keydown.space)="$event.preventDefault(); selectSim(sim.id)"
+              >
+                <span class="admin-sim-list__title">{{ sim.title }}</span>
+                <span class="admin-sim-list__meta">{{ sim.projectName }}</span>
+                <time
+                  class="admin-sim-list__time"
+                  [attr.datetime]="sim.createdAt"
+                  >{{ sim.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time
+                >
+                <button
+                  type="button"
+                  class="admin-sim-list__del"
+                  [attr.aria-label]="'ADMIN_SIM_PAGE.DELETE' | translate"
+                  (click)="deleteSim(sim.id, $event)"
+                >
+                  ×
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+
+    <section class="admin-sim-detail" aria-live="polite">
+      @if (selectedSim(); as sel) {
+        <div class="admin-sim-detail__head">
+          <h2 class="admin-sim-detail__title">{{ sel.title }}</h2>
+          <p class="admin-sim-detail__project">
+            {{ 'ADMIN_SIM_PAGE.LINKED_PROJECT' | translate }}:
+            <strong>{{ sel.projectName }}</strong>
+          </p>
+          <p class="admin-sim-detail__hint">
+            {{ 'ADMIN_SIM_PAGE.SCRAP_FROZEN_HINT' | translate }}
+          </p>
+        </div>
+
+        <dl class="admin-sim-breakdown">
+          <div class="admin-sim-breakdown__row">
+            <dt>{{ 'ADMIN_SIM_PAGE.BEAMS_QTY' | translate }}</dt>
+            <dd>{{ sel.beamsQty | number: '1.0-0' }}</dd>
+          </div>
+          <div class="admin-sim-breakdown__row">
+            <dt>{{ 'ADMIN_SIM_PAGE.GLAZING_QTY' | translate }}</dt>
+            <dd>{{ sel.glazingQty | number: '1.0-0' }}</dd>
+          </div>
+          <div class="admin-sim-breakdown__row">
+            <dt>{{ 'ADMIN_SIM_PAGE.UNITIZED_QTY' | translate }}</dt>
+            <dd>{{ sel.unitizedQty | number: '1.0-0' }}</dd>
+          </div>
+          <div class="admin-sim-breakdown__row admin-sim-breakdown__row--sub">
+            <dt>{{ 'ADMIN_SIM_PAGE.CM_PER_BEAM' | translate }}</dt>
+            <dd>{{ sel.cmPerBeam | number: '1.0-2' }}</dd>
+          </div>
+          <div class="admin-sim-breakdown__row admin-sim-breakdown__row--sub">
+            <dt>{{ 'ADMIN_SIM_PAGE.CM_PER_GLAZING' | translate }}</dt>
+            <dd>{{ sel.cmPerGlazing | number: '1.0-2' }}</dd>
+          </div>
+          <div class="admin-sim-breakdown__row admin-sim-breakdown__row--sub">
+            <dt>{{ 'ADMIN_SIM_PAGE.CM_PER_UNITIZED' | translate }}</dt>
+            <dd>{{ sel.cmPerUnitized | number: '1.0-2' }}</dd>
+          </div>
+        </dl>
+
+        <div class="admin-sim-controls sf-panel">
+          <label class="admin-sim-field">
+            <span>{{ 'ADMIN_SIM_PAGE.PICK_SCENARIO' | translate }}</span>
+            <select
+              class="sf-select"
+              [ngModel]="scenario()"
+              (ngModelChange)="setScenario($event)"
+            >
+              <option value="full">{{ 'ADMIN_SIM_PAGE.SCEN_FULL' | translate }}</option>
+              <option value="half">{{ 'ADMIN_SIM_PAGE.SCEN_HALF' | translate }}</option>
+              <option value="extra">{{ 'ADMIN_SIM_PAGE.SCEN_EXTRA' | translate }}</option>
+              <option value="custom">{{ 'ADMIN_SIM_PAGE.SCEN_CUSTOM' | translate }}</option>
+            </select>
+          </label>
+          @if (scenario() === 'custom') {
+            <label class="admin-sim-field">
+              <span>×</span>
+              <input
+                type="number"
+                min="0.1"
+                step="0.05"
+                class="sf-input"
+                [ngModel]="customMult()"
+                (ngModelChange)="customMult.set(+$event)"
+              />
+            </label>
+          }
+        </div>
+
+        <div class="admin-sim-cards">
+          <article class="admin-sim-card">
+            <h3>{{ 'ADMIN_SIM_PAGE.NEED' | translate }}</h3>
+            <p class="admin-sim-card__num">{{ adjustedNeed() | number: '1.0-0' }}</p>
+          </article>
+          <article class="admin-sim-card">
+            <h3>{{ 'ADMIN_SIM_PAGE.SCRAP' | translate }}</h3>
+            <p class="admin-sim-card__num">
+              {{ sel.scrapCmAtSave | number: '1.0-0' }}
+            </p>
+          </article>
+          <article class="admin-sim-card admin-sim-card--accent">
+            <h3>{{ 'ADMIN_SIM_PAGE.GAP' | translate }}</h3>
+            <p class="admin-sim-card__num">{{ adjustedGap() | number: '1.0-0' }}</p>
+          </article>
+        </div>
+
+        <p class="admin-sim-reorder-hint">
+          @if (adjustedGap() > 0) {
+            {{ 'ADMIN_SIM_PAGE.REORDER_NEEDED' | translate }}
+          } @else {
+            {{ 'ADMIN_SIM_PAGE.REORDER_OK' | translate }}
+          }
+        </p>
+      } @else {
+        <p class="admin-sim-detail__empty">
+          {{ 'ADMIN_SIM_PAGE.DETAIL_EMPTY' | translate }}
+        </p>
+      }
+    </section>
+  </div>
+}
+
+@if (modalOpen()) {
+  <div class="admin-sim-overlay" (click)="closeModal()" role="presentation">
+    <div
+      class="admin-sim-overlay__panel"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-sim-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-sim-modal__head">
+        <h2 id="admin-sim-modal-title" class="admin-sim-modal__title">
+          {{ 'ADMIN_SIM_PAGE.MODAL_TITLE' | translate }}
+        </h2>
+        <button
+          type="button"
+          class="admin-sim-modal__close"
+          (click)="closeModal()"
+          [attr.aria-label]="'ADMIN_SIM_PAGE.MODAL_CLOSE' | translate"
+        >
+          ×
+        </button>
+      </div>
+      <p class="admin-sim-modal__sub">{{ 'ADMIN_SIM_PAGE.MODAL_SUB' | translate }}</p>
+
+      <form class="admin-sim-modal__form" (ngSubmit)="saveSimulation()">
+        <label class="admin-sim-modal__field">
+          <span>{{ 'ADMIN_SIM_PAGE.MODAL_NAME' | translate }}</span>
+          <input
+            type="text"
+            name="draftTitle"
+            class="admin-sim-modal__input"
+            [(ngModel)]="draftTitle"
+            autocomplete="off"
+          />
+        </label>
+
+        <label class="admin-sim-modal__field">
+          <span>{{ 'ADMIN_SIM_PAGE.PICK_PROJECT' | translate }}</span>
+          <select
+            name="draftProjectId"
+            class="admin-sim-modal__input"
+            [ngModel]="draftProjectId"
+            (ngModelChange)="onDraftProjectChange($event)"
+            required
+          >
+            @for (p of snap()?.projects ?? []; track p.projectId) {
+              <option [value]="p.projectId">{{ p.name }}</option>
+            }
+          </select>
+        </label>
+
+        <p class="admin-sim-modal__hint">
+          {{ 'ADMIN_SIM_PAGE.MODAL_PROJECT_HINT' | translate }}
+        </p>
+
+        <div class="admin-sim-modal__grid">
+          <label class="admin-sim-modal__field">
+            <span>{{ 'ADMIN_SIM_PAGE.BEAMS_QTY' | translate }}</span>
+            <input
+              type="number"
+              name="draftBeams"
+              min="0"
+              step="1"
+              class="admin-sim-modal__input"
+              [(ngModel)]="draftBeams"
+            />
+          </label>
+          <label class="admin-sim-modal__field">
+            <span>{{ 'ADMIN_SIM_PAGE.GLAZING_QTY' | translate }}</span>
+            <input
+              type="number"
+              name="draftGlazing"
+              min="0"
+              step="1"
+              class="admin-sim-modal__input"
+              [(ngModel)]="draftGlazing"
+            />
+          </label>
+          <label class="admin-sim-modal__field">
+            <span>{{ 'ADMIN_SIM_PAGE.UNITIZED_QTY' | translate }}</span>
+            <input
+              type="number"
+              name="draftUnitized"
+              min="0"
+              step="1"
+              class="admin-sim-modal__input"
+              [(ngModel)]="draftUnitized"
+            />
+          </label>
+        </div>
+
+        <div class="admin-sim-modal__grid">
+          <label class="admin-sim-modal__field">
+            <span>{{ 'ADMIN_SIM_PAGE.CM_PER_BEAM' | translate }}</span>
+            <input
+              type="number"
+              name="draftCmBeam"
+              min="0"
+              step="0.01"
+              class="admin-sim-modal__input"
+              [(ngModel)]="draftCmBeam"
+            />
+          </label>
+          <label class="admin-sim-modal__field">
+            <span>{{ 'ADMIN_SIM_PAGE.CM_PER_GLAZING' | translate }}</span>
+            <input
+              type="number"
+              name="draftCmGlazing"
+              min="0"
+              step="0.01"
+              class="admin-sim-modal__input"
+              [(ngModel)]="draftCmGlazing"
+            />
+          </label>
+          <label class="admin-sim-modal__field">
+            <span>{{ 'ADMIN_SIM_PAGE.CM_PER_UNITIZED' | translate }}</span>
+            <input
+              type="number"
+              name="draftCmUnitized"
+              min="0"
+              step="0.01"
+              class="admin-sim-modal__input"
+              [(ngModel)]="draftCmUnitized"
+            />
+          </label>
+        </div>
+
+        @if (modalError(); as me) {
+          <p class="admin-sim-modal__err" role="alert">{{ me | translate }}</p>
+        }
+
+        <div class="admin-sim-modal__actions">
+          <button type="button" class="admin-sim-modal__btn secondary" (click)="closeModal()">
+            {{ 'ADMIN_SIM_PAGE.MODAL_CANCEL' | translate }}
+          </button>
+          <button type="submit" class="admin-sim-modal__btn primary sf-ui-btn sf-ui-btn--primary">
+            {{ 'ADMIN_SIM_PAGE.MODAL_SAVE' | translate }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

@@ -1,0 +1,305 @@
+@if (loading()) {
+  <div class="admin-page__loading">…</div>
+} @else if (error(); as err) {
+  <div class="admin-page__err">{{ err }}</div>
+} @else if (data()) {
+  <header class="admin-page__head admin-proj-page__head">
+      <div class="admin-proj-page__head-row">
+        <div>
+          <h1 class="admin-page__title">{{ 'ADMIN_PROJECTS.TITLE' | translate }}</h1>
+          <p class="admin-page__sub">{{ 'ADMIN_PROJECTS.SUB' | translate }}</p>
+        </div>
+        <div class="admin-proj-tools">
+          <label class="admin-proj-search">
+            <span class="admin-proj-search__label">{{ 'ADMIN_PROJECTS.SEARCH_LABEL' | translate }}</span>
+            <input
+              type="search"
+              class="admin-proj-search__input"
+              [value]="searchQuery()"
+              (input)="setSearch($any($event.target).value)"
+              [placeholder]="'ADMIN_PROJECTS.SEARCH_PLACEHOLDER' | translate"
+              autocomplete="off"
+            />
+          </label>
+          <label class="admin-proj-filter">
+            <span class="admin-proj-filter__label">{{ 'ADMIN_PROJECTS.FILTER_LABEL' | translate }}</span>
+            <select
+              class="admin-proj-filter__select"
+              [value]="statusFilter()"
+              (change)="setStatusFilter($any($event.target).value)"
+            >
+              <option value="all">{{ 'ADMIN_PROJECTS.FILTER_ALL' | translate }}</option>
+              <option value="IN_PROGRESS">{{ 'ORDER_STATUS.IN_PROGRESS' | translate }}</option>
+              <option value="COMPLETED">{{ 'ORDER_STATUS.COMPLETED' | translate }}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+  </header>
+
+  @if (filteredProjects().length === 0) {
+    <p class="admin-proj-empty">{{ 'ADMIN_PROJECTS.SEARCH_EMPTY' | translate }}</p>
+  } @else {
+    <div class="admin-proj-grid">
+      @for (p of filteredProjects(); track p.id) {
+        <article
+          class="admin-proj-card"
+          role="button"
+          tabindex="0"
+          (click)="openDetail(p)"
+          (keydown.enter)="openDetail(p)"
+          (keydown.space)="$event.preventDefault(); openDetail(p)"
+          [attr.aria-label]="'ADMIN_PROJECTS.CARD_OPEN_DETAIL' | translate"
+        >
+          <div class="admin-proj-card__top">
+            <h2 class="admin-proj-card__name">{{ p.name }}</h2>
+            <span class="admin-proj-card__badge">{{ ('ORDER_STATUS.' + p.status) | translate }}</span>
+          </div>
+
+          <dl class="admin-proj-card__stats">
+            <div>
+              <dt>{{ 'ADMIN_PAGE.PROGRESS' | translate }}</dt>
+              <dd>{{ p.progressPct }}%</dd>
+            </div>
+            <div>
+              <dt>{{ 'ADMIN_PAGE.TOTAL_ORDERS' | translate }}</dt>
+              <dd>{{ p.totalItems }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'ADMIN_PAGE.PACKED' | translate }}</dt>
+              <dd>{{ p.packed }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'ADMIN_PROJECTS.CARD_WORK_ORDERS' | translate }}</dt>
+              <dd>{{ p.workOrders.length }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'ADMIN_PROJECTS.CARD_PURCHASE_ORDERS' | translate }}</dt>
+              <dd>{{ p.purchaseOrders.length }}</dd>
+            </div>
+          </dl>
+
+          <p class="admin-proj-card__hint">{{ 'ADMIN_PROJECTS.CARD_HINT' | translate }}</p>
+
+          @if (p.liveViewAvailable) {
+            <a
+              [routerLink]="['/admin/projects', p.id, 'live']"
+              class="admin-proj-card__live"
+              (click)="$event.stopPropagation()"
+            >
+              {{ 'ADMIN_PROJECTS.LIVE_VIEW' | translate }}
+            </a>
+          }
+
+          <a
+            [routerLink]="['/admin/projects', p.id, 'stations']"
+            class="admin-proj-card__quick"
+            (click)="$event.stopPropagation()"
+          >
+            {{ 'ADMIN_PROJECTS.QUICK_STATIONS' | translate }}
+          </a>
+        </article>
+      }
+    </div>
+  }
+}
+
+@if (detailOpen()) {
+  <div class="admin-proj-modal" role="dialog" aria-modal="true" dir="rtl">
+    <button
+      type="button"
+      class="admin-proj-modal__backdrop"
+      (click)="closeDetail()"
+      [attr.aria-label]="'ADMIN_PROJECTS.MODAL_CLOSE' | translate"
+    ></button>
+
+    <div class="admin-proj-modal__panel" [attr.data-surface]="theme.mode()">
+      <header class="admin-proj-modal__hero">
+        <div class="admin-proj-modal__hero-text">
+          <p class="admin-proj-modal__eyebrow">{{ 'ADMIN_PROJECTS.MODAL_SUBTITLE' | translate }}</p>
+          <h2 class="admin-proj-modal__title">{{ selectedCard()?.name }}</h2>
+          @if (selectedCard(); as sc) {
+            <div class="admin-proj-modal__chips">
+              <span class="admin-proj-modal__chip">{{ ('ORDER_STATUS.' + sc.status) | translate }}</span>
+              <span class="admin-proj-modal__chip admin-proj-modal__chip--accent"
+                >{{ 'ADMIN_PAGE.PROGRESS' | translate }} · {{ sc.progressPct }}%</span
+              >
+              <span class="admin-proj-modal__chip">{{ 'ADMIN_PAGE.PACKED' | translate }}: {{ sc.packed }} / {{ sc.totalItems }}</span>
+            </div>
+          }
+        </div>
+        <button
+          type="button"
+          class="admin-proj-modal__close"
+          (click)="closeDetail()"
+          [attr.aria-label]="'ADMIN_PROJECTS.MODAL_CLOSE' | translate"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="admin-proj-modal__body">
+        @if (detailLoading()) {
+          <p class="admin-proj-modal__loading">{{ 'ADMIN_PROJECTS.MODAL_LOADING' | translate }}</p>
+        } @else if (detailError(); as de) {
+          <p class="admin-proj-modal__err">{{ de }}</p>
+        } @else if (detailData(); as act) {
+          <section class="admin-proj-modal__section">
+            <h3 class="admin-proj-modal__h">{{ 'ADMIN_PROJECTS.SECTION_OVERVIEW' | translate }}</h3>
+            <div class="admin-proj-modal__kpis">
+              <div class="admin-proj-modal__kpi">
+                <span class="admin-proj-modal__kpi-label">{{ 'ADMIN_PROJECTS.KPI_CREATED' | translate }}</span>
+                <span class="admin-proj-modal__kpi-val">{{ act.project.createdAt | date: 'medium' : undefined : dateLocale() }}</span>
+              </div>
+              <div class="admin-proj-modal__kpi">
+                <span class="admin-proj-modal__kpi-label">{{ 'ADMIN_PROJECTS.KPI_UPDATED' | translate }}</span>
+                <span class="admin-proj-modal__kpi-val">{{ act.project.updatedAt | date: 'medium' : undefined : dateLocale() }}</span>
+              </div>
+              <div class="admin-proj-modal__kpi">
+                <span class="admin-proj-modal__kpi-label">{{ 'ADMIN_PROJECTS.KPI_DOCS' | translate }}</span>
+                <span class="admin-proj-modal__kpi-val">{{ act.project.documentCount }}</span>
+              </div>
+              <div class="admin-proj-modal__kpi">
+                <span class="admin-proj-modal__kpi-label">{{ 'ADMIN_PAGE.LOG_ENTRIES' | translate }}</span>
+                <span class="admin-proj-modal__kpi-val">{{ act.totals.stationLogEntries }}</span>
+              </div>
+              <div class="admin-proj-modal__kpi">
+                <span class="admin-proj-modal__kpi-label">{{ 'ADMIN_PROJECTS.KPI_PROCESSED_SUM' | translate }}</span>
+                <span class="admin-proj-modal__kpi-val">{{ act.totals.processedQty }}</span>
+              </div>
+              <div class="admin-proj-modal__kpi">
+                <span class="admin-proj-modal__kpi-label">{{ 'ADMIN_PAGE.SCRAP_UNITS' | translate }}</span>
+                <span class="admin-proj-modal__kpi-val">{{ act.totals.scrapUnits }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="admin-proj-modal__section">
+            <h3 class="admin-proj-modal__h">{{ 'ADMIN_PROJECTS.SECTION_STATIONS' | translate }}</h3>
+            <div class="admin-proj-modal__table-wrap">
+              <table class="admin-proj-modal__table">
+                <thead>
+                  <tr>
+                    <th>{{ 'ADMIN_PROJECTS.COL_STATION' | translate }}</th>
+                    <th>{{ 'ADMIN_PROJECTS.COL_REPORTS' | translate }}</th>
+                    <th>{{ 'ADMIN_PROJECTS.COL_QTY_SUM' | translate }}</th>
+                    <th>{{ 'ADMIN_PROJECTS.COL_FIRST_LOG' | translate }}</th>
+                    <th>{{ 'ADMIN_PROJECTS.COL_LAST_LOG' | translate }}</th>
+                    <th>{{ 'ADMIN_PROJECTS.COL_SCRAP_UNITS' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (s of act.stations; track s.stationId) {
+                    <tr>
+                      <td>
+                        <span class="admin-proj-modal__station-name">{{ 'STATIONS.' + s.stationId | translate }}</span>
+                      </td>
+                      <td>{{ s.logEntries }}</td>
+                      <td>{{ s.processedQty }}</td>
+                      <td>
+                        @if (s.firstEntryAt) {
+                          {{ s.firstEntryAt | date: 'short' : undefined : dateLocale() }}
+                        } @else {
+                          —
+                        }
+                      </td>
+                      <td>
+                        @if (s.lastEntryAt) {
+                          {{ s.lastEntryAt | date: 'short' : undefined : dateLocale() }}
+                        } @else {
+                          —
+                        }
+                      </td>
+                      <td>
+                        @if (s.scrapQty > 0) {
+                          <span class="admin-proj-modal__scrap-pill">{{ s.scrapQty }}</span>
+                        } @else {
+                          —
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-proj-modal__section">
+            <h3 class="admin-proj-modal__h">{{ 'ADMIN_PROJECTS.SECTION_TIMELINE' | translate }}</h3>
+            <ul class="admin-proj-modal__timeline">
+              @for (log of act.recentLogs; track log.id) {
+                <li class="admin-proj-modal__timeline-item">
+                  <div class="admin-proj-modal__timeline-dot"></div>
+                  <div class="admin-proj-modal__timeline-card">
+                    <div class="admin-proj-modal__timeline-meta">
+                      <span class="admin-proj-modal__timeline-st">{{ 'STATIONS.' + log.stationId | translate }}</span>
+                      <time [attr.datetime]="log.createdAt">{{ log.createdAt | date: 'medium' : undefined : dateLocale() }}</time>
+                    </div>
+                    <p class="admin-proj-modal__timeline-qty">
+                      {{ 'ADMIN_PROJECTS.TIMELINE_QTY' | translate }}: <strong>{{ log.processedQty }}</strong>
+                    </p>
+                    @if (log.issues) {
+                      <p class="admin-proj-modal__timeline-issues">{{ log.issues }}</p>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section class="admin-proj-modal__section admin-proj-modal__section--scrap">
+            <div class="admin-proj-modal__scrap-head">
+              <h3 class="admin-proj-modal__h">{{ 'ADMIN_PROJECTS.SECTION_SCRAP' | translate }}</h3>
+              @if (scrapCmTotal() > 0) {
+                <p class="admin-proj-modal__scrap-sum">
+                  {{ 'ADMIN_PROJECTS.SCRAP_CM_TOTAL' | translate }}:
+                  <strong>{{ scrapCmTotal() | number: '1.0-0' }}</strong>
+                  {{ 'WORKER.SAW_CM_UNIT' | translate }}
+                </p>
+              }
+            </div>
+
+            @if (act.scrapRows.length === 0) {
+              <p class="admin-proj-modal__scrap-empty">{{ 'ADMIN_PROJECTS.SCRAP_EMPTY' | translate }}</p>
+            } @else {
+              <div class="admin-proj-modal__table-wrap">
+                <table class="admin-proj-modal__table admin-proj-modal__table--scrap">
+                  <thead>
+                    <tr>
+                      <th>{{ 'ADMIN_PROJECTS.COL_STATION' | translate }}</th>
+                      <th>{{ 'ADMIN_PROJECTS.COL_SCRAP_QTY' | translate }}</th>
+                      <th>{{ 'WORKER.SCRAP_LENGTH' | translate }}</th>
+                      <th>{{ 'ADMIN_PROJECTS.COL_TIME' | translate }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (r of act.scrapRows; track r.id) {
+                      <tr>
+                        <td>{{ 'STATIONS.' + r.stationId | translate }}</td>
+                        <td>{{ r.scrapQty }}</td>
+                        <td>{{ r.itemLengthCm | number: '1.0-2' }}</td>
+                        <td>{{ r.createdAt | date: 'medium' : undefined : dateLocale() }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+
+          <footer class="admin-proj-modal__footer">
+            <a
+              [routerLink]="['/admin/projects', act.project.id, 'stations']"
+              class="admin-proj-modal__cta"
+              (click)="closeDetail()"
+            >
+              {{ 'ADMIN_PROJECTS.VIEW_ALL_STATIONS' | translate }}
+            </a>
+          </footer>
+        }
+      </div>
+    </div>
+  </div>
+}

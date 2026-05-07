@@ -102,7 +102,7 @@
         <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.STATIONS' | translate }}</span>
       </a>
 
-      @if (access.showAdminNav()) {
+      @if (user.isAdmin()) {
         <a
           routerLink="/admin"
           routerLinkActive="is-active"

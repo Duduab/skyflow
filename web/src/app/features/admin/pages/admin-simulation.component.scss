@@ -1,0 +1,447 @@
+.admin-page__loading {
+  padding: 2rem;
+  text-align: center;
+}
+
+.admin-sim-toolbar {
+  margin-bottom: 1.25rem;
+}
+
+.admin-sim-new:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-sim-layout {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .admin-sim-layout {
+    grid-template-columns: minmax(14rem, 22rem) minmax(0, 1fr);
+  }
+}
+
+.admin-sim-list-panel {
+  padding: 1rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-list-panel {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(248, 250, 252, 0.1);
+}
+
+.admin-sim-list-panel__title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--admin-fg, #0f172a);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-list-panel__title {
+  color: #f8fafc;
+}
+
+.admin-sim-list-panel__empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: min(60vh, 28rem);
+  overflow-y: auto;
+}
+
+.admin-sim-list__item {
+  position: relative;
+  width: 100%;
+  text-align: right;
+  padding: 0.65rem 2rem 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-list__item {
+  background: #0f172a;
+  border-color: rgba(248, 250, 252, 0.1);
+  color: #f1f5f9;
+}
+
+.admin-sim-list__item:focus-visible {
+  outline: 2px solid rgba(85, 143, 195, 0.65);
+  outline-offset: 2px;
+}
+
+.admin-sim-list__item--active {
+  border-color: rgba(85, 143, 195, 0.55);
+  box-shadow: 0 0 0 1px rgba(85, 143, 195, 0.25);
+}
+
+.admin-sim-list__title {
+  display: block;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.admin-sim-list__meta {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.85;
+  margin-top: 0.15rem;
+}
+
+.admin-sim-list__time {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.7;
+  margin-top: 0.2rem;
+}
+
+.admin-sim-list__del {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: rgba(185, 28, 28, 0.12);
+  color: #b91c1c;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.admin-sim-list__del:hover {
+  background: rgba(185, 28, 28, 0.22);
+}
+
+.admin-sim-detail {
+  min-width: 0;
+}
+
+.admin-sim-detail__head {
+  margin-bottom: 1rem;
+}
+
+.admin-sim-detail__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--admin-fg, #0f172a);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-detail__title {
+  color: #f8fafc;
+}
+
+.admin-sim-detail__project {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim-detail__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--admin-muted, #64748b);
+  line-height: 1.4;
+}
+
+.admin-sim-detail__empty {
+  margin: 0;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--admin-muted, #64748b);
+  border: 1px dashed rgba(15, 23, 42, 0.15);
+  border-radius: 1rem;
+}
+
+.admin-sim-breakdown {
+  display: grid;
+  gap: 0.35rem 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-breakdown {
+  background: rgba(248, 250, 252, 0.06);
+}
+
+.admin-sim-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.admin-sim-breakdown__row dt {
+  margin: 0;
+  font-weight: 600;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim-breakdown__row dd {
+  margin: 0;
+  font-weight: 800;
+  color: var(--admin-fg, #0f172a);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-breakdown__row dd {
+  color: #f1f5f9;
+}
+
+.admin-sim-breakdown__row--sub dt {
+  font-size: 0.8rem;
+}
+
+.admin-sim-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-sim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 12rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.admin-sim-cards {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+
+.admin-sim-card {
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-card {
+  background: #0f172a;
+  border-color: rgba(248, 250, 252, 0.1);
+}
+
+.admin-sim-card h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.admin-sim-card__num {
+  margin: 0.5rem 0 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--admin-fg, #0f172a);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-card__num {
+  color: #f8fafc;
+}
+
+.admin-sim-card--accent {
+  border-color: rgba(85, 143, 195, 0.45);
+  background: rgba(85, 143, 195, 0.08);
+}
+
+.admin-sim-reorder-hint {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--admin-fg, #0f172a);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-reorder-hint {
+  color: #e2e8f0;
+}
+
+/* Modal */
+.admin-sim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.admin-sim-overlay__panel {
+  width: 100%;
+  max-width: 36rem;
+  max-height: min(92vh, 44rem);
+  overflow-y: auto;
+  border-radius: 1.25rem;
+  padding: 1.35rem 1.5rem 1.5rem;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
+}
+
+.admin-sim-overlay__panel[data-surface='light'] {
+  background: #fff;
+  color: #0f172a;
+}
+
+.admin-sim-overlay__panel[data-surface='dark'] {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(248, 250, 252, 0.12);
+}
+
+.admin-sim-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-sim-modal__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.admin-sim-modal__close {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 0.65rem;
+  background: rgba(15, 23, 42, 0.07);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+}
+
+.admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__close {
+  background: rgba(248, 250, 252, 0.08);
+}
+
+.admin-sim-modal__close:hover {
+  opacity: 0.85;
+}
+
+.admin-sim-modal__sub {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  line-height: 1.45;
+}
+
+.admin-sim-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.admin-sim-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-sim-modal__input {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__input {
+  background: #020617;
+  border-color: rgba(248, 250, 252, 0.14);
+  color: #f8fafc;
+}
+
+.admin-sim-modal__hint {
+  margin: -0.25rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.75;
+  line-height: 1.35;
+}
+
+.admin-sim-modal__grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
+
+.admin-sim-modal__err {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.admin-sim-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__actions {
+  border-top-color: rgba(248, 250, 252, 0.1);
+}
+
+.admin-sim-modal__btn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.75rem;
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.admin-sim-modal__btn.secondary {
+  background: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  color: inherit;
+}
+
+.admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__btn.secondary {
+  border-color: rgba(248, 250, 252, 0.2);
+}
+
+.admin-sim-modal__btn.primary {
+  border: none;
+}

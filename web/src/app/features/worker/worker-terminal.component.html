@@ -14,9 +14,7 @@
       class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between"
     >
       <div class="space-y-3">
-        <a routerLink="/worker" class="sf-btn sf-btn--alt mb-2 px-6 py-3 text-touch shadow-sf">
-          ← {{ 'APP.WORKER_HUB' | translate }}
-        </a>
+
         <h1
           class="text-hero font-black tracking-tight text-white drop-shadow-lg"
         >
@@ -537,17 +535,19 @@
         </label>
       }
 
-      <button
+      <skyflow-ui-button
         type="submit"
+        variant="primary"
+        size="touch"
+        [loading]="saving()"
         [disabled]="
           form.invalid ||
-          saving() ||
           (stationId === 7 && !ctx.siteAssembly?.deliveryNoteUrl)
         "
-        class="sf-submit shadow-sf-lg disabled:shadow-none"
+        btnClass="shadow-sf-lg disabled:shadow-none"
       >
         {{ 'WORKER.SUBMIT' | translate }}
-      </button>
+      </skyflow-ui-button>
     </form>
 
     @if (saveToastVisible()) {

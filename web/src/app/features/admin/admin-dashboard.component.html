@@ -24,7 +24,7 @@
     <header class="flex flex-col gap-6">
       <div class="flex flex-col gap-2">
         <h1 class="text-hero font-black tracking-tight text-white drop-shadow-lg">
-          {{ 'ADMIN_PAGE.TITLE' | translate }}
+          {{ adminFilterSummary(d) }}
         </h1>
         <p class="text-touch font-semibold text-white/80">
           {{ 'APP.SUBTITLE' | translate }}
@@ -36,32 +36,41 @@
         <span class="text-sm font-black text-white/80">{{
           'ADMIN_PAGE.FILTER_PROJECT' | translate
         }}</span>
-        <div
-          class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-        >
-          <p class="min-w-0 flex-1 text-touch font-bold leading-snug text-white">
-            {{ adminFilterSummary(d) }}
-          </p>
-          <button
-            type="button"
-            class="sf-btn admin-dash__orders-open shrink-0"
-            (click)="openAdminOrdersModal()"
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
+          <label class="flex min-w-[min(100%,18rem)] flex-1 flex-col gap-2">
+            <span class="sr-only">{{ 'ADMIN_PAGE.FILTER_PROJECT' | translate }}</span>
+            <select
+              class="admin-dash__project-select w-full rounded-xl border border-white/20 bg-black/50 px-4 py-3 text-touch font-bold text-white shadow-sf focus:border-sf-blue focus:outline-none focus:ring-2 focus:ring-sf-blue/40"
+              [value]="selectedProjectId() ?? ''"
+              (change)="onProjectFilterChange($any($event.target).value)"
+            >
+              <option value="">{{ 'ADMIN_PAGE.ALL_PROJECTS' | translate }}</option>
+              @for (p of d.projects; track p.id) {
+                <option [value]="p.id">{{ p.name }}</option>
+              }
+            </select>
+          </label>
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-3 lg:shrink-0"
           >
-            {{ 'WORKER_HUB.ORDERS_BUTTON' | translate }}
-          </button>
+            <button
+              type="button"
+              class="admin-dash__export sf-ui-btn sf-ui-btn--secondary shrink-0 border-white/25 bg-white/10 text-white hover:bg-white/15"
+              (click)="exportDashboardCsv(d)"
+            >
+              {{ 'ADMIN_PAGE.EXPORT_CSV' | translate }}
+            </button>
+            <button
+              type="button"
+              class="sf-ui-btn sf-ui-btn--primary admin-dash__orders-open shrink-0"
+              (click)="openAdminOrdersModal()"
+            >
+              {{ 'WORKER_HUB.ORDERS_BUTTON' | translate }}
+            </button>
+          </div>
         </div>
       </div>
     </header>
-
-    @if (d.selectedProject) {
-      <div
-        class="flex flex-wrap items-center gap-3 rounded-2xl border border-sf-blue/35 bg-sf-blue/15 px-5 py-4 text-touch font-bold text-white shadow-sf"
-        role="status"
-      >
-        <span class="text-white/90">{{ 'ADMIN_PAGE.SCOPE_PROJECT_HINT' | translate }}:</span>
-        <span class="text-white">{{ d.selectedProject.name }}</span>
-      </div>
-    }
 
     <section
       class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"

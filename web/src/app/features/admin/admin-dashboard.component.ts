@@ -43,6 +43,9 @@ export class AdminDashboardComponent implements OnInit {
   private readonly lang = inject(LanguageService);
   private readonly reload$ = new Subject<void>();
 
+  /** First response: default project = first in list (if user didn’t pick "all"). */
+  private firstDashboardLoad = true;
+
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly data = signal<AdminDashboard | null>(null);
@@ -174,8 +177,51 @@ export class AdminDashboardComponent implements OnInit {
     return 'he-IL';
   }
 
+  onProjectFilterChange(value: string): void {
+    this.selectedProjectId.set(value || null);
+    this.reload$.next();
+  }
+
+  exportDashboardCsv(d: AdminDashboard): void {
+    const lines: string[][] = [
+      ['metric', 'value'],
+      ['activeProjects', String(d.summary.activeOrders)],
+      ['totalOrders', String(d.summary.totalOrders)],
+      ['processedVolume', String(d.summary.processedVolume)],
+      ['stationLogEntries', String(d.summary.stationLogEntries)],
+      ['scrapUnits', String(d.summary.scrapUnits)],
+      [
+        'scrapRatePct',
+        d.summary.scrapRatePct != null ? String(d.summary.scrapRatePct) : '',
+      ],
+      ['lastActivityAt', d.summary.lastActivityAt ?? ''],
+      ['scope', d.summary.scope],
+    ];
+    const esc = (s: string) =>
+      /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    const body = lines.map((row) => row.map(esc).join(',')).join('\n');
+    const blob = new Blob([body], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `skyflow-dashboard-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   private applyDashboard(d: AdminDashboard): void {
     this.data.set(d);
+    if (
+      this.firstDashboardLoad &&
+      d.projects.length &&
+      this.selectedProjectId() == null
+    ) {
+      this.firstDashboardLoad = false;
+      this.selectedProjectId.set(d.projects[0].id);
+      queueMicrotask(() => this.reload$.next());
+      return;
+    }
+    this.firstDashboardLoad = false;
 
     const loc = this.dateLocale();
     const dayLabels = d.charts.dailyProgress.labels.map((iso) => {

@@ -43,7 +43,7 @@
       @if (orders().length) {
         <button
           type="button"
-          class="sf-btn worker-hub__orders-open"
+          class="sf-ui-btn sf-ui-btn--primary worker-hub__orders-open"
           (click)="openOrdersModal()"
         >
           {{ 'WORKER_HUB.ORDERS_BUTTON' | translate }}
@@ -102,6 +102,12 @@
               <h2 class="station-card__headline">
                 {{ 'STATIONS.' + s.id | translate }}
               </h2>
+              @if (stationManagers()[s.id]; as mgr) {
+                <p class="station-card__mgr">
+                  {{ 'WORKER_HUB.STATION_MANAGER_LABEL' | translate }}:
+                  {{ mgr.firstName }} {{ mgr.lastName }}
+                </p>
+              }
               <p class="station-card__desc">
                 {{ 'WORKER_HUB.STATION_DESC_' + s.id | translate }}
               </p>

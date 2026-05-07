@@ -1,0 +1,39 @@
+.admin-files-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.admin-files-project__title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.admin-files-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+}
+
+.admin-files-grid h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.admin-files-grid ul {
+  margin: 0;
+  padding-inline-start: 1.1rem;
+}
+
+.admin-files-grid a {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.admin-page__loading {
+  padding: 2rem;
+  text-align: center;
+}

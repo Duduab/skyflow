@@ -6,11 +6,15 @@ import { OrdersModule } from './orders/orders.module';
 import { StationsModule } from './stations/stations.module';
 import { AdminModule } from './admin/admin.module';
 import { ShippingModule } from './shipping/shipping.module';
+import { AuthModule } from './auth/auth.module.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    AuthModule,
+    UsersModule,
     OrdersModule,
     StationsModule,
     AdminModule,

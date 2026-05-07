@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+
+import { CurrentUserService } from '../../core/current-user.service';
 
 @Component({
   selector: 'skyflow-home-page',
@@ -20,20 +22,38 @@ import { TranslateModule } from '@ngx-translate/core';
           SkyFlow →
         </span>
       </a>
-      <a
-        routerLink="/admin"
-        class="sf-card-home sf-card-home--admin group shadow-sf-lg"
-      >
-        <span class="text-hero drop-shadow-md">{{
-          'HOME.ADMIN_CARD' | translate
-        }}</span>
-        <span
-          class="mt-4 text-touch font-bold text-white/95 group-hover:text-white"
+      @if (auth.isAdmin()) {
+        <a
+          routerLink="/admin"
+          class="sf-card-home sf-card-home--admin group shadow-sf-lg"
         >
-          Dashboard →
-        </span>
-      </a>
+          <span class="text-hero drop-shadow-md">{{
+            'HOME.ADMIN_CARD' | translate
+          }}</span>
+          <span
+            class="mt-4 text-touch font-bold text-white/95 group-hover:text-white"
+          >
+            Dashboard →
+          </span>
+        </a>
+      } @else {
+        <a
+          routerLink="/login"
+          class="sf-card-home sf-card-home--admin group shadow-sf-lg"
+        >
+          <span class="text-hero drop-shadow-md">{{
+            'HOME.ADMIN_LOGIN_CARD' | translate
+          }}</span>
+          <span
+            class="mt-4 text-touch font-bold text-white/95 group-hover:text-white"
+          >
+            {{ 'HOME.ADMIN_LOGIN_HINT' | translate }}
+          </span>
+        </a>
+      }
     </div>
   `,
 })
-export class HomePageComponent {}
+export class HomePageComponent {
+  readonly auth = inject(CurrentUserService);
+}

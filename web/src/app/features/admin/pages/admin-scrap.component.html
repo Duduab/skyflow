@@ -1,0 +1,97 @@
+@if (loading()) {
+  <p class="admin-page__loading">…</p>
+} @else if (dashboard(); as dash) {
+  <header class="admin-page__head admin-scrap__head">
+    <div class="admin-scrap__head-text">
+      <h1 class="admin-page__title">{{ 'ADMIN_SCRAP_PAGE.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_SCRAP_PAGE.SUB' | translate }}</p>
+    </div>
+    <div class="admin-scrap__actions">
+      <label class="admin-scrap__filter">
+        <span class="admin-scrap__filter-label">{{ 'ADMIN_SCRAP_PAGE.FILTER_LABEL' | translate }}</span>
+        <select
+          class="admin-scrap__filter-select"
+          [value]="projectFilter() ?? ''"
+          (change)="onProjectFilterChange($any($event.target).value)"
+        >
+          <option value="">{{ 'ADMIN_SCRAP_PAGE.FILTER_ALL' | translate }}</option>
+          @for (p of dash.projects; track p.id) {
+            <option [value]="p.id">{{ p.name }}</option>
+          }
+        </select>
+      </label>
+      <button
+        type="button"
+        class="admin-scrap__export sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg"
+        (click)="exportToExcel()"
+        [disabled]="detailRows().length === 0"
+      >
+        {{ 'ADMIN_SCRAP_PAGE.EXPORT_EXCEL' | translate }}
+      </button>
+    </div>
+  </header>
+
+  @if (scrapData(); as sd) {
+    @if (!sd.rows.length) {
+      <p class="admin-scrap__empty">{{ 'ADMIN_SCRAP_PAGE.EMPTY' | translate }}</p>
+    } @else {
+      @if (!projectFilter() && projectTotals().length) {
+        <section class="admin-scrap__summary" aria-labelledby="scrap-summary-title">
+          <h2 id="scrap-summary-title" class="admin-scrap__summary-title">
+            {{ 'ADMIN_SCRAP_PAGE.SUMMARY_TITLE' | translate }}
+          </h2>
+          <div class="admin-table-wrap">
+            <table class="admin-table admin-table--summary">
+              <thead>
+                <tr>
+                  <th>{{ 'ADMIN_PAGE.PROJECTS' | translate }}</th>
+                  <th>{{ 'ADMIN_SCRAP_PAGE.COL_TOTAL_SCRAP_CM' | translate }}</th>
+                  <th>{{ 'ADMIN_SCRAP_PAGE.COL_TOTAL_PIECES' | translate }}</th>
+                  <th>{{ 'ADMIN_SCRAP_PAGE.COL_ENTRIES' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of projectTotals(); track t.projectId) {
+                  <tr>
+                    <td>{{ t.projectName }}</td>
+                    <td>{{ t.totalScrapCm | number: '1.0-0' }}</td>
+                    <td>{{ t.totalPieces | number: '1.0-0' }}</td>
+                    <td>{{ t.rowCount }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+
+      <section class="admin-scrap__detail" [attr.aria-label]="'ADMIN_SCRAP_PAGE.DETAIL_TITLE' | translate">
+        <h2 class="admin-scrap__detail-title">{{ 'ADMIN_SCRAP_PAGE.DETAIL_TITLE' | translate }}</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>{{ 'ADMIN_PAGE.PROJECTS' | translate }}</th>
+                <th>{{ 'ADMIN_PROJECTS.COL_STATION' | translate }}</th>
+                <th>{{ 'WORKER.SCRAP_LENGTH' | translate }}</th>
+                <th>{{ 'ADMIN_PROJECTS.COL_SCRAP_QTY' | translate }}</th>
+                <th>{{ 'ADMIN_PROJECTS.COL_TIME' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of detailRows(); track r.id) {
+                <tr>
+                  <td>{{ r.projectName }}</td>
+                  <td>{{ r.stationName }}</td>
+                  <td>{{ r.itemLengthCm | number: '1.0-2' }}</td>
+                  <td>{{ r.scrapQty }}</td>
+                  <td>{{ r.createdAt | date: 'short' : undefined : dateLocale() }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  }
+}

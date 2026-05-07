@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -274,6 +274,8 @@ export class AdminService {
         const qtyMap = qtyByProjectStation.get(o.id);
         const qtyAt = (sid: number) => qtyMap?.get(sid) ?? 0;
         const packed = qtyAt(6);
+        const liveViewAvailable =
+          o.status === OrderStatus.IN_PROGRESS && qtyAt(1) >= 1;
         const site7Log = latestSite7ByProject.get(o.id);
         const stationSevenPct = siteLinePercentFromOrderRow(
           o.siteDeliveryNotePath,
@@ -297,6 +299,7 @@ export class AdminService {
           ),
           workOrders,
           purchaseOrders,
+          liveViewAvailable,
         };
       }),
       bottlenecks,
@@ -346,5 +349,201 @@ export class AdminService {
     });
 
     return scored.sort((a, b) => b.severity - a.severity).slice(0, 3);
+  }
+
+  async getScrapOverview(projectId?: string) {
+    const where = projectId?.trim()
+      ? { projectId: projectId.trim() }
+      : {};
+    const rows = await this.prisma.scrapReport.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 800,
+      include: {
+        project: { select: { name: true } },
+      },
+    });
+    return {
+      rows: rows.map((r) => ({
+        id: r.id,
+        projectId: r.projectId,
+        projectName: r.project.name,
+        stationId: r.stationId,
+        stationName: STATION_NAMES[r.stationId] ?? `עמדה ${r.stationId}`,
+        itemLengthCm: Number(r.itemLength),
+        scrapQty: r.scrapQty,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  /** Rough BOM vs scrap-inventory for order simulation (demo). */
+  async getSimulationSnapshot() {
+    const projects = await this.prisma.projectOrder.findMany({
+      select: {
+        id: true,
+        name: true,
+        originalLength: true,
+        totalItems: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const scraps = await this.prisma.scrapReport.findMany({
+      select: {
+        projectId: true,
+        itemLength: true,
+        scrapQty: true,
+      },
+    });
+    const scrapCmByProject = new Map<string, number>();
+    for (const s of scraps) {
+      const cm = Number(s.itemLength) * s.scrapQty;
+      scrapCmByProject.set(
+        s.projectId,
+        (scrapCmByProject.get(s.projectId) ?? 0) + cm,
+      );
+    }
+    return {
+      projects: projects.map((p) => {
+        const needCm = Number(p.originalLength) * p.totalItems;
+        const scrapCm = scrapCmByProject.get(p.id) ?? 0;
+        return {
+          projectId: p.id,
+          name: p.name,
+          needCm,
+          scrapCm,
+          gapCm: Math.max(0, needCm - scrapCm),
+          originalLengthCm: Number(p.originalLength),
+          totalItems: p.totalItems,
+        };
+      }),
+    };
+  }
+
+  /** פירוט דיווחים ופחת לפרויקט — מודאל ניהול */
+  async getProjectActivity(projectId: string) {
+    const id = projectId?.trim();
+    if (!id) {
+      throw new NotFoundException('project not found');
+    }
+
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        totalItems: true,
+        updatedAt: true,
+        createdAt: true,
+        _count: { select: { documents: true } },
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('project not found');
+    }
+
+    const [logGroups, scrapGroups, recentLogs, scrapRows, stationLogEntries] =
+      await Promise.all([
+      this.prisma.stationLog.groupBy({
+        by: ['stationId'],
+        where: { projectId: id },
+        _sum: { processedQty: true },
+        _count: { _all: true },
+        _max: { createdAt: true },
+        _min: { createdAt: true },
+      }),
+      this.prisma.scrapReport.groupBy({
+        by: ['stationId'],
+        where: { projectId: id },
+        _sum: { scrapQty: true },
+        _count: { _all: true },
+        _max: { createdAt: true },
+      }),
+      this.prisma.stationLog.findMany({
+        where: { projectId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 45,
+        select: {
+          id: true,
+          stationId: true,
+          processedQty: true,
+          createdAt: true,
+          issues: true,
+        },
+      }),
+      this.prisma.scrapReport.findMany({
+        where: { projectId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 60,
+        select: {
+          id: true,
+          stationId: true,
+          scrapQty: true,
+          itemLength: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.stationLog.count({ where: { projectId: id } }),
+    ]);
+
+    const totalProcessed = logGroups.reduce(
+      (a, g) => a + (g._sum.processedQty ?? 0),
+      0,
+    );
+    const totalScrapUnits = scrapGroups.reduce(
+      (a, g) => a + (g._sum.scrapQty ?? 0),
+      0,
+    );
+
+    const stations = STATION_ORDER.map((sid) => {
+      const lg = logGroups.find((x) => x.stationId === sid);
+      const sg = scrapGroups.find((x) => x.stationId === sid);
+      return {
+        stationId: sid,
+        stationName: STATION_NAMES[sid] ?? `עמדה ${sid}`,
+        logEntries: lg?._count._all ?? 0,
+        processedQty: lg?._sum.processedQty ?? 0,
+        firstEntryAt: lg?._min.createdAt?.toISOString() ?? null,
+        lastEntryAt: lg?._max.createdAt?.toISOString() ?? null,
+        scrapQty: sg?._sum.scrapQty ?? 0,
+        scrapEntries: sg?._count._all ?? 0,
+        lastScrapAt: sg?._max.createdAt?.toISOString() ?? null,
+      };
+    });
+
+    return {
+      project: {
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        totalItems: project.totalItems,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
+        documentCount: project._count.documents,
+      },
+      totals: {
+        processedQty: totalProcessed,
+        scrapUnits: totalScrapUnits,
+        stationLogEntries,
+      },
+      stations,
+      recentLogs: recentLogs.map((l) => ({
+        id: l.id,
+        stationId: l.stationId,
+        processedQty: l.processedQty,
+        createdAt: l.createdAt.toISOString(),
+        issues: l.issues,
+      })),
+      scrapRows: scrapRows.map((r) => ({
+        id: r.id,
+        stationId: r.stationId,
+        stationName: STATION_NAMES[r.stationId] ?? `עמדה ${r.stationId}`,
+        scrapQty: r.scrapQty,
+        itemLengthCm: Number(r.itemLength),
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
   }
 }

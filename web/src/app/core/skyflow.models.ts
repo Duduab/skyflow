@@ -94,6 +94,8 @@ export interface AdminProjectRow {
   progressPct: number;
   workOrders: ProjectDocumentDto[];
   purchaseOrders: ProjectDocumentDto[];
+  /** תצוגה חיה — פרויקט בביצוע עם דיווח בתחנה 1 */
+  liveViewAvailable?: boolean;
 }
 
 export interface Bottleneck {
@@ -138,4 +140,124 @@ export interface ShippingRow {
 
 export interface ShippingResponse {
   rows: ShippingRow[];
+}
+
+export type SkyflowRole =
+  | 'WORKER'
+  | 'ADMIN'
+  | 'STATION_MANAGER'
+  | 'SITE_MANAGER';
+
+export interface UserDto {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: SkyflowRole;
+  photoUrl: string | null;
+  managedStationId: number | null;
+}
+
+export interface ScrapOverviewRow {
+  id: string;
+  projectId: string;
+  projectName: string;
+  stationId: number;
+  stationName: string;
+  itemLengthCm: number;
+  scrapQty: number;
+  createdAt: string;
+}
+
+export interface ScrapOverviewResponse {
+  rows: ScrapOverviewRow[];
+}
+
+export interface SimulationProjectRow {
+  projectId: string;
+  name: string;
+  needCm: number;
+  scrapCm: number;
+  gapCm: number;
+  /** אורך ייחוס מההזמנה (BOM) — לברירת מחדל בסימולציה */
+  originalLengthCm: number;
+  totalItems: number;
+}
+
+export interface SimulationSnapshotResponse {
+  projects: SimulationProjectRow[];
+}
+
+/** סימולציית הזמנה שמורה מקומית (רשימה בעמוד הסימולציה) */
+export interface OrderSimulationRecord {
+  id: string;
+  title: string;
+  createdAt: string;
+  projectId: string;
+  projectName: string;
+  beamsQty: number;
+  glazingQty: number;
+  unitizedQty: number;
+  cmPerBeam: number;
+  cmPerGlazing: number;
+  cmPerUnitized: number;
+  baseNeedCm: number;
+  scrapCmAtSave: number;
+}
+
+export interface ProjectActivityStation {
+  stationId: number;
+  stationName: string;
+  logEntries: number;
+  processedQty: number;
+  firstEntryAt: string | null;
+  lastEntryAt: string | null;
+  scrapQty: number;
+  scrapEntries: number;
+  lastScrapAt: string | null;
+}
+
+export interface ProjectActivityLog {
+  id: string;
+  stationId: number;
+  processedQty: number;
+  createdAt: string;
+  issues: string | null;
+}
+
+export interface ProjectActivityScrapRow {
+  id: string;
+  stationId: number;
+  stationName: string;
+  scrapQty: number;
+  itemLengthCm: number;
+  createdAt: string;
+}
+
+export interface ProjectActivityResponse {
+  project: {
+    id: string;
+    name: string;
+    status: OrderStatus;
+    totalItems: number;
+    createdAt: string;
+    updatedAt: string;
+    documentCount: number;
+  };
+  totals: {
+    processedQty: number;
+    scrapUnits: number;
+    stationLogEntries: number;
+  };
+  stations: ProjectActivityStation[];
+  recentLogs: ProjectActivityLog[];
+  scrapRows: ProjectActivityScrapRow[];
+}
+
+export interface StationManagersResponse {
+  [stationId: number]: {
+    firstName: string;
+    lastName: string;
+    photoUrl: string | null;
+  };
 }

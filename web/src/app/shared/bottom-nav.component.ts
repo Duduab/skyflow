@@ -8,7 +8,6 @@ import {
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { AccessContextService } from '../core/access-context.service';
 import { CurrentUserService } from '../core/current-user.service';
 import { ThemeService } from '../core/theme.service';
 
@@ -21,7 +20,6 @@ import { ThemeService } from '../core/theme.service';
 export class BottomNavComponent {
   readonly user = inject(CurrentUserService);
   readonly theme = inject(ThemeService);
-  readonly access = inject(AccessContextService);
   private readonly host = inject(ElementRef<HTMLElement>);
 
   readonly themeMenuOpen = signal(false);

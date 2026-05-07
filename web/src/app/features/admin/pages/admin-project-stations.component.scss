@@ -1,0 +1,26 @@
+.admin-project-stations__back {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #558fc3;
+  text-decoration: none;
+}
+
+.admin-project-stations__back:hover {
+  text-decoration: underline;
+}
+
+.admin-project-stations__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+.admin-project-stations__loading,
+.admin-project-stations__err {
+  padding: 2rem;
+  text-align: center;
+  font-weight: 700;
+}

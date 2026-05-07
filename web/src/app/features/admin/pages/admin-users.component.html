@@ -1,0 +1,138 @@
+@if (loading()) {
+  <p class="admin-page__loading">…</p>
+} @else {
+  <header class="admin-page__head">
+    <h1 class="admin-page__title">{{ 'ADMIN_USERS_PAGE.TITLE' | translate }}</h1>
+    <p class="admin-page__sub">{{ 'ADMIN_USERS_PAGE.SUB' | translate }}</p>
+  </header>
+
+  <section class="admin-users__create" aria-labelledby="admin-users-create-title">
+    <h2 id="admin-users-create-title" class="admin-users__create-title">
+      {{ 'ADMIN_USERS_PAGE.CREATE_TITLE' | translate }}
+    </h2>
+    <form class="admin-users__form" (ngSubmit)="submitCreate()">
+      <div class="admin-users__row">
+        <label class="admin-users__field">
+          <span>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</span>
+          <input
+            type="email"
+            name="newEmail"
+            class="admin-users__input"
+            [(ngModel)]="newEmail"
+            autocomplete="off"
+            required
+          />
+        </label>
+        <label class="admin-users__field">
+          <span>{{ 'ADMIN_USERS_PAGE.PASSWORD' | translate }}</span>
+          <input
+            type="password"
+            name="newPassword"
+            class="admin-users__input"
+            [(ngModel)]="newPassword"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          />
+        </label>
+      </div>
+      <div class="admin-users__row">
+        <label class="admin-users__field">
+          <span>{{ 'ADMIN_USERS_PAGE.FIRST_NAME' | translate }}</span>
+          <input
+            type="text"
+            name="newFirstName"
+            class="admin-users__input"
+            [(ngModel)]="newFirstName"
+            required
+          />
+        </label>
+        <label class="admin-users__field">
+          <span>{{ 'ADMIN_USERS_PAGE.LAST_NAME' | translate }}</span>
+          <input
+            type="text"
+            name="newLastName"
+            class="admin-users__input"
+            [(ngModel)]="newLastName"
+            required
+          />
+        </label>
+      </div>
+      <div class="admin-users__row admin-users__row--roles">
+        <label class="admin-users__field">
+          <span>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</span>
+          <select
+            name="newRole"
+            class="admin-users__input admin-users__select"
+            [(ngModel)]="newRole"
+          >
+            @for (r of roleOptions; track r) {
+              <option [value]="r">
+                {{ ('ADMIN_USERS_PAGE.ROLE_' + r) | translate }}
+              </option>
+            }
+          </select>
+        </label>
+        @if (needsStation()) {
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.MANAGED_STATION' | translate }}</span>
+            <select
+              name="newManagedStationId"
+              class="admin-users__input admin-users__select"
+              [(ngModel)]="newManagedStationId"
+            >
+              <option [ngValue]="null">
+                {{ 'ADMIN_USERS_PAGE.STATION_OPTIONAL' | translate }}
+              </option>
+              @for (n of [1, 2, 3, 4, 5, 6, 7]; track n) {
+                <option [ngValue]="n">{{ n }}</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+      @if (formError(); as fe) {
+        <p class="admin-users__err" role="alert">{{ fe | translate }}</p>
+      }
+      <div class="admin-users__actions">
+        <skyflow-ui-button
+          type="submit"
+          variant="primary"
+          [loading]="saving()"
+          btnClass="admin-users__submit shadow-sf-lg"
+        >
+          {{ 'ADMIN_USERS_PAGE.CREATE_SUBMIT' | translate }}
+        </skyflow-ui-button>
+      </div>
+    </form>
+  </section>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>{{ 'ADMIN_USERS_PAGE.NAME' | translate }}</th>
+          <th>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</th>
+          <th>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</th>
+          <th>{{ 'ADMIN_USERS_PAGE.STATION_COL' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (u of users(); track u.id) {
+          <tr>
+            <td>{{ u.firstName }} {{ u.lastName }}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}</td>
+            <td>
+              @if (u.managedStationId != null) {
+                {{ u.managedStationId }}
+              } @else {
+                —
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

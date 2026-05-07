@@ -14,6 +14,30 @@ enum OrderStatus {
   ON_HOLD
 }
 
+enum SkyflowRole {
+  WORKER
+  ADMIN
+  STATION_MANAGER
+  SITE_MANAGER
+}
+
+model User {
+  id                 String      @id @default(uuid())
+  email              String      @unique
+  passwordHash       String
+  firstName          String
+  lastName           String
+  role               SkyflowRole @default(WORKER)
+  photoUrl           String?
+  /// When role is STATION_MANAGER or SITE_MANAGER — which station (1–7) for worker-hub display
+  managedStationId   Int?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([role])
+  @@index([managedStationId])
+}
+
 /// Production order synced from ERP
 model ProjectOrder {
   id             String      @id @default(uuid())

@@ -1,0 +1,218 @@
+:host {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: auto;
+  background: radial-gradient(
+      ellipse 120% 80% at 50% 0%,
+      rgba(85, 143, 195, 0.18),
+      transparent 55%
+    ),
+    #0b1220;
+  color: #f8fafc;
+}
+
+.admin-live {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.25rem 2rem;
+  box-sizing: border-box;
+}
+
+.admin-live__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 0;
+  width: 100%;
+}
+
+.admin-live__loader-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0.75rem 0 1rem;
+  min-height: min(60vh, 32rem);
+}
+
+.admin-live__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(248, 250, 252, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.admin-live__brand {
+  min-width: min(100%, 28rem);
+}
+
+.admin-live__live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  margin-bottom: 0.45rem;
+}
+
+.admin-live__pulse {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.65);
+  animation: admin-live-pulse 1.8s ease-out infinite;
+}
+
+@keyframes admin-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+.admin-live__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.admin-live__project-name {
+  margin: 0.35rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #e2e8f0;
+}
+
+.admin-live__updated {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.admin-live__interval {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.admin-live__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: min(100%, 14rem);
+}
+
+.admin-live__overall {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.85rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(248, 250, 252, 0.08);
+}
+
+.admin-live__overall-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.admin-live__overall-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.admin-live__overall-pct {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #7dd3fc;
+}
+
+.admin-live__overall-track {
+  margin-top: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.65);
+  overflow: hidden;
+}
+
+.admin-live__overall-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #558fc3, #38bdf8);
+  transition: width 0.35s ease;
+}
+
+.admin-live__exit {
+  font-weight: 800;
+}
+
+.admin-live__state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.admin-live__state--err {
+  color: #fecaca;
+}
+
+.admin-live__state--warn {
+  color: #fde68a;
+}
+
+.admin-live__hub {
+  flex: 1;
+}
+
+/* כרטיס תצוגה חיה — ללא קישור */
+.admin-live-card.station-card {
+  cursor: default;
+}
+
+.admin-live-card.station-card:hover {
+  transform: none;
+}
+
+.admin-live-card .station-card__cta-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: rgba(125, 211, 252, 0.95);
+}

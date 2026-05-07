@@ -1,4 +1,5 @@
 <div class="sf-shell flex min-h-dvh flex-col">
+@if (!adminChromeHidden()) {
   <header class="sf-header">
     <a routerLink="/" class="sf-brand-link">
       <img
@@ -19,10 +20,16 @@
     </div>
     <div class="sf-header__actions">
       <nav class="hidden flex-wrap items-center gap-4 md:gap-5 lg:flex">
-        <a routerLink="/admin" class="sf-btn sf-btn--alt shadow-sf-lg">
-          {{ 'APP.ADMIN' | translate }}
-        </a>
-        <a routerLink="/worker" class="sf-btn shadow-sf-lg">
+        @if (user.isAdmin()) {
+          <a routerLink="/admin" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg shadow-sf-lg">
+            {{ 'APP.ADMIN' | translate }}
+          </a>
+        } @else {
+          <a routerLink="/login" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg shadow-sf-lg">
+            {{ 'APP.ADMIN_LOGIN' | translate }}
+          </a>
+        }
+        <a routerLink="/worker" class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg">
           {{ 'APP.WORKER_HUB' | translate }}
         </a>
         <skyflow-theme-toggle />
@@ -33,10 +40,18 @@
       </div>
     </div>
   </header>
+}
 
-  <main class="sf-main sf-main--with-bottom-nav flex-1">
+  <main
+    class="flex-1"
+    [class.sf-main]="!adminChromeHidden()"
+    [class.sf-main--with-bottom-nav]="!adminChromeHidden()"
+    [class.min-h-0]="adminChromeHidden()"
+  >
     <router-outlet />
   </main>
 
+@if (!adminChromeHidden()) {
   <skyflow-bottom-nav />
+}
 </div>

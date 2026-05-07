@@ -23,6 +23,7 @@ import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { ApiService } from '../../core/api.service';
+import { UiButtonComponent } from '../../shared/ui-button.component';
 import { ProjectOrder, WorkerContext } from '../../core/skyflow.models';
 import { WorkerProjectSelectionService } from './worker-project-selection.service';
 import {
@@ -43,7 +44,13 @@ function allCheckedValidator(): ValidatorFn {
 
 @Component({
   selector: 'skyflow-worker-terminal',
-  imports: [ReactiveFormsModule, RouterLink, TranslateModule, DecimalPipe],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    TranslateModule,
+    DecimalPipe,
+    UiButtonComponent,
+  ],
   templateUrl: './worker-terminal.component.html',
   styleUrl: './worker-terminal.component.scss',
 })
