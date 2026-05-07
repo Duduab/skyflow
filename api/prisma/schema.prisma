@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+/// Production order synced from ERP
+model ProjectOrder {
+  id             String      @id @default(uuid())
+  name           String
+  totalItems     Int
+  requirements   String      @db.Text
+  status         OrderStatus @default(PENDING)
+  /// Reference length for Station 1 scrap formula (cm per unit from BOM)
+  originalLength Decimal     @db.Decimal(14, 4)
+  /// Station 7 — תעודת משלוח שהועלתה לצורך הרכבה באתר (נתיב ציבורי באפליקציית הוויב)
+  siteDeliveryNotePath String?
+  /// יעדים מהתעודה (סריקה / OCR — כרגע נטען סטאב אחרי העלאה)
+  siteExpectedBeams    Int?
+  siteExpectedGlazing  Int?
+  siteExpectedUnitized Int?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  stationLogs  StationLog[]
+  scrapReports ScrapReport[]
+  documents    ProjectDocument[]
+}
+
+enum ProjectDocumentKind {
+  PURCHASE_ORDER
+  WORK_ORDER
+}
+
+/// Purchase orders & work instructions (PDF) attached to a project
+model ProjectDocument {
+  id          String                @id @default(uuid())
+  projectId   String
+  kind        ProjectDocumentKind
+  title       String
+  reference   String?
+  /// Public URL path served by the web app (e.g. /assets/project-docs/foo.pdf)
+  pdfPath     String
+  sortOrder   Int                   @default(0)
+  createdAt   DateTime              @default(now())
+
+  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, kind])
+}
+
+/// Progress submission per station visit / batch
+model StationLog {
+  id           String   @id @default(uuid())
+  projectId    String
+  stationId    Int
+  processedQty Int
+  issues       String?  @db.Text
+  workerId     String?
+  /// Station 1 (Saws): cut length per bar in cm
+  cutLength    Decimal? @db.Decimal(14, 4)
+  /// Station-specific JSON (e.g. Finishes checklist completion)
+  extraPayload Json?
+  createdAt    DateTime @default(now())
+
+  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, stationId])
+}
+
+model ScrapReport {
+  id         String   @id @default(uuid())
+  projectId  String
+  stationId  Int
+  /// Per-piece length in cm
+  itemLength Decimal  @db.Decimal(14, 4)
+  scrapQty   Int
+  createdAt  DateTime @default(now())
+
+  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, stationId])
+}
