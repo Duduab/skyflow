@@ -1,0 +1,252 @@
+:host {
+  display: block;
+}
+
+.station-progress {
+  scroll-margin-top: 1.25rem;
+}
+
+/* צבעי טבעת כמו כרטיסי עמדות ב-worker hub (--accent) */
+.station-progress--1 {
+  --progress-accent: #fbbf24;
+}
+
+.station-progress--2 {
+  --progress-accent: #22d3ee;
+}
+
+.station-progress--3 {
+  --progress-accent: #34d399;
+}
+
+.station-progress--4 {
+  --progress-accent: #d8b4fe;
+}
+
+.station-progress--5 {
+  --progress-accent: #fb7185;
+}
+
+.station-progress--6 {
+  --progress-accent: #6ee7b7;
+}
+
+.station-progress--7 {
+  --progress-accent: #f59e0b;
+}
+
+.station-progress__ring-wrap {
+  position: relative;
+  width: 11rem;
+  height: 11rem;
+}
+
+.station-progress__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.station-progress__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 9;
+}
+
+.station-progress__arc {
+  fill: none;
+  stroke: var(--progress-accent, #558fc3);
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.45s ease;
+}
+
+.station-progress__pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--progress-accent, #558fc3);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.station-progress__pct-inner {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.06em;
+  line-height: 1;
+}
+
+.station-progress__pct-value {
+  font-size: clamp(2rem, 6vw, 2.75rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.station-progress__pct-sign {
+  font-size: 2em;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.95;
+  padding-left: 4px;
+}
+
+.worker-save-toast {
+  position: fixed;
+  bottom: 1.35rem;
+  left: 50%;
+  z-index: 80;
+  max-width: min(36rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+  padding: 1rem 1.35rem;
+  border-radius: 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f8fafc;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(85, 143, 195, 0.55);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: worker-save-toast-in 0.35s ease-out;
+}
+
+@keyframes worker-save-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 120%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worker-save-toast {
+    animation: none;
+  }
+}
+
+/* כרטיס מנהל עמדה — בהשראת פרופיל קומפקטי (Figma user row) */
+.station-manager {
+  margin-top: 1.35rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.station-manager__avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 3.35rem;
+  height: 3.35rem;
+}
+
+.station-manager__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0.45rem;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  clip-path: polygon(
+    30% 0%,
+    70% 0%,
+    100% 30%,
+    100% 70%,
+    70% 100%,
+    30% 100%,
+    0% 70%,
+    0% 30%
+  );
+}
+
+.station-manager__avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.station-manager__avatar-fallback svg {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.station-manager__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.station-manager__role {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.station-manager__name {
+  margin: 0.35rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.station-manager__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(235, 235, 245, 0.72);
+  line-height: 1.35;
+}
+
+.station-manager--1 {
+  border-color: color-mix(in srgb, #fbbf24 35%, rgba(255, 255, 255, 0.14));
+}
+
+.station-manager--2 {
+  border-color: color-mix(in srgb, #22d3ee 35%, rgba(255, 255, 255, 0.14));
+}
+
+.station-manager--3 {
+  border-color: color-mix(in srgb, #34d399 35%, rgba(255, 255, 255, 0.14));
+}
+
+.station-manager--4 {
+  border-color: color-mix(in srgb, #d8b4fe 35%, rgba(255, 255, 255, 0.14));
+}
+
+.station-manager--5 {
+  border-color: color-mix(in srgb, #fb7185 35%, rgba(255, 255, 255, 0.14));
+}
+
+.station-manager--6 {
+  border-color: color-mix(in srgb, #6ee7b7 35%, rgba(255, 255, 255, 0.14));
+}
+
+.station-manager--7 {
+  border-color: color-mix(in srgb, #f59e0b 35%, rgba(255, 255, 255, 0.14));
+}

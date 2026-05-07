@@ -1,0 +1,122 @@
+<nav
+  class="sf-bottom-nav lg:hidden"
+  aria-label="Primary"
+>
+  <div class="sf-bottom-nav__inner">
+    @if (themeMenuOpen()) {
+      <div
+        class="sf-bottom-nav__flyout"
+        role="menu"
+        [attr.aria-label]="'BOTTOM_NAV.THEME_MENU' | translate"
+      >
+        <button
+          type="button"
+          class="sf-bottom-nav__flyout-item"
+          role="menuitem"
+          (click)="pickDark($event)"
+        >
+          <span class="sf-bottom-nav__flyout-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </span>
+          <span class="sf-bottom-nav__flyout-label">{{
+            'APP.THEME_STATE_DARK' | translate
+          }}</span>
+        </button>
+        <button
+          type="button"
+          class="sf-bottom-nav__flyout-item"
+          role="menuitem"
+          (click)="pickLight($event)"
+        >
+          <span class="sf-bottom-nav__flyout-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+          </span>
+          <span class="sf-bottom-nav__flyout-label">{{
+            'APP.THEME_STATE_LIGHT' | translate
+          }}</span>
+        </button>
+      </div>
+    }
+
+    <div class="sf-bottom-nav__bar">
+      <a
+        routerLink="/profile"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="sf-bottom-nav__item"
+      >
+        @if (user.photoUrl(); as src) {
+          <span class="sf-bottom-nav__avatar-wrap">
+            <img [src]="src" alt="" class="sf-bottom-nav__avatar" width="32" height="32" />
+          </span>
+        } @else {
+          <span class="sf-bottom-nav__avatar-fallback" aria-hidden="true">{{
+            user.initials()
+          }}</span>
+        }
+        <span class="sf-bottom-nav__label">{{ user.firstName() }}</span>
+      </a>
+
+      <button
+        type="button"
+        class="sf-bottom-nav__item"
+        [class.is-active]="themeMenuOpen()"
+        [attr.aria-expanded]="themeMenuOpen()"
+        (click)="toggleThemeMenu($event)"
+      >
+        @if (theme.mode() === 'dark') {
+          <span class="sf-bottom-nav__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </span>
+          <span class="sf-bottom-nav__label">{{ 'APP.THEME_STATE_DARK' | translate }}</span>
+        } @else {
+          <span class="sf-bottom-nav__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+          </span>
+          <span class="sf-bottom-nav__label">{{ 'APP.THEME_STATE_LIGHT' | translate }}</span>
+        }
+      </button>
+
+      <a
+        routerLink="/worker"
+        routerLinkActive="is-active"
+        class="sf-bottom-nav__item"
+      >
+        <span class="sf-bottom-nav__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" />
+            <path d="M6 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" />
+            <path d="M2 13h20" />
+          </svg>
+        </span>
+        <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.STATIONS' | translate }}</span>
+      </a>
+
+      @if (access.showAdminNav()) {
+        <a
+          routerLink="/admin"
+          routerLinkActive="is-active"
+          class="sf-bottom-nav__item"
+        >
+          <span class="sf-bottom-nav__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+          </span>
+          <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.ADMIN' | translate }}</span>
+        </a>
+      }
+    </div>
+  </div>
+</nav>

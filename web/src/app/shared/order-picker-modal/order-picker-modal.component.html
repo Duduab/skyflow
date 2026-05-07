@@ -1,0 +1,109 @@
+@if (open()) {
+  <div class="order-picker-modal__root">
+    <div
+      class="order-picker-modal__scrim"
+      (click)="emitClose()"
+      tabindex="-1"
+      aria-hidden="true"
+    ></div>
+    <div
+      class="order-picker-modal__panel sf-panel"
+      role="dialog"
+      [attr.aria-modal]="true"
+      [attr.aria-labelledby]="titleId()"
+    >
+      <div class="order-picker-modal__head">
+        <h2 [id]="titleId()" class="order-picker-modal__title">
+          {{ 'WORKER_HUB.ORDERS_MODAL_TITLE' | translate }}
+        </h2>
+        <button
+          type="button"
+          class="order-picker-modal__close"
+          (click)="emitClose()"
+          [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+
+      <input
+        type="search"
+        class="sf-input order-picker-modal__search"
+        [value]="search()"
+        (input)="onSearchInput($event)"
+        [attr.placeholder]="'WORKER_HUB.SEARCH_PLACEHOLDER' | translate"
+        autocomplete="off"
+      />
+
+      @if (loadingPreviews()) {
+        <p class="order-picker-modal__loading">
+          {{ 'WORKER_HUB.PREVIEWS_LOADING' | translate }}
+        </p>
+      }
+
+      <ul class="order-picker-modal__list" role="listbox">
+        @if (showAllProjectsRow()) {
+          <li role="option">
+            <button
+              type="button"
+              class="order-picker-modal__order-row order-picker-modal__order-row--all"
+              (click)="emitPick(null)"
+            >
+              <div class="order-picker-modal__order-row-main">
+                <span class="order-picker-modal__order-row-name">{{
+                  'ADMIN_PAGE.ALL_PROJECTS' | translate
+                }}</span>
+              </div>
+            </button>
+          </li>
+        }
+        @for (o of filteredOrders(); track o.id) {
+          @let pr = previewFor(o.id);
+          <li role="option">
+            <button
+              type="button"
+              class="order-picker-modal__order-row"
+              (click)="emitPick(o.id)"
+            >
+              <div class="order-picker-modal__order-row-main">
+                <span class="order-picker-modal__order-row-name">{{ o.name }}</span>
+                <span class="order-picker-modal__order-row-stats">
+                  @if (pr) {
+                    {{ pr.stationsComplete }}/7 · {{ pr.averagePct }}%
+                    · {{ ('ORDER_STATUS.' + o.status) | translate }}
+                  } @else if (loadingPreviews()) {
+                    —
+                  } @else {
+                    —
+                  }
+                </span>
+              </div>
+              <span
+                class="order-picker-modal__order-row-icon"
+                [class.order-picker-modal__order-row-icon--ok]="pr?.lineDone === true"
+                [class.order-picker-modal__order-row-icon--no]="pr && !pr.lineDone"
+                aria-hidden="true"
+              >
+                @if (pr?.lineDone) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" />
+                  </svg>
+                }
+              </span>
+            </button>
+          </li>
+        } @empty {
+          @if (!showAllProjectsRow()) {
+            <li class="order-picker-modal__empty">
+              {{ 'WORKER_HUB.SEARCH_NO_RESULTS' | translate }}
+            </li>
+          }
+        }
+      </ul>
+    </div>
+  </div>
+}

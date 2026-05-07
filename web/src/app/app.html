@@ -1,0 +1,42 @@
+<div class="sf-shell flex min-h-dvh flex-col">
+  <header class="sf-header">
+    <a routerLink="/" class="sf-brand-link">
+      <img
+        [src]="headerLogoSrc()"
+        width="160"
+        height="160"
+        alt="SkyFlow"
+        class="h-16 w-auto shrink-0 object-contain drop-shadow-lg md:h-20"
+      />
+    </a>
+    <div class="sf-brand-text">
+      <span class="text-hero font-black tracking-tight text-white drop-shadow-md">
+        {{ 'APP.TITLE' | translate }}
+      </span>
+      <span class="text-touch font-semibold text-white/85">{{
+        'APP.SUBTITLE' | translate
+      }}</span>
+    </div>
+    <div class="sf-header__actions">
+      <nav class="hidden flex-wrap items-center gap-4 md:gap-5 lg:flex">
+        <a routerLink="/admin" class="sf-btn sf-btn--alt shadow-sf-lg">
+          {{ 'APP.ADMIN' | translate }}
+        </a>
+        <a routerLink="/worker" class="sf-btn shadow-sf-lg">
+          {{ 'APP.WORKER_HUB' | translate }}
+        </a>
+        <skyflow-theme-toggle />
+        <skyflow-language-switcher />
+      </nav>
+      <div class="flex items-center gap-3 lg:hidden">
+        <skyflow-language-switcher />
+      </div>
+    </div>
+  </header>
+
+  <main class="sf-main sf-main--with-bottom-nav flex-1">
+    <router-outlet />
+  </main>
+
+  <skyflow-bottom-nav />
+</div>

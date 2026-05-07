@@ -1,0 +1,738 @@
+.worker-hub {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+.worker-hub__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  margin-bottom: 2.5rem;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem 3rem;
+  }
+}
+
+.worker-hub__intro-text {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+
+  @media (min-width: 768px) {
+    text-align: start;
+  }
+}
+
+.worker-hub__title {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.worker-hub__project-bar {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.worker-hub__intro-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 28rem;
+  min-width: min(100%, 260px);
+  margin-inline: auto;
+
+  @media (min-width: 768px) {
+    flex: 0 1 22rem;
+    max-width: 22rem;
+    margin-inline: 0;
+  }
+}
+
+.worker-hub__current-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  text-align: end;
+
+  @media (min-width: 768px) {
+    text-align: start;
+  }
+}
+
+.worker-hub__current-name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+  word-break: break-word;
+}
+
+.worker-hub__intro-aside .worker-hub__orders-open.sf-btn {
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  box-sizing: border-box;
+  min-width: 0;
+  position: relative;
+  top: 30px;
+}
+
+/* כפתור הזמנות — מראה כמו .station-card__index--done */
+.worker-hub__orders-open.sf-btn {
+  flex-shrink: 0;
+  min-height: 2.375rem;
+  height: auto;
+  min-width: 0;
+  padding: 0.45rem 1.65rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #ecfdf5;
+  text-shadow: none;
+  border-radius: 9999px;
+  margin-top: 0;
+  background: linear-gradient(
+    165deg,
+    rgba(52, 211, 153, 0.95) 0%,
+    rgba(16, 185, 129, 0.88) 100%
+  );
+  border: 1px solid rgba(167, 243, 208, 0.65);
+  box-shadow:
+    0 0 22px rgba(52, 211, 153, 0.55),
+    0 2px 12px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+
+  &:hover {
+    filter: brightness(1.08);
+    box-shadow:
+      0 0 26px rgba(52, 211, 153, 0.62),
+      0 3px 14px rgba(0, 0, 0, 0.32),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  &:active {
+    filter: brightness(0.96);
+  }
+}
+
+.worker-hub__project-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.92);
+  letter-spacing: 0.02em;
+  text-align: center;
+
+  @media (min-width: 768px) {
+    text-align: start;
+  }
+}
+
+.worker-hub__overall {
+  width: 100%;
+  min-width: 0;
+}
+
+.worker-hub__overall-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.worker-hub__overall-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.92);
+  letter-spacing: 0.02em;
+}
+
+.worker-hub__overall-pct {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.worker-hub__overall-track {
+  height: 0.85rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.worker-hub__overall-fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    #3e5d88 0%,
+    #558fc3 45%,
+    #34d399 100%
+  );
+  transition: width 0.5s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worker-hub__overall-fill {
+    transition: none;
+  }
+}
+
+/* שתי תחנות בשורה — ב־RTL (עברית/ערבית) תחנה 1 מימין; ב־LTR (אנגלית) משמאל */
+.worker-hub__flow {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  gap: 1.25rem;
+}
+
+.worker-hub__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+  align-items: stretch;
+  width: 100%;
+}
+
+.worker-hub__row:has(> :only-child) {
+  grid-template-columns: minmax(0, 100%);
+  justify-content: center;
+  justify-items: stretch;
+}
+
+html[dir='rtl'] .worker-hub__row {
+  direction: rtl;
+}
+
+html[dir='ltr'] .worker-hub__row {
+  direction: ltr;
+}
+
+@media (max-width: 767px) {
+  .worker-hub__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * תמונות רקע לכרטיס (חלק עליון): web/public/assets/stations/1.png … 6.png
+ * שכבת overlay בצבע העמדה (--accent) + כהות לקריאות — ראה --hero-overlay למטה.
+ */
+
+.station-card {
+  --hero-image: none;
+  --hero-overlay: linear-gradient(
+    165deg,
+    rgba(15, 23, 42, 0.35) 0%,
+    rgba(6, 10, 18, 0.85) 100%
+  );
+  /* תג אחוזים — גודל ומיקום על קו הפרידה בין hero לפאנל */
+  --badge-size: 7rem;
+  --badge-half: 3.5rem;
+  /* גובה פס התמונה / גרדיאנט בראש הכרטיס — קצת יותר גבוה מהגרסה הקודמת */
+  --station-hero-h: 11.25rem;
+
+  position: relative;
+  display: block;
+  overflow: visible;
+  border-radius: 1.85rem;
+  text-decoration: none;
+  color: inherit;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease;
+
+  &:not(.station-card--locked):hover {
+    transform: translateY(-10px) scale(1.015);
+    box-shadow:
+      0 32px 64px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 255, 255, 0.14),
+      0 0 60px var(--card-glow, rgba(85, 143, 195, 0.35));
+  }
+
+  &:not(.station-card--locked):focus-visible {
+    outline: 4px solid rgba(85, 143, 195, 0.85);
+    outline-offset: 4px;
+  }
+
+  &.station-card--locked {
+    opacity: 0.46;
+    pointer-events: none;
+    cursor: not-allowed;
+    filter: grayscale(0.2);
+    box-shadow:
+      0 16px 32px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* מספר תחנה — פינה ימנית עליונה; ירוק כשהושלם 100% */
+.station-card__index {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  height: 2.35rem;
+  padding: 0 0.45rem;
+  border-radius: 0.65rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+  transition:
+    color 0.35s ease,
+    background 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.station-card__index--done {
+  color: #ecfdf5;
+  border-radius: 50%;
+  background: linear-gradient(
+    165deg,
+    rgba(52, 211, 153, 0.95) 0%,
+    rgba(16, 185, 129, 0.88) 100%
+  );
+  border-color: rgba(167, 243, 208, 0.65);
+  box-shadow:
+    0 0 22px rgba(52, 211, 153, 0.55),
+    0 2px 12px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.station-card--locked .station-card__index {
+  opacity: 0.85;
+}
+
+.station-card--locked .station-card__index--done {
+  opacity: 1;
+}
+
+.station-card__hero {
+  position: relative;
+  height: var(--station-hero-h);
+  border-radius: 1.85rem 1.85rem 0 0;
+  overflow: hidden;
+}
+
+.station-card__hero-bg {
+  position: absolute;
+  inset: 0;
+  background-image: var(--hero-overlay), var(--hero-image), var(--hero-bg);
+  background-size: cover, cover, cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.station-card__hero-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.station-card__hero-glow {
+  position: absolute;
+  inset: -40% -20% auto;
+  height: 140%;
+  background: radial-gradient(
+    circle at 50% 80%,
+    var(--hero-glow, rgba(255, 255, 255, 0.35)) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
+}
+
+.station-card__badge {
+  position: absolute;
+  top: calc(var(--station-hero-h) - var(--badge-half));
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  margin-left: calc(-1 * var(--badge-half));
+  border-radius: 50%;
+  font-weight: 500;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(155deg, var(--accent, #558fc3) 0%, #2a3448 48%, #121a2a 100%);
+  border: 3px solid rgba(255, 255, 255, 0.42);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.28);
+  isolation: isolate;
+}
+
+.station-card__badge-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  height: 78%;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+.station-card__badge-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 6;
+}
+
+.station-card__badge-arc {
+  fill: none;
+  stroke: var(--accent, #558fc3);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.45s ease;
+}
+
+.station-card__badge-num {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
+  direction: ltr;
+}
+
+.station-card__badge-pct {
+  font-size: clamp(1.05rem, 2.6vw, 1.28rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.station-card__badge-pct-sign {
+  font-size: clamp(0.68rem, 1.55vw, 0.8rem);
+  font-weight: 600;
+  opacity: 0.82;
+}
+
+.station-card__panel {
+  position: relative;
+  z-index: 2;
+  padding: 4.35rem 1.5rem 1.35rem;
+  border-radius: 0 0 1.85rem 1.85rem;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(8, 12, 22, 0.65) 28%,
+    rgba(6, 10, 18, 0.92) 100%
+  );
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.station-card__headline {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.station-card__desc {
+  margin: 0.65rem 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: rgba(226, 232, 240, 0.82);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: center;
+}
+
+.station-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: start;
+}
+
+.station-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+
+  &--accent {
+    color: rgba(255, 255, 255, 0.88);
+  }
+}
+
+.station-card__ico {
+  width: 1.15rem;
+  height: 1.15rem;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.station-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 1.15rem;
+  padding: 0.88rem 1.35rem;
+  border-radius: 9999px;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  cursor: pointer;
+  /* אותו צבע כמו קשת התקדמות (.station-card__badge-arc): --accent */
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent, #558fc3) 88%, #ffffff) 0%,
+    color-mix(in srgb, var(--accent, #558fc3) 55%, #0f172a) 100%
+  );
+  color: rgba(15, 23, 42, 0.94);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition:
+    filter 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.station-card__cta-label {
+  unicode-bidi: isolate;
+}
+
+.station-card:hover .station-card__cta {
+  filter: brightness(1.08);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.station-card--1 {
+  --accent: #fbbf24;
+  --hero-image: url('/assets/stations/1.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 36%, rgba(15, 23, 42, 0.2)) 0%,
+    rgba(15, 23, 42, 0.5) 45%,
+    rgba(6, 10, 18, 0.9) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #3e5d88 0%,
+    #558fc3 42%,
+    #312e81 100%
+  );
+  --hero-glow: rgba(245, 158, 11, 0.45);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(251, 191, 36, 0.25);
+}
+
+.station-card--2 {
+  --accent: #22d3ee;
+  --hero-image: url('/assets/stations/2.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 36%, rgba(15, 23, 42, 0.2)) 0%,
+    rgba(15, 23, 42, 0.5) 45%,
+    rgba(6, 10, 18, 0.9) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #0e7490 0%,
+    #558fc3 50%,
+    #4b689d 100%
+  );
+  --hero-glow: rgba(34, 211, 238, 0.45);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(34, 211, 238, 0.28);
+}
+
+.station-card--3 {
+  --accent: #34d399;
+  --hero-image: url('/assets/stations/3.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 36%, rgba(15, 23, 42, 0.2)) 0%,
+    rgba(15, 23, 42, 0.5) 45%,
+    rgba(6, 10, 18, 0.9) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #14532d 0%,
+    #4b689d 55%,
+    #3e5d88 100%
+  );
+  --hero-glow: rgba(52, 211, 153, 0.4);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(52, 211, 153, 0.22);
+}
+
+.station-card--4 {
+  --accent: #d8b4fe;
+  --hero-image: url('/assets/stations/4.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 36%, rgba(15, 23, 42, 0.2)) 0%,
+    rgba(15, 23, 42, 0.5) 45%,
+    rgba(6, 10, 18, 0.9) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #5b21b6 0%,
+    #558fc3 48%,
+    #312e81 100%
+  );
+  --hero-glow: rgba(216, 180, 254, 0.42);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(216, 180, 254, 0.22);
+}
+
+.station-card--5 {
+  --accent: #fb7185;
+  --hero-image: url('/assets/stations/5.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 36%, rgba(15, 23, 42, 0.2)) 0%,
+    rgba(15, 23, 42, 0.5) 45%,
+    rgba(6, 10, 18, 0.9) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #9d174d 0%,
+    #4b689d 45%,
+    #3e5d88 100%
+  );
+  --hero-glow: rgba(251, 113, 133, 0.42);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(251, 113, 133, 0.22);
+}
+
+.station-card--6 {
+  --accent: #6ee7b7;
+  --hero-image: url('/assets/stations/6.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 36%, rgba(15, 23, 42, 0.2)) 0%,
+    rgba(15, 23, 42, 0.5) 45%,
+    rgba(6, 10, 18, 0.9) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #047857 0%,
+    #3e5d88 50%,
+    #0f172a 100%
+  );
+  --hero-glow: rgba(110, 231, 183, 0.45);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(110, 231, 183, 0.25);
+}
+
+.station-card--7 {
+  --accent: #f59e0b;
+  --hero-image: url('/assets/stations/6.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 40%, rgba(15, 23, 42, 0.2)) 0%,
+    rgba(15, 23, 42, 0.5) 45%,
+    rgba(6, 10, 18, 0.9) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #b45309 0%,
+    #7c3aed 48%,
+    #0f172a 100%
+  );
+  --hero-glow: rgba(245, 158, 11, 0.45);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(245, 158, 11, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .station-card {
+    transition: none;
+  }
+
+  .station-card:not(.station-card--locked):hover {
+    transform: none;
+  }
+
+  .station-card:not(.station-card--locked):hover .station-card__cta {
+    transform: none;
+    filter: none;
+  }
+
+  .station-card__badge-arc {
+    transition: none;
+  }
+
+  .station-card__index {
+    transition: none;
+  }
+}

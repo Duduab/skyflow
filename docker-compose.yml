@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: skyflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: skyflow
+      POSTGRES_PASSWORD: skyflow
+      POSTGRES_DB: skyflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - skyflow_pg:/var/lib/postgresql/data
+
+volumes:
+  skyflow_pg:

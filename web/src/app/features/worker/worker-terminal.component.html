@@ -1,0 +1,559 @@
+@if (loading()) {
+  <div class="py-24 text-center text-touch font-bold text-white/80">
+    …
+  </div>
+} @else if (error(); as err) {
+  <div
+    class="sf-panel border-rose-400/60 bg-black/50 px-6 py-10 text-center text-touch font-bold text-rose-100"
+  >
+    {{ err }}
+  </div>
+} @else if (context(); as ctx) {
+  <div class="mx-auto max-w-4xl space-y-10">
+    <div
+      class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between"
+    >
+      <div class="space-y-3">
+        <a routerLink="/worker" class="sf-btn sf-btn--alt mb-2 px-6 py-3 text-touch shadow-sf">
+          ← {{ 'APP.WORKER_HUB' | translate }}
+        </a>
+        <h1
+          class="text-hero font-black tracking-tight text-white drop-shadow-lg"
+        >
+          {{ 'STATIONS.' + stationId | translate }}
+        </h1>
+        <p class="text-touch font-semibold text-white/80">
+          {{ 'WORKER.STATION' | translate }} {{ stationId }}
+        </p>
+      </div>
+      @if (orders().length) {
+        <label class="flex max-w-xl flex-col gap-3 text-touch font-bold text-white">
+          {{ 'WORKER.SELECT_ORDER' | translate }}
+          <select
+            class="sf-select"
+            [value]="projectSelection.selectedProjectId() ?? ''"
+            (change)="onOrderChange($any($event.target).value)"
+          >
+            @for (o of orders(); track o.id) {
+              <option [value]="o.id">{{ o.name }}</option>
+            }
+          </select>
+        </label>
+      }
+    </div>
+
+    <section class="sf-panel md:p-10">
+      <h2 class="text-hero font-black text-white drop-shadow-md">
+        {{ ctx.order.name }}
+      </h2>
+
+      <div [class]="'station-manager station-manager--' + stationId">
+        <div class="station-manager__avatar-wrap">
+          @if (!managerPhotoFailed()) {
+            <img
+              class="station-manager__avatar-img"
+              [src]="managerAvatarSrc()"
+              (error)="onManagerPhotoError()"
+              [alt]="
+                ('WORKER.STATION_MANAGER_NAME_' + stationId) | translate
+              "
+            />
+          } @else {
+            <div class="station-manager__avatar-fallback" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+          }
+        </div>
+        <div class="station-manager__body">
+          <p class="station-manager__role">
+            {{ 'WORKER.STATION_MANAGER_ROLE' | translate }}
+          </p>
+          <p class="station-manager__name">
+            {{ ('WORKER.STATION_MANAGER_NAME_' + stationId) | translate }}
+          </p>
+          <p class="station-manager__hint">
+            {{ 'WORKER.STATION_MANAGER_HINT' | translate }}
+          </p>
+        </div>
+      </div>
+
+      <p class="mt-5 text-touch leading-relaxed text-white/95">
+        {{ 'WORKER.REQ' | translate }}: {{ ctx.order.requirements }}
+      </p>
+      @if (stationId !== 5 && stationId !== 6 && stationId !== 7) {
+        <p class="mt-8 text-touch font-black text-white">
+          {{ 'WORKER.FROM_PREV' | translate }}:
+          <span class="border-b-4 border-sf-blue pb-1 text-white">{{
+            ctx.previousQty
+          }}</span>
+        </p>
+      }
+      @if (stationId === 7) {
+        <p class="mt-8 text-touch font-black text-white">
+          {{ 'WORKER.SITE_FROM_PACK' | translate }}:
+          <span class="border-b-4 border-sf-blue pb-1 text-white"
+            >{{ ctx.packedQty }} / {{ ctx.requiredPackQty }}</span
+          >
+        </p>
+        <p class="mt-6 text-touch leading-relaxed text-white/95">
+          {{ 'WORKER.SITE_STATION_INTRO' | translate }}
+        </p>
+      }
+      @if (stationId === 1) {
+        <p class="mt-5 text-touch font-semibold text-white/90">
+          {{ 'WORKER.SAW_TARGET_BARS' | translate }}:
+          {{ ctx.order.totalItems }}
+        </p>
+      }
+      @if (stationId === 6) {
+        <p class="mt-8 text-touch font-black text-white">
+          {{ 'WORKER.REQ_PACK' | translate }}:
+          <span class="border-b-4 border-sf-blue pb-1 text-white">{{
+            ctx.requiredPackQty
+          }}</span>
+        </p>
+      }
+    </section>
+
+    @let prog = stationProgress(ctx);
+    <section
+      id="station-progress-panel"
+      [class]="
+        'station-progress sf-panel md:p-10 station-progress--' + stationId
+      "
+      [attr.aria-label]="'WORKER.PROGRESS_TITLE' | translate"
+    >
+      <h3 class="text-hero font-black text-white drop-shadow-md">
+        {{ 'WORKER.PROGRESS_TITLE' | translate }}
+      </h3>
+      <div
+        class="mt-8 flex flex-col items-center gap-10 md:flex-row md:items-center md:justify-center md:gap-16"
+      >
+        <div class="station-progress__ring-wrap relative shrink-0">
+          <svg
+            class="station-progress__svg"
+            viewBox="0 0 100 100"
+            aria-hidden="true"
+          >
+            <circle class="station-progress__track" cx="50" cy="50" r="42" />
+            <circle
+              class="station-progress__arc"
+              cx="50" cy="50" r="42"
+              [attr.stroke-dasharray]="progressCircumference"
+              [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+              transform="rotate(-90 50 50)"
+            />
+          </svg>
+          <div class="station-progress__pct" dir="ltr">
+            <span class="station-progress__pct-inner">
+              <span class="station-progress__pct-value">{{ prog.percent }}</span><span class="station-progress__pct-sign">%</span>
+            </span>
+          </div>
+        </div>
+        <div class="w-full max-w-md space-y-5 text-center md:text-start">
+          <div class="grid grid-cols-2 gap-5">
+            <div
+              class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
+            >
+              <p class="text-touch font-bold text-white/75">
+                @if (stationId === 1) {
+                  {{ 'WORKER.SAW_PROGRESS_DONE' | translate }}
+                } @else {
+                  {{ 'WORKER.PROGRESS_DONE' | translate }}
+                }
+              </p>
+              <p class="mt-2 text-hero font-black text-white">
+                {{ prog.done | number: '1.0-0' }}
+              </p>
+            </div>
+            <div
+              class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
+            >
+              <p class="text-touch font-bold text-white/75">
+                @if (stationId === 1) {
+                  {{ 'WORKER.SAW_PROGRESS_REMAINING' | translate }}
+                } @else {
+                  {{ 'WORKER.PROGRESS_REMAINING' | translate }}
+                }
+              </p>
+              <p class="mt-2 text-hero font-black text-white">
+                {{ prog.remaining | number: '1.0-0' }}
+              </p>
+            </div>
+          </div>
+          <p class="text-touch font-semibold text-white/90">
+            @if (stationId === 1) {
+              {{ 'WORKER.SAW_PROGRESS_TARGET' | translate }}:
+            } @else {
+              {{ 'WORKER.PROGRESS_TARGET' | translate }}:
+            }
+            <span class="font-black text-white">{{ prog.target | number: '1.0-0' }}</span>
+          </p>
+          @if (prog.noUpstreamTarget) {
+            <p class="text-touch font-semibold text-amber-200/95">
+              {{ 'WORKER.PROGRESS_NO_UPSTREAM' | translate }}
+            </p>
+          }
+        </div>
+      </div>
+    </section>
+
+    @if (doneMsg() && stationId === 6) {
+      <div class="sf-success-banner" role="status">
+        <p class="text-hero font-black leading-tight text-white md:text-5xl">
+          {{ 'WORKER.SUCCESS_PACK' | translate }}
+        </p>
+      </div>
+    }
+    @if (doneMsg() && stationId === 7) {
+      <div class="sf-success-banner" role="status">
+        <p class="text-hero font-black leading-tight text-white md:text-5xl">
+          {{ 'WORKER.SUCCESS_SITE_ASSEMBLY' | translate }}
+        </p>
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-10">
+      @switch (stationId) {
+        @case (1) {
+          <div class="grid gap-8 md:grid-cols-2">
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SAW_BARS_QTY' | translate }}
+              <input
+                type="number"
+                min="1"
+                step="1"
+                formControlName="barsQty"
+                class="sf-input mt-4"
+              />
+            </label>
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SAW_METERS_PER_BAR' | translate }}
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                formControlName="metersPerBar"
+                class="sf-input mt-4"
+              />
+            </label>
+          </div>
+          <p class="text-touch font-semibold text-white/85">
+            {{ 'WORKER.SAW_PROFILE_ORDER_LENGTH' | translate }}:
+            {{ ctx.order.originalLength }}
+            <span class="font-normal text-white/70">({{ 'WORKER.SAW_CM_UNIT' | translate }})</span>
+          </p>
+          <div class="sf-alert-scrap">
+            {{ 'WORKER.SAW_REMNANT_CALC' | translate }}:
+            {{ scrapCm() | number: '1.0-2' }}
+            {{ 'WORKER.SAW_CM_UNIT' | translate }}
+          </div>
+        }
+        @case (2) {
+          <label class="block text-touch font-bold text-white">
+            {{ 'WORKER.PROCESSED_QTY' | translate }}
+            <input
+              type="number"
+              formControlName="processedQty"
+              class="sf-input mt-4"
+            />
+          </label>
+        }
+        @case (3) {
+          <label class="block text-touch font-bold text-white">
+            {{ 'WORKER.USED_QTY' | translate }}
+            <input
+              type="number"
+              formControlName="usedQty"
+              class="sf-input mt-4"
+            />
+          </label>
+          <div class="grid gap-8 md:grid-cols-2">
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SCRAP_QTY' | translate }}
+              <input
+                type="number"
+                formControlName="scrapQty"
+                class="sf-input mt-4"
+              />
+            </label>
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SCRAP_LENGTH' | translate }}
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                formControlName="scrapLength"
+                class="sf-input mt-4"
+              />
+            </label>
+          </div>
+        }
+        @case (4) {
+          <label class="block text-touch font-bold text-white">
+            {{ 'WORKER.GLUED_QTY' | translate }}
+            <input
+              type="number"
+              formControlName="gluedQty"
+              class="sf-input mt-4"
+            />
+          </label>
+          <div class="grid gap-8 md:grid-cols-2">
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SCRAP_QTY' | translate }}
+              <input
+                type="number"
+                formControlName="scrapQty"
+                class="sf-input mt-4"
+              />
+            </label>
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SCRAP_LENGTH' | translate }}
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                formControlName="scrapLength"
+                class="sf-input mt-4"
+              />
+            </label>
+          </div>
+        }
+        @case (5) {
+          <div class="space-y-8">
+            <h3 class="text-hero font-black text-white">
+              {{ 'WORKER.SUMMARY' | translate }}
+            </h3>
+            <ul class="grid gap-4 md:grid-cols-2">
+              @for (row of ctx.summaryStations; track row.stationId) {
+                <li
+                  class="sf-panel border-white/25 bg-black/40 py-5 text-touch font-bold text-white"
+                >
+                  {{ 'STATIONS.' + row.stationId | translate }}:
+                  {{ row.processedQty }} · {{ 'WORKER.SCRAP_QTY' | translate }}
+                  {{ row.scrapQty }}
+                </li>
+              }
+            </ul>
+            <div class="sf-panel border-white/25 bg-black/40 py-6 shadow-sf">
+              <p class="text-hero font-black text-white">
+                {{ 'WORKER.VERIFY_TITLE' | translate }}
+              </p>
+              <p class="mt-3 text-touch font-semibold text-white/85">
+                {{ 'WORKER.VERIFY_HINT' | translate }}
+              </p>
+              <div formGroupName="checks" class="mt-8 space-y-6">
+                <label
+                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
+                >
+                  <input type="checkbox" formControlName="s1" class="sf-check" />
+                  {{ 'WORKER.CHECK_S1' | translate }}
+                </label>
+                <label
+                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
+                >
+                  <input type="checkbox" formControlName="s2" class="sf-check" />
+                  {{ 'WORKER.CHECK_S2' | translate }}
+                </label>
+                <label
+                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
+                >
+                  <input type="checkbox" formControlName="s3" class="sf-check" />
+                  {{ 'WORKER.CHECK_S3' | translate }}
+                </label>
+                <label
+                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
+                >
+                  <input type="checkbox" formControlName="s4" class="sf-check" />
+                  {{ 'WORKER.CHECK_S4' | translate }}
+                </label>
+              </div>
+              @if (
+                form.get('checks')?.invalid &&
+                form.get('checks')?.touched
+              ) {
+                <p class="mt-6 text-touch font-bold text-rose-200">
+                  {{ 'WORKER.VERIFY_HINT' | translate }}
+                </p>
+              }
+            </div>
+          </div>
+        }
+        @case (6) {
+          <label class="block text-touch font-bold text-white">
+            {{ 'WORKER.PACKED_QTY' | translate }}
+            <input
+              type="number"
+              formControlName="packedQty"
+              class="sf-input mt-4 min-h-[5rem] text-hero"
+            />
+          </label>
+          <div class="grid gap-8 md:grid-cols-2">
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SCRAP_QTY' | translate }} ({{
+                'WORKER.UNPACKED_SCRAP' | translate
+              }})
+              <input
+                type="number"
+                formControlName="scrapQty"
+                class="sf-input mt-4"
+              />
+            </label>
+            <label class="block text-touch font-bold text-white">
+              {{ 'WORKER.SCRAP_LENGTH' | translate }}
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                formControlName="scrapLength"
+                class="sf-input mt-4"
+              />
+            </label>
+          </div>
+        }
+        @case (7) {
+          @if (!ctx.siteAssembly?.deliveryNoteUrl) {
+            <div class="sf-panel border-sf-blue/35 bg-sf-blue/10 p-8 md:p-10">
+              <p class="text-hero font-black text-white">
+                {{ 'WORKER.SITE_UPLOAD_TITLE' | translate }}
+              </p>
+              <p class="mt-4 text-touch font-semibold text-white/85">
+                {{ 'WORKER.SITE_UPLOAD_HINT' | translate }}
+              </p>
+              <p class="mt-3 text-sm font-semibold text-white/55">
+                {{ 'WORKER.SITE_SCAN_STUB' | translate }}
+              </p>
+              <input
+                type="file"
+                accept=".pdf,image/*"
+                class="sf-input mt-8 max-w-md"
+                (change)="onDeliveryFileSelected($event)"
+                [disabled]="uploadingDelivery()"
+              />
+              @if (uploadingDelivery()) {
+                <p class="mt-4 text-touch font-bold text-white/75">…</p>
+              }
+            </div>
+          } @else {
+            <div class="space-y-10">
+              <div class="sf-panel border-white/20 bg-black/40 p-6">
+                <p class="text-touch font-bold text-white">
+                  {{ 'WORKER.SITE_DOC_LABEL' | translate }}
+                </p>
+                <a
+                  class="mt-4 inline-flex text-touch font-black text-sf-blue underline"
+                  [href]="ctx.siteAssembly!.deliveryNoteUrl!"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ 'WORKER.SITE_OPEN_DOC' | translate }}
+                </a>
+              </div>
+              <div class="grid gap-6 md:grid-cols-3">
+                <div
+                  class="rounded-xl border border-white/15 bg-black/35 px-4 py-5"
+                >
+                  <p class="text-sm font-bold text-white/70">
+                    {{ 'WORKER.SITE_EXPECTED_BEAMS' | translate }}
+                  </p>
+                  <p class="mt-2 text-3xl font-black text-white">
+                    {{ ctx.siteAssembly!.expectedBeams }}
+                  </p>
+                </div>
+                <div
+                  class="rounded-xl border border-white/15 bg-black/35 px-4 py-5"
+                >
+                  <p class="text-sm font-bold text-white/70">
+                    {{ 'WORKER.SITE_EXPECTED_GLAZING' | translate }}
+                  </p>
+                  <p class="mt-2 text-3xl font-black text-white">
+                    {{ ctx.siteAssembly!.expectedGlazing }}
+                  </p>
+                </div>
+                <div
+                  class="rounded-xl border border-white/15 bg-black/35 px-4 py-5"
+                >
+                  <p class="text-sm font-bold text-white/70">
+                    {{ 'WORKER.SITE_EXPECTED_UNITIZED' | translate }}
+                  </p>
+                  <p class="mt-2 text-3xl font-black text-white">
+                    {{ ctx.siteAssembly!.expectedUnitized }}
+                  </p>
+                </div>
+              </div>
+              <div class="grid gap-8 md:grid-cols-3">
+                <label class="block text-touch font-bold text-white">
+                  {{ 'WORKER.SITE_ASSEMBLED_BEAMS' | translate }}
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    formControlName="assembledBeams"
+                    class="sf-input mt-4"
+                  />
+                </label>
+                <label class="block text-touch font-bold text-white">
+                  {{ 'WORKER.SITE_ASSEMBLED_GLAZING' | translate }}
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    formControlName="assembledGlazing"
+                    class="sf-input mt-4"
+                  />
+                </label>
+                <label class="block text-touch font-bold text-white">
+                  {{ 'WORKER.SITE_ASSEMBLED_UNITIZED' | translate }}
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    formControlName="assembledUnitized"
+                    class="sf-input mt-4"
+                  />
+                </label>
+              </div>
+            </div>
+          }
+        }
+      }
+
+      @if (stationId !== 5 && !(stationId === 7 && !ctx.siteAssembly?.deliveryNoteUrl)) {
+        <label class="block text-touch font-bold text-white">
+          {{ 'WORKER.ISSUES' | translate }}
+          <textarea
+            formControlName="issues"
+            rows="3"
+            class="sf-textarea mt-4"
+          ></textarea>
+        </label>
+      }
+
+      <button
+        type="submit"
+        [disabled]="
+          form.invalid ||
+          saving() ||
+          (stationId === 7 && !ctx.siteAssembly?.deliveryNoteUrl)
+        "
+        class="sf-submit shadow-sf-lg disabled:shadow-none"
+      >
+        {{ 'WORKER.SUBMIT' | translate }}
+      </button>
+    </form>
+
+    @if (saveToastVisible()) {
+      <div class="worker-save-toast" role="status" aria-live="polite">
+        {{ 'WORKER.SAVE_SUCCESS' | translate }}
+      </div>
+    }
+  </div>
+}

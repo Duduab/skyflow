@@ -1,0 +1,148 @@
+<section class="worker-hub">
+  <header class="worker-hub__intro">
+    <div class="worker-hub__intro-text">
+      <h1 class="worker-hub__title">{{ 'APP.WORKER_HUB' | translate }}</h1>
+      @if (orders().length) {
+        <div class="worker-hub__project-bar">
+          <div class="worker-hub__current-wrap" dir="rtl">
+            <span class="worker-hub__project-label">{{
+              'WORKER_HUB.CURRENT_ORDER_LABEL' | translate
+            }}</span>
+            <p class="worker-hub__current-name">
+              {{ selectedOrderDisplayName() }}
+            </p>
+          </div>
+        </div>
+      }
+    </div>
+    <div class="worker-hub__intro-aside">
+      <div
+        class="worker-hub__overall"
+        role="group"
+        [attr.aria-label]="'WORKER_HUB.OVERALL_PROGRESS' | translate"
+      >
+        <div class="worker-hub__overall-head">
+          <span class="worker-hub__overall-label">{{
+            'WORKER_HUB.OVERALL_PROGRESS' | translate
+          }}</span>
+          <span class="worker-hub__overall-pct" dir="ltr">{{ averageOverallPercent() }}%</span>
+        </div>
+        <div
+          class="worker-hub__overall-track"
+          role="progressbar"
+          [attr.aria-valuenow]="averageOverallPercent()"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div
+            class="worker-hub__overall-fill"
+            [style.width.%]="averageOverallPercent()"
+          ></div>
+        </div>
+      </div>
+      @if (orders().length) {
+        <button
+          type="button"
+          class="sf-btn worker-hub__orders-open"
+          (click)="openOrdersModal()"
+        >
+          {{ 'WORKER_HUB.ORDERS_BUTTON' | translate }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <div class="worker-hub__flow">
+    @for (row of stationRows; track $index) {
+      <div class="worker-hub__row">
+        @for (s of row; track s.id) {
+          @let prog = hubProgress(s.id);
+          @let unlocked = stationUnlocked(s.id);
+          <a
+            [routerLink]="stationRouterLink(s.id)"
+            [class]="'station-card station-card--' + s.id"
+            [class.station-card--locked]="!unlocked"
+            [attr.tabindex]="unlocked ? 0 : -1"
+            [attr.aria-disabled]="!unlocked ? true : null"
+            [attr.aria-label]="
+              !unlocked ? ('WORKER_HUB.STATION_LOCKED' | translate) : null
+            "
+          >
+            <span
+              class="station-card__index"
+              [class.station-card__index--done]="prog.percent >= 100"
+              dir="ltr"
+              aria-hidden="true"
+              >{{ s.id }}</span>
+
+            <div class="station-card__hero" aria-hidden="true">
+              <div class="station-card__hero-bg"></div>
+              <div class="station-card__hero-grid"></div>
+              <div class="station-card__hero-glow"></div>
+            </div>
+
+            <div class="station-card__badge" aria-hidden="true">
+              <svg class="station-card__badge-ring" viewBox="0 0 100 100">
+                <circle class="station-card__badge-track" cx="50" cy="50" r="42" />
+                <circle
+                  class="station-card__badge-arc"
+                  cx="50" cy="50" r="42"
+                  [attr.stroke-dasharray]="progressCircumference"
+                  [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+                  transform="rotate(-90 50 50)"
+                />
+              </svg>
+              <span class="station-card__badge-num">
+                <span class="station-card__badge-pct">{{ prog.percent }}</span>
+                <span class="station-card__badge-pct-sign">%</span>
+              </span>
+            </div>
+
+            <div class="station-card__panel">
+              <h2 class="station-card__headline">
+                {{ 'STATIONS.' + s.id | translate }}
+              </h2>
+              <p class="station-card__desc">
+                {{ 'WORKER_HUB.STATION_DESC_' + s.id | translate }}
+              </p>
+
+              <div class="station-card__footer">
+                <span class="station-card__meta">
+                  <svg class="station-card__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  {{ 'WORKER_HUB.META_LEFT' | translate }} · #{{ s.id }}
+                </span>
+                <span class="station-card__meta station-card__meta--accent">
+                  <svg class="station-card__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                  </svg>
+                  {{ 'WORKER_HUB.META_RIGHT' | translate }}
+                </span>
+              </div>
+
+              <span class="station-card__cta">
+                <span class="station-card__cta-label" dir="rtl">{{
+                  unlocked ? ('WORKER_HUB.CTA' | translate) : ('WORKER_HUB.CTA_LOCKED' | translate)
+                }}</span>
+              </span>
+            </div>
+          </a>
+        }
+      </div>
+    }
+  </div>
+
+  <skyflow-order-picker-modal
+    [open]="ordersModalOpen()"
+    [orders]="orders()"
+    [previews]="orderPreviews()"
+    [loadingPreviews]="loadingOrderPreviews()"
+    [includeAllOption]="false"
+    titleId="worker-hub-orders-modal-title"
+    (closed)="closeOrdersModal()"
+    (picked)="onOrderPickedFromModal($event)"
+  />
+</section>
