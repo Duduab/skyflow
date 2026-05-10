@@ -3,6 +3,7 @@ import {
   PrismaClient,
   OrderStatus,
   ProjectDocumentKind,
+  ProjectFlowStatus,
   SkyflowRole,
 } from '@prisma/client';
 
@@ -180,6 +181,7 @@ async function main() {
         totalItems: p.totalItems,
         requirements: p.requirements,
         status: p.status,
+        flowStatus: ProjectFlowStatus.IN_PRODUCTION,
         originalLength: p.originalLength,
         updatedAt,
         documents: {

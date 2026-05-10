@@ -1,3 +1,8 @@
+export type ProjectFlowStatus =
+  | 'PENDING_PLANNING'
+  | 'IN_PRODUCTION'
+  | 'COMPLETED';
+
 export type OrderStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD';
 
 export interface ProjectOrder {
@@ -6,6 +11,7 @@ export interface ProjectOrder {
   totalItems: number;
   requirements: string;
   status: OrderStatus;
+  flowStatus: ProjectFlowStatus;
   originalLength: string | number;
   createdAt?: string;
   updatedAt?: string;
@@ -38,6 +44,14 @@ export interface SiteAssemblyContext {
   assembledUnitized: number;
 }
 
+export interface SawWorkLineDto {
+  id: string;
+  componentKind: string;
+  description: string;
+  quantity: number;
+  sortOrder: number;
+}
+
 export interface WorkerContext {
   order: ProjectOrder;
   stationId: number;
@@ -48,6 +62,8 @@ export interface WorkerContext {
   packedQty: number;
   requiredPackQty: number;
   readyToShip: boolean;
+  /** Station 1 — קווי עבודה למסורים אחרי אישור תכנון */
+  sawWorkLines?: SawWorkLineDto[];
   /** Station 7 — הרכבה באתר */
   siteAssembly?: SiteAssemblyContext | null;
 }
@@ -89,6 +105,7 @@ export interface AdminProjectRow {
   id: string;
   name: string;
   status: OrderStatus;
+  flowStatus: ProjectFlowStatus;
   totalItems: number;
   packed: number;
   progressPct: number;
@@ -96,6 +113,39 @@ export interface AdminProjectRow {
   purchaseOrders: ProjectDocumentDto[];
   /** תצוגה חיה — פרויקט בביצוע עם דיווח בתחנה 1 */
   liveViewAvailable?: boolean;
+}
+
+export type ProductType = 'UNIT' | 'WINDOW';
+
+/** שורה בתצוגת פירוט תכנון (יחידה / חלון) */
+export interface PlanningPreviewLineDto {
+  /** תווית ללא קידומת שם הגליון */
+  displayLabel: string;
+  instructionKind: string;
+  productType: ProductType;
+  componentCount: number;
+  /** דגימת שורות רכיב לתצוגה */
+  componentLines: string[];
+}
+
+/** טאב גליון (TYPE 2, Window Instruction, …) */
+export interface PlanningPreviewSheetTabDto {
+  sheetName: string;
+  unitCount: number;
+  windowCount: number;
+  itemCount: number;
+  rows: PlanningPreviewLineDto[];
+}
+
+/** סיכום קובץ תפ״י אחרי פרסור */
+export interface PlanningParsePreviewDto {
+  projectId: string;
+  totalUnits: number;
+  totalWindows: number;
+  totalComponents: number;
+  itemCount: number;
+  /** פירוט לפי גליונות ה־Excel (כותרת מ `[שם גליון]` בשדה label) */
+  sheets?: PlanningPreviewSheetTabDto[];
 }
 
 export interface Bottleneck {
@@ -239,6 +289,7 @@ export interface ProjectActivityResponse {
     id: string;
     name: string;
     status: OrderStatus;
+    flowStatus: ProjectFlowStatus;
     totalItems: number;
     createdAt: string;
     updatedAt: string;

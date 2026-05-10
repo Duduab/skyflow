@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   AdminDashboard,
+  PlanningParsePreviewDto,
   ProjectOrder,
   ShippingResponse,
   WorkerContext,
@@ -134,6 +135,48 @@ export class ApiService {
     return this.http.post<{ access_token: string; user: UserDto }>(
       `${this.base}/auth/login`,
       { email, password },
+    );
+  }
+
+  postPlanningDraft(name: string): Observable<ProjectOrder> {
+    return this.http.post<ProjectOrder>(`${this.base}/projects`, { name });
+  }
+
+  postPlanningUpload(
+    projectId: string,
+    file: File,
+  ): Observable<PlanningParsePreviewDto> {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<PlanningParsePreviewDto>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/planning/upload`,
+      fd,
+    );
+  }
+
+  getPlanningPreview(projectId: string): Observable<PlanningParsePreviewDto> {
+    return this.http.get<PlanningParsePreviewDto>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/planning/preview`,
+    );
+  }
+
+  postApprovePlanning(projectId: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/approve-planning`,
+      {},
+    );
+  }
+
+  postCompleteProject(projectId: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/complete`,
+      {},
+    );
+  }
+
+  getCanComplete(projectId: string): Observable<{ canComplete: boolean }> {
+    return this.http.get<{ canComplete: boolean }>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/can-complete`,
     );
   }
 }

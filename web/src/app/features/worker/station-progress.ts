@@ -129,11 +129,16 @@ export function computeStationProgress(
   };
 }
 
-/** תחנה 1 תמיד פתוחה; תחנה k>1 רק אם כל התחנות 1..k-1 ב־100%. */
+/** תחנה 1 פתוחה רק אחרי אישור תכנון; תחנה k>1 רק אם כל התחנות 1..k-1 ב־100%. */
 export function isStationUnlockedInChain(
   stationId: number,
   contextByStation: Partial<Record<number, WorkerContext>>,
 ): boolean {
+  const flow =
+    contextByStation[1]?.order.flowStatus ?? 'IN_PRODUCTION';
+  if (flow === 'PENDING_PLANNING') {
+    return false;
+  }
   if (stationId <= 1) return true;
   for (let i = 1; i < stationId; i++) {
     const ctx = contextByStation[i];

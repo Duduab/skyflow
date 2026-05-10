@@ -14,6 +14,27 @@ enum OrderStatus {
   ON_HOLD
 }
 
+/// תכנון → ייצור → סגירה (SkyFlow — תפ״י / אישור מסורים)
+enum ProjectFlowStatus {
+  PENDING_PLANNING
+  IN_PRODUCTION
+  COMPLETED
+}
+
+enum ProductType {
+  UNIT
+  WINDOW
+}
+
+/// קורה, משקוף, זכוכית, כנף
+enum ProductComponentKind {
+  BEAM
+  FRAME
+  GLASS_SINGLE
+  GLASS_DOUBLE
+  SASH
+}
+
 enum SkyflowRole {
   WORKER
   ADMIN
@@ -22,43 +43,93 @@ enum SkyflowRole {
 }
 
 model User {
-  id                 String      @id @default(uuid())
-  email              String      @unique
-  passwordHash       String
-  firstName          String
-  lastName           String
-  role               SkyflowRole @default(WORKER)
-  photoUrl           String?
+  id               String      @id @default(uuid())
+  email            String      @unique
+  passwordHash     String
+  firstName        String
+  lastName         String
+  role             SkyflowRole @default(WORKER)
+  photoUrl         String?
   /// When role is STATION_MANAGER or SITE_MANAGER — which station (1–7) for worker-hub display
-  managedStationId   Int?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  managedStationId Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([role])
   @@index([managedStationId])
 }
 
-/// Production order synced from ERP
+/// Production order (project) — ERP + תכנון תפ״י
 model ProjectOrder {
-  id             String      @id @default(uuid())
-  name           String
-  totalItems     Int
-  requirements   String      @db.Text
-  status         OrderStatus @default(PENDING)
+  id                   String            @id @default(uuid())
+  name                 String
+  totalItems           Int
+  requirements         String            @db.Text
+  status               OrderStatus       @default(PENDING)
+  /// זרימת תכנון: לפני אישור — כל התחנות נעולות; אחרי אישור — מסורים ואז השרשרת הקיימת
+  flowStatus           ProjectFlowStatus @default(PENDING_PLANNING)
   /// Reference length for Station 1 scrap formula (cm per unit from BOM)
-  originalLength Decimal     @db.Decimal(14, 4)
+  originalLength       Decimal           @db.Decimal(14, 4)
   /// Station 7 — תעודת משלוח שהועלתה לצורך הרכבה באתר (נתיב ציבורי באפליקציית הוויב)
   siteDeliveryNotePath String?
   /// יעדים מהתעודה (סריקה / OCR — כרגע נטען סטאב אחרי העלאה)
   siteExpectedBeams    Int?
   siteExpectedGlazing  Int?
   siteExpectedUnitized Int?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 
-  stationLogs  StationLog[]
-  scrapReports ScrapReport[]
-  documents    ProjectDocument[]
+  stationLogs         StationLog[]
+  scrapReports        ScrapReport[]
+  documents           ProjectDocument[]
+  productItems        ProductItem[]
+  sawStationWorkLines SawStationWorkLine[]
+}
+
+/// שורת תכנון (יחידה / הוראת חלון) מתוך קובץ תפ״י
+model ProductItem {
+  id              String      @id @default(uuid())
+  projectId       String
+  productType     ProductType
+  /// e.g. TYPE_2, TYPE_4, WINDOW_INSTRUCTION
+  instructionKind String
+  label           String
+  sortOrder       Int         @default(0)
+  createdAt       DateTime    @default(now())
+
+  project    ProjectOrder       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  components ProductComponent[]
+
+  @@index([projectId])
+}
+
+model ProductComponent {
+  id            String               @id @default(uuid())
+  productItemId String
+  kind          ProductComponentKind
+  description   String               @db.Text
+  quantity      Int                  @default(1)
+  spec          String?
+  createdAt     DateTime             @default(now())
+
+  productItem ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+
+  @@index([productItemId])
+}
+
+/// צורף לאישור תכנון — חיתוך במסורים (קורות + משקופים)
+model SawStationWorkLine {
+  id            String               @id @default(uuid())
+  projectId     String
+  componentKind ProductComponentKind
+  description   String               @db.Text
+  quantity      Int                  @default(1)
+  sortOrder     Int                  @default(0)
+  createdAt     DateTime             @default(now())
+
+  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 enum ProjectDocumentKind {
@@ -68,15 +139,15 @@ enum ProjectDocumentKind {
 
 /// Purchase orders & work instructions (PDF) attached to a project
 model ProjectDocument {
-  id          String                @id @default(uuid())
-  projectId   String
-  kind        ProjectDocumentKind
-  title       String
-  reference   String?
+  id        String              @id @default(uuid())
+  projectId String
+  kind      ProjectDocumentKind
+  title     String
+  reference String?
   /// Public URL path served by the web app (e.g. /assets/project-docs/foo.pdf)
-  pdfPath     String
-  sortOrder   Int                   @default(0)
-  createdAt   DateTime              @default(now())
+  pdfPath   String
+  sortOrder Int                 @default(0)
+  createdAt DateTime            @default(now())
 
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
 

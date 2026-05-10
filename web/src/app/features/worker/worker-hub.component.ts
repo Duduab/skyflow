@@ -189,7 +189,7 @@ export class WorkerHubComponent implements OnInit {
     return computeStationProgress(stationId, ctx);
   }
 
-  /** תחנה 1 תמיד זמינה; אחרות רק אחרי 100% בכל התחנות הקודמות. */
+  /** תחנה 1 אחרי אישור תכנון; תחנה k>1 רק אם כל התחנות 1..k-1 ב־100%. */
   stationUnlocked(stationId: number): boolean {
     return isStationUnlockedInChain(stationId, this.contextByStation());
   }

@@ -17,6 +17,7 @@ import { finalize, switchMap, take } from 'rxjs/operators';
 import { ApiService } from '../../core/api.service';
 import {
   AdminDashboard,
+  ProjectFlowStatus,
   ProjectOrder,
   ShippingResponse,
 } from '../../core/skyflow.models';
@@ -29,10 +30,17 @@ import {
   enhanceAdminDoughnutDataset,
   enhanceAdminLineDataset,
 } from './admin-chart-style.util';
+import { PlanningPanelComponent } from './planning/planning-panel.component';
 
 @Component({
   selector: 'skyflow-admin-dashboard',
-  imports: [TranslateModule, BaseChartDirective, DatePipe, OrderPickerModalComponent],
+  imports: [
+    TranslateModule,
+    BaseChartDirective,
+    DatePipe,
+    OrderPickerModalComponent,
+    PlanningPanelComponent,
+  ],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
 })
@@ -52,6 +60,13 @@ export class AdminDashboardComponent implements OnInit {
   readonly shipping = signal<ShippingResponse | null>(null);
   readonly selectedProjectId = signal<string | null>(null);
 
+  readonly selectedProjectFlowStatus = computed((): ProjectFlowStatus | null => {
+    const id = this.selectedProjectId();
+    const d = this.data();
+    if (!id || !d?.projects?.length) return null;
+    return d.projects.find((p) => p.id === id)?.flowStatus ?? null;
+  });
+
   readonly adminOrdersModalOpen = signal(false);
   readonly adminOrderPreviews = signal<Map<string, OrderPickerPreview>>(
     new Map(),
@@ -61,12 +76,13 @@ export class AdminDashboardComponent implements OnInit {
   readonly projectsAsOrders = computed((): ProjectOrder[] => {
     const d = this.data();
     if (!d?.projects?.length) return [];
-    return d.projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      totalItems: p.totalItems,
+    return d.projects.map((o) => ({
+      id: o.id,
+      name: o.name,
+      totalItems: o.totalItems,
       requirements: '',
-      status: p.status,
+      status: o.status,
+      flowStatus: o.flowStatus ?? 'IN_PRODUCTION',
       originalLength: '',
     }));
   });
@@ -175,6 +191,16 @@ export class AdminDashboardComponent implements OnInit {
     if (c === 'en') return 'en-GB';
     if (c === 'ar') return 'ar';
     return 'he-IL';
+  }
+
+  onPlanningProjectCreated(projectId: string): void {
+    this.selectedProjectId.set(projectId);
+    this.firstDashboardLoad = false;
+    this.reload$.next();
+  }
+
+  triggerDashboardReload(): void {
+    this.reload$.next();
   }
 
   onProjectFilterChange(value: string): void {

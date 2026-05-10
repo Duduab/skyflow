@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, ProjectFlowStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   averageOverallLinePercent,
@@ -275,7 +275,9 @@ export class AdminService {
         const qtyAt = (sid: number) => qtyMap?.get(sid) ?? 0;
         const packed = qtyAt(6);
         const liveViewAvailable =
-          o.status === OrderStatus.IN_PROGRESS && qtyAt(1) >= 1;
+          o.flowStatus === ProjectFlowStatus.IN_PRODUCTION &&
+          o.status === OrderStatus.IN_PROGRESS &&
+          qtyAt(1) >= 1;
         const site7Log = latestSite7ByProject.get(o.id);
         const stationSevenPct = siteLinePercentFromOrderRow(
           o.siteDeliveryNotePath,
@@ -290,6 +292,7 @@ export class AdminService {
           id: o.id,
           name: o.name,
           status: o.status,
+          flowStatus: o.flowStatus,
           totalItems: o.totalItems,
           packed,
           progressPct: averageOverallLinePercent(
@@ -433,6 +436,7 @@ export class AdminService {
         id: true,
         name: true,
         status: true,
+        flowStatus: true,
         totalItems: true,
         updatedAt: true,
         createdAt: true,
@@ -518,6 +522,7 @@ export class AdminService {
         id: project.id,
         name: project.name,
         status: project.status,
+        flowStatus: project.flowStatus,
         totalItems: project.totalItems,
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),

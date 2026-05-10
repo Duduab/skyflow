@@ -8,6 +8,7 @@ import { AdminModule } from './admin/admin.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from './users/users.module.js';
     StationsModule,
     AdminModule,
     ShippingModule,
+    ProjectsModule,
   ],
   controllers: [HealthController],
 })

@@ -55,6 +55,35 @@
     "PURCHASE_ORDERS_COL": "Purchase orders",
     "OPEN_PDF_HINT": "Open PDF in a new tab"
   },
+  "PLANNING": {
+    "TITLE": "Planning upload (תפ״י)",
+    "SUBTITLE": "Create a project, upload Excel/CSV, verify the preview, then approve to unlock Saws only.",
+    "NEW_PROJECT_NAME": "New project name",
+    "NEW_PROJECT_PLACEHOLDER": "e.g. Tower A — week 12",
+    "CREATE_PROJECT": "Create planning project",
+    "DROP_LABEL": "Drag Excel or CSV here, or choose a file",
+    "BROWSE": "Browse files",
+    "UPLOADING": "Uploading and parsing…",
+    "PREVIEW_CAPTION": "Parsed planning summary",
+    "COL_UNITS": "Units (TYPE)",
+    "COL_WINDOWS": "Windows",
+    "COL_COMPONENTS": "Components (qty sum)",
+    "COL_LINES": "Planning lines",
+    "APPROVE_CTA": "Approve & send to Saws station",
+    "PICK_PROJECT": "Select a project in the filter above to attach a תפ״י file.",
+    "STATUS_IN_PRODUCTION": "Planning approved — Saws station is unlocked; downstream follows the normal chain.",
+    "STATUS_COMPLETED": "Project completed.",
+    "DETAIL_BY_SHEET": "Detail by Excel tab",
+    "DETAIL_BY_SHEET_HINT": "Each section matches one worksheet from the file. Expand to see every unit/window and a sample of BOM lines.",
+    "COL_LINE_LABEL": "Unit / line",
+    "COL_INSTRUCTION": "Instruction type",
+    "COL_PRODUCT": "Product",
+    "COL_COMP_TOTAL": "Components (qty sum)",
+    "COMPONENT_PREVIEW": "Components (preview)",
+    "TYPE_UNIT": "TYPE units",
+    "TYPE_WINDOW": "Windows",
+    "LINES_SHORT": "lines"
+  },
   "ADMIN_SHELL": {
     "SUBTITLE": "Factory admin",
     "SUPPORT": "Support",
@@ -120,7 +149,10 @@
     "LIVE_ERR": "Could not load station data. Make sure the API is running.",
     "LIVE_DENIED": "Live view is only available for in-progress projects with reporting at station 1.",
     "LIVE_READONLY": "Management view",
-    "LIVE_STATION_ACTIVE": "In progress"
+    "LIVE_STATION_ACTIVE": "In progress",
+    "COMPLETE_PROJECT": "Complete project",
+    "COMPLETE_PROJECT_HELP": "Available when all seven stations (including on-site assembly) are at 100%.",
+    "COMPLETING": "Closing…"
   },
   "ADMIN_SCRAP_PAGE": {
     "TITLE": "Cumulative scrap",

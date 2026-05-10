@@ -2,7 +2,7 @@ import {
   BadRequestException,
   Injectable,
 } from '@nestjs/common';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { Prisma, ProjectFlowStatus } from '@prisma/client';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import {
@@ -61,6 +61,21 @@ export class StationsService {
     const packedQty = qty(6);
     const readyToShip = packedQty >= order.totalItems;
 
+    const sawWorkLines =
+      stationId === 1 && order.flowStatus === ProjectFlowStatus.IN_PRODUCTION
+        ? await this.prisma.sawStationWorkLine.findMany({
+            where: { projectId },
+            orderBy: { sortOrder: 'asc' },
+            select: {
+              id: true,
+              componentKind: true,
+              description: true,
+              quantity: true,
+              sortOrder: true,
+            },
+          })
+        : undefined;
+
     let siteAssembly: Record<string, unknown> | undefined;
     if (stationId === 7) {
       const latest = await this.prisma.stationLog.findFirst({
@@ -89,6 +104,10 @@ export class StationsService {
       packedQty,
       requiredPackQty: order.totalItems,
       readyToShip,
+      ...(stationId === 1 &&
+      order.flowStatus === ProjectFlowStatus.IN_PRODUCTION
+        ? { sawWorkLines: sawWorkLines ?? [] }
+        : {}),
       ...(siteAssembly ? { siteAssembly } : {}),
     };
   }
@@ -96,6 +115,11 @@ export class StationsService {
   /** After PDF/image upload: stub “scan” fills expected counts from order scope (replace with real OCR later). */
   async ingestSiteDeliveryNote(projectId: string, storedFilename: string) {
     const order = await this.ordersService.findOne(projectId);
+    if (order.flowStatus === ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException(
+        'Approve planning before uploading the delivery note.',
+      );
+    }
     const publicPath = `/assets/site-delivery/${storedFilename}`;
     const n = order.totalItems;
     await this.prisma.projectOrder.update({
@@ -117,6 +141,12 @@ export class StationsService {
   async createStationLog(stationId: number, dto: CreateStationLogDto) {
     this.assertStation(stationId);
     const orderRow = await this.ordersService.findOne(dto.projectId);
+
+    if (orderRow.flowStatus === ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException(
+        'Planning not approved — all stations are locked until תפ״י is approved',
+      );
+    }
 
     if (stationId === 1 && dto.cutLength === undefined) {
       throw new BadRequestException('cutLength is required for station 1');
@@ -166,34 +196,17 @@ export class StationsService {
       },
     });
 
-    if (stationId === 7) {
-      const refreshed = await this.prisma.projectOrder.findUnique({
-        where: { id: dto.projectId },
-      });
-      if (!refreshed) return created;
-      const pct = computeSiteAssemblyPercent(
-        refreshed.siteDeliveryNotePath,
-        {
-          beams: refreshed.siteExpectedBeams ?? 0,
-          glazing: refreshed.siteExpectedGlazing ?? 0,
-          unitized: refreshed.siteExpectedUnitized ?? 0,
-        },
-        assembledFromLogPayload(dto.extraPayload),
-      );
-      if (pct >= 100) {
-        await this.prisma.projectOrder.update({
-          where: { id: dto.projectId },
-          data: { status: OrderStatus.COMPLETED },
-        });
-      }
-    }
-
     return created;
   }
 
   async createScrapReport(stationId: number, dto: CreateScrapReportDto) {
     this.assertStation(stationId);
-    await this.ordersService.findOne(dto.projectId);
+    const orderRow = await this.ordersService.findOne(dto.projectId);
+    if (orderRow.flowStatus === ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException(
+        'Planning not approved — stations are locked',
+      );
+    }
 
     return this.prisma.scrapReport.create({
       data: {

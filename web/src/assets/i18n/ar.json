@@ -55,6 +55,35 @@
     "PURCHASE_ORDERS_COL": "أوامر الشراء",
     "OPEN_PDF_HINT": "فتح PDF في تبويب جديد"
   },
+  "PLANNING": {
+    "TITLE": "رفع التخطيط (תפ״י)",
+    "SUBTITLE": "أنشئ مشروعًا، ارفع Excel/CSV، راجع المعاينة، ثم وافق لفتح منشار القطع فقط.",
+    "NEW_PROJECT_NAME": "اسم مشروع جديد",
+    "NEW_PROJECT_PLACEHOLDER": "مثال: البرج أ — الأسبوع 12",
+    "CREATE_PROJECT": "إنشاء مشروع تخطيط",
+    "DROP_LABEL": "اسحب Excel أو CSV هنا، أو اختر ملفًا",
+    "BROWSE": "تصفح الملفات",
+    "UPLOADING": "جاري الرفع والتحليل…",
+    "PREVIEW_CAPTION": "ملخص التخطيط المُحلّل",
+    "COL_UNITS": "وحدات (TYPE)",
+    "COL_WINDOWS": "نوافذ",
+    "COL_COMPONENTS": "مكونات (مجموع الكميات)",
+    "COL_LINES": "أسطر التخطيط",
+    "APPROVE_CTA": "الموافقة وإرسال إلى منشار القطع",
+    "PICK_PROJECT": "اختر مشروعًا من المرشح أعلاه لإرفاق ملف תפ״י.",
+    "STATUS_IN_PRODUCTION": "تمت الموافقة على التخطيط — منشار القطع مفتوح؛ باقي المحطات بالتسلسل المعتاد.",
+    "STATUS_COMPLETED": "اكتمل المشروع.",
+    "DETAIL_BY_SHEET": "تفاصيل حسب تبويب الورقة",
+    "DETAIL_BY_SHEET_HINT": "كل قسم يطابق ورقة عمل واحدة في الملف. وسّع لعرض كل وحدة/نافذة وعينة من سطور قائمة المواد.",
+    "COL_LINE_LABEL": "وحدة / سطر",
+    "COL_INSTRUCTION": "نوع التعليمات",
+    "COL_PRODUCT": "نوع المنتج",
+    "COL_COMP_TOTAL": "إجمالي كميات المكوّنات",
+    "COMPONENT_PREVIEW": "المكوّنات (معاينة)",
+    "TYPE_UNIT": "وحدات TYPE",
+    "TYPE_WINDOW": "نوافذ",
+    "LINES_SHORT": "أسطر"
+  },
   "ADMIN_SHELL": {
     "SUBTITLE": "إدارة المصنع",
     "SUPPORT": "الدعم",
@@ -120,7 +149,10 @@
     "LIVE_ERR": "تعذر تحميل بيانات المحطات. تأكد أن الخادم يعمل.",
     "LIVE_DENIED": "العرض المباشر متاح فقط للمشاريع قيد التنفيذ مع تقرير في المحطة الأولى.",
     "LIVE_READONLY": "عرض إداري",
-    "LIVE_STATION_ACTIVE": "قيد التنفيذ"
+    "LIVE_STATION_ACTIVE": "قيد التنفيذ",
+    "COMPLETE_PROJECT": "إكمال المشروع",
+    "COMPLETE_PROJECT_HELP": "متاح عند اكتمال جميع المحطات السبع (بما في ذلك التجميع في الموقع) بنسبة 100٪.",
+    "COMPLETING": "جاري الإغلاق…"
   },
   "ADMIN_SCRAP_PAGE": {
     "TITLE": "الخردة التراكمية",

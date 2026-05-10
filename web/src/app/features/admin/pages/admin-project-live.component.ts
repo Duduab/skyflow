@@ -95,7 +95,12 @@ export class AdminProjectLiveComponent implements OnInit {
     const c = this.contextByStation()[1];
     if (!c) return false;
     const q1 = c.totals?.find((t) => t.stationId === 1)?.processedQty ?? 0;
-    return q1 < 1 || c.order.status !== 'IN_PROGRESS';
+    const flow = c.order.flowStatus ?? 'IN_PRODUCTION';
+    return (
+      q1 < 1 ||
+      c.order.status !== 'IN_PROGRESS' ||
+      flow !== 'IN_PRODUCTION'
+    );
   });
 
   readonly loadProblem = computed(

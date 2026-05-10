@@ -10,7 +10,7 @@ import { computeStationProgress } from './station-progress';
 
 /**
  * Blocks deep links to a station until all previous stations reached 100%
- * (same rules as the worker hub). Station 1 is always allowed.
+ * (same rules as the worker hub). Station 1 requires approved planning.
  */
 export const stationSequenceGuard: CanActivateFn = (route) => {
   const api = inject(ApiService);
@@ -23,7 +23,27 @@ export const stationSequenceGuard: CanActivateFn = (route) => {
     return router.parseUrl('/worker');
   }
   if (stationId === 1) {
-    return true;
+    return api.getOrders().pipe(
+      switchMap((orders) => {
+        if (!orders.length) {
+          return of(router.parseUrl('/worker'));
+        }
+        projectSelection.syncFromOrders(orders);
+        const projectId = projectSelection.selectedProjectId();
+        if (!projectId) {
+          return of(router.parseUrl('/worker'));
+        }
+        return api.getWorkerContext(1, projectId).pipe(
+          map((ctx) => {
+            if (ctx.order.flowStatus === 'PENDING_PLANNING') {
+              return router.parseUrl('/worker');
+            }
+            return true;
+          }),
+          catchError(() => of(router.parseUrl('/worker'))),
+        );
+      }),
+    );
   }
 
   return api.getOrders().pipe(

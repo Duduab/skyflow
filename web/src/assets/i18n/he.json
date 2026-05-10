@@ -55,6 +55,35 @@
     "PURCHASE_ORDERS_COL": "הזמנות רכש",
     "OPEN_PDF_HINT": "פתיחת PDF בלשונית חדשה"
   },
+  "PLANNING": {
+    "TITLE": "העלאת תכנון (תפ״י)",
+    "SUBTITLE": "יצירת פרויקט, העלאת Excel/CSV, אימות תצוגה מקדימה, ואישור להעברה לתחנת המסורים בלבד.",
+    "NEW_PROJECT_NAME": "שם פרויקט חדש",
+    "NEW_PROJECT_PLACEHOLDER": "למשל מגדל א׳ — שבוע 12",
+    "CREATE_PROJECT": "יצירת פרויקט לתכנון",
+    "DROP_LABEL": "גררו קובץ Excel או CSV לכאן, או בחרו קובץ",
+    "BROWSE": "בחירת קובץ",
+    "UPLOADING": "מעלה ומנתח…",
+    "PREVIEW_CAPTION": "סיכום פריסה מהקובץ",
+    "COL_UNITS": "יחידות (TYPE)",
+    "COL_WINDOWS": "חלונות",
+    "COL_COMPONENTS": "רכיבים (סכום כמויות)",
+    "COL_LINES": "שורות תכנון",
+    "APPROVE_CTA": "מאשר ומעביר לתחנת מסורים",
+    "PICK_PROJECT": "בחרו פרויקט במסנן למעלה כדי לצרף קובץ תפ״י.",
+    "STATUS_IN_PRODUCTION": "התכנון אושר — תחנת המסורים פתוחה; שאר התחנות לפי השרשרת הרגילה.",
+    "STATUS_COMPLETED": "הפרויקט הושלם.",
+    "DETAIL_BY_SHEET": "פירוט לפי טאב גליון (Excel)",
+    "DETAIL_BY_SHEET_HINT": "כל קטע תואם לגליון אחד בקובץ. פתחו כדי לראות כל יחידה/חלון ודגימת שורות רכיב מה־BOM.",
+    "COL_LINE_LABEL": "יחידה / שורה",
+    "COL_INSTRUCTION": "סוג הוראה",
+    "COL_PRODUCT": "סוג מוצר",
+    "COL_COMP_TOTAL": "סה״כ כמויות רכיב",
+    "COMPONENT_PREVIEW": "רכיבים (תצוגה מקדימה)",
+    "TYPE_UNIT": "יחידות TYPE",
+    "TYPE_WINDOW": "חלונות",
+    "LINES_SHORT": "שורות"
+  },
   "ADMIN_SHELL": {
     "SUBTITLE": "ניהול מפעל",
     "SUPPORT": "תמיכה",
@@ -120,7 +149,10 @@
     "LIVE_ERR": "לא ניתן לטעון את נתוני התחנות. ודאו שהשרת רץ.",
     "LIVE_DENIED": "תצוגה חיה זמינה רק לפרויקטים בביצוע עם דיווח בתחנה הראשונה.",
     "LIVE_READONLY": "תצוגת ניהול",
-    "LIVE_STATION_ACTIVE": "בתהליך"
+    "LIVE_STATION_ACTIVE": "בתהליך",
+    "COMPLETE_PROJECT": "סגירת פרויקט",
+    "COMPLETE_PROJECT_HELP": "זמין כשכל שבע התחנות (כולל הרכבה באתר) ב־100%.",
+    "COMPLETING": "סוגר…"
   },
   "ADMIN_SCRAP_PAGE": {
     "TITLE": "פחת מצטבר",

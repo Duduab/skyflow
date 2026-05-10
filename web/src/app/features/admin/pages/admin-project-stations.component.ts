@@ -52,6 +52,10 @@ export class AdminProjectStationsComponent implements OnInit {
     >
   >({});
 
+  readonly canCompleteProject = signal(false);
+  readonly completingProject = signal(false);
+  readonly completeError = signal<string | null>(null);
+
   readonly stationRows: { id: number }[][] = [
     [{ id: 1 }, { id: 2 }],
     [{ id: 3 }, { id: 4 }],
@@ -137,6 +141,37 @@ export class AdminProjectStationsComponent implements OnInit {
           if (ctx) map[stationId] = ctx;
         });
         this.contextByStation.set(map);
+        this.refreshCompleteState(projectId);
+      });
+  }
+
+  private refreshCompleteState(projectId: string): void {
+    this.api
+      .getCanComplete(projectId)
+      .pipe(take(1))
+      .subscribe({
+        next: (r) => this.canCompleteProject.set(r.canComplete),
+        error: () => this.canCompleteProject.set(false),
+      });
+  }
+
+  completeProject(): void {
+    const pid = this.projectSelection.selectedProjectId();
+    if (!pid) return;
+    this.completingProject.set(true);
+    this.completeError.set(null);
+    this.api
+      .postCompleteProject(pid)
+      .pipe(
+        take(1),
+        finalize(() => this.completingProject.set(false)),
+      )
+      .subscribe({
+        next: () => this.loadOrdersAndContexts(pid),
+        error: () =>
+          this.completeError.set(
+            'לא ניתן לסגור פרויקט — ודאו שכל התחנות ב־100%',
+          ),
       });
   }
 
