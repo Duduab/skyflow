@@ -12,7 +12,6 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { SkyflowRole } from '@prisma/client';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { CreatePlanningDraftDto } from './dto/create-planning-draft.dto';
@@ -21,16 +20,23 @@ import { ProjectsService } from './projects.service';
 const PLANNING_UPLOAD_LIMIT = 25 * 1024 * 1024;
 
 @Controller('projects')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(SkyflowRole.ADMIN)
+@UseGuards(RolesGuard)
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Get('planning/list')
+  listPlanningDrafts() {
+    return this.projectsService.listPlanningDrafts();
+  }
+
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post()
   createDraft(@Body() dto: CreatePlanningDraftDto) {
     return this.projectsService.createPlanningDraft(dto.name);
   }
 
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post(':id/planning/upload')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -63,21 +69,25 @@ export class ProjectsController {
     return this.projectsService.ingestPlanningFile(id, file.buffer);
   }
 
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Get(':id/planning/preview')
   preview(@Param('id') id: string) {
     return this.projectsService.getPlanningPreview(id);
   }
 
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post(':id/approve-planning')
   approve(@Param('id') id: string) {
     return this.projectsService.approvePlanning(id);
   }
 
+  @Roles(SkyflowRole.ADMIN)
   @Post(':id/complete')
   complete(@Param('id') id: string) {
     return this.projectsService.completeProject(id);
   }
 
+  @Roles(SkyflowRole.ADMIN)
   @Get(':id/can-complete')
   canComplete(@Param('id') id: string) {
     return this.projectsService.canComplete(id).then((ok) => ({ canComplete: ok }));

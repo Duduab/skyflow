@@ -34,7 +34,10 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const normalized = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalized },
+    });
     if (!user) return null;
     const ok = await bcrypt.compare(password, user.passwordHash);
     return ok ? user : null;
@@ -48,7 +51,8 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
+      /** מחרוזת פשוטה — נגד אי-התאמות enum בין Prisma ל־JWT */
+      role: String(user.role),
     };
     return {
       access_token: await this.jwt.signAsync(payload),

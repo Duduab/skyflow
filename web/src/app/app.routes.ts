@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 
 import { adminGuard } from './core/admin.guard';
+import { adminOnlyGuard } from './core/admin-only.guard';
+import { workerGuard } from './core/worker.guard';
 import { stationSequenceGuard } from './features/worker/station-sequence.guard';
 
 export const routes: Routes = [
@@ -26,9 +28,24 @@ export const routes: Routes = [
         (m) => m.AdminLayoutComponent,
       ),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/admin/shell/admin-default-redirect.component').then(
+            (m) => m.AdminDefaultRedirectComponent,
+          ),
+      },
+      {
+        path: 'planning-new',
+        loadComponent: () =>
+          import('./features/admin/pages/admin-planning-new.component').then(
+            (m) => m.AdminPlanningNewComponent,
+          ),
+      },
       {
         path: 'dashboard',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/admin-dashboard.component').then(
             (m) => m.AdminDashboardComponent,
@@ -36,6 +53,7 @@ export const routes: Routes = [
       },
       {
         path: 'projects',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-projects.component').then(
             (m) => m.AdminProjectsComponent,
@@ -43,6 +61,7 @@ export const routes: Routes = [
       },
       {
         path: 'projects/:projectId/live',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-project-live.component').then(
             (m) => m.AdminProjectLiveComponent,
@@ -50,6 +69,7 @@ export const routes: Routes = [
       },
       {
         path: 'projects/:projectId/stations',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-project-stations.component').then(
             (m) => m.AdminProjectStationsComponent,
@@ -57,6 +77,7 @@ export const routes: Routes = [
       },
       {
         path: 'scrap',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-scrap.component').then(
             (m) => m.AdminScrapComponent,
@@ -64,6 +85,7 @@ export const routes: Routes = [
       },
       {
         path: 'users',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-users.component').then(
             (m) => m.AdminUsersComponent,
@@ -71,6 +93,7 @@ export const routes: Routes = [
       },
       {
         path: 'simulation',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-simulation.component').then(
             (m) => m.AdminSimulationComponent,
@@ -78,6 +101,7 @@ export const routes: Routes = [
       },
       {
         path: 'files',
+        canActivate: [adminOnlyGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-files.component').then(
             (m) => m.AdminFilesComponent,
@@ -101,6 +125,7 @@ export const routes: Routes = [
   },
   {
     path: 'worker',
+    canActivate: [workerGuard],
     loadComponent: () =>
       import('./features/worker/worker-hub.component').then(
         (m) => m.WorkerHubComponent,
@@ -108,11 +133,11 @@ export const routes: Routes = [
   },
   {
     path: 'worker/:stationId',
+    canActivate: [workerGuard, stationSequenceGuard],
     loadComponent: () =>
       import('./features/worker/worker-terminal.component').then(
         (m) => m.WorkerTerminalComponent,
       ),
-    canActivate: [stationSequenceGuard],
   },
   { path: '**', redirectTo: '' },
 ];

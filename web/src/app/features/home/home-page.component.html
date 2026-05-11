@@ -91,6 +91,80 @@
         </svg>
       </span>
     </a>
+  } @else if (auth.isPlanningRole()) {
+    <a
+      routerLink="/admin/planning-new"
+      class="sf-card-home sf-card-home--planning group shadow-xs"
+    >
+      <span class="sf-card-home__icon-ring" aria-hidden="true">
+        <svg
+          class="sf-card-home__icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 5v14M5 12h14"
+          />
+        </svg>
+      </span>
+      <span class="sf-card-home__title">{{ 'HOME.PLANNING_CARD' | translate }}</span>
+      <p class="sf-card-home__body">{{ 'HOME.PLANNING_DESC' | translate }}</p>
+      <span class="sf-card-home__link">
+        {{ 'HOME.PLANNING_CTA' | translate }}
+        <svg
+          class="sf-card-home__link-icon"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+          />
+        </svg>
+      </span>
+    </a>
+  } @else if (auth.accessToken() && auth.isFloorStaffRole()) {
+    <div
+      class="sf-card-home sf-card-home--admin sf-card-home--floor-note group shadow-xs"
+      role="note"
+    >
+      <span class="sf-card-home__icon-ring" aria-hidden="true">
+        <svg
+          class="sf-card-home__icon"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4 9 5.567 9 7.5 10.343 11 12 11Zm-6 9a6 6 0 0 1 12 0"
+          />
+        </svg>
+      </span>
+      <span class="sf-card-home__title">{{
+        'HOME.FLOOR_ACCOUNT_CARD' | translate
+      }}</span>
+      <p class="sf-card-home__body">{{ 'HOME.FLOOR_ACCOUNT_DESC' | translate }}</p>
+    </div>
   } @else {
     <a
       routerLink="/login"
@@ -115,11 +189,11 @@
         </svg>
       </span>
       <span class="sf-card-home__title">{{
-        'HOME.ADMIN_LOGIN_CARD' | translate
+        'HOME.SYSTEM_LOGIN_CARD' | translate
       }}</span>
-      <p class="sf-card-home__body">{{ 'HOME.ADMIN_LOGIN_DESC' | translate }}</p>
+      <p class="sf-card-home__body">{{ 'HOME.SYSTEM_LOGIN_DESC' | translate }}</p>
       <span class="sf-card-home__link">
-        {{ 'HOME.ADMIN_LOGIN_CTA' | translate }}
+        {{ 'HOME.SYSTEM_LOGIN_CTA' | translate }}
         <svg
           class="sf-card-home__link-icon"
           aria-hidden="true"

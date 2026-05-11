@@ -138,6 +138,15 @@ html.theme-light .sf-card-home--admin .sf-card-home__icon-ring {
   );
 }
 
+html.theme-light .sf-card-home--planning .sf-card-home__icon-ring {
+  border-color: rgba(85, 143, 195, 0.42);
+  background: linear-gradient(
+    165deg,
+    rgba(85, 143, 195, 0.2),
+    rgba(75, 104, 157, 0.14)
+  );
+}
+
 html.theme-light .sf-card-home__body {
   color: rgba(15, 23, 42, 0.68);
 }
@@ -147,6 +156,10 @@ html.theme-light .sf-card-home--worker .sf-card-home__icon {
 }
 
 html.theme-light .sf-card-home--admin .sf-card-home__icon {
+  color: var(--sf-navy);
+}
+
+html.theme-light .sf-card-home--planning .sf-card-home__icon {
   color: var(--sf-navy);
 }
 

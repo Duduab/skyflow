@@ -148,6 +148,14 @@ export interface PlanningParsePreviewDto {
   sheets?: PlanningPreviewSheetTabDto[];
 }
 
+/** פרויקטים במצב תכנון (רשימה לבורר בעמוד תפ״י) */
+export interface PlanningDraftListItemDto {
+  id: string;
+  name: string;
+  flowStatus: ProjectFlowStatus;
+  updatedAt: string;
+}
+
 export interface Bottleneck {
   stationId: number;
   name: string;
@@ -195,6 +203,7 @@ export interface ShippingResponse {
 export type SkyflowRole =
   | 'WORKER'
   | 'ADMIN'
+  | 'PLANNING'
   | 'STATION_MANAGER'
   | 'SITE_MANAGER';
 

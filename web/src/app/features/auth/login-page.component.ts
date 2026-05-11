@@ -36,7 +36,7 @@ export class LoginPageComponent {
   readonly errorMsg = signal<string | null>(null);
 
   submit(): void {
-    const email = this.email.trim();
+    const email = this.email.trim().toLowerCase();
     const password = this.password;
     if (!email || !password) {
       this.errorMsg.set('LOGIN.REQUIRED');
@@ -51,14 +51,35 @@ export class LoginPageComponent {
         next: (res) => {
           this.busy.set(false);
           this.auth.setSession(res.access_token, res.user);
-          if (res.user.role !== 'ADMIN') {
-            this.errorMsg.set('LOGIN.NOT_ADMIN');
-            this.auth.logout();
+          const role = res.user.role;
+          const retRaw =
+            this.route.snapshot.queryParamMap.get('returnUrl') ?? '';
+          const ret =
+            retRaw.startsWith('/') && !retRaw.startsWith('//')
+              ? retRaw
+              : '';
+
+          if (role === 'ADMIN') {
+            void this.router.navigateByUrl(ret || '/admin');
             return;
           }
-          const ret =
-            this.route.snapshot.queryParamMap.get('returnUrl') ?? '/admin';
-          void this.router.navigateByUrl(ret);
+          if (role === 'PLANNING') {
+            void this.router.navigateByUrl(
+              ret.startsWith('/admin') ? ret : '/admin/planning-new',
+            );
+            return;
+          }
+          if (
+            role === 'WORKER' ||
+            role === 'STATION_MANAGER' ||
+            role === 'SITE_MANAGER'
+          ) {
+            void this.router.navigateByUrl(ret || '/worker');
+            return;
+          }
+
+          this.errorMsg.set('LOGIN.UNKNOWN_ROLE');
+          this.auth.logout();
         },
         error: () => {
           this.busy.set(false);

@@ -3,8 +3,8 @@ import { CanActivateFn, Router } from '@angular/router';
 
 import { CurrentUserService } from './current-user.service';
 
-/** ADMIN או תפ״י (PLANNING) — מעטפת /admin; מסכים ספציפיים עם adminOnlyGuard */
-export const adminGuard: CanActivateFn = (_route, state) => {
+/** רק ADMIN — משתמש תפ״י מופנה לעמוד פרויקט חדש */
+export const adminOnlyGuard: CanActivateFn = (_route, state) => {
   const auth = inject(CurrentUserService);
   const router = inject(Router);
 
@@ -13,9 +13,8 @@ export const adminGuard: CanActivateFn = (_route, state) => {
       queryParams: { returnUrl: state.url },
     });
   }
-  const role = auth.sessionUser()?.role;
-  if (role !== 'ADMIN' && role !== 'PLANNING') {
-    return router.createUrlTree(['/']);
+  if (auth.sessionUser()?.role !== 'ADMIN') {
+    return router.createUrlTree(['/admin/planning-new']);
   }
   return true;
 };

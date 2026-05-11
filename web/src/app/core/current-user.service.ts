@@ -23,6 +23,19 @@ export class CurrentUserService {
     () => this.sessionUser()?.role === 'ADMIN',
   );
 
+  /** תפקיד תכנון תפ״י — העלאת Excel ואישור למסורים */
+  readonly isPlanningRole = computed(
+    () => this.sessionUser()?.role === 'PLANNING',
+  );
+
+  /** עובד / מנהל עמדה / מנהל אתר — בלי גישה ללוח ניהול */
+  readonly isFloorStaffRole = computed(() => {
+    const r = this.sessionUser()?.role;
+    return (
+      r === 'WORKER' || r === 'STATION_MANAGER' || r === 'SITE_MANAGER'
+    );
+  });
+
   readonly displayName = computed(() => {
     const u = this.sessionUser();
     if (!u) return '';

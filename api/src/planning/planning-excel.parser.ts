@@ -54,6 +54,14 @@ function findUnitRefsInRow(row: string[]): string[] {
   return refs;
 }
 
+/** כמות יחידות בשורת התכנון — מוטמעת ב־label כ־(×26) אחרי הפרסור הראשוני */
+function lineQtyFromLabel(label: string): number {
+  const m = label.match(/\((?:×|x)(\d+)\)/i);
+  if (!m) return 1;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 /**
  * תפ״י — פרופילים (MPS/MPB/YAGUAR …) = קורה; משקוף/כנף/הגבהה; SUBFRAME/GYPSUM/גימורים = משקוף.
  */
@@ -289,6 +297,11 @@ function parseBlockToItem(
     collectRowComponents(row, headerRow, nameCol, qtyCol, consistsCol, components);
   }
 
+  for (const c of components) {
+    const per = Math.max(1, Math.floor(Number(c.quantity) || 1));
+    c.quantity = per * qty;
+  }
+
   const labelParts = [`[${sheetName}]`, unitName, `(×${qty})`];
   if (consists) labelParts.push(`— ${consists}`);
 
@@ -312,14 +325,21 @@ function appendOrphanRowToItems(
   for (const ref of refs) {
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i]!.label.includes(ref)) {
+        const additions: ParsedProductComponent[] = [];
         collectRowComponents(
           row,
           headerRow,
           nameCol,
           qtyCol,
           consistsCol,
-          items[i]!.components,
+          additions,
         );
+        const mult = lineQtyFromLabel(items[i]!.label);
+        for (const c of additions) {
+          const per = Math.max(1, Math.floor(Number(c.quantity) || 1));
+          c.quantity = per * mult;
+        }
+        items[i]!.components.push(...additions);
         return;
       }
     }

@@ -29,6 +29,8 @@ export class RolesGuard implements CanActivate {
       user?: { role: SkyflowRole };
     }>();
     const role = req.user?.role;
-    return !!role && required.includes(role);
+    if (!role) return false;
+    const r = String(role);
+    return required.some((allowed) => String(allowed) === r);
   }
 }

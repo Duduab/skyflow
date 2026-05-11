@@ -26,6 +26,10 @@ describe('SkyFlow API (e2e)', () => {
       });
   });
 
+  it('/api/orders (GET) without auth → 401', () => {
+    return request(app.getHttpServer()).get('/api/orders').expect(401);
+  });
+
   afterEach(async () => {
     await app.close();
   });

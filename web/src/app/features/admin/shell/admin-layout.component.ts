@@ -22,7 +22,7 @@ import { CurrentUserService } from '../../../core/current-user.service';
 export class AdminLayoutComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly auth = inject(CurrentUserService);
+  readonly auth = inject(CurrentUserService);
 
   /** מסלול משנה לסימון Active */
   readonly currentPath = signal('');

@@ -33,6 +33,19 @@ export class ProjectsService {
     });
   }
 
+  listPlanningDrafts() {
+    return this.prisma.projectOrder.findMany({
+      where: { flowStatus: ProjectFlowStatus.PENDING_PLANNING },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        flowStatus: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async ingestPlanningFile(projectId: string, buffer: Buffer) {
     return this.planningUpload.replaceParsedData(projectId, buffer);
   }
@@ -67,6 +80,7 @@ export class ProjectsService {
       for (const item of order.productItems) {
         for (const comp of item.components) {
           if (!sawKinds.includes(comp.kind)) continue;
+          // quantity = סה״כ חיתוכים לשורה (כבר מוכפל בפרסור לפי עמודת QUANTITY ב־Excel)
           await tx.sawStationWorkLine.create({
             data: {
               projectId,

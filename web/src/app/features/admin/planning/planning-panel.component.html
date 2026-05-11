@@ -59,98 +59,145 @@
       </div>
 
       @if (preview(); as pv) {
-        <div class="mt-6 overflow-x-auto rounded-xl border border-white/15">
-          <table class="w-full min-w-[20rem] text-left text-sm text-white">
-            <caption class="sr-only">{{ 'PLANNING.PREVIEW_CAPTION' | translate }}</caption>
-            <thead class="bg-white/10 text-touch font-bold">
-              <tr>
-                <th class="px-4 py-3">{{ 'PLANNING.COL_UNITS' | translate }}</th>
-                <th class="px-4 py-3">{{ 'PLANNING.COL_WINDOWS' | translate }}</th>
-                <th class="px-4 py-3">{{ 'PLANNING.COL_COMPONENTS' | translate }}</th>
-                <th class="px-4 py-3">{{ 'PLANNING.COL_LINES' | translate }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="border-t border-white/10">
-                <td class="px-4 py-3 tabular-nums">{{ pv.totalUnits }}</td>
-                <td class="px-4 py-3 tabular-nums">{{ pv.totalWindows }}</td>
-                <td class="px-4 py-3 tabular-nums">{{ pv.totalComponents }}</td>
-                <td class="px-4 py-3 tabular-nums">{{ pv.itemCount }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <div class="planning-preview mt-6 space-y-6">
+          <div class="planning-kpi-grid" role="group" [attr.aria-label]="'PLANNING.PREVIEW_CAPTION' | translate">
+            <article class="planning-kpi-tile">
+              <span class="planning-kpi-tile__label">{{ 'PLANNING.COL_UNITS' | translate }}</span>
+              <span class="planning-kpi-tile__value tabular-nums">{{ pv.totalUnits }}</span>
+            </article>
+            <article class="planning-kpi-tile">
+              <span class="planning-kpi-tile__label">{{ 'PLANNING.COL_WINDOWS' | translate }}</span>
+              <span class="planning-kpi-tile__value tabular-nums">{{ pv.totalWindows }}</span>
+            </article>
+            <article class="planning-kpi-tile">
+              <span class="planning-kpi-tile__label">{{ 'PLANNING.COL_COMPONENTS' | translate }}</span>
+              <span class="planning-kpi-tile__value tabular-nums">{{ pv.totalComponents }}</span>
+            </article>
+            <article class="planning-kpi-tile">
+              <span class="planning-kpi-tile__label">{{ 'PLANNING.COL_LINES' | translate }}</span>
+              <span class="planning-kpi-tile__value tabular-nums">{{ pv.itemCount }}</span>
+            </article>
+          </div>
 
-        @if (pv.sheets && pv.sheets.length) {
-          <div class="mt-6">
-            <h3 class="text-base font-black text-white">
-              {{ 'PLANNING.DETAIL_BY_SHEET' | translate }}
-            </h3>
-            <p class="mt-1 text-xs text-white/65">{{ 'PLANNING.DETAIL_BY_SHEET_HINT' | translate }}</p>
-            <div class="mt-3 max-h-[min(70vh,32rem)] space-y-2 overflow-y-auto pe-1">
+          @if (pv.sheets && pv.sheets.length) {
+            <div class="mt-2">
+              <h3 class="text-lg font-black text-white">
+                {{ 'PLANNING.DETAIL_BY_SHEET' | translate }}
+              </h3>
+              <p class="mt-1 text-sm text-white/65">{{ 'PLANNING.DETAIL_BY_SHEET_HINT' | translate }}</p>
+            </div>
+
+            <div class="planning-sheets space-y-4">
               @for (tab of pv.sheets; track tab.sheetName; let idx = $index) {
                 <details
-                  class="rounded-xl border border-white/15 bg-black/35 px-3 py-2 text-sm text-white"
+                  class="planning-sheet group overflow-hidden rounded-2xl border border-white/15 bg-black/35 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]"
                   [attr.open]="idx === 0 ? '' : null"
                 >
-                  <summary class="cursor-pointer select-none font-bold text-touch text-sf-blue">
-                    {{ tab.sheetName }}
-                    <span class="ms-2 text-xs font-semibold text-white/70" dir="ltr">
-                      ({{ 'PLANNING.TYPE_UNIT' | translate }} {{ tab.unitCount }} ·
-                      {{ 'PLANNING.TYPE_WINDOW' | translate }} {{ tab.windowCount }} ·
-                      {{ tab.itemCount }} {{ 'PLANNING.LINES_SHORT' | translate }})
-                    </span>
+                  <summary
+                    class="planning-sheet__summary flex cursor-pointer list-none flex-col gap-3 bg-white p-4 text-slate-800 outline-none ring-sf-blue/25 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden"
+                  >
+                    <div class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+                      <span
+                        class="truncate text-xl font-black tracking-tight text-sf-navy sm:text-2xl"
+                      >
+                        {{ tab.sheetName }}
+                      </span>
+                      <span class="text-sm font-semibold text-slate-600" dir="ltr">
+                        {{ 'PLANNING.TYPE_UNIT' | translate }} {{ tab.unitCount }} ·
+                        {{ 'PLANNING.TYPE_WINDOW' | translate }} {{ tab.windowCount }} ·
+                        {{ tab.itemCount }} {{ 'PLANNING.LINES_SHORT' | translate }}
+                      </span>
+                    </div>
+                    <span
+                      class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-lg text-slate-600 transition group-open:rotate-180"
+                      aria-hidden="true"
+                    >▼</span>
                   </summary>
-                  <div class="mt-3 overflow-x-auto">
-                    <table class="w-full min-w-[36rem] text-start text-xs">
-                      <thead class="border-b border-white/15 text-white/80">
-                        <tr>
-                          <th class="py-2 pe-3 font-bold">{{ 'PLANNING.COL_LINE_LABEL' | translate }}</th>
-                          <th class="py-2 pe-3 font-bold">{{ 'PLANNING.COL_INSTRUCTION' | translate }}</th>
-                          <th class="py-2 pe-3 font-bold">{{ 'PLANNING.COL_PRODUCT' | translate }}</th>
-                          <th class="py-2 pe-2 font-bold">{{ 'PLANNING.COL_COMP_TOTAL' | translate }}</th>
-                          <th class="py-2 font-bold">{{ 'PLANNING.COMPONENT_PREVIEW' | translate }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (row of tab.rows; track row.displayLabel + '|' + row.instructionKind + '|' + rIdx; let rIdx = $index) {
-                          <tr class="border-t border-white/10 align-top">
-                            <td class="py-2 pe-3 font-semibold text-white">{{ row.displayLabel }}</td>
-                            <td class="py-2 pe-3 text-white/90" dir="ltr">{{ row.instructionKind }}</td>
-                            <td class="py-2 pe-3 text-white/90">
+                  <div class="planning-sheet__body border-t border-white/10 px-3 pb-4 pt-2 sm:px-4">
+                    @for (
+                      row of tab.rows;
+                      track row.displayLabel + '|' + row.componentCount + '|' + rIdx;
+                      let rIdx = $index
+                    ) {
+                      <article
+                        class="planning-row-card mt-3 rounded-xl border border-white/12 bg-black/35 p-4 first:mt-2"
+                      >
+                        <div
+                          class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6"
+                        >
+                          <div class="min-w-0 flex-1">
+                            <h4 class="text-lg font-black leading-snug text-white sm:text-xl">
+                              {{ row.displayLabel }}
+                            </h4>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                              <span
+                                class="inline-flex items-center rounded-lg border border-cyan-500/25 bg-cyan-950/40 px-3 py-1.5 text-sm font-bold text-cyan-100/95"
+                                dir="ltr"
+                              >{{ row.instructionKind }}</span>
                               @if (row.productType === 'WINDOW') {
-                                {{ 'PLANNING.TYPE_WINDOW' | translate }}
+                                <span
+                                  class="inline-flex items-center rounded-lg border border-violet-500/25 bg-violet-950/35 px-3 py-1.5 text-sm font-bold text-violet-100/90"
+                                >{{ 'PLANNING.TYPE_WINDOW' | translate }}</span>
                               } @else {
-                                {{ 'PLANNING.TYPE_UNIT' | translate }}
+                                <span
+                                  class="inline-flex items-center rounded-lg border border-emerald-500/25 bg-emerald-950/35 px-3 py-1.5 text-sm font-bold text-emerald-100/90"
+                                >{{ 'PLANNING.TYPE_UNIT' | translate }}</span>
                               }
-                            </td>
-                            <td class="py-2 pe-2 tabular-nums text-white/90">{{ row.componentCount }}</td>
-                            <td class="py-2 text-white/80">
-                              <ul class="m-0 list-none space-y-0.5 p-0 font-mono text-[11px] leading-snug">
-                                @for (line of row.componentLines; track clIdx; let clIdx = $index) {
-                                  <li>{{ line }}</li>
-                                }
-                              </ul>
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
+                            </div>
+                          </div>
+                          <div
+                            class="flex shrink-0 flex-col items-stretch gap-1 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-center sm:min-w-[8.5rem]"
+                          >
+                            <span class="text-xs font-bold uppercase tracking-wide text-white/55">{{
+                              'PLANNING.COL_COMP_TOTAL' | translate
+                            }}</span>
+                            <span
+                              class="text-3xl font-black tabular-nums leading-none text-sf-blue sm:text-4xl"
+                            >{{ row.componentCount }}</span>
+                          </div>
+                        </div>
+                        <div class="mt-4">
+                          <p class="mb-2 text-xs font-bold uppercase tracking-wide text-white/50">
+                            {{ 'PLANNING.COMPONENT_PREVIEW' | translate }}
+                          </p>
+                          <ul
+                            class="planning-chip-list m-0 grid list-none gap-2 p-0 sm:grid-cols-2 xl:grid-cols-3"
+                          >
+                            @for (line of row.componentLines; track clIdx; let clIdx = $index) {
+                              <li
+                                class="rounded-lg border border-white/10 bg-black/40 px-3 py-2 font-mono text-[11px] leading-snug text-white/85"
+                              >
+                                {{ line }}
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      </article>
+                    }
                   </div>
                 </details>
               }
             </div>
-          </div>
-        }
+          }
 
-        <button
-          type="button"
-          class="sf-ui-btn sf-ui-btn--primary mt-5 w-full sm:w-auto"
-          [disabled]="approving() || !pv.itemCount"
-          (click)="approve()"
-        >
-          {{ 'PLANNING.APPROVE_CTA' | translate }}
-        </button>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              class="sf-ui-btn sf-ui-btn--primary w-full sm:w-auto"
+              [disabled]="approving() || !pv.itemCount"
+              (click)="approve()"
+            >
+              {{ 'PLANNING.APPROVE_CTA' | translate }}
+            </button>
+            <button
+              type="button"
+              class="sf-ui-btn sf-ui-btn--secondary w-full border-white/25 bg-white/10 text-white hover:bg-white/15 sm:w-auto"
+              (click)="exportPdf()"
+            >
+              {{ 'PLANNING.EXPORT_PDF' | translate }}
+            </button>
+          </div>
+        </div>
       }
     } @else if (flowStatus() === 'IN_PRODUCTION') {
       <p class="mt-6 text-touch font-semibold text-emerald-200/90">

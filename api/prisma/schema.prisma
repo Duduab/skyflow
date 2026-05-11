@@ -38,6 +38,8 @@ enum ProductComponentKind {
 enum SkyflowRole {
   WORKER
   ADMIN
+  /// תכנון תפ״י — העלאת Excel, תצוגה מקדימה, אישור למסורים
+  PLANNING
   STATION_MANAGER
   SITE_MANAGER
 }

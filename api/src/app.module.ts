@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
@@ -9,6 +10,7 @@ import { ShippingModule } from './shipping/shipping.module';
 import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
 import { ProjectsModule } from './projects/projects.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
 
 @Module({
   imports: [
@@ -23,5 +25,6 @@ import { ProjectsModule } from './projects/projects.module';
     ProjectsModule,
   ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}

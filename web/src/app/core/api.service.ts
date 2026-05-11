@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   AdminDashboard,
+  PlanningDraftListItemDto,
   PlanningParsePreviewDto,
   ProjectOrder,
   ShippingResponse,
@@ -140,6 +141,12 @@ export class ApiService {
 
   postPlanningDraft(name: string): Observable<ProjectOrder> {
     return this.http.post<ProjectOrder>(`${this.base}/projects`, { name });
+  }
+
+  getPlanningDraftsList(): Observable<PlanningDraftListItemDto[]> {
+    return this.http.get<PlanningDraftListItemDto[]>(
+      `${this.base}/projects/planning/list`,
+    );
   }
 
   postPlanningUpload(

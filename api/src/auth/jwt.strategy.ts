@@ -24,10 +24,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload) {
+    const role =
+      typeof payload.role === 'string'
+        ? payload.role.trim()
+        : String(payload.role);
     return {
       userId: payload.sub,
       email: payload.email,
-      role: payload.role,
+      role: role as SkyflowRole,
     };
   }
 }

@@ -72,14 +72,6 @@
       </div>
     </header>
 
-    <skyflow-planning-panel
-      class="block max-w-7xl"
-      [projectId]="selectedProjectId()"
-      [flowStatus]="selectedProjectFlowStatus()"
-      (planningChanged)="triggerDashboardReload()"
-      (projectCreated)="onPlanningProjectCreated($event)"
-    />
-
     <section
       class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       aria-label="stats"

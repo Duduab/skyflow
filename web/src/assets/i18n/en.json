@@ -3,7 +3,8 @@
     "TITLE": "SkyFlow",
     "SUBTITLE": "Factory execution",
     "ADMIN": "Admin dashboard",
-    "ADMIN_LOGIN": "Admin sign-in",
+    "PLANNING_CONSOLE": "New project",
+    "ADMIN_LOGIN": "Sign in",
     "WORKER_HUB": "Work stations",
     "LANGUAGE": "Language",
     "THEME_SWITCH_LIGHT": "Light mode",
@@ -14,6 +15,7 @@
   "BOTTOM_NAV": {
     "STATIONS": "Stations",
     "ADMIN": "Admin",
+    "PLANNING": "Planning",
     "THEME_MENU": "Choose appearance"
   },
   "PROFILE": {
@@ -82,7 +84,21 @@
     "COMPONENT_PREVIEW": "Components (preview)",
     "TYPE_UNIT": "TYPE units",
     "TYPE_WINDOW": "Windows",
-    "LINES_SHORT": "lines"
+    "LINES_SHORT": "lines",
+    "EXPORT_PDF": "Export PDF (print)",
+    "PDF_DOC_TITLE": "Planning — preview",
+    "PDF_HEADING": "Planning report (BOM)",
+    "PDF_NO_SHEETS": "No per-sheet detail — summary only."
+  },
+  "PLANNING_NEW": {
+    "BADGE": "Planning · Live",
+    "TITLE": "New project",
+    "LEAD": "Create a project, upload Excel/CSV, review the preview, then approve to send work to the Saws station.",
+    "PICK_PROJECT": "Choose a project in planning",
+    "LOADING": "Loading projects…",
+    "LOAD_LIST_FAILED": "Could not load the project list.",
+    "NO_DRAFT_OPTION": "— Select from list —",
+    "DRAFT_COUNT": "awaiting approval"
   },
   "ADMIN_SHELL": {
     "SUBTITLE": "Factory admin",
@@ -99,7 +115,8 @@
     "USERS": "Users",
     "SIMULATION": "Order simulation",
     "FILES": "Files",
-    "SETTINGS": "Settings"
+    "SETTINGS": "Settings",
+    "PLANNING_NEW": "New project"
   },
   "ADMIN_PROJECTS": {
     "TITLE": "Projects",
@@ -171,10 +188,11 @@
   },
   "ADMIN_USERS_PAGE": {
     "TITLE": "Users",
-    "SUB": "Manage users and roles: worker, admin, station manager, site manager.",
+    "SUB": "Manage users and roles: worker, admin, planning, station manager, site manager.",
     "ROLE": "Role",
     "ROLE_WORKER": "Worker",
     "ROLE_ADMIN": "Admin",
+    "ROLE_PLANNING": "Planning (תפ״י)",
     "ROLE_STATION_MANAGER": "Station manager",
     "ROLE_SITE_MANAGER": "Site manager",
     "EMAIL": "Email",
@@ -335,15 +353,17 @@
     "LIVE_SUB": "Loading progress from every station — just a moment"
   },
   "LOGIN": {
-    "TITLE": "Admin sign-in",
-    "SUB": "Enter credentials for a user with the Admin role.",
+    "TITLE": "Sign in to SkyFlow",
+    "SUB": "Use your work email and password — stations, admin, or planning, depending on your role.",
     "EMAIL": "Email",
     "PASSWORD": "Password",
     "SUBMIT": "Sign in",
     "BACK_HOME": "Back to home",
     "REQUIRED": "Please enter email and password.",
     "INVALID": "Invalid email or password.",
-    "NOT_ADMIN": "This account is not an admin. Only admins can open the management console."
+    "NOT_ADMIN": "This account is not an admin. Only admins can open the management console.",
+    "CONSOLE_FORBIDDEN": "This account cannot open this console. Admin or Planning role required.",
+    "UNKNOWN_ROLE": "This account role is not supported here. Contact your system administrator."
   },
   "HOME": {
     "WORKER_CARD": "Go to work stations",
@@ -352,9 +372,14 @@
     "ADMIN_CARD": "Go to admin",
     "ADMIN_DESC": "Statistics, projects, scrap overview, and user management.",
     "ADMIN_CTA": "Open dashboard",
-    "ADMIN_LOGIN_CARD": "Admin sign-in",
-    "ADMIN_LOGIN_DESC": "Sign in with an admin account to open the management console.",
-    "ADMIN_LOGIN_CTA": "Sign in"
+    "PLANNING_CARD": "New project — Planning",
+    "PLANNING_DESC": "Upload planning files, preview BOM lines, and approve transfer to the Saws station.",
+    "PLANNING_CTA": "Open planning workspace",
+    "FLOOR_ACCOUNT_CARD": "Signed in as floor user",
+    "FLOOR_ACCOUNT_DESC": "The admin dashboard (stats, users) requires an Admin or Planning account.",
+    "SYSTEM_LOGIN_CARD": "Sign in to the system",
+    "SYSTEM_LOGIN_DESC": "Use your organization account to open admin or planning — or go to stations after you sign in.",
+    "SYSTEM_LOGIN_CTA": "Sign in"
   },
   "WORKER_HUB": {
     "HERO_SUB": "Pick a station to open its tailored work UI.",

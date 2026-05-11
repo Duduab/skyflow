@@ -17,7 +17,6 @@ import { finalize, switchMap, take } from 'rxjs/operators';
 import { ApiService } from '../../core/api.service';
 import {
   AdminDashboard,
-  ProjectFlowStatus,
   ProjectOrder,
   ShippingResponse,
 } from '../../core/skyflow.models';
@@ -30,7 +29,6 @@ import {
   enhanceAdminDoughnutDataset,
   enhanceAdminLineDataset,
 } from './admin-chart-style.util';
-import { PlanningPanelComponent } from './planning/planning-panel.component';
 
 @Component({
   selector: 'skyflow-admin-dashboard',
@@ -39,7 +37,6 @@ import { PlanningPanelComponent } from './planning/planning-panel.component';
     BaseChartDirective,
     DatePipe,
     OrderPickerModalComponent,
-    PlanningPanelComponent,
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
@@ -59,13 +56,6 @@ export class AdminDashboardComponent implements OnInit {
   readonly data = signal<AdminDashboard | null>(null);
   readonly shipping = signal<ShippingResponse | null>(null);
   readonly selectedProjectId = signal<string | null>(null);
-
-  readonly selectedProjectFlowStatus = computed((): ProjectFlowStatus | null => {
-    const id = this.selectedProjectId();
-    const d = this.data();
-    if (!id || !d?.projects?.length) return null;
-    return d.projects.find((p) => p.id === id)?.flowStatus ?? null;
-  });
 
   readonly adminOrdersModalOpen = signal(false);
   readonly adminOrderPreviews = signal<Map<string, OrderPickerPreview>>(
@@ -191,16 +181,6 @@ export class AdminDashboardComponent implements OnInit {
     if (c === 'en') return 'en-GB';
     if (c === 'ar') return 'ar';
     return 'he-IL';
-  }
-
-  onPlanningProjectCreated(projectId: string): void {
-    this.selectedProjectId.set(projectId);
-    this.firstDashboardLoad = false;
-    this.reload$.next();
-  }
-
-  triggerDashboardReload(): void {
-    this.reload$.next();
   }
 
   onProjectFilterChange(value: string): void {

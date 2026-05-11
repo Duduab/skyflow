@@ -1,12 +1,11 @@
 import { Controller, Get, Header, Param, Query, UseGuards } from '@nestjs/common';
 import { SkyflowRole } from '@prisma/client';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Roles(SkyflowRole.ADMIN)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}

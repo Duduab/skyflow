@@ -117,6 +117,20 @@
           <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.ADMIN' | translate }}</span>
         </a>
       }
+      @if (user.isPlanningRole()) {
+        <a
+          routerLink="/admin/planning-new"
+          routerLinkActive="is-active"
+          class="sf-bottom-nav__item"
+        >
+          <span class="sf-bottom-nav__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.PLANNING' | translate }}</span>
+        </a>
+      }
     </div>
   </div>
 </nav>

@@ -58,7 +58,7 @@ export class UsersService {
       dto.role === SkyflowRole.SITE_MANAGER;
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email: dto.email.trim().toLowerCase(),
         passwordHash: hash,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -84,7 +84,7 @@ export class UsersService {
     const user = await this.prisma.user.update({
       where: { id },
       data: {
-        email: dto.email ?? undefined,
+        email: dto.email !== undefined ? dto.email.trim().toLowerCase() : undefined,
         firstName: dto.firstName ?? undefined,
         lastName: dto.lastName ?? undefined,
         role: dto.role ?? undefined,

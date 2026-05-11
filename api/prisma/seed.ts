@@ -134,6 +134,12 @@ async function main() {
       role: SkyflowRole.ADMIN,
     },
     {
+      email: 'planning@skyflow.local',
+      firstName: 'תכנון',
+      lastName: 'תפ״י',
+      role: SkyflowRole.PLANNING,
+    },
+    {
       email: 'site.mgr@skyflow.local',
       firstName: 'מנהל',
       lastName: 'אתר',

@@ -22,9 +22,15 @@ function componentToPreviewLine(c: {
   kind: string;
   description: string;
   spec: string | null;
+  quantity: number;
 }): string {
   const spec = c.spec?.trim();
-  return spec ? `${c.kind}: ${c.description} — ${spec}` : `${c.kind}: ${c.description}`;
+  const base = spec
+    ? `${c.kind}: ${c.description} — ${spec}`
+    : `${c.kind}: ${c.description}`;
+  const q = Math.max(1, Math.floor(Number(c.quantity) || 1));
+  if (q > 1) return `${base} · ×${q}`;
+  return base;
 }
 
 @Injectable()

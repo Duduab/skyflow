@@ -8,8 +8,12 @@ import {
   Post,
   Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { SkyflowRole } from '@prisma/client';
+import { RolesGuard } from '../auth/roles.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -24,6 +28,14 @@ import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 
 @Controller('stations')
+@UseGuards(RolesGuard)
+@Roles(
+  SkyflowRole.WORKER,
+  SkyflowRole.STATION_MANAGER,
+  SkyflowRole.SITE_MANAGER,
+  SkyflowRole.ADMIN,
+  SkyflowRole.PLANNING,
+)
 export class StationsController {
   constructor(
     private readonly stationsService: StationsService,

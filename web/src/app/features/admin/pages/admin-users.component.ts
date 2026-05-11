@@ -10,6 +10,7 @@ import { SkyflowRole, UserDto } from '../../../core/skyflow.models';
 const ROLE_OPTIONS: SkyflowRole[] = [
   'WORKER',
   'ADMIN',
+  'PLANNING',
   'STATION_MANAGER',
   'SITE_MANAGER',
 ];

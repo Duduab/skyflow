@@ -24,6 +24,13 @@
           <a routerLink="/admin" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg shadow-sf-lg">
             {{ 'APP.ADMIN' | translate }}
           </a>
+        } @else if (user.isPlanningRole()) {
+          <a
+            routerLink="/admin/planning-new"
+            class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg"
+          >
+            {{ 'APP.PLANNING_CONSOLE' | translate }}
+          </a>
         } @else {
           <a routerLink="/login" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg shadow-sf-lg">
             {{ 'APP.ADMIN_LOGIN' | translate }}
