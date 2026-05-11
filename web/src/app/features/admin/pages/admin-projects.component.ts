@@ -22,7 +22,12 @@ import {
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
 
-type AdminProjectsStatusFilter = 'all' | 'IN_PROGRESS' | 'COMPLETED';
+type AdminProjectsStatusFilter =
+  | 'all'
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'ON_HOLD';
 
 @Component({
   selector: 'skyflow-admin-projects',
@@ -105,7 +110,13 @@ export class AdminProjectsComponent implements OnInit {
   }
 
   setStatusFilter(value: string): void {
-    if (value === 'all' || value === 'IN_PROGRESS' || value === 'COMPLETED') {
+    if (
+      value === 'all' ||
+      value === 'PENDING' ||
+      value === 'IN_PROGRESS' ||
+      value === 'COMPLETED' ||
+      value === 'ON_HOLD'
+    ) {
       this.statusFilter.set(value);
     }
   }

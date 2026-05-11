@@ -1,62 +1,71 @@
-<section class="planning-panel sf-panel border-white/15 bg-black/40 px-5 py-5 shadow-sf">
-  <h2 class="text-lg font-black text-white">
-    {{ 'PLANNING.TITLE' | translate }}
-  </h2>
-  <p class="mt-1 text-sm font-semibold text-white/70">
-    {{ 'PLANNING.SUBTITLE' | translate }}
-  </p>
+<section
+  class="planning-panel px-5 py-5"
+  [ngClass]="wizardMode() !== 'default' ? 'planning-panel--wizard' : 'planning-panel--classic'"
+>
+  @if (panelHeader()) {
+    <h2 class="planning-panel__title">
+      {{ 'PLANNING.TITLE' | translate }}
+    </h2>
+    <p class="planning-panel__subtitle">
+      {{ 'PLANNING.SUBTITLE' | translate }}
+    </p>
+  }
 
-  <div class="mt-5 rounded-xl border border-dashed border-white/25 bg-black/30 p-5">
-    <label class="block text-sm font-bold text-white/80">{{
-      'PLANNING.NEW_PROJECT_NAME' | translate
-    }}</label>
-    <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-      <input
-        type="text"
-        class="min-h-11 flex-1 rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-touch text-white"
-        [value]="newProjectName()"
-        (input)="onNameInput($event)"
-        [placeholder]="'PLANNING.NEW_PROJECT_PLACEHOLDER' | translate"
-      />
-      <button
-        type="button"
-        class="sf-ui-btn sf-ui-btn--secondary shrink-0"
-        [disabled]="creating()"
-        (click)="createDraft()"
-      >
-        {{ 'PLANNING.CREATE_PROJECT' | translate }}
-      </button>
+  @if (wizardMode() === 'default') {
+    <div class="planning-panel__create-block">
+      <label class="planning-panel__create-label">{{
+        'PLANNING.NEW_PROJECT_NAME' | translate
+      }}</label>
+      <div class="planning-panel__create-row">
+        <input
+          type="text"
+          class="planning-panel__create-input"
+          [value]="newProjectName()"
+          (input)="onNameInput($event)"
+          [placeholder]="'PLANNING.NEW_PROJECT_PLACEHOLDER' | translate"
+        />
+        <button
+          type="button"
+          class="sf-ui-btn sf-ui-btn--secondary shrink-0"
+          [disabled]="creating()"
+          (click)="createDraft()"
+        >
+          {{ 'PLANNING.CREATE_PROJECT' | translate }}
+        </button>
+      </div>
     </div>
-  </div>
+  }
 
   @if (projectId(); as pid) {
     @if (flowStatus() === 'PENDING_PLANNING') {
-      <div
-        class="planning-panel__drop mt-6 rounded-xl border border-white/20 bg-black/35 p-6 text-center"
-        [class.planning-panel__drop--active]="dragOver()"
-        (dragover)="$event.preventDefault(); dragOver.set(true)"
-        (dragleave)="dragOver.set(false)"
-        (drop)="onDrop($event)"
-      >
-        <p class="text-touch font-bold text-white">
-          {{ 'PLANNING.DROP_LABEL' | translate }}
-        </p>
-        <label class="mt-4 inline-block">
-          <span class="sf-ui-btn sf-ui-btn--primary cursor-pointer px-5 py-2">
-            {{ 'PLANNING.BROWSE' | translate }}
-          </span>
-          <input
-            type="file"
-            class="sr-only"
-            accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            [disabled]="uploading()"
-            (change)="onFileSelected($any($event.target).files)"
-          />
-        </label>
-        @if (uploading()) {
-          <p class="mt-3 text-sm text-white/70">{{ 'PLANNING.UPLOADING' | translate }}</p>
-        }
-      </div>
+      @if (wizardMode() !== 'summaryApprove') {
+        <div
+          class="planning-panel__sticky-upload planning-panel__drop mt-6"
+          [class.planning-panel__drop--active]="dragOver()"
+          (dragover)="$event.preventDefault(); dragOver.set(true)"
+          (dragleave)="dragOver.set(false)"
+          (drop)="onDrop($event)"
+        >
+          <p class="planning-panel__drop-label">
+            {{ 'PLANNING.DROP_LABEL' | translate }}
+          </p>
+          <label class="planning-panel__drop-browse">
+            <span class="sf-ui-btn sf-ui-btn--primary cursor-pointer px-5 py-2">
+              {{ 'PLANNING.BROWSE' | translate }}
+            </span>
+            <input
+              type="file"
+              class="sr-only"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              [disabled]="uploading()"
+              (change)="onFileSelected($any($event.target).files)"
+            />
+          </label>
+          @if (uploading()) {
+            <p class="planning-panel__drop-status">{{ 'PLANNING.UPLOADING' | translate }}</p>
+          }
+        </div>
+      }
 
       @if (preview(); as pv) {
         <div class="planning-preview mt-6 space-y-6">
@@ -79,22 +88,42 @@
             </article>
           </div>
 
-          @if (pv.sheets && pv.sheets.length) {
-            <div class="mt-2">
-              <h3 class="text-lg font-black text-white">
+          @if (wizardMode() !== 'summaryApprove') {
+            <div class="planning-panel__reupload">
+              <span class="planning-panel__reupload-text">{{
+                'PLANNING.UPLOAD_AGAIN_HINT' | translate
+              }}</span>
+              <label class="planning-panel__reupload-browse">
+                <span class="sf-ui-btn sf-ui-btn--primary cursor-pointer px-5 py-2">
+                  {{ 'PLANNING.BROWSE' | translate }}
+                </span>
+                <input
+                  type="file"
+                  class="sr-only"
+                  accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  [disabled]="uploading()"
+                  (change)="onFileSelected($any($event.target).files)"
+                />
+              </label>
+            </div>
+          }
+
+          @if (wizardMode() !== 'summaryApprove' && pv.sheets && pv.sheets.length) {
+            <div class="planning-panel__sheets-intro">
+              <h3 class="planning-panel__sheets-title">
                 {{ 'PLANNING.DETAIL_BY_SHEET' | translate }}
               </h3>
-              <p class="mt-1 text-sm text-white/65">{{ 'PLANNING.DETAIL_BY_SHEET_HINT' | translate }}</p>
+              <p class="planning-panel__sheets-hint">{{ 'PLANNING.DETAIL_BY_SHEET_HINT' | translate }}</p>
             </div>
 
             <div class="planning-sheets space-y-4">
               @for (tab of pv.sheets; track tab.sheetName; let idx = $index) {
                 <details
-                  class="planning-sheet group overflow-hidden rounded-2xl border border-white/15 bg-black/35 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]"
+                  class="planning-sheet group overflow-hidden rounded-2xl"
                   [attr.open]="idx === 0 ? '' : null"
                 >
                   <summary
-                    class="planning-sheet__summary flex cursor-pointer list-none flex-col gap-3 bg-white p-4 text-slate-800 outline-none ring-sf-blue/25 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden"
+                    class="planning-sheet__summary flex cursor-pointer list-none flex-col gap-3 p-4 outline-none ring-sf-blue/25 transition sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden"
                   >
                     <div class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
                       <span
@@ -109,64 +138,55 @@
                       </span>
                     </div>
                     <span
-                      class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-lg text-slate-600 transition group-open:rotate-180"
+                      class="planning-sheet__chev inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-lg text-slate-600 transition group-open:rotate-180"
                       aria-hidden="true"
                     >▼</span>
                   </summary>
-                  <div class="planning-sheet__body border-t border-white/10 px-3 pb-4 pt-2 sm:px-4">
+                  <div class="planning-sheet__body px-3 pb-4 pt-2 sm:px-4">
                     @for (
                       row of tab.rows;
                       track row.displayLabel + '|' + row.componentCount + '|' + rIdx;
                       let rIdx = $index
                     ) {
-                      <article
-                        class="planning-row-card mt-3 rounded-xl border border-white/12 bg-black/35 p-4 first:mt-2"
-                      >
+                      <article class="planning-row-card mt-3 p-4 first:mt-2">
                         <div
                           class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6"
                         >
                           <div class="min-w-0 flex-1">
-                            <h4 class="text-lg font-black leading-snug text-white sm:text-xl">
+                            <h4 class="planning-row-card__heading">
                               {{ row.displayLabel }}
                             </h4>
                             <div class="mt-2 flex flex-wrap gap-2">
-                              <span
-                                class="inline-flex items-center rounded-lg border border-cyan-500/25 bg-cyan-950/40 px-3 py-1.5 text-sm font-bold text-cyan-100/95"
-                                dir="ltr"
-                              >{{ row.instructionKind }}</span>
+                              <span class="planning-tag planning-tag--instruction" dir="ltr">{{
+                                row.instructionKind
+                              }}</span>
                               @if (row.productType === 'WINDOW') {
-                                <span
-                                  class="inline-flex items-center rounded-lg border border-violet-500/25 bg-violet-950/35 px-3 py-1.5 text-sm font-bold text-violet-100/90"
-                                >{{ 'PLANNING.TYPE_WINDOW' | translate }}</span>
+                                <span class="planning-tag planning-tag--window">{{
+                                  'PLANNING.TYPE_WINDOW' | translate
+                                }}</span>
                               } @else {
-                                <span
-                                  class="inline-flex items-center rounded-lg border border-emerald-500/25 bg-emerald-950/35 px-3 py-1.5 text-sm font-bold text-emerald-100/90"
-                                >{{ 'PLANNING.TYPE_UNIT' | translate }}</span>
+                                <span class="planning-tag planning-tag--unit">{{
+                                  'PLANNING.TYPE_UNIT' | translate
+                                }}</span>
                               }
                             </div>
                           </div>
-                          <div
-                            class="flex shrink-0 flex-col items-stretch gap-1 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-center sm:min-w-[8.5rem]"
-                          >
-                            <span class="text-xs font-bold uppercase tracking-wide text-white/55">{{
+                          <div class="planning-row-card__stat">
+                            <span class="planning-row-card__stat-label">{{
                               'PLANNING.COL_COMP_TOTAL' | translate
                             }}</span>
-                            <span
-                              class="text-3xl font-black tabular-nums leading-none text-sf-blue sm:text-4xl"
-                            >{{ row.componentCount }}</span>
+                            <span class="planning-row-card__stat-value tabular-nums">{{
+                              row.componentCount
+                            }}</span>
                           </div>
                         </div>
                         <div class="mt-4">
-                          <p class="mb-2 text-xs font-bold uppercase tracking-wide text-white/50">
+                          <p class="planning-chip-section-label">
                             {{ 'PLANNING.COMPONENT_PREVIEW' | translate }}
                           </p>
-                          <ul
-                            class="planning-chip-list m-0 grid list-none gap-2 p-0 sm:grid-cols-2 xl:grid-cols-3"
-                          >
+                          <ul class="planning-chip-list m-0 grid list-none gap-2 p-0 sm:grid-cols-2 xl:grid-cols-3">
                             @for (line of row.componentLines; track clIdx; let clIdx = $index) {
-                              <li
-                                class="rounded-lg border border-white/10 bg-black/40 px-3 py-2 font-mono text-[11px] leading-snug text-white/85"
-                              >
+                              <li class="planning-chip">
                                 {{ line }}
                               </li>
                             }
@@ -180,40 +200,60 @@
             </div>
           }
 
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="button"
-              class="sf-ui-btn sf-ui-btn--primary w-full sm:w-auto"
-              [disabled]="approving() || !pv.itemCount"
-              (click)="approve()"
-            >
-              {{ 'PLANNING.APPROVE_CTA' | translate }}
-            </button>
-            <button
-              type="button"
-              class="sf-ui-btn sf-ui-btn--secondary w-full border-white/25 bg-white/10 text-white hover:bg-white/15 sm:w-auto"
-              (click)="exportPdf()"
-            >
-              {{ 'PLANNING.EXPORT_PDF' | translate }}
-            </button>
+          <div
+            class="planning-preview-actions mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
+          >
+            @if (wizardMode() === 'uploadPreview' && pv.itemCount) {
+              <button
+                type="button"
+                class="sf-ui-btn sf-ui-btn--primary order-first w-full min-h-12 px-6 py-3 text-base font-black shadow-lg shadow-sky-500/20 sm:order-none sm:w-auto"
+                (click)="onWizardContinue()"
+              >
+                {{ 'PLANNING.WIZARD_CONTINUE_ASSIGN' | translate }}
+              </button>
+              <button
+                type="button"
+                class="planning-panel__btn-secondary sf-ui-btn sf-ui-btn--secondary w-full sm:w-auto"
+                (click)="exportPdf()"
+              >
+                {{ 'PLANNING.EXPORT_PDF' | translate }}
+              </button>
+            }
+            @if (wizardMode() === 'default' || wizardMode() === 'summaryApprove') {
+              <button
+                type="button"
+                class="sf-ui-btn sf-ui-btn--primary w-full sm:w-auto"
+                [disabled]="approving() || !pv.itemCount"
+                (click)="approve()"
+              >
+                {{ 'PLANNING.APPROVE_CTA' | translate }}
+              </button>
+              <button
+                type="button"
+                class="planning-panel__btn-secondary sf-ui-btn sf-ui-btn--secondary w-full sm:w-auto"
+                (click)="exportPdf()"
+              >
+                {{ 'PLANNING.EXPORT_PDF' | translate }}
+              </button>
+            }
           </div>
         </div>
       }
     } @else if (flowStatus() === 'IN_PRODUCTION') {
-      <p class="mt-6 text-touch font-semibold text-emerald-200/90">
+      <p class="planning-panel__status planning-panel__status--ok">
         {{ 'PLANNING.STATUS_IN_PRODUCTION' | translate }}
       </p>
     } @else if (flowStatus() === 'COMPLETED') {
-      <p class="mt-6 text-touch font-semibold text-sf-blue/90">
+      <p class="planning-panel__status planning-panel__status--done">
         {{ 'PLANNING.STATUS_COMPLETED' | translate }}
       </p>
     }
   } @else {
-    <p class="mt-4 text-sm text-white/60">{{ 'PLANNING.PICK_PROJECT' | translate }}</p>
+    <p class="planning-panel__pick-hint">{{ 'PLANNING.PICK_PROJECT' | translate }}</p>
   }
 
   @if (error(); as err) {
-    <p class="mt-4 rounded-lg border border-rose-400/40 bg-rose-950/40 px-3 py-2 text-sm font-semibold text-rose-100">
+    <p class="planning-panel__error">
       {{ err }}
     </p>
   }

@@ -57,6 +57,8 @@ model User {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
+  planningAssignedProjects ProjectOrder[] @relation("PlanningAssignee")
+
   @@index([role])
   @@index([managedStationId])
 }
@@ -78,6 +80,9 @@ model ProjectOrder {
   siteExpectedBeams    Int?
   siteExpectedGlazing  Int?
   siteExpectedUnitized Int?
+  /// עובד או מנהל עמדת מסורים (1) — משויך בעת אישור תכנון
+  planningAssigneeUserId String?
+  planningAssignee       User?   @relation("PlanningAssignee", fields: [planningAssigneeUserId], references: [id], onDelete: SetNull)
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -86,6 +91,8 @@ model ProjectOrder {
   documents           ProjectDocument[]
   productItems        ProductItem[]
   sawStationWorkLines SawStationWorkLine[]
+
+  @@index([planningAssigneeUserId])
 }
 
 /// שורת תכנון (יחידה / הוראת חלון) מתוך קובץ תפ״י

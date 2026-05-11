@@ -130,6 +130,9 @@ export class WorkerTerminalComponent implements OnInit {
   }
 
   managerAvatarSrc(): string {
+    const ctx = this.context();
+    const u = ctx?.stationManagerDisplay?.photoUrl?.trim();
+    if (u?.length) return u;
     return `/assets/managers/${this.stationId}.jpg`;
   }
 
@@ -218,6 +221,7 @@ export class WorkerTerminalComponent implements OnInit {
       .subscribe({
         next: (ctx) => {
           this.context.set(ctx);
+          this.managerPhotoFailed.set(false);
           this.loading.set(false);
           if (
             this.stationId === 6 &&

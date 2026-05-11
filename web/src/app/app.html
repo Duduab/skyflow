@@ -1,7 +1,7 @@
 <div class="sf-shell flex min-h-dvh flex-col">
 @if (!adminChromeHidden()) {
   <header class="sf-header">
-    <a routerLink="/" class="sf-brand-link">
+    <a [routerLink]="user.accessToken() ? '/' : '/login'" class="sf-brand-link">
       <img
         [src]="headerLogoSrc()"
         width="160"
@@ -20,29 +20,33 @@
     </div>
     <div class="sf-header__actions">
       <nav class="hidden flex-wrap items-center gap-4 md:gap-5 lg:flex">
-        @if (user.isAdmin()) {
-          <a routerLink="/admin" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg shadow-sf-lg">
-            {{ 'APP.ADMIN' | translate }}
+        @if (user.accessToken()) {
+          @if (user.isAdmin()) {
+            <a routerLink="/admin" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg shadow-sf-lg">
+              {{ 'APP.ADMIN' | translate }}
+            </a>
+          } @else if (user.isPlanningRole()) {
+            <a
+              routerLink="/admin/planning-new"
+              class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg"
+            >
+              {{ 'APP.PLANNING_CONSOLE' | translate }}
+            </a>
+          }
+          <a routerLink="/worker" class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg">
+            {{ 'APP.WORKER_HUB' | translate }}
           </a>
-        } @else if (user.isPlanningRole()) {
-          <a
-            routerLink="/admin/planning-new"
-            class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg"
-          >
-            {{ 'APP.PLANNING_CONSOLE' | translate }}
-          </a>
+          <skyflow-theme-toggle />
+          <skyflow-language-switcher />
         } @else {
-          <a routerLink="/login" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg shadow-sf-lg">
-            {{ 'APP.ADMIN_LOGIN' | translate }}
-          </a>
+          <skyflow-theme-toggle />
+          <skyflow-language-switcher />
         }
-        <a routerLink="/worker" class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg">
-          {{ 'APP.WORKER_HUB' | translate }}
-        </a>
-        <skyflow-theme-toggle />
-        <skyflow-language-switcher />
       </nav>
       <div class="flex items-center gap-3 lg:hidden">
+        @if (!user.accessToken()) {
+          <skyflow-theme-toggle />
+        }
         <skyflow-language-switcher />
       </div>
     </div>
@@ -52,12 +56,12 @@
   <main
     class="flex min-h-0 flex-1 flex-col"
     [class.sf-main]="!adminChromeHidden()"
-    [class.sf-main--with-bottom-nav]="!adminChromeHidden()"
+    [class.sf-main--with-bottom-nav]="!adminChromeHidden() && user.accessToken()"
   >
     <router-outlet />
   </main>
 
-@if (!adminChromeHidden()) {
+@if (!adminChromeHidden() && user.accessToken()) {
   <skyflow-bottom-nav />
 }
 </div>

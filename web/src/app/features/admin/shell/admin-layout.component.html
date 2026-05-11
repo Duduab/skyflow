@@ -67,6 +67,22 @@
           </span>
           {{ 'ADMIN_NAV.DASHBOARD' | translate }}
         </a>
+      }
+      @if (auth.isPlanningRole()) {
+        <a
+          routerLink="/admin/planning-new"
+          routerLinkActive="is-active"
+          class="admin-shell__link admin-shell__link--planning-new"
+        >
+          <span class="admin-shell__ico admin-shell__ico--plus" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25">
+              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+            </svg>
+          </span>
+          {{ 'ADMIN_NAV.PLANNING_NEW' | translate }}
+        </a>
+      }
+      @if (auth.isAdmin() || auth.isPlanningRole()) {
         <a
           routerLink="/admin/projects"
           routerLinkActive="is-active"
@@ -79,6 +95,8 @@
           </span>
           {{ 'ADMIN_NAV.PROJECTS' | translate }}
         </a>
+      }
+      @if (auth.isAdmin()) {
         <a
           routerLink="/admin/scrap"
           routerLinkActive="is-active"
@@ -130,20 +148,6 @@
             </svg>
           </span>
           {{ 'ADMIN_NAV.FILES' | translate }}
-        </a>
-      }
-      @if (auth.isPlanningRole()) {
-        <a
-          routerLink="/admin/planning-new"
-          routerLinkActive="is-active"
-          class="admin-shell__link admin-shell__link--planning-new"
-        >
-          <span class="admin-shell__ico admin-shell__ico--plus" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25">
-              <path d="M12 5v14M5 12h14" stroke-linecap="round" />
-            </svg>
-          </span>
-          {{ 'ADMIN_NAV.PLANNING_NEW' | translate }}
         </a>
       }
     </nav>

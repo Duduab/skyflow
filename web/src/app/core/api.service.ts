@@ -3,8 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   AdminDashboard,
+  PlanningAssigneeOptionDto,
   PlanningDraftListItemDto,
   PlanningParsePreviewDto,
+  ProjectDocumentDto,
+  ProjectDocumentKind,
   ProjectOrder,
   ShippingResponse,
   WorkerContext,
@@ -125,6 +128,12 @@ export class ApiService {
     );
   }
 
+  getPlanningAssignees(): Observable<PlanningAssigneeOptionDto[]> {
+    return this.http.get<PlanningAssigneeOptionDto[]>(
+      `${this.base}/users/planning-assignees`,
+    );
+  }
+
   updateUser(id: string, body: Partial<{ firstName: string; lastName: string; photoUrl: string | null; password: string }>) {
     return this.http.patch<UserDto>(`${this.base}/users/${id}`, body);
   }
@@ -141,6 +150,30 @@ export class ApiService {
 
   postPlanningDraft(name: string): Observable<ProjectOrder> {
     return this.http.post<ProjectOrder>(`${this.base}/projects`, { name });
+  }
+
+  postProjectDocument(
+    projectId: string,
+    file: File,
+    body: {
+      kind: ProjectDocumentKind;
+      title?: string;
+      reference?: string;
+    },
+  ): Observable<{ ok: true; document: ProjectDocumentDto }> {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', body.kind);
+    if (body.title?.trim()) {
+      fd.append('title', body.title.trim());
+    }
+    if (body.reference?.trim()) {
+      fd.append('reference', body.reference.trim());
+    }
+    return this.http.post<{ ok: true; document: ProjectDocumentDto }>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/documents`,
+      fd,
+    );
   }
 
   getPlanningDraftsList(): Observable<PlanningDraftListItemDto[]> {
@@ -167,10 +200,13 @@ export class ApiService {
     );
   }
 
-  postApprovePlanning(projectId: string): Observable<{ ok: boolean }> {
+  postApprovePlanning(
+    projectId: string,
+    body?: { assigneeUserId?: string | null },
+  ): Observable<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>(
       `${this.base}/projects/${encodeURIComponent(projectId)}/approve-planning`,
-      {},
+      body ?? {},
     );
   }
 

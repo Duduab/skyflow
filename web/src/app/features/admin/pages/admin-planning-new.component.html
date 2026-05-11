@@ -1,57 +1,240 @@
 <div class="planning-new">
   <div class="planning-new__bg" aria-hidden="true"></div>
+  <div class="planning-new__grain" aria-hidden="true"></div>
 
-  <div class="planning-new__inner mx-auto max-w-5xl px-4 py-8 md:py-12">
+  <div class="planning-new__inner mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 md:py-10 md:pb-20">
     <header class="planning-new__hero">
-      <div class="planning-new__hero-glow" aria-hidden="true"></div>
-      <div class="planning-new__hero-content">
-        <span class="planning-new__badge">{{ 'PLANNING_NEW.BADGE' | translate }}</span>
-        <h1 class="planning-new__title">{{ 'PLANNING_NEW.TITLE' | translate }}</h1>
-        <p class="planning-new__lead">{{ 'PLANNING_NEW.LEAD' | translate }}</p>
+      <div class="planning-new__hero-card">
+        <div class="planning-new__hero-glow" aria-hidden="true"></div>
+        <div class="planning-new__hero-shine" aria-hidden="true"></div>
+        <div class="planning-new__hero-content">
+          <span class="planning-new__badge">{{ 'PLANNING_NEW.BADGE' | translate }}</span>
+          <h1 class="planning-new__title">{{ 'PLANNING_NEW.TITLE' | translate }}</h1>
+          <p class="planning-new__lead">{{ 'PLANNING_NEW.WIZARD_LEAD' | translate }}</p>
+        </div>
       </div>
     </header>
 
-    <section class="planning-new__picker sf-panel mt-8 border-white/20 bg-white/95 px-5 py-5 shadow-sf-lg backdrop-blur-md dark:border-white/10 dark:bg-slate-900/85">
-      <label class="planning-new__picker-label" for="planning-draft-select">{{
-        'PLANNING_NEW.PICK_PROJECT' | translate
-      }}</label>
-      @if (loading()) {
-        <p class="mt-2 text-sm font-semibold text-slate-600 dark:text-white/70">
-          {{ 'PLANNING_NEW.LOADING' | translate }}
+    @if (listError(); as errKey) {
+      <p class="planning-wizard__alert planning-wizard__alert--err" role="alert">
+        {{ errKey | translate }}
+      </p>
+    }
+
+    @if (approvedMovedToProduction()) {
+      <div class="planning-wizard__alert planning-wizard__alert--ok" role="status">
+        <p class="planning-wizard__alert-text">
+          {{ 'PLANNING_NEW.APPROVED_SAVED_HINT' | translate }}
         </p>
-      } @else if (listError(); as errKey) {
-        <p class="mt-2 text-sm font-bold text-rose-600 dark:text-rose-300" role="alert">
-          {{ errKey | translate }}
-        </p>
-      } @else {
-        <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <select
-            id="planning-draft-select"
-            class="planning-new__select min-h-12 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-touch font-bold text-slate-900 shadow-inner focus:border-sf-blue focus:outline-none focus:ring-2 focus:ring-sf-blue/35 dark:border-white/15 dark:bg-black/40 dark:text-white"
-            [value]="selectedProjectId() ?? ''"
-            (change)="onPickerChange($any($event.target).value)"
-          >
-            <option value="">{{ 'PLANNING_NEW.NO_DRAFT_OPTION' | translate }}</option>
-            @for (d of drafts(); track d.id) {
-              <option [value]="d.id">{{ d.name }}</option>
-            }
-          </select>
-          <span class="shrink-0 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-white/50">
-            {{ drafts().length }} {{ 'PLANNING_NEW.DRAFT_COUNT' | translate }}
-          </span>
+        <button type="button" class="planning-wizard__btn planning-wizard__btn--ghost" (click)="startNewWizard()">
+          {{ 'PLANNING_NEW.WIZARD_START_FRESH' | translate }}
+        </button>
+      </div>
+    }
+
+    <nav
+      class="planning-wizard__rail"
+      [attr.aria-label]="'PLANNING_NEW.WIZARD_STEPS_ARIA' | translate"
+    >
+      <div class="planning-wizard__rail-inner">
+        <div class="planning-wizard__rail-line" aria-hidden="true"></div>
+        <ol class="planning-wizard__steps">
+          @for (s of [1, 2, 3]; track s) {
+            <li
+              class="planning-wizard__step"
+              [class.planning-wizard__step--current]="step() === s"
+              [class.planning-wizard__step--done]="step() > s"
+            >
+              <span class="planning-wizard__dot-wrap">
+                <span class="planning-wizard__dot">
+                  @if (step() > s) {
+                    <span class="planning-wizard__dot-check" aria-hidden="true">✓</span>
+                  } @else {
+                    <span class="planning-wizard__dot-num">{{ s }}</span>
+                  }
+                </span>
+              </span>
+              <span class="planning-wizard__step-text">
+                @switch (s) {
+                  @case (1) {
+                    {{ 'PLANNING_NEW.WIZARD_STEP1_SHORT' | translate }}
+                  }
+                  @case (2) {
+                    {{ 'PLANNING_NEW.WIZARD_STEP2_SHORT' | translate }}
+                  }
+                  @case (3) {
+                    {{ 'PLANNING_NEW.WIZARD_STEP3_SHORT' | translate }}
+                  }
+                }
+              </span>
+            </li>
+          }
+        </ol>
+      </div>
+    </nav>
+
+    @if (step() === 1) {
+      <div class="planning-wizard__layout planning-wizard__layout--step1">
+        <section class="planning-wizard__card planning-wizard__card--main">
+          <div class="planning-wizard__card-accent" aria-hidden="true"></div>
+          <div class="planning-wizard__card-inner">
+            <div class="planning-wizard__card-head">
+              <p class="planning-wizard__eyebrow">{{ 'PLANNING_NEW.WIZARD_STEP1_SHORT' | translate }}</p>
+              <h2 class="planning-wizard__card-title">{{ 'PLANNING_NEW.WIZARD_STEP1_TITLE' | translate }}</h2>
+              <p class="planning-wizard__card-desc">{{ 'PLANNING_NEW.WIZARD_STEP1_DESC' | translate }}</p>
+            </div>
+            <div class="planning-wizard__field">
+              <label class="planning-wizard__field-label" for="wizard-project-name">{{
+                'PLANNING_NEW.WIZARD_NAME_LABEL' | translate
+              }}</label>
+              <input
+                id="wizard-project-name"
+                type="text"
+                class="planning-wizard__input"
+                [value]="newProjectName()"
+                (input)="onWizardNameInput($event)"
+                [placeholder]="'PLANNING_NEW.WIZARD_NAME_PLACEHOLDER' | translate"
+                autocomplete="off"
+              />
+              @if (createErrorKey(); as ck) {
+                <p class="planning-wizard__field-err" role="alert">{{ ck | translate }}</p>
+              }
+            </div>
+            <div class="planning-wizard__card-actions">
+              <button
+                type="button"
+                class="planning-wizard__btn planning-wizard__btn--primary"
+                [disabled]="creating()"
+                (click)="createProjectAndGoStep2()"
+              >
+                {{ 'PLANNING_NEW.WIZARD_CTA_CREATE' | translate }}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        @if (!listError()) {
+          <aside class="planning-wizard__card planning-wizard__card--side">
+            <div class="planning-wizard__card-inner planning-wizard__card-inner--tight">
+              <p class="planning-wizard__side-title">{{ 'PLANNING_NEW.WIZARD_OPEN_RESUMES' | translate }}</p>
+              <p class="planning-wizard__side-desc">{{ 'PLANNING_NEW.WIZARD_RESUME_HINT' | translate }}</p>
+              @if (loading()) {
+                <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.LOADING' | translate }}</p>
+              } @else if (!drafts().length) {
+                <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_NO_DRAFTS' | translate }}</p>
+              } @else {
+                <div class="planning-wizard__resume-chips">
+                  @for (d of drafts(); track d.id) {
+                    <button type="button" class="planning-wizard__resume-chip" (click)="resumeDraft(d)">
+                      {{ d.name }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </aside>
+        }
+      </div>
+    }
+
+    @if (step() >= 2 && selectedProjectId(); as pid) {
+      @if (step() === 2) {
+        <div class="planning-wizard__step-banner">
+          <span class="planning-wizard__step-banner-kicker">{{ 'PLANNING_NEW.WIZARD_STEP2_SHORT' | translate }}</span>
+          <span class="planning-wizard__step-banner-title">{{ 'PLANNING_NEW.WIZARD_STEP2_TITLE' | translate }}</span>
+          <span class="planning-wizard__step-banner-desc">{{ 'PLANNING_NEW.WIZARD_STEP2_DESC' | translate }}</span>
         </div>
       }
-    </section>
 
-    <div class="planning-new__panel-wrap mt-8">
-      <skyflow-planning-panel
-        class="block w-full"
-        [projectId]="selectedProjectId()"
-        [flowStatus]="selectedFlow()"
-        [projectName]="selectedName()"
-        (planningChanged)="onPlanningChanged()"
-        (projectCreated)="onProjectCreated($event)"
-      />
-    </div>
+      @if (step() === 3) {
+        <section class="planning-wizard__card planning-wizard__card--assign">
+          <div class="planning-wizard__card-accent" aria-hidden="true"></div>
+          <div class="planning-wizard__card-inner">
+            <div class="planning-wizard__card-head">
+              <p class="planning-wizard__eyebrow">{{ 'PLANNING_NEW.WIZARD_STEP3_SHORT' | translate }}</p>
+              <h2 class="planning-wizard__card-title">{{ 'PLANNING_NEW.WIZARD_STEP3_TITLE' | translate }}</h2>
+              <p class="planning-wizard__card-desc">{{ 'PLANNING_NEW.WIZARD_STEP3_DESC' | translate }}</p>
+            </div>
+
+            <p class="planning-wizard__flow-title">{{ 'PLANNING_NEW.WIZARD_FLOW_TITLE' | translate }}</p>
+            <div class="planning-wizard__flow" role="list">
+              <div class="planning-wizard__flow-item" role="listitem">
+                <span class="planning-wizard__flow-idx">1</span>
+                <p>{{ 'PLANNING_NEW.WIZARD_FLOW_PARSE' | translate }}</p>
+              </div>
+              <div class="planning-wizard__flow-item" role="listitem">
+                <span class="planning-wizard__flow-idx">2</span>
+                <p>
+                  {{ 'PLANNING_NEW.WIZARD_FLOW_UNLOCK' | translate }}
+                  <strong class="planning-wizard__flow-strong">{{ 'STATIONS.1' | translate }}</strong>
+                </p>
+              </div>
+            </div>
+
+            <h3 class="planning-wizard__assign-heading">{{ 'PLANNING_NEW.WIZARD_ASSIGNEE_HEADING' | translate }}</h3>
+            @if (assigneesLoading()) {
+              <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_ASSIGNEES_LOADING' | translate }}</p>
+            } @else if (assigneesLoadError(); as ak) {
+              <p class="planning-wizard__field-err" role="alert">{{ ak | translate }}</p>
+            } @else {
+              <div class="planning-wizard__assignee-grid">
+                <button
+                  type="button"
+                  class="planning-wizard__assignee-card"
+                  [class.planning-wizard__assignee-card--selected]="selectedAssigneeId() === null"
+                  (click)="pickAssignee(null)"
+                >
+                  <span class="planning-wizard__assignee-name">{{
+                    'PLANNING_NEW.WIZARD_ASSIGNEE_NONE' | translate
+                  }}</span>
+                  <span class="planning-wizard__assignee-sub">{{
+                    'PLANNING_NEW.WIZARD_ASSIGNEE_NONE_HINT' | translate
+                  }}</span>
+                </button>
+                @for (a of assignees(); track a.id) {
+                  <button
+                    type="button"
+                    class="planning-wizard__assignee-card"
+                    [class.planning-wizard__assignee-card--selected]="selectedAssigneeId() === a.id"
+                    (click)="pickAssignee(a.id)"
+                  >
+                    <span class="planning-wizard__assignee-name">{{ a.firstName }} {{ a.lastName }}</span>
+                    @if (isSawsManager(a)) {
+                      <span class="planning-wizard__assignee-badge">{{
+                        'PLANNING_NEW.WIZARD_ROLE_SAWS_MGR' | translate
+                      }}</span>
+                    } @else {
+                      <span class="planning-wizard__assignee-badge">{{
+                        'PLANNING_NEW.WIZARD_ROLE_WORKER' | translate
+                      }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            }
+
+            <div class="planning-wizard__card-actions planning-wizard__card-actions--start">
+              <button type="button" class="planning-wizard__btn planning-wizard__btn--ghost" (click)="goStep2()">
+                {{ 'PLANNING_NEW.WIZARD_BACK_STEP2' | translate }}
+              </button>
+            </div>
+          </div>
+        </section>
+      }
+
+      <div class="planning-new__panel-wrap">
+        <skyflow-planning-panel
+          class="block w-full"
+          [projectId]="pid"
+          [flowStatus]="selectedFlow()"
+          [projectName]="selectedName()"
+          [wizardMode]="panelMode()"
+          [panelHeader]="false"
+          [assigneeUserId]="selectedAssigneeId()"
+          (planningChanged)="onPlanningChanged()"
+          (wizardContinue)="goStep3()"
+        />
+      </div>
+    }
   </div>
 </div>

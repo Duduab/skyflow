@@ -2,7 +2,7 @@ import {
   BadRequestException,
   Injectable,
 } from '@nestjs/common';
-import { Prisma, ProjectFlowStatus } from '@prisma/client';
+import { Prisma, ProjectFlowStatus, SkyflowRole } from '@prisma/client';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import {
@@ -35,6 +35,32 @@ export class StationsService {
         `stationId must be between ${MIN_STATION} and ${MAX_STATION}`,
       );
     }
+  }
+
+  /** שם ותמונה להצגה במסוף עובד — לעמדה 1: שיבוץ מתכנון אם קיים, אחרת מנהל עמדה מהמערכת */
+  private async resolveStationManagerDisplay(
+    stationId: number,
+    planningAssigneeUserId: string | null,
+  ): Promise<{
+    firstName: string;
+    lastName: string;
+    photoUrl: string | null;
+  } | null> {
+    if (stationId === 1 && planningAssigneeUserId) {
+      const assigned = await this.prisma.user.findUnique({
+        where: { id: planningAssigneeUserId },
+        select: { firstName: true, lastName: true, photoUrl: true },
+      });
+      if (assigned) return assigned;
+    }
+    return this.prisma.user.findFirst({
+      where: {
+        managedStationId: stationId,
+        role: { in: [SkyflowRole.STATION_MANAGER, SkyflowRole.SITE_MANAGER] },
+      },
+      orderBy: [{ role: 'asc' }, { lastName: 'asc' }],
+      select: { firstName: true, lastName: true, photoUrl: true },
+    });
   }
 
   async getWorkerContext(projectId: string, stationId: number) {
@@ -94,6 +120,11 @@ export class StationsService {
       };
     }
 
+    const stationManagerDisplay = await this.resolveStationManagerDisplay(
+      stationId,
+      order.planningAssigneeUserId,
+    );
+
     return {
       order,
       stationId,
@@ -104,6 +135,7 @@ export class StationsService {
       packedQty,
       requiredPackQty: order.totalItems,
       readyToShip,
+      ...(stationManagerDisplay ? { stationManagerDisplay } : {}),
       ...(stationId === 1 &&
       order.flowStatus === ProjectFlowStatus.IN_PRODUCTION
         ? { sawWorkLines: sawWorkLines ?? [] }

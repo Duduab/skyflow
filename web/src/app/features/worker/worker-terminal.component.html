@@ -75,7 +75,11 @@
             {{ 'WORKER.STATION_MANAGER_ROLE' | translate }}
           </p>
           <p class="station-manager__name">
-            {{ ('WORKER.STATION_MANAGER_NAME_' + stationId) | translate }}
+            @if (ctx.stationManagerDisplay; as sm) {
+              {{ sm.firstName }} {{ sm.lastName }}
+            } @else {
+              {{ ('WORKER.STATION_MANAGER_NAME_' + stationId) | translate }}
+            }
           </p>
           <p class="station-manager__hint">
             {{ 'WORKER.STATION_MANAGER_HINT' | translate }}

@@ -4,10 +4,13 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { ApiService } from '../../../core/api.service';
 import {
+  PlanningAssigneeOptionDto,
   PlanningDraftListItemDto,
   ProjectFlowStatus,
 } from '../../../core/skyflow.models';
 import { PlanningPanelComponent } from '../planning/planning-panel.component';
+
+type WizardStep = 1 | 2 | 3;
 
 @Component({
   selector: 'skyflow-admin-planning-new',
@@ -22,9 +25,21 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly loading = signal(true);
   readonly listError = signal<string | null>(null);
   readonly drafts = signal<PlanningDraftListItemDto[]>([]);
+
+  readonly step = signal<WizardStep>(1);
+  readonly newProjectName = signal('');
+  readonly creating = signal(false);
+  readonly createErrorKey = signal<string | null>(null);
+
   readonly selectedProjectId = signal<string | null>(null);
   readonly selectedFlow = signal<ProjectFlowStatus | null>(null);
   readonly selectedName = signal<string | null>(null);
+  readonly approvedMovedToProduction = signal(false);
+
+  readonly assignees = signal<PlanningAssigneeOptionDto[]>([]);
+  readonly assigneesLoadError = signal<string | null>(null);
+  readonly assigneesLoading = signal(false);
+  readonly selectedAssigneeId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.reloadDrafts();
@@ -48,15 +63,17 @@ export class AdminPlanningNewComponent implements OnInit {
             this.applyPick(r);
             return;
           }
-          const first = rows[0];
-          if (first) {
-            this.selectedProjectId.set(first.id);
-            this.applyPick(first);
-          } else {
+          if (cur && !rows.some((r) => r.id === cur)) {
             this.selectedProjectId.set(null);
             this.selectedFlow.set(null);
             this.selectedName.set(null);
+            this.step.set(1);
+            this.selectedAssigneeId.set(null);
+            this.newProjectName.set('');
+            this.approvedMovedToProduction.set(true);
+            return;
           }
+          this.approvedMovedToProduction.set(false);
         },
         error: () => this.listError.set('PLANNING_NEW.LOAD_LIST_FAILED'),
       });
@@ -67,24 +84,113 @@ export class AdminPlanningNewComponent implements OnInit {
     this.selectedName.set(r.name);
   }
 
-  onPickerChange(value: string): void {
-    if (!value) {
-      this.selectedProjectId.set(null);
-      this.selectedFlow.set(null);
-      this.selectedName.set(null);
+  onWizardNameInput(ev: Event): void {
+    this.newProjectName.set((ev.target as HTMLInputElement).value);
+    this.createErrorKey.set(null);
+  }
+
+  createProjectAndGoStep2(): void {
+    const name = this.newProjectName().trim();
+    if (name.length < 2) {
+      this.createErrorKey.set('PLANNING_NEW.WIZARD_NAME_MIN');
       return;
     }
-    const r = this.drafts().find((x) => x.id === value);
-    this.selectedProjectId.set(value);
-    if (r) this.applyPick(r);
+    this.creating.set(true);
+    this.createErrorKey.set(null);
+    this.approvedMovedToProduction.set(false);
+    this.api
+      .postPlanningDraft(name)
+      .pipe(
+        take(1),
+        finalize(() => this.creating.set(false)),
+      )
+      .subscribe({
+        next: (o) => {
+          this.selectedProjectId.set(o.id);
+          this.selectedFlow.set(o.flowStatus);
+          this.selectedName.set(o.name);
+          this.step.set(2);
+          this.reloadDrafts();
+        },
+        error: () =>
+          this.createErrorKey.set('PLANNING_NEW.WIZARD_CREATE_FAILED'),
+      });
+  }
+
+  goStep3(): void {
+    this.step.set(3);
+    if (!this.assignees().length && !this.assigneesLoading()) {
+      this.loadAssignees();
+    }
+  }
+
+  goStep2(): void {
+    this.step.set(2);
+  }
+
+  private loadAssignees(): void {
+    this.assigneesLoading.set(true);
+    this.assigneesLoadError.set(null);
+    this.api
+      .getPlanningAssignees()
+      .pipe(
+        take(1),
+        finalize(() => this.assigneesLoading.set(false)),
+      )
+      .subscribe({
+        next: (list) => this.assignees.set(list),
+        error: () =>
+          this.assigneesLoadError.set('PLANNING_NEW.WIZARD_ASSIGNEES_FAILED'),
+      });
+  }
+
+  pickAssignee(id: string | null): void {
+    this.selectedAssigneeId.set(id);
+  }
+
+  isSawsManager(a: PlanningAssigneeOptionDto): boolean {
+    return a.role === 'STATION_MANAGER' && a.managedStationId === 1;
+  }
+
+  resumeDraft(d: PlanningDraftListItemDto): void {
+    this.approvedMovedToProduction.set(false);
+    this.createErrorKey.set(null);
+    this.selectedAssigneeId.set(null);
+    this.selectedProjectId.set(d.id);
+    this.applyPick(d);
+    this.newProjectName.set(d.name);
+    this.api
+      .getPlanningPreview(d.id)
+      .pipe(take(1))
+      .subscribe({
+        next: (p) => {
+          this.step.set(p.itemCount > 0 ? 3 : 2);
+          if (p.itemCount > 0) {
+            this.loadAssignees();
+          }
+        },
+        error: () => this.step.set(2),
+      });
+  }
+
+  panelMode(): 'uploadPreview' | 'summaryApprove' {
+    return this.step() === 2 ? 'uploadPreview' : 'summaryApprove';
   }
 
   onPlanningChanged(): void {
     this.reloadDrafts();
   }
 
-  onProjectCreated(id: string): void {
-    this.selectedProjectId.set(id);
+  startNewWizard(): void {
+    this.approvedMovedToProduction.set(false);
+    this.step.set(1);
+    this.selectedProjectId.set(null);
+    this.selectedFlow.set(null);
+    this.selectedName.set(null);
+    this.selectedAssigneeId.set(null);
+    this.newProjectName.set('');
+    this.createErrorKey.set(null);
+    this.assigneesLoadError.set(null);
     this.reloadDrafts();
   }
 }

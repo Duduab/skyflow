@@ -10,14 +10,22 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
+import { randomUUID } from 'node:crypto';
+import type { Request } from 'express';
 import { SkyflowRole } from '@prisma/client';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { CreatePlanningDraftDto } from './dto/create-planning-draft.dto';
-import { ProjectsService } from './projects.service';
+import { ApprovePlanningDto } from './dto/approve-planning.dto';
+import { UploadProjectDocumentDto } from './dto/upload-project-document.dto';
+import {
+  ensureProjectDocsUploadDir,
+  ProjectsService,
+} from './projects.service';
 
 const PLANNING_UPLOAD_LIMIT = 25 * 1024 * 1024;
+const PROJECT_DOC_UPLOAD_MAX = 12 * 1024 * 1024;
 
 @Controller('projects')
 @UseGuards(RolesGuard)
@@ -34,6 +42,50 @@ export class ProjectsController {
   @Post()
   createDraft(@Body() dto: CreatePlanningDraftDto) {
     return this.projectsService.createPlanningDraft(dto.name);
+  }
+
+  @Roles(SkyflowRole.ADMIN)
+  @Post(':id/documents')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, d: string) => void,
+        ) => {
+          cb(null, ensureProjectDocsUploadDir());
+        },
+        filename: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, n: string) => void,
+        ) => {
+          cb(null, `${randomUUID()}.pdf`);
+        },
+      }),
+      limits: { fileSize: PROJECT_DOC_UPLOAD_MAX },
+      fileFilter: (_req, file, cb) => {
+        const ok =
+          /\.pdf$/i.test(file.originalname) ||
+          file.mimetype === 'application/pdf' ||
+          file.mimetype === 'application/x-pdf';
+        cb(
+          ok ? null : new BadRequestException('PDF file required'),
+          ok,
+        );
+      },
+    }),
+  )
+  uploadProjectDocument(
+    @Param('id') projectId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: UploadProjectDocumentDto,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    return this.projectsService.uploadProjectDocument(projectId, file, body);
   }
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
@@ -77,8 +129,8 @@ export class ProjectsController {
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post(':id/approve-planning')
-  approve(@Param('id') id: string) {
-    return this.projectsService.approvePlanning(id);
+  approve(@Param('id') id: string, @Body() dto: ApprovePlanningDto) {
+    return this.projectsService.approvePlanning(id, dto);
   }
 
   @Roles(SkyflowRole.ADMIN)

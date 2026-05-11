@@ -13,6 +13,8 @@ export interface ProjectOrder {
   status: OrderStatus;
   flowStatus: ProjectFlowStatus;
   originalLength: string | number;
+  /** משווה מתכנון (עמדת מסורים) — אופציונלי */
+  planningAssigneeUserId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -52,6 +54,12 @@ export interface SawWorkLineDto {
   sortOrder: number;
 }
 
+export interface WorkerStationManagerDisplayDto {
+  firstName: string;
+  lastName: string;
+  photoUrl: string | null;
+}
+
 export interface WorkerContext {
   order: ProjectOrder;
   stationId: number;
@@ -62,6 +70,8 @@ export interface WorkerContext {
   packedQty: number;
   requiredPackQty: number;
   readyToShip: boolean;
+  /** מנהל/משווה להצגה במסוף — מהמערכת או משיבוץ תכנון (עמדה 1) */
+  stationManagerDisplay?: WorkerStationManagerDisplayDto | null;
   /** Station 1 — קווי עבודה למסורים אחרי אישור תכנון */
   sawWorkLines?: SawWorkLineDto[];
   /** Station 7 — הרכבה באתר */
@@ -99,6 +109,8 @@ export interface ProjectDocumentDto {
   title: string;
   reference: string | null;
   pdfUrl: string;
+  /** ISO — תאריך העלאה / יצירת הרשומה */
+  createdAt: string;
 }
 
 export interface AdminProjectRow {
@@ -156,6 +168,11 @@ export interface PlanningDraftListItemDto {
   updatedAt: string;
 }
 
+export type PlanningWizardPanelMode =
+  | 'default'
+  | 'uploadPreview'
+  | 'summaryApprove';
+
 export interface Bottleneck {
   stationId: number;
   name: string;
@@ -206,6 +223,16 @@ export type SkyflowRole =
   | 'PLANNING'
   | 'STATION_MANAGER'
   | 'SITE_MANAGER';
+
+/** משתמש לבחירת שיבוץ בעמוד תפ״י (עובד / מנהל מסורים) */
+export interface PlanningAssigneeOptionDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: SkyflowRole;
+  managedStationId: number | null;
+  photoUrl: string | null;
+}
 
 export interface UserDto {
   id: string;

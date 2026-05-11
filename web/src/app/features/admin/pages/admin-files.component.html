@@ -6,34 +6,297 @@
     <p class="admin-page__sub">{{ 'ADMIN_FILES_PAGE.SUB' | translate }}</p>
   </header>
 
+  <section class="admin-files-upload" aria-labelledby="admin-files-upload-title">
+    <h2 id="admin-files-upload-title" class="admin-files-upload__title">
+      {{ 'ADMIN_FILES_PAGE.UPLOAD_TITLE' | translate }}
+    </h2>
+    <p class="admin-files-upload__hint">{{ 'ADMIN_FILES_PAGE.UPLOAD_HINT' | translate }}</p>
+
+    <fieldset class="admin-files-upload__modes">
+      <legend class="sr-only">{{ 'ADMIN_FILES_PAGE.UPLOAD_MODE_LEGEND' | translate }}</legend>
+      <label class="admin-files-upload__mode">
+        <input
+          type="radio"
+          name="filesUploadMode"
+          value="existing"
+          [checked]="uploadMode() === 'existing'"
+          (change)="setUploadMode('existing')"
+        />
+        <span>{{ 'ADMIN_FILES_PAGE.MODE_EXISTING' | translate }}</span>
+      </label>
+      <label class="admin-files-upload__mode">
+        <input
+          type="radio"
+          name="filesUploadMode"
+          value="new"
+          [checked]="uploadMode() === 'new'"
+          (change)="setUploadMode('new')"
+        />
+        <span>{{ 'ADMIN_FILES_PAGE.MODE_NEW' | translate }}</span>
+      </label>
+    </fieldset>
+
+    <div class="admin-files-upload__grid">
+      @if (uploadMode() === 'existing') {
+        <label class="admin-files-upload__field">
+          <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.SELECT_PROJECT' | translate }}</span>
+          <select
+            class="admin-files-upload__select"
+            [value]="selectedProjectId()"
+            (change)="onProjectSelect($any($event.target).value)"
+            [disabled]="!d.projects.length"
+          >
+            @for (p of d.projects; track p.id) {
+              <option [value]="p.id">{{ p.name }}</option>
+            }
+          </select>
+        </label>
+      } @else {
+        <label class="admin-files-upload__field">
+          <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.NEW_PROJECT_NAME' | translate }}</span>
+          <input
+            type="text"
+            class="admin-files-upload__input"
+            [value]="newProjectName()"
+            (input)="newProjectName.set($any($event.target).value)"
+            [placeholder]="'ADMIN_FILES_PAGE.NEW_PROJECT_PLACEHOLDER' | translate"
+            maxlength="200"
+            autocomplete="off"
+          />
+        </label>
+      }
+
+      <label class="admin-files-upload__field">
+        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.DOC_KIND' | translate }}</span>
+        <select
+          class="admin-files-upload__select"
+          [value]="docKind()"
+          (change)="onDocKindSelect($any($event.target).value)"
+        >
+          <option value="WORK_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_WORK_ORDER' | translate }}</option>
+          <option value="PURCHASE_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER' | translate }}</option>
+        </select>
+      </label>
+
+      <label class="admin-files-upload__field">
+        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.DOC_TITLE_OPTIONAL' | translate }}</span>
+        <input
+          type="text"
+          class="admin-files-upload__input"
+          [value]="uploadTitle()"
+          (input)="uploadTitle.set($any($event.target).value)"
+          maxlength="500"
+          autocomplete="off"
+        />
+      </label>
+
+      <label class="admin-files-upload__field">
+        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.REF_OPTIONAL' | translate }}</span>
+        <input
+          type="text"
+          class="admin-files-upload__input"
+          [value]="uploadReference()"
+          (input)="uploadReference.set($any($event.target).value)"
+          maxlength="120"
+          autocomplete="off"
+        />
+      </label>
+
+      <div class="admin-files-upload__field admin-files-upload__field--file">
+        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.CHOOSE_FILE' | translate }}</span>
+        <div class="admin-files-upload__file-row">
+          <input
+            #docFile
+            type="file"
+            class="admin-files-upload__file"
+            accept=".pdf,application/pdf"
+          />
+        </div>
+      </div>
+    </div>
+
+    @if (uploadError(); as errKey) {
+      <p class="admin-files-upload__msg admin-files-upload__msg--err" role="alert">
+        {{ errKey | translate }}
+      </p>
+    }
+    @if (uploadOk()) {
+      <p class="admin-files-upload__msg admin-files-upload__msg--ok">
+        {{ 'ADMIN_FILES_PAGE.UPLOAD_OK' | translate }}
+      </p>
+    }
+
+    <div class="admin-files-upload__actions">
+      <button
+        type="button"
+        class="admin-files-upload__btn sf-ui-btn sf-ui-btn--primary"
+        [disabled]="uploading()"
+        (click)="submitUpload()"
+      >
+        @if (uploading()) {
+          {{ 'ADMIN_FILES_PAGE.UPLOADING' | translate }}
+        } @else {
+          {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
+        }
+      </button>
+    </div>
+  </section>
+
   <div class="admin-files-stack">
     @for (p of d.projects; track p.id) {
-      <section class="admin-files-project sf-panel">
-        <h2 class="admin-files-project__title">{{ p.name }}</h2>
-        <div class="admin-files-grid">
-          <div>
-            <h3>{{ 'ADMIN_PAGE.WORK_ORDERS_COL' | translate }}</h3>
-            <ul>
-              @for (doc of p.workOrders; track doc.id) {
-                <li>
-                  <a [href]="doc.pdfUrl" target="_blank" rel="noopener noreferrer">{{
-                    doc.title
-                  }}</a>
-                </li>
-              }
-            </ul>
+      <section class="admin-files-project" [attr.aria-label]="p.name">
+        <header class="admin-files-project__head">
+          <span class="admin-files-project__folder-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path
+                stroke-linejoin="round"
+                d="M3 7.5h5.2L10.4 10H21a1 1 0 011 1v8.5a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z"
+              />
+              <path stroke-linejoin="round" d="M3 7.5V6a1 1 0 011-1h4.2L9.4 7.5" />
+            </svg>
+          </span>
+          <div class="admin-files-project__head-text">
+            <h2 class="admin-files-project__title">{{ p.name }}</h2>
+            <p class="admin-files-project__summary">
+              {{
+                'ADMIN_FILES_PAGE.PROJECT_SUMMARY'
+                  | translate: { wo: p.workOrders.length, po: p.purchaseOrders.length }
+              }}
+            </p>
           </div>
-          <div>
-            <h3>{{ 'ADMIN_PAGE.PURCHASE_ORDERS_COL' | translate }}</h3>
-            <ul>
-              @for (doc of p.purchaseOrders; track doc.id) {
-                <li>
-                  <a [href]="doc.pdfUrl" target="_blank" rel="noopener noreferrer">{{
-                    doc.title
-                  }}</a>
-                </li>
-              }
-            </ul>
+        </header>
+
+        <div class="admin-files-project__lanes">
+          <div class="admin-files-lane">
+            <h3 class="admin-files-lane__label">{{ 'ADMIN_PAGE.WORK_ORDERS_COL' | translate }}</h3>
+            @if (!p.workOrders.length) {
+              <p class="admin-files-lane__empty">{{ 'ADMIN_FILES_PAGE.EMPTY_DOCS' | translate }}</p>
+            } @else {
+              <ul class="admin-files-lane__grid">
+                @for (doc of p.workOrders; track doc.id) {
+                  <li class="admin-files-lane__cell">
+                    <a
+                      class="admin-file-card"
+                      [href]="doc.pdfUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      [attr.title]="'ADMIN_FILES_PAGE.OPEN_NEW_TAB' | translate"
+                    >
+                      <span class="admin-file-card__thumb" aria-hidden="true">
+                        <svg class="admin-file-card__pdf-svg" viewBox="0 0 40 48" fill="none">
+                          <path
+                            fill="var(--admin-file-paper, #f1f5f9)"
+                            stroke="var(--admin-border)"
+                            stroke-width="1"
+                            d="M6 4.5h18l8 8.5V43a2 2 0 01-2 2H6a2 2 0 01-2-2V6.5a2 2 0 012-2z"
+                          />
+                          <path fill="var(--admin-file-paper-fold, #e2e8f0)" d="M24 4.5v8h8" />
+                          <path
+                            fill="#dc2626"
+                            d="M8 28h24v3H8zm0-5.5h18v3H8zm0-5.5h14v3H8z"
+                            opacity="0.92"
+                          />
+                        </svg>
+                      </span>
+                      <span class="admin-file-card__body">
+                        <time
+                          class="admin-file-card__date"
+                          [attr.datetime]="doc.createdAt"
+                          [attr.title]="
+                            doc.createdAt | date: 'full' : undefined : dateLocale()
+                          "
+                        >
+                          {{
+                            doc.createdAt
+                              | date: 'dd/MM/yyyy · HH:mm' : undefined : dateLocale()
+                          }}
+                        </time>
+                        <span class="admin-file-card__title">{{ doc.title }}</span>
+                        @if (doc.reference) {
+                          <span class="admin-file-card__ref" dir="ltr">{{ doc.reference }}</span>
+                        }
+                      </span>
+                      <span class="admin-file-card__badge">{{ 'ADMIN_FILES_PAGE.FILE_BADGE_PDF' | translate }}</span>
+                      <span class="admin-file-card__open" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M11 5h7v7M17 4L6 15M4 16v-4h4"
+                          />
+                        </svg>
+                      </span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+
+          <div class="admin-files-lane">
+            <h3 class="admin-files-lane__label">{{ 'ADMIN_PAGE.PURCHASE_ORDERS_COL' | translate }}</h3>
+            @if (!p.purchaseOrders.length) {
+              <p class="admin-files-lane__empty">{{ 'ADMIN_FILES_PAGE.EMPTY_DOCS' | translate }}</p>
+            } @else {
+              <ul class="admin-files-lane__grid">
+                @for (doc of p.purchaseOrders; track doc.id) {
+                  <li class="admin-files-lane__cell">
+                    <a
+                      class="admin-file-card"
+                      [href]="doc.pdfUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      [attr.title]="'ADMIN_FILES_PAGE.OPEN_NEW_TAB' | translate"
+                    >
+                      <span class="admin-file-card__thumb" aria-hidden="true">
+                        <svg class="admin-file-card__pdf-svg" viewBox="0 0 40 48" fill="none">
+                          <path
+                            fill="var(--admin-file-paper, #f1f5f9)"
+                            stroke="var(--admin-border)"
+                            stroke-width="1"
+                            d="M6 4.5h18l8 8.5V43a2 2 0 01-2 2H6a2 2 0 01-2-2V6.5a2 2 0 012-2z"
+                          />
+                          <path fill="var(--admin-file-paper-fold, #e2e8f0)" d="M24 4.5v8h8" />
+                          <path
+                            fill="#dc2626"
+                            d="M8 28h24v3H8zm0-5.5h18v3H8zm0-5.5h14v3H8z"
+                            opacity="0.92"
+                          />
+                        </svg>
+                      </span>
+                      <span class="admin-file-card__body">
+                        <time
+                          class="admin-file-card__date"
+                          [attr.datetime]="doc.createdAt"
+                          [attr.title]="
+                            doc.createdAt | date: 'full' : undefined : dateLocale()
+                          "
+                        >
+                          {{
+                            doc.createdAt
+                              | date: 'dd/MM/yyyy · HH:mm' : undefined : dateLocale()
+                          }}
+                        </time>
+                        <span class="admin-file-card__title">{{ doc.title }}</span>
+                        @if (doc.reference) {
+                          <span class="admin-file-card__ref" dir="ltr">{{ doc.reference }}</span>
+                        }
+                      </span>
+                      <span class="admin-file-card__badge">{{ 'ADMIN_FILES_PAGE.FILE_BADGE_PDF' | translate }}</span>
+                      <span class="admin-file-card__open" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M11 5h7v7M17 4L6 15M4 16v-4h4"
+                          />
+                        </svg>
+                      </span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
           </div>
         </div>
       </section>

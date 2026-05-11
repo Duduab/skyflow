@@ -1,13 +1,17 @@
 import { Routes } from '@angular/router';
 
+import { authGuard } from './core/auth.guard';
+import { guestOnlyGuard } from './core/guest-only.guard';
 import { adminGuard } from './core/admin.guard';
 import { adminOnlyGuard } from './core/admin-only.guard';
+import { adminOrPlanningGuard } from './core/admin-or-planning.guard';
 import { workerGuard } from './core/worker.guard';
 import { stationSequenceGuard } from './features/worker/station-sequence.guard';
 
 export const routes: Routes = [
   {
     path: '',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/home/home-page.component').then(
         (m) => m.HomePageComponent,
@@ -15,6 +19,7 @@ export const routes: Routes = [
   },
   {
     path: 'login',
+    canActivate: [guestOnlyGuard],
     loadComponent: () =>
       import('./features/auth/login-page.component').then(
         (m) => m.LoginPageComponent,
@@ -53,7 +58,7 @@ export const routes: Routes = [
       },
       {
         path: 'projects',
-        canActivate: [adminOnlyGuard],
+        canActivate: [adminOrPlanningGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-projects.component').then(
             (m) => m.AdminProjectsComponent,
@@ -61,7 +66,7 @@ export const routes: Routes = [
       },
       {
         path: 'projects/:projectId/live',
-        canActivate: [adminOnlyGuard],
+        canActivate: [adminOrPlanningGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-project-live.component').then(
             (m) => m.AdminProjectLiveComponent,
@@ -69,7 +74,7 @@ export const routes: Routes = [
       },
       {
         path: 'projects/:projectId/stations',
-        canActivate: [adminOnlyGuard],
+        canActivate: [adminOrPlanningGuard],
         loadComponent: () =>
           import('./features/admin/pages/admin-project-stations.component').then(
             (m) => m.AdminProjectStationsComponent,
@@ -118,6 +123,7 @@ export const routes: Routes = [
   },
   {
     path: 'profile',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/profile/profile-page.component').then(
         (m) => m.ProfilePageComponent,

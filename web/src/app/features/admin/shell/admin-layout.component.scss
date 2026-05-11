@@ -370,7 +370,17 @@
 }
 
 .admin-shell__link--planning-new .admin-shell__ico {
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--sf-blue, #558fc3) 42%, transparent);
   background: transparent;
   padding: 0;
+  box-shadow: none;
+  color: inherit;
+}
+
+.admin-shell__link--planning-new:hover .admin-shell__ico {
+  border-color: color-mix(in srgb, var(--sf-blue, #558fc3) 55%, transparent);
+}
+
+.admin-shell__link--planning-new.is-active .admin-shell__ico {
+  border-color: color-mix(in srgb, var(--sf-blue, #558fc3) 65%, transparent);
 }

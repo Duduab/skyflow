@@ -7,11 +7,32 @@ import {
   OrderStatus,
   Prisma,
   ProductComponentKind,
+  ProjectDocumentKind,
   ProjectFlowStatus,
+  SkyflowRole,
 } from '@prisma/client';
+import { mkdirSync } from 'fs';
+import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanningUploadService } from '../planning/planning-upload.service';
 import { isProjectProductionComplete } from '../common/project-station-completion.util';
+import type { ApprovePlanningDto } from './dto/approve-planning.dto.js';
+import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto.js';
+
+/** PDFs attached to projects — served as static files from the web app. */
+export function ensureProjectDocsUploadDir(): string {
+  const dir = join(
+    process.cwd(),
+    '..',
+    'web',
+    'public',
+    'assets',
+    'project-docs',
+    'uploads',
+  );
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
 @Injectable()
 export class ProjectsService {
@@ -54,7 +75,29 @@ export class ProjectsService {
     return this.planningUpload.buildPreview(projectId);
   }
 
-  async approvePlanning(projectId: string) {
+  async approvePlanning(projectId: string, dto?: ApprovePlanningDto) {
+    const assigneeId =
+      dto?.assigneeUserId && String(dto.assigneeUserId).trim().length
+        ? String(dto.assigneeUserId).trim()
+        : null;
+
+    if (assigneeId) {
+      const u = await this.prisma.user.findUnique({
+        where: { id: assigneeId },
+        select: { id: true, role: true, managedStationId: true },
+      });
+      if (!u) throw new BadRequestException('Assignee user not found');
+      const allowed =
+        u.role === SkyflowRole.WORKER ||
+        (u.role === SkyflowRole.STATION_MANAGER &&
+          u.managedStationId === 1);
+      if (!allowed) {
+        throw new BadRequestException(
+          'Assignee must be a worker or station-1 (saws) manager',
+        );
+      }
+    }
+
     const order = await this.prisma.projectOrder.findUnique({
       where: { id: projectId },
       include: {
@@ -98,6 +141,7 @@ export class ProjectsService {
         data: {
           flowStatus: ProjectFlowStatus.IN_PRODUCTION,
           status: OrderStatus.IN_PROGRESS,
+          planningAssigneeUserId: assigneeId,
         },
       });
     });
@@ -178,5 +222,63 @@ export class ProjectsService {
       qty,
       latest7?.extraPayload ?? null,
     );
+  }
+
+  async uploadProjectDocument(
+    projectId: string,
+    file: Express.Multer.File,
+    dto: UploadProjectDocumentDto,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: { id: true },
+    });
+    if (!project) {
+      throw new NotFoundException(`Project ${projectId} not found`);
+    }
+
+    const titleBase =
+      (dto.title && dto.title.trim()) ||
+      file.originalname.replace(/\.pdf$/i, '').trim() ||
+      'PDF';
+    const title = titleBase.slice(0, 500);
+    const reference =
+      dto.reference && dto.reference.trim()
+        ? dto.reference.trim().slice(0, 120)
+        : null;
+
+    const agg = await this.prisma.projectDocument.aggregate({
+      where: { projectId, kind: dto.kind },
+      _max: { sortOrder: true },
+    });
+    const sortOrder = (agg._max.sortOrder ?? -1) + 1;
+    const pdfPath = `/assets/project-docs/uploads/${file.filename}`;
+
+    const doc = await this.prisma.projectDocument.create({
+      data: {
+        projectId,
+        kind: dto.kind,
+        title,
+        reference,
+        pdfPath,
+        sortOrder,
+      },
+    });
+
+    return {
+      ok: true as const,
+      document: {
+        id: doc.id,
+        kind: doc.kind,
+        title: doc.title,
+        reference: doc.reference,
+        pdfUrl: pdfPath,
+        createdAt: doc.createdAt.toISOString(),
+      },
+    };
   }
 }

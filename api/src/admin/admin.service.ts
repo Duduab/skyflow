@@ -120,7 +120,7 @@ export class AdminService {
       }),
       this.prisma.projectOrder.findMany({
         orderBy: { updatedAt: 'desc' },
-        take: 50,
+        take: 200,
         include: {
           documents: { orderBy: { sortOrder: 'asc' } },
         },
@@ -261,6 +261,7 @@ export class AdminService {
             title: d.title,
             reference: d.reference,
             pdfUrl: d.pdfPath,
+            createdAt: d.createdAt.toISOString(),
           }));
         const purchaseOrders = o.documents
           .filter((d) => d.kind === 'PURCHASE_ORDER')
@@ -270,6 +271,7 @@ export class AdminService {
             title: d.title,
             reference: d.reference,
             pdfUrl: d.pdfPath,
+            createdAt: d.createdAt.toISOString(),
           }));
         const qtyMap = qtyByProjectStation.get(o.id);
         const qtyAt = (sid: number) => qtyMap?.get(sid) ?? 0;

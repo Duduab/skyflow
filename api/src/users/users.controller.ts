@@ -37,6 +37,12 @@ export class UsersController {
     return this.users.stationManagers();
   }
 
+  @Get('planning-assignees')
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  planningAssignees() {
+    return this.users.planningAssignees();
+  }
+
   @Post()
   create(@Body() dto: CreateUserDto) {
     return this.users.create(dto);

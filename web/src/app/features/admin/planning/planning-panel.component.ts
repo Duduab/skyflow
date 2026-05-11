@@ -1,3 +1,4 @@
+import { NgClass } from '@angular/common';
 import {
   Component,
   effect,
@@ -11,13 +12,22 @@ import { finalize, take } from 'rxjs/operators';
 import { ApiService } from '../../../core/api.service';
 import {
   PlanningParsePreviewDto,
+  PlanningWizardPanelMode,
   ProjectFlowStatus,
 } from '../../../core/skyflow.models';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
+function httpErrorMessage(err: unknown, fallback: string): string {
+  const body = (err as { error?: { message?: string | string[] } })?.error;
+  const m = body?.message;
+  if (Array.isArray(m) && m.length) return String(m[0]);
+  if (typeof m === 'string' && m.length) return m;
+  return fallback;
+}
+
 @Component({
   selector: 'skyflow-planning-panel',
-  imports: [TranslateModule],
+  imports: [TranslateModule, NgClass],
   templateUrl: './planning-panel.component.html',
   styleUrl: './planning-panel.component.scss',
 })
@@ -33,9 +43,16 @@ export class PlanningPanelComponent {
   readonly flowStatus = input<ProjectFlowStatus | null>(null);
   /** לכותרת דוח PDF */
   readonly projectName = input<string | null>(null);
+  /** מצב אשף: ברירת מחדל = מסך מלא; uploadPreview = שלב העלאה; summaryApprove = שלב אישור */
+  readonly wizardMode = input<PlanningWizardPanelMode>('default');
+  /** כותרת ותת־כותרת של הפאנל */
+  readonly panelHeader = input(true);
+  /** משתמש משויך בעת אישור (שלב 3) */
+  readonly assigneeUserId = input<string | null>(null);
 
   readonly planningChanged = output<void>();
   readonly projectCreated = output<string>();
+  readonly wizardContinue = output<void>();
 
   readonly newProjectName = signal('');
   readonly creating = signal(false);
@@ -54,11 +71,23 @@ export class PlanningPanelComponent {
         return;
       }
       const sub = this.api.getPlanningPreview(id).subscribe({
-        next: (p) =>
-          this.preview.set(
-            p.itemCount ? this.normalizePreview(p) : null,
-          ),
-        error: () => this.preview.set(null),
+        next: (p) => {
+          if (this.projectId() !== id) return;
+          const cur = this.preview();
+          const empty = !p?.itemCount;
+          if (
+            empty &&
+            cur &&
+            cur.projectId === id &&
+            (cur.itemCount ?? 0) > 0
+          ) {
+            return;
+          }
+          this.preview.set(empty ? null : this.normalizePreview(p));
+        },
+        error: () => {
+          if (this.projectId() === id) this.preview.set(null);
+        },
       });
       onCleanup(() => sub.unsubscribe());
     });
@@ -83,7 +112,7 @@ export class PlanningPanelComponent {
           this.newProjectName.set('');
           this.projectCreated.emit(o.id);
         },
-        error: () => this.error.set('Could not create project'),
+        error: (err) => this.error.set(httpErrorMessage(err, 'Could not create project')),
       });
   }
 
@@ -116,11 +145,7 @@ export class PlanningPanelComponent {
       },
       error: (err) => {
         this.uploading.set(false);
-        const msg =
-          err?.error?.message?.[0] ??
-          err?.error?.message ??
-          'Upload or parse failed';
-        this.error.set(typeof msg === 'string' ? msg : 'Upload failed');
+        this.error.set(httpErrorMessage(err, 'Upload or parse failed'));
       },
     });
   }
@@ -189,13 +214,19 @@ ${body || `<p>${t('PLANNING.PDF_NO_SHEETS')}</p>`}
     }, 250);
   }
 
+  onWizardContinue(): void {
+    this.wizardContinue.emit();
+  }
+
   approve(): void {
     const id = this.projectId();
     if (!id) return;
     this.approving.set(true);
     this.error.set(null);
     this.api
-      .postApprovePlanning(id)
+      .postApprovePlanning(id, {
+        assigneeUserId: this.assigneeUserId() ?? null,
+      })
       .pipe(
         take(1),
         finalize(() => this.approving.set(false)),
@@ -205,11 +236,7 @@ ${body || `<p>${t('PLANNING.PDF_NO_SHEETS')}</p>`}
           this.planningChanged.emit();
         },
         error: (err) => {
-          const msg =
-            err?.error?.message?.[0] ??
-            err?.error?.message ??
-            'Approval failed';
-          this.error.set(typeof msg === 'string' ? msg : 'Approval failed');
+          this.error.set(httpErrorMessage(err, 'Approval failed'));
         },
       });
   }

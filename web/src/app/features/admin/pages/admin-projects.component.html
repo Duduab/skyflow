@@ -29,8 +29,10 @@
               (change)="setStatusFilter($any($event.target).value)"
             >
               <option value="all">{{ 'ADMIN_PROJECTS.FILTER_ALL' | translate }}</option>
+              <option value="PENDING">{{ 'ORDER_STATUS.PENDING' | translate }}</option>
               <option value="IN_PROGRESS">{{ 'ORDER_STATUS.IN_PROGRESS' | translate }}</option>
               <option value="COMPLETED">{{ 'ORDER_STATUS.COMPLETED' | translate }}</option>
+              <option value="ON_HOLD">{{ 'ORDER_STATUS.ON_HOLD' | translate }}</option>
             </select>
           </label>
         </div>

@@ -51,6 +51,30 @@ export class UsersService {
     return byStation;
   }
 
+  /** Workers + station-1 managers for תפ״י assignment step */
+  async planningAssignees() {
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { role: SkyflowRole.WORKER },
+          {
+            role: SkyflowRole.STATION_MANAGER,
+            managedStationId: 1,
+          },
+        ],
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        managedStationId: true,
+        photoUrl: true,
+      },
+    });
+  }
+
   async create(dto: CreateUserDto) {
     const hash = await bcrypt.hash(dto.password, 10);
     const stationBound =
