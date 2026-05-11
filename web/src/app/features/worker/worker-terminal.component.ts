@@ -17,7 +17,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -46,7 +46,6 @@ function allCheckedValidator(): ValidatorFn {
   selector: 'skyflow-worker-terminal',
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     TranslateModule,
     DecimalPipe,
     UiButtonComponent,
