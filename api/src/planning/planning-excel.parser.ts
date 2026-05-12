@@ -16,6 +16,9 @@ export interface ParsedProductItem {
   instructionKind: string;
   label: string;
   components: ParsedProductComponent[];
+  /** שורות בגליון (0-based) לבלוק הזה — לשיוך תמונות מה־xlsx */
+  planningBlockStartRow0?: number;
+  planningBlockEndRow0?: number;
 }
 
 export interface PlanningParseResult {
@@ -359,12 +362,30 @@ function parseSheet(matrix: string[][], sheetName: string): ParsedProductItem[] 
 
   const items: ParsedProductItem[] = [];
   let block: string[][] = [];
+  let blockRowIndices: number[] = [];
   let emptyStreak = 0;
 
   const flush = () => {
-    const it = parseBlockToItem(block, headerRow, sheetName, productType, instructionKind);
-    if (it && it.components.length) items.push(it);
+    if (!block.length) {
+      blockRowIndices = [];
+      return;
+    }
+    const rowStart = blockRowIndices[0]!;
+    const rowEnd = blockRowIndices[blockRowIndices.length - 1]!;
+    const it = parseBlockToItem(
+      block,
+      headerRow,
+      sheetName,
+      productType,
+      instructionKind,
+    );
+    if (it && it.components.length) {
+      it.planningBlockStartRow0 = rowStart;
+      it.planningBlockEndRow0 = rowEnd;
+      items.push(it);
+    }
     block = [];
+    blockRowIndices = [];
   };
 
   for (let r = headerIdx + 1; r < matrix.length; r++) {
@@ -388,11 +409,13 @@ function parseSheet(matrix: string[][], sheetName: string): ParsedProductItem[] 
     if (isPrimaryUnitRow(row, nameCol, qtyCol)) {
       flush();
       block.push(row);
+      blockRowIndices.push(r);
       continue;
     }
 
     if (block.length && rowHasMeasurableValues(row, nameCol, qtyCol, consistsCol)) {
       block.push(row);
+      blockRowIndices.push(r);
       continue;
     }
 

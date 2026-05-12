@@ -12,6 +12,7 @@ import { finalize, take } from 'rxjs/operators';
 import { ApiService } from '../../../core/api.service';
 import {
   PlanningParsePreviewDto,
+  PlanningPreviewSheetTabDto,
   PlanningWizardPanelMode,
   ProjectFlowStatus,
 } from '../../../core/skyflow.models';
@@ -23,6 +24,18 @@ function httpErrorMessage(err: unknown, fallback: string): string {
   if (Array.isArray(m) && m.length) return String(m[0]);
   if (typeof m === 'string' && m.length) return m;
   return fallback;
+}
+
+function previewHasUsefulContent(
+  p: PlanningParsePreviewDto | null | undefined,
+): boolean {
+  if (!p) return false;
+  if ((p.itemCount ?? 0) > 0) return true;
+  return (p.sheets ?? []).some(
+    (s) =>
+      (s.images?.length ?? 0) > 0 ||
+      (s.rows ?? []).some((r) => (r.images?.length ?? 0) > 0),
+  );
 }
 
 @Component({
@@ -39,6 +52,15 @@ export class PlanningPanelComponent {
     return { ...p, sheets: p.sheets ?? [] };
   }
 
+  /** סה״כ תמונות בגליון (משויכות לשורות + יתומות) */
+  sheetImageTotal(tab: PlanningPreviewSheetTabDto): number {
+    const onRows = (tab.rows ?? []).reduce(
+      (a, r) => a + (r.images?.length ?? 0),
+      0,
+    );
+    return onRows + (tab.images?.length ?? 0);
+  }
+
   readonly projectId = input<string | null>(null);
   readonly flowStatus = input<ProjectFlowStatus | null>(null);
   /** לכותרת דוח PDF */
@@ -47,8 +69,8 @@ export class PlanningPanelComponent {
   readonly wizardMode = input<PlanningWizardPanelMode>('default');
   /** כותרת ותת־כותרת של הפאנל */
   readonly panelHeader = input(true);
-  /** משתמש משויך בעת אישור (שלב 3) */
-  readonly assigneeUserId = input<string | null>(null);
+  readonly planningSawsManagerUserId = input<string | null>(null);
+  readonly sawsWorkerUserIds = input<readonly string[]>([]);
 
   readonly planningChanged = output<void>();
   readonly projectCreated = output<string>();
@@ -74,12 +96,12 @@ export class PlanningPanelComponent {
         next: (p) => {
           if (this.projectId() !== id) return;
           const cur = this.preview();
-          const empty = !p?.itemCount;
+          const empty = !previewHasUsefulContent(p);
           if (
             empty &&
             cur &&
             cur.projectId === id &&
-            (cur.itemCount ?? 0) > 0
+            previewHasUsefulContent(cur)
           ) {
             return;
           }
@@ -152,7 +174,7 @@ export class PlanningPanelComponent {
 
   exportPdf(): void {
     const pv = this.preview();
-    if (!pv?.itemCount) return;
+    if (!pv || !previewHasUsefulContent(pv)) return;
     const name = this.projectName()?.trim() || pv.projectId;
     const esc = (s: string) =>
       s
@@ -173,7 +195,36 @@ export class PlanningPanelComponent {
         const lines = row.componentLines
           .map((line) => `<li>${esc(line)}</li>`)
           .join('');
-        body += `<article class="row"><h3>${esc(row.displayLabel)}</h3><p><strong>${t('PLANNING.COL_INSTRUCTION')}</strong> ${esc(row.instructionKind)} · <strong>${t('PLANNING.COL_PRODUCT')}</strong> ${pt} · <strong>${t('PLANNING.COL_COMP_TOTAL')}</strong> ${row.componentCount}</p><ul>${lines}</ul></article>`;
+        body += `<article class="row"><h3>${esc(row.displayLabel)}</h3><p><strong>${t('PLANNING.COL_INSTRUCTION')}</strong> ${esc(row.instructionKind)} · <strong>${t('PLANNING.COL_PRODUCT')}</strong> ${pt} · <strong>${t('PLANNING.COL_COMP_TOTAL')}</strong> ${row.componentCount}</p><ul>${lines}</ul>`;
+        if (row.images?.length) {
+          body += `<div class="imgs imgs--nested"><p class="img-head">${t('PLANNING.IMAGES_FOR_ROW')}</p>`;
+          for (const im of row.images) {
+            const loc = this.translate.instant('PLANNING.IMAGE_ANCHOR', {
+              row: im.anchorRow + 1,
+              col: this.excelColLetter(im.anchorCol),
+            });
+            const cap = im.pictureName
+              ? `${esc(im.pictureName)} — ${esc(loc)}`
+              : esc(loc);
+            body += `<figure class="imgfig"><img src="${esc(im.url)}" alt=""/><figcaption>${cap}</figcaption></figure>`;
+          }
+          body += `</div>`;
+        }
+        body += `</article>`;
+      }
+      if (tab.images?.length) {
+        body += `<div class="imgs"><p class="img-head">${t('PLANNING.IMAGES_ORPHAN_TITLE')}</p><p class="img-hint">${t('PLANNING.IMAGES_ORPHAN_HINT')}</p>`;
+        for (const im of tab.images) {
+          const loc = this.translate.instant('PLANNING.IMAGE_ANCHOR', {
+            row: im.anchorRow + 1,
+            col: this.excelColLetter(im.anchorCol),
+          });
+          const cap = im.pictureName
+            ? `${esc(im.pictureName)} — ${esc(loc)}`
+            : esc(loc);
+          body += `<figure class="imgfig"><img src="${esc(im.url)}" alt=""/><figcaption>${cap}</figcaption></figure>`;
+        }
+        body += `</div>`;
       }
       body += `</section>`;
     }
@@ -191,6 +242,12 @@ h1{font-size:1.35rem;margin:0 0 .5rem}
 .row{border:1px solid #ddd;border-radius:10px;padding:.75rem;margin:.5rem 0;background:#fafafa}
 .row h3{margin:0 0 .4rem;font-size:1rem}
 .row ul{margin:.4rem 0 0;padding-right:1.1rem;font-size:.78rem;font-family:ui-monospace,monospace}
+.imgs--nested{margin-top:.5rem;padding-top:.5rem;border-top:1px dashed #ccc}
+.img-head{font-size:.95rem;font-weight:700;margin:0 0 .25rem}
+.img-hint{font-size:.8rem;color:#555;margin:0 0 .6rem}
+.imgfig{margin:.5rem 0;border:1px solid #ddd;border-radius:10px;padding:.5rem;background:#fff}
+.imgfig img{max-width:100%;height:auto;max-height:220px;display:block;margin:0 auto;object-fit:contain}
+.imgfig figcaption{margin-top:.4rem;font-size:.75rem;color:#444}
 @media print{body{padding:.5rem}.kpi{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <h1>${t('PLANNING.PDF_HEADING')}</h1>
@@ -218,6 +275,18 @@ ${body || `<p>${t('PLANNING.PDF_NO_SHEETS')}</p>`}
     this.wizardContinue.emit();
   }
 
+  /** תווית עמודה בגליון Excel (A…Z, AA…) — `col0` הוא 0-based כמו ב־API */
+  excelColLetter(col0: number): string {
+    let n = col0 + 1;
+    let s = '';
+    while (n > 0) {
+      const r = (n - 1) % 26;
+      s = String.fromCharCode(65 + r) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s || 'A';
+  }
+
   approve(): void {
     const id = this.projectId();
     if (!id) return;
@@ -225,7 +294,9 @@ ${body || `<p>${t('PLANNING.PDF_NO_SHEETS')}</p>`}
     this.error.set(null);
     this.api
       .postApprovePlanning(id, {
-        assigneeUserId: this.assigneeUserId() ?? null,
+        planningSawsManagerUserId:
+          this.planningSawsManagerUserId() ?? null,
+        sawsWorkerUserIds: [...this.sawsWorkerUserIds()],
       })
       .pipe(
         take(1),

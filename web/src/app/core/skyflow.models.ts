@@ -13,8 +13,10 @@ export interface ProjectOrder {
   status: OrderStatus;
   flowStatus: ProjectFlowStatus;
   originalLength: string | number;
-  /** משווה מתכנון (עמדת מסורים) — אופציונלי */
+  /** משווה מתכנון (עמדת מסורים) — תאימות לאחור */
   planningAssigneeUserId?: string | null;
+  /** מנהל מסורים משובץ מתכנון (עמדה 1) */
+  planningSawsManagerUserId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -74,6 +76,8 @@ export interface WorkerContext {
   stationManagerDisplay?: WorkerStationManagerDisplayDto | null;
   /** Station 1 — קווי עבודה למסורים אחרי אישור תכנון */
   sawWorkLines?: SawWorkLineDto[];
+  /** Station 1 — עובדי מסורים משובצים מתכנון (מרובים) */
+  planningSawsTeam?: WorkerStationManagerDisplayDto[];
   /** Station 7 — הרכבה באתר */
   siteAssembly?: SiteAssemblyContext | null;
 }
@@ -129,6 +133,16 @@ export interface AdminProjectRow {
 
 export type ProductType = 'UNIT' | 'WINDOW';
 
+/** תמונה מוטמעת בקובץ Excel (ייצוא מ־xlsx) */
+export interface PlanningPreviewImageDto {
+  /** כתובת יחסית לשרת (דרך proxy: `/api/planning-imports/{projectId}/…`) */
+  url: string;
+  /** שורה בגליון (0-based כמו OOXML); להצגה למשתמש משתמשים ב־+1 */
+  anchorRow: number;
+  anchorCol: number;
+  pictureName?: string;
+}
+
 /** שורה בתצוגת פירוט תכנון (יחידה / חלון) */
 export interface PlanningPreviewLineDto {
   /** תווית ללא קידומת שם הגליון */
@@ -138,6 +152,8 @@ export interface PlanningPreviewLineDto {
   componentCount: number;
   /** דגימת שורות רכיב לתצוגה */
   componentLines: string[];
+  /** תמונות מהגליון ששויכו ליחידה/שורה זו */
+  images?: PlanningPreviewImageDto[];
 }
 
 /** טאב גליון (TYPE 2, Window Instruction, …) */
@@ -147,6 +163,8 @@ export interface PlanningPreviewSheetTabDto {
   windowCount: number;
   itemCount: number;
   rows: PlanningPreviewLineDto[];
+  /** תמונות שלא שויכו לשורת יחידה (כותרת גליון וכו׳) */
+  images?: PlanningPreviewImageDto[];
 }
 
 /** סיכום קובץ תפ״י אחרי פרסור */

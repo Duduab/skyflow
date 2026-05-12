@@ -15,6 +15,7 @@ import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanningUploadService } from '../planning/planning-upload.service';
+import { clearPlanningImportDir } from '../planning/planning-workbook-media';
 import { isProjectProductionComplete } from '../common/project-station-completion.util';
 import type { ApprovePlanningDto } from './dto/approve-planning.dto.js';
 import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto.js';
@@ -76,25 +77,86 @@ export class ProjectsService {
   }
 
   async approvePlanning(projectId: string, dto?: ApprovePlanningDto) {
-    const assigneeId =
-      dto?.assigneeUserId && String(dto.assigneeUserId).trim().length
-        ? String(dto.assigneeUserId).trim()
-        : null;
+    const teamMode = dto != null && Array.isArray(dto.sawsWorkerUserIds);
 
-    if (assigneeId) {
-      const u = await this.prisma.user.findUnique({
-        where: { id: assigneeId },
-        select: { id: true, role: true, managedStationId: true },
-      });
-      if (!u) throw new BadRequestException('Assignee user not found');
-      const allowed =
-        u.role === SkyflowRole.WORKER ||
-        (u.role === SkyflowRole.STATION_MANAGER &&
-          u.managedStationId === 1);
-      if (!allowed) {
-        throw new BadRequestException(
-          'Assignee must be a worker or station-1 (saws) manager',
-        );
+    let planningSawsManagerUserId: string | null = null;
+    let workerIdsOrdered: string[] = [];
+    let planningAssigneeUserId: string | null = null;
+
+    if (teamMode) {
+      const raw = dto!.sawsWorkerUserIds ?? [];
+      workerIdsOrdered = [
+        ...new Set(
+          raw
+            .map((x) => String(x).trim())
+            .filter((x) => x.length > 0),
+        ),
+      ];
+      const mgrRaw = dto!.planningSawsManagerUserId;
+      planningSawsManagerUserId =
+        mgrRaw && String(mgrRaw).trim().length
+          ? String(mgrRaw).trim()
+          : null;
+
+      if (planningSawsManagerUserId) {
+        const mgr = await this.prisma.user.findUnique({
+          where: { id: planningSawsManagerUserId },
+          select: { id: true, role: true, managedStationId: true },
+        });
+        if (!mgr) {
+          throw new BadRequestException('Saws manager user not found');
+        }
+        if (
+          mgr.role !== SkyflowRole.STATION_MANAGER ||
+          mgr.managedStationId !== 1
+        ) {
+          throw new BadRequestException(
+            'Saws manager must be a station manager for station 1',
+          );
+        }
+      }
+
+      if (workerIdsOrdered.length) {
+        const workers = await this.prisma.user.findMany({
+          where: { id: { in: workerIdsOrdered } },
+          select: { id: true, role: true },
+        });
+        if (workers.length !== workerIdsOrdered.length) {
+          throw new BadRequestException('One or more worker users not found');
+        }
+        for (const w of workers) {
+          if (w.role !== SkyflowRole.WORKER) {
+            throw new BadRequestException(
+              'Saws workers must have the worker role',
+            );
+          }
+        }
+      }
+
+      planningAssigneeUserId = workerIdsOrdered[0] ?? null;
+    } else {
+      planningSawsManagerUserId = null;
+      workerIdsOrdered = [];
+      planningAssigneeUserId =
+        dto?.assigneeUserId && String(dto.assigneeUserId).trim().length
+          ? String(dto.assigneeUserId).trim()
+          : null;
+
+      if (planningAssigneeUserId) {
+        const u = await this.prisma.user.findUnique({
+          where: { id: planningAssigneeUserId },
+          select: { id: true, role: true, managedStationId: true },
+        });
+        if (!u) throw new BadRequestException('Assignee user not found');
+        const allowed =
+          u.role === SkyflowRole.WORKER ||
+          (u.role === SkyflowRole.STATION_MANAGER &&
+            u.managedStationId === 1);
+        if (!allowed) {
+          throw new BadRequestException(
+            'Assignee must be a worker or station-1 (saws) manager',
+          );
+        }
       }
     }
 
@@ -136,15 +198,29 @@ export class ProjectsService {
         }
       }
 
+      await tx.projectPlanningSawsWorker.deleteMany({ where: { projectId } });
+
+      if (teamMode && workerIdsOrdered.length) {
+        let sort = 0;
+        for (const userId of workerIdsOrdered) {
+          await tx.projectPlanningSawsWorker.create({
+            data: { projectId, userId, sortOrder: sort++ },
+          });
+        }
+      }
+
       await tx.projectOrder.update({
         where: { id: projectId },
         data: {
           flowStatus: ProjectFlowStatus.IN_PRODUCTION,
           status: OrderStatus.IN_PROGRESS,
-          planningAssigneeUserId: assigneeId,
+          planningAssigneeUserId,
+          planningSawsManagerUserId,
         },
       });
     });
+
+    clearPlanningImportDir(projectId);
 
     return { ok: true, flowStatus: ProjectFlowStatus.IN_PRODUCTION };
   }

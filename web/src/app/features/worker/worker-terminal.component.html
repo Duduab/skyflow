@@ -87,6 +87,39 @@
         </div>
       </div>
 
+      @if (stationId === 1 && ctx.planningSawsTeam?.length) {
+        <div class="planning-saws-team">
+          <p class="planning-saws-team__title">
+            {{ 'WORKER.PLANNING_SAWS_TEAM_TITLE' | translate }}
+          </p>
+          <p class="planning-saws-team__hint">
+            {{ 'WORKER.PLANNING_SAWS_TEAM_HINT' | translate }}
+          </p>
+          <ul class="planning-saws-team__list" role="list">
+            @for (m of ctx.planningSawsTeam!; track $index) {
+              <li class="planning-saws-team__item" role="listitem">
+                <div class="planning-saws-team__avatar" aria-hidden="true">
+                  @if (m.photoUrl?.trim() && !teamPhotoFailed($index)) {
+                    <img
+                      [src]="m.photoUrl!"
+                      [alt]="m.firstName + ' ' + m.lastName"
+                      (error)="onTeamPhotoError($index)"
+                    />
+                  } @else {
+                    <span class="planning-saws-team__initials">{{
+                      teamMemberInitials(m)
+                    }}</span>
+                  }
+                </div>
+                <span class="planning-saws-team__name"
+                  >{{ m.firstName }} {{ m.lastName }}</span
+                >
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
       <p class="mt-5 text-touch leading-relaxed text-white/95">
         {{ 'WORKER.REQ' | translate }}: {{ ctx.order.requirements }}
       </p>

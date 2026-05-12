@@ -941,6 +941,31 @@
   color: rgba(203, 213, 225, 0.85);
 }
 
+.planning-wizard__assign-subheading {
+  margin: 1.35rem 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__assign-subheading {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.planning-wizard__assign-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__assign-hint {
+  color: rgba(203, 213, 225, 0.82);
+}
+
 .planning-wizard__assignee-grid {
   display: grid;
   gap: 0.65rem;
@@ -974,6 +999,126 @@
     border-color 0.18s ease,
     box-shadow 0.22s ease,
     transform 0.15s ease;
+}
+
+.planning-wizard__assignee-card--row {
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.planning-wizard__profile-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 3.35rem;
+  height: 3.35rem;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.planning-wizard__profile-wrap--muted .planning-wizard__profile-fallback {
+  opacity: 0.72;
+}
+
+.planning-wizard__profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+  border: 2px solid rgba(15, 23, 42, 0.14);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__profile-img {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.planning-wizard__profile-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(155deg, rgba(14, 165, 233, 0.2) 0%, rgba(99, 102, 241, 0.18) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.planning-wizard__profile-fallback--empty {
+  background: rgba(241, 245, 249, 0.95);
+  border-color: rgba(148, 163, 184, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.planning-wizard__profile-fallback--empty svg {
+  width: 1.55rem;
+  height: 1.55rem;
+  color: #64748b;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__profile-fallback {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__profile-fallback--empty {
+  background: rgba(15, 23, 42, 0.45);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__profile-fallback--empty svg {
+  color: rgba(203, 213, 225, 0.75);
+}
+
+.planning-wizard__profile-initials {
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #0c4a6e;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__profile-initials {
+  color: #e0f2fe;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.planning-wizard__assignee-card--selected .planning-wizard__profile-img,
+.planning-wizard__assignee-card--selected .planning-wizard__profile-fallback {
+  border-color: rgba(14, 165, 233, 0.65);
+  box-shadow:
+    0 0 0 2px rgba(14, 165, 233, 0.2),
+    0 4px 14px rgba(14, 165, 233, 0.15);
+}
+
+:host-context(html:not(.theme-light))
+  .planning-wizard__assignee-card--selected
+  .planning-wizard__profile-img,
+:host-context(html:not(.theme-light))
+  .planning-wizard__assignee-card--selected
+  .planning-wizard__profile-fallback {
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow:
+    0 0 0 2px rgba(56, 189, 248, 0.18),
+    0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.planning-wizard__assignee-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1;
+  text-align: start;
+}
+
+.planning-wizard__assignee-card--row .planning-wizard__assignee-badge {
+  align-self: flex-start;
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__assignee-card {

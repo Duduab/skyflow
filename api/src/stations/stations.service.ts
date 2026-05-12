@@ -37,15 +37,23 @@ export class StationsService {
     }
   }
 
-  /** שם ותמונה להצגה במסוף עובד — לעמדה 1: שיבוץ מתכנון אם קיים, אחרת מנהל עמדה מהמערכת */
+  /** שם ותמונה להצגה במסוף עובד — לעמדה 1: מנהל משובץ מתכנון, אחרת משווה ישן, אחרת מנהל עמדה מהמערכת */
   private async resolveStationManagerDisplay(
     stationId: number,
+    planningSawsManagerUserId: string | null,
     planningAssigneeUserId: string | null,
   ): Promise<{
     firstName: string;
     lastName: string;
     photoUrl: string | null;
   } | null> {
+    if (stationId === 1 && planningSawsManagerUserId) {
+      const mgr = await this.prisma.user.findUnique({
+        where: { id: planningSawsManagerUserId },
+        select: { firstName: true, lastName: true, photoUrl: true },
+      });
+      if (mgr) return mgr;
+    }
     if (stationId === 1 && planningAssigneeUserId) {
       const assigned = await this.prisma.user.findUnique({
         where: { id: planningAssigneeUserId },
@@ -122,8 +130,34 @@ export class StationsService {
 
     const stationManagerDisplay = await this.resolveStationManagerDisplay(
       stationId,
-      order.planningAssigneeUserId,
+      order.planningSawsManagerUserId ?? null,
+      order.planningAssigneeUserId ?? null,
     );
+
+    let planningSawsTeam:
+      | { firstName: string; lastName: string; photoUrl: string | null }[]
+      | undefined;
+    if (
+      stationId === 1 &&
+      order.flowStatus === ProjectFlowStatus.IN_PRODUCTION
+    ) {
+      const rows = await this.prisma.projectPlanningSawsWorker.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          user: {
+            select: { firstName: true, lastName: true, photoUrl: true },
+          },
+        },
+      });
+      if (rows.length) {
+        planningSawsTeam = rows.map((r) => ({
+          firstName: r.user.firstName,
+          lastName: r.user.lastName,
+          photoUrl: r.user.photoUrl,
+        }));
+      }
+    }
 
     return {
       order,
@@ -136,6 +170,7 @@ export class StationsService {
       requiredPackQty: order.totalItems,
       readyToShip,
       ...(stationManagerDisplay ? { stationManagerDisplay } : {}),
+      ...(planningSawsTeam?.length ? { planningSawsTeam } : {}),
       ...(stationId === 1 &&
       order.flowStatus === ProjectFlowStatus.IN_PRODUCTION
         ? { sawWorkLines: sawWorkLines ?? [] }

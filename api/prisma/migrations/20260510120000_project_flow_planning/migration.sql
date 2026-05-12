@@ -1,20 +1,38 @@
--- CreateEnum
-CREATE TYPE "ProjectFlowStatus" AS ENUM ('PENDING_PLANNING', 'IN_PRODUCTION', 'COMPLETED');
+-- Idempotent: DB may already have these types (e.g. prisma db push) while _prisma_migrations was empty.
 
 -- CreateEnum
-CREATE TYPE "ProductType" AS ENUM ('UNIT', 'WINDOW');
+DO $$ BEGIN
+    CREATE TYPE "ProjectFlowStatus" AS ENUM ('PENDING_PLANNING', 'IN_PRODUCTION', 'COMPLETED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "ProductComponentKind" AS ENUM ('BEAM', 'FRAME', 'GLASS_SINGLE', 'GLASS_DOUBLE', 'SASH');
+DO $$ BEGIN
+    CREATE TYPE "ProductType" AS ENUM ('UNIT', 'WINDOW');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- CreateEnum
+DO $$ BEGIN
+    CREATE TYPE "ProductComponentKind" AS ENUM ('BEAM', 'FRAME', 'GLASS_SINGLE', 'GLASS_DOUBLE', 'SASH');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AlterTable
-ALTER TABLE "ProjectOrder" ADD COLUMN "flowStatus" "ProjectFlowStatus" NOT NULL DEFAULT 'PENDING_PLANNING';
+DO $$ BEGIN
+    ALTER TABLE "ProjectOrder" ADD COLUMN "flowStatus" "ProjectFlowStatus" NOT NULL DEFAULT 'PENDING_PLANNING';
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
 
--- Existing rows: preserve behaviour (stations already usable)
-UPDATE "ProjectOrder" SET "flowStatus" = 'IN_PRODUCTION';
+-- Existing rows: preserve behaviour (stations already usable). Idempotent on re-run.
+UPDATE "ProjectOrder" SET "flowStatus" = 'IN_PRODUCTION' WHERE "flowStatus" = 'PENDING_PLANNING'::"ProjectFlowStatus";
 
 -- CreateTable
-CREATE TABLE "ProductItem" (
+CREATE TABLE IF NOT EXISTS "ProductItem" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "productType" "ProductType" NOT NULL,
@@ -27,7 +45,7 @@ CREATE TABLE "ProductItem" (
 );
 
 -- CreateTable
-CREATE TABLE "ProductComponent" (
+CREATE TABLE IF NOT EXISTS "ProductComponent" (
     "id" TEXT NOT NULL,
     "productItemId" TEXT NOT NULL,
     "kind" "ProductComponentKind" NOT NULL,
@@ -40,7 +58,7 @@ CREATE TABLE "ProductComponent" (
 );
 
 -- CreateTable
-CREATE TABLE "SawStationWorkLine" (
+CREATE TABLE IF NOT EXISTS "SawStationWorkLine" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "componentKind" "ProductComponentKind" NOT NULL,
@@ -53,19 +71,31 @@ CREATE TABLE "SawStationWorkLine" (
 );
 
 -- CreateIndex
-CREATE INDEX "ProductItem_projectId_idx" ON "ProductItem"("projectId");
+CREATE INDEX IF NOT EXISTS "ProductItem_projectId_idx" ON "ProductItem"("projectId");
 
 -- CreateIndex
-CREATE INDEX "ProductComponent_productItemId_idx" ON "ProductComponent"("productItemId");
+CREATE INDEX IF NOT EXISTS "ProductComponent_productItemId_idx" ON "ProductComponent"("productItemId");
 
 -- CreateIndex
-CREATE INDEX "SawStationWorkLine_projectId_idx" ON "SawStationWorkLine"("projectId");
+CREATE INDEX IF NOT EXISTS "SawStationWorkLine_projectId_idx" ON "SawStationWorkLine"("projectId");
 
 -- AddForeignKey
-ALTER TABLE "ProductItem" ADD CONSTRAINT "ProductItem_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "ProjectOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "ProductItem" ADD CONSTRAINT "ProductItem_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "ProjectOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "ProductComponent" ADD CONSTRAINT "ProductComponent_productItemId_fkey" FOREIGN KEY ("productItemId") REFERENCES "ProductItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "ProductComponent" ADD CONSTRAINT "ProductComponent_productItemId_fkey" FOREIGN KEY ("productItemId") REFERENCES "ProductItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "SawStationWorkLine" ADD CONSTRAINT "SawStationWorkLine_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "ProjectOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "SawStationWorkLine" ADD CONSTRAINT "SawStationWorkLine_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "ProjectOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;

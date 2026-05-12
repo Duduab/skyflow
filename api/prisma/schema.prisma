@@ -58,6 +58,8 @@ model User {
   updatedAt        DateTime    @updatedAt
 
   planningAssignedProjects ProjectOrder[] @relation("PlanningAssignee")
+  planningSawsManagerOfProjects ProjectOrder[] @relation("PlanningSawsManager")
+  projectSawsPlanningWorkers    ProjectPlanningSawsWorker[]
 
   @@index([role])
   @@index([managedStationId])
@@ -80,9 +82,12 @@ model ProjectOrder {
   siteExpectedBeams    Int?
   siteExpectedGlazing  Int?
   siteExpectedUnitized Int?
-  /// עובד או מנהל עמדת מסורים (1) — משויך בעת אישור תכנון
+  /// עובד ראשון לשיבוץ — תאימות לאחור / תצוגה
   planningAssigneeUserId String?
   planningAssignee       User?   @relation("PlanningAssignee", fields: [planningAssigneeUserId], references: [id], onDelete: SetNull)
+  /// מנהל עמדת מסורים (1) משובץ מתכנון — נפרד מעובדים
+  planningSawsManagerUserId String?
+  planningSawsManager       User?   @relation("PlanningSawsManager", fields: [planningSawsManagerUserId], references: [id], onDelete: SetNull)
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -91,8 +96,25 @@ model ProjectOrder {
   documents           ProjectDocument[]
   productItems        ProductItem[]
   sawStationWorkLines SawStationWorkLine[]
+  planningSawsWorkers ProjectPlanningSawsWorker[]
 
   @@index([planningAssigneeUserId])
+  @@index([planningSawsManagerUserId])
+}
+
+/// עובדים משובצים לתחנת מסורים (1) מתכנון
+model ProjectPlanningSawsWorker {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
 }
 
 /// שורת תכנון (יחידה / הוראת חלון) מתוך קובץ תפ״י
@@ -104,6 +126,10 @@ model ProductItem {
   instructionKind String
   label           String
   sortOrder       Int         @default(0)
+  /// שורת התחלה בגליון Excel (0-based, כמו SheetJS) לבלוק היחידה — לשיוך תמונות מוטמעות
+  planningBlockStartRow0 Int?
+  /// שורת סיום (כולל) לאותו בלוק
+  planningBlockEndRow0   Int?
   createdAt       DateTime    @default(now())
 
   project    ProjectOrder       @relation(fields: [projectId], references: [id], onDelete: Cascade)

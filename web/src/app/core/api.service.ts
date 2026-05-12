@@ -202,7 +202,11 @@ export class ApiService {
 
   postApprovePlanning(
     projectId: string,
-    body?: { assigneeUserId?: string | null },
+    body?: {
+      assigneeUserId?: string | null;
+      planningSawsManagerUserId?: string | null;
+      sawsWorkerUserIds?: string[];
+    },
   ): Observable<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>(
       `${this.base}/projects/${encodeURIComponent(projectId)}/approve-planning`,

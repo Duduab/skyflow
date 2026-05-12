@@ -135,6 +135,9 @@
                         {{ 'PLANNING.TYPE_UNIT' | translate }} {{ tab.unitCount }} ·
                         {{ 'PLANNING.TYPE_WINDOW' | translate }} {{ tab.windowCount }} ·
                         {{ tab.itemCount }} {{ 'PLANNING.LINES_SHORT' | translate }}
+                        @if (sheetImageTotal(tab) > 0) {
+                          <span> · {{ sheetImageTotal(tab) }} {{ 'PLANNING.IMAGES_SHORT' | translate }}</span>
+                        }
                       </span>
                     </div>
                     <span
@@ -192,7 +195,81 @@
                             }
                           </ul>
                         </div>
+                        @if (row.images && row.images.length > 0) {
+                          <div class="planning-row-images">
+                            <p class="planning-chip-section-label planning-row-images__title">
+                              {{ 'PLANNING.IMAGES_FOR_ROW' | translate }}
+                            </p>
+                            <div class="planning-sheet-images__grid planning-row-images__grid">
+                              @for (
+                                im of row.images;
+                                track im.url + '|' + im.anchorRow + '|' + im.anchorCol + '|' + imgIdx;
+                                let imgIdx = $index
+                              ) {
+                                <figure class="planning-import-fig planning-import-fig--in-row">
+                                  <img
+                                    [src]="im.url"
+                                    [alt]="row.displayLabel"
+                                    loading="lazy"
+                                    class="planning-import-fig__img"
+                                  />
+                                  <figcaption class="planning-import-fig__cap">
+                                    @if (im.pictureName) {
+                                      <span class="planning-import-fig__name">{{ im.pictureName }}</span>
+                                    }
+                                    <span class="planning-import-fig__loc" dir="ltr">{{
+                                      'PLANNING.IMAGE_ANCHOR'
+                                        | translate
+                                          : {
+                                              row: im.anchorRow + 1,
+                                              col: excelColLetter(im.anchorCol),
+                                            }
+                                    }}</span>
+                                  </figcaption>
+                                </figure>
+                              }
+                            </div>
+                          </div>
+                        }
                       </article>
+                    }
+                    @if (tab.images?.length) {
+                      <div class="planning-sheet-images mt-4">
+                        <p class="planning-chip-section-label planning-sheet-images__title">
+                          {{ 'PLANNING.IMAGES_ORPHAN_TITLE' | translate }}
+                        </p>
+                        <p class="planning-sheet-images__hint">
+                          {{ 'PLANNING.IMAGES_ORPHAN_HINT' | translate }}
+                        </p>
+                        <div class="planning-sheet-images__grid">
+                          @for (
+                            im of tab.images;
+                            track im.url + '|' + im.anchorRow + '|' + im.anchorCol + '|' + $index
+                          ) {
+                            <figure class="planning-import-fig">
+                              <img
+                                [src]="im.url"
+                                [alt]="tab.sheetName"
+                                loading="lazy"
+                                class="planning-import-fig__img"
+                              />
+                              <figcaption class="planning-import-fig__cap">
+                                @if (im.pictureName) {
+                                  <span class="planning-import-fig__name">{{ im.pictureName }}</span>
+                                }
+                                <span class="planning-import-fig__loc" dir="ltr">{{
+                                  'PLANNING.IMAGE_ANCHOR'
+                                    | translate
+                                      : {
+                                          row: im.anchorRow + 1,
+                                          col: excelColLetter(im.anchorCol),
+                                        }
+                                }}</span>
+                              </figcaption>
+                            </figure>
+                          }
+                        </div>
+                      </div>
                     }
                   </div>
                 </details>

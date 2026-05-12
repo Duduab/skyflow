@@ -242,6 +242,82 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+.planning-sheet-images__grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .planning-sheet-images__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .planning-sheet-images__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.planning-panel--classic .planning-sheet-images {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+}
+
+.planning-panel--classic .planning-sheet-images__hint {
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.planning-panel--classic .planning-import-fig {
+  margin: 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.5rem;
+}
+
+.planning-panel--classic .planning-import-fig__img {
+  display: block;
+  width: 100%;
+  max-height: 14rem;
+  height: auto;
+  object-fit: contain;
+}
+
+.planning-panel--classic .planning-import-fig__cap {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.planning-panel--classic .planning-import-fig__name {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.planning-panel--classic .planning-import-fig__loc {
+  display: block;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.planning-panel--classic .planning-row-images {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.14);
+}
+
+.planning-panel--classic .planning-import-fig--in-row .planning-import-fig__img {
+  max-height: 11rem;
+}
+
 .planning-panel--classic .planning-chip {
   border-radius: 0.5rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -570,6 +646,89 @@
 
 :host-context(html:not(.theme-light)) .planning-panel--wizard .planning-row-card__stat-value {
   color: #38bdf8;
+}
+
+.planning-panel--wizard .planning-sheet-images {
+  border-top: 1px solid rgb(226 232 240);
+  padding-top: 1rem;
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-sheet-images {
+  border-top-color: rgba(71, 85, 105, 0.45);
+}
+
+.planning-panel--wizard .planning-sheet-images__hint {
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-sheet-images__hint {
+  color: rgba(203, 213, 225, 0.82);
+}
+
+.planning-panel--wizard .planning-import-fig {
+  margin: 0;
+  border-radius: 0.85rem;
+  border: 1px solid rgb(241 245 249);
+  background: #fff;
+  padding: 0.5rem;
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-import-fig {
+  border-color: rgba(71, 85, 105, 0.45);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.planning-panel--wizard .planning-import-fig__img {
+  display: block;
+  width: 100%;
+  max-height: 14rem;
+  height: auto;
+  object-fit: contain;
+}
+
+.planning-panel--wizard .planning-import-fig__cap {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.planning-panel--wizard .planning-import-fig__name {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-import-fig__name {
+  color: #f8fafc;
+}
+
+.planning-panel--wizard .planning-import-fig__loc {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-import-fig__loc {
+  color: rgba(203, 213, 225, 0.85);
+}
+
+.planning-panel--wizard .planning-row-images {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgb(203 213 225);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-row-images {
+  border-top-color: rgba(71, 85, 105, 0.55);
+}
+
+.planning-panel--wizard .planning-import-fig--in-row .planning-import-fig__img {
+  max-height: 11rem;
 }
 
 .planning-tag {

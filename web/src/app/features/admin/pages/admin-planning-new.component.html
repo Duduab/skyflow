@@ -177,37 +177,116 @@
             } @else if (assigneesLoadError(); as ak) {
               <p class="planning-wizard__field-err" role="alert">{{ ak | translate }}</p>
             } @else {
+              <h4 class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_SECTION_SAWS_MANAGER' | translate }}</h4>
               <div class="planning-wizard__assignee-grid">
                 <button
                   type="button"
-                  class="planning-wizard__assignee-card"
-                  [class.planning-wizard__assignee-card--selected]="selectedAssigneeId() === null"
-                  (click)="pickAssignee(null)"
+                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
+                  [class.planning-wizard__assignee-card--selected]="selectedSawsManagerId() === null"
+                  (click)="pickSawsManager(null)"
                 >
-                  <span class="planning-wizard__assignee-name">{{
-                    'PLANNING_NEW.WIZARD_ASSIGNEE_NONE' | translate
-                  }}</span>
-                  <span class="planning-wizard__assignee-sub">{{
-                    'PLANNING_NEW.WIZARD_ASSIGNEE_NONE_HINT' | translate
-                  }}</span>
+                  <div class="planning-wizard__profile-wrap planning-wizard__profile-wrap--muted" aria-hidden="true">
+                    <div class="planning-wizard__profile-fallback planning-wizard__profile-fallback--empty">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="planning-wizard__assignee-text">
+                    <span class="planning-wizard__assignee-name">{{
+                      'PLANNING_NEW.WIZARD_MANAGER_NONE' | translate
+                    }}</span>
+                    <span class="planning-wizard__assignee-sub">{{
+                      'PLANNING_NEW.WIZARD_MANAGER_NONE_HINT' | translate
+                    }}</span>
+                  </div>
                 </button>
-                @for (a of assignees(); track a.id) {
+                @for (a of sawsManagerOptions(); track a.id) {
                   <button
                     type="button"
-                    class="planning-wizard__assignee-card"
-                    [class.planning-wizard__assignee-card--selected]="selectedAssigneeId() === a.id"
-                    (click)="pickAssignee(a.id)"
+                    class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
+                    [class.planning-wizard__assignee-card--selected]="selectedSawsManagerId() === a.id"
+                    (click)="pickSawsManager(a.id)"
                   >
-                    <span class="planning-wizard__assignee-name">{{ a.firstName }} {{ a.lastName }}</span>
-                    @if (isSawsManager(a)) {
+                    <div class="planning-wizard__profile-wrap" aria-hidden="true">
+                      @if (assigneePhotoVisible(a)) {
+                        <img
+                          class="planning-wizard__profile-img"
+                          [src]="a.photoUrl!"
+                          [alt]="a.firstName + ' ' + a.lastName"
+                          (error)="onAssigneePhotoError(a.id)"
+                        />
+                      } @else {
+                        <div class="planning-wizard__profile-fallback">
+                          <span class="planning-wizard__profile-initials">{{ initialsFor(a) }}</span>
+                        </div>
+                      }
+                    </div>
+                    <div class="planning-wizard__assignee-text">
+                      <span class="planning-wizard__assignee-name">{{ a.firstName }} {{ a.lastName }}</span>
                       <span class="planning-wizard__assignee-badge">{{
                         'PLANNING_NEW.WIZARD_ROLE_SAWS_MGR' | translate
                       }}</span>
-                    } @else {
+                    </div>
+                  </button>
+                }
+              </div>
+
+              <h4 class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_SECTION_SAWS_WORKERS' | translate }}</h4>
+              <p class="planning-wizard__assign-hint">{{ 'PLANNING_NEW.WIZARD_WORKER_MULTI_HINT' | translate }}</p>
+              <div class="planning-wizard__assignee-grid">
+                <button
+                  type="button"
+                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
+                  [class.planning-wizard__assignee-card--selected]="selectedWorkerIds().length === 0"
+                  (click)="clearWorkers()"
+                >
+                  <div class="planning-wizard__profile-wrap planning-wizard__profile-wrap--muted" aria-hidden="true">
+                    <div class="planning-wizard__profile-fallback planning-wizard__profile-fallback--empty">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="planning-wizard__assignee-text">
+                    <span class="planning-wizard__assignee-name">{{
+                      'PLANNING_NEW.WIZARD_WORKERS_NONE' | translate
+                    }}</span>
+                    <span class="planning-wizard__assignee-sub">{{
+                      'PLANNING_NEW.WIZARD_WORKERS_NONE_HINT' | translate
+                    }}</span>
+                  </div>
+                </button>
+                @for (a of workerOptions(); track a.id) {
+                  <button
+                    type="button"
+                    class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
+                    [class.planning-wizard__assignee-card--selected]="isWorkerSelected(a.id)"
+                    (click)="toggleWorker(a.id)"
+                  >
+                    <div class="planning-wizard__profile-wrap" aria-hidden="true">
+                      @if (assigneePhotoVisible(a)) {
+                        <img
+                          class="planning-wizard__profile-img"
+                          [src]="a.photoUrl!"
+                          [alt]="a.firstName + ' ' + a.lastName"
+                          (error)="onAssigneePhotoError(a.id)"
+                        />
+                      } @else {
+                        <div class="planning-wizard__profile-fallback">
+                          <span class="planning-wizard__profile-initials">{{ initialsFor(a) }}</span>
+                        </div>
+                      }
+                    </div>
+                    <div class="planning-wizard__assignee-text">
+                      <span class="planning-wizard__assignee-name">{{ a.firstName }} {{ a.lastName }}</span>
                       <span class="planning-wizard__assignee-badge">{{
                         'PLANNING_NEW.WIZARD_ROLE_WORKER' | translate
                       }}</span>
-                    }
+                    </div>
                   </button>
                 }
               </div>
@@ -230,7 +309,8 @@
           [projectName]="selectedName()"
           [wizardMode]="panelMode()"
           [panelHeader]="false"
-          [assigneeUserId]="selectedAssigneeId()"
+          [planningSawsManagerUserId]="selectedSawsManagerId()"
+          [sawsWorkerUserIds]="selectedWorkerIds()"
           (planningChanged)="onPlanningChanged()"
           (wizardContinue)="goStep3()"
         />

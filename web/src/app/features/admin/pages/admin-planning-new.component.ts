@@ -39,7 +39,10 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly assignees = signal<PlanningAssigneeOptionDto[]>([]);
   readonly assigneesLoadError = signal<string | null>(null);
   readonly assigneesLoading = signal(false);
-  readonly selectedAssigneeId = signal<string | null>(null);
+  readonly selectedSawsManagerId = signal<string | null>(null);
+  readonly selectedWorkerIds = signal<string[]>([]);
+  /** תמונת פרופיל שנכשלה בטעינה — מציגים ראשי תיבות במסגרת כמו במסוף עמדה */
+  readonly assigneePhotoFailedIds = signal<Set<string>>(new Set());
 
   ngOnInit(): void {
     this.reloadDrafts();
@@ -68,7 +71,8 @@ export class AdminPlanningNewComponent implements OnInit {
             this.selectedFlow.set(null);
             this.selectedName.set(null);
             this.step.set(1);
-            this.selectedAssigneeId.set(null);
+            this.selectedSawsManagerId.set(null);
+            this.selectedWorkerIds.set([]);
             this.newProjectName.set('');
             this.approvedMovedToProduction.set(true);
             return;
@@ -138,24 +142,72 @@ export class AdminPlanningNewComponent implements OnInit {
         finalize(() => this.assigneesLoading.set(false)),
       )
       .subscribe({
-        next: (list) => this.assignees.set(list),
+        next: (list) => {
+          this.assigneePhotoFailedIds.set(new Set());
+          this.assignees.set(list);
+        },
         error: () =>
           this.assigneesLoadError.set('PLANNING_NEW.WIZARD_ASSIGNEES_FAILED'),
       });
-  }
-
-  pickAssignee(id: string | null): void {
-    this.selectedAssigneeId.set(id);
   }
 
   isSawsManager(a: PlanningAssigneeOptionDto): boolean {
     return a.role === 'STATION_MANAGER' && a.managedStationId === 1;
   }
 
+  sawsManagerOptions(): PlanningAssigneeOptionDto[] {
+    return this.assignees().filter((a) => this.isSawsManager(a));
+  }
+
+  workerOptions(): PlanningAssigneeOptionDto[] {
+    return this.assignees().filter((a) => a.role === 'WORKER');
+  }
+
+  initialsFor(a: PlanningAssigneeOptionDto): string {
+    const f = (a.firstName ?? '').trim();
+    const l = (a.lastName ?? '').trim();
+    const c1 = f.charAt(0) || '?';
+    const c2 = l.charAt(0) || '';
+    return (c1 + c2).toUpperCase();
+  }
+
+  assigneePhotoVisible(a: PlanningAssigneeOptionDto): boolean {
+    const u = a.photoUrl?.trim();
+    if (!u) return false;
+    return !this.assigneePhotoFailedIds().has(a.id);
+  }
+
+  onAssigneePhotoError(id: string): void {
+    this.assigneePhotoFailedIds.update((s) => new Set(s).add(id));
+  }
+
+  pickSawsManager(id: string | null): void {
+    this.selectedSawsManagerId.set(id);
+  }
+
+  toggleWorker(id: string): void {
+    const cur = this.selectedWorkerIds();
+    const i = cur.indexOf(id);
+    if (i >= 0) {
+      this.selectedWorkerIds.set(cur.filter((_, idx) => idx !== i));
+    } else {
+      this.selectedWorkerIds.set([...cur, id]);
+    }
+  }
+
+  clearWorkers(): void {
+    this.selectedWorkerIds.set([]);
+  }
+
+  isWorkerSelected(id: string): boolean {
+    return this.selectedWorkerIds().includes(id);
+  }
+
   resumeDraft(d: PlanningDraftListItemDto): void {
     this.approvedMovedToProduction.set(false);
     this.createErrorKey.set(null);
-    this.selectedAssigneeId.set(null);
+    this.selectedSawsManagerId.set(null);
+    this.selectedWorkerIds.set([]);
     this.selectedProjectId.set(d.id);
     this.applyPick(d);
     this.newProjectName.set(d.name);
@@ -187,7 +239,8 @@ export class AdminPlanningNewComponent implements OnInit {
     this.selectedProjectId.set(null);
     this.selectedFlow.set(null);
     this.selectedName.set(null);
-    this.selectedAssigneeId.set(null);
+    this.selectedSawsManagerId.set(null);
+    this.selectedWorkerIds.set([]);
     this.newProjectName.set('');
     this.createErrorKey.set(null);
     this.assigneesLoadError.set(null);

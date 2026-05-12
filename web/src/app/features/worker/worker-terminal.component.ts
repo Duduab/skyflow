@@ -24,7 +24,11 @@ import { map } from 'rxjs/operators';
 
 import { ApiService } from '../../core/api.service';
 import { UiButtonComponent } from '../../shared/ui-button.component';
-import { ProjectOrder, WorkerContext } from '../../core/skyflow.models';
+import {
+  ProjectOrder,
+  WorkerContext,
+  WorkerStationManagerDisplayDto,
+} from '../../core/skyflow.models';
 import { WorkerProjectSelectionService } from './worker-project-selection.service';
 import {
   computeStationProgress,
@@ -76,6 +80,8 @@ export class WorkerTerminalComponent implements OnInit {
 
   readonly managerPhotoFailed = signal(false);
   readonly uploadingDelivery = signal(false);
+  /** אינדקסים שבהם נכשלה טעינת תמונת פרופיל בצוות מסורים */
+  private readonly teamPhotoFailedIdx = signal<Set<number>>(new Set());
 
   stationId = 1;
 
@@ -137,6 +143,20 @@ export class WorkerTerminalComponent implements OnInit {
 
   onManagerPhotoError(): void {
     this.managerPhotoFailed.set(true);
+  }
+
+  teamPhotoFailed(index: number): boolean {
+    return this.teamPhotoFailedIdx().has(index);
+  }
+
+  onTeamPhotoError(index: number): void {
+    this.teamPhotoFailedIdx.update((s) => new Set(s).add(index));
+  }
+
+  teamMemberInitials(m: WorkerStationManagerDisplayDto): string {
+    const f = (m.firstName ?? '').trim();
+    const l = (m.lastName ?? '').trim();
+    return ((f.charAt(0) || '?') + (l.charAt(0) || '')).toUpperCase();
   }
 
   progressDashOffset(percent: number): number {
@@ -221,6 +241,7 @@ export class WorkerTerminalComponent implements OnInit {
         next: (ctx) => {
           this.context.set(ctx);
           this.managerPhotoFailed.set(false);
+          this.teamPhotoFailedIdx.set(new Set());
           this.loading.set(false);
           if (
             this.stationId === 6 &&
