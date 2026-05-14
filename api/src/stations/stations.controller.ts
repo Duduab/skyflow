@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -52,10 +53,15 @@ export class StationsController {
 
   @Post(':stationId/logs')
   async submitLog(
+    @Req() req: { user?: { userId?: string } },
     @Param('stationId', ParseIntPipe) stationId: number,
     @Body() dto: CreateStationLogDto,
   ) {
-    return this.stationsService.createStationLog(stationId, dto);
+    return this.stationsService.createStationLog(
+      stationId,
+      dto,
+      req.user?.userId ?? null,
+    );
   }
 
   @Post(':stationId/scrap')

@@ -7,15 +7,21 @@ import {
   OrderStatus,
   Prisma,
   ProductComponentKind,
+  ProductType,
   ProjectDocumentKind,
   ProjectFlowStatus,
   SkyflowRole,
 } from '@prisma/client';
-import { mkdirSync } from 'fs';
-import { join } from 'path';
+import { copyFileSync, existsSync, mkdirSync, rmSync } from 'fs';
+import { extname, join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanningUploadService } from '../planning/planning-upload.service';
-import { clearPlanningImportDir } from '../planning/planning-workbook-media';
+import {
+  clearPlanningImportDir,
+  loadPlanningImportManifest,
+  planningImportStorageDir,
+  type PlanningSheetImagesManifest,
+} from '../planning/planning-workbook-media';
 import { isProjectProductionComplete } from '../common/project-station-completion.util';
 import type { ApprovePlanningDto } from './dto/approve-planning.dto.js';
 import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto.js';
@@ -33,6 +39,62 @@ export function ensureProjectDocsUploadDir(): string {
   );
   mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+/** תמונות מסורים לאחר אישור — מוגשות מ־`web/public/planning-saws/{projectId}/` */
+export function ensureSawPlanningCaptureDir(projectId: string): string {
+  return join(
+    process.cwd(),
+    '..',
+    'web',
+    'public',
+    'planning-saws',
+    projectId,
+  );
+}
+
+function sheetNameFromProductLabelForSaws(label: string): string {
+  const m = label.match(/^\[([^\]]+)\]\s*/);
+  return m ? m[1].trim() : '—';
+}
+
+function normalizeSheetTabNameForSaws(name: string): string {
+  return name.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function imageRowDistanceToBlock(
+  anchorRow: number,
+  blockStart: number,
+  blockEnd: number,
+): number {
+  if (anchorRow < blockStart) return blockStart - anchorRow;
+  if (anchorRow > blockEnd) return anchorRow - blockEnd;
+  return 0;
+}
+
+function pickPlanningImagesForColumn(
+  manifest: PlanningSheetImagesManifest[],
+  sheetTitle: string,
+  col0: number,
+  rowStart: number,
+  rowEnd: number,
+  maxSkew: number,
+): { file: string }[] {
+  const key = normalizeSheetTabNameForSaws(sheetTitle);
+  const sheet = manifest.find(
+    (m) => normalizeSheetTabNameForSaws(m.sheetName) === key,
+  );
+  if (!sheet) return [];
+  const hits: (typeof sheet.images)[number][] = [];
+  for (const im of sheet.images) {
+    if (im.anchorCol !== col0) continue;
+    const d = imageRowDistanceToBlock(im.anchorRow, rowStart, rowEnd);
+    if (d <= maxSkew) hits.push(im);
+  }
+  hits.sort(
+    (a, b) => a.anchorRow - b.anchorRow || a.anchorCol - b.anchorCol,
+  );
+  return hits.map(({ file }) => ({ file }));
 }
 
 @Injectable()
@@ -174,28 +236,90 @@ export class ProjectsService {
       throw new BadRequestException('Upload and parse a planning file first');
     }
 
+    const manifest = loadPlanningImportManifest(projectId);
+    const importDir = planningImportStorageDir(projectId);
+    const captureRoot = ensureSawPlanningCaptureDir(projectId);
+    try {
+      rmSync(captureRoot, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+    mkdirSync(captureRoot, { recursive: true });
+
     const sawKinds: ProductComponentKind[] = [
       ProductComponentKind.BEAM,
       ProductComponentKind.FRAME,
     ];
 
+    const preparedSawLines: {
+      componentKind: ProductComponentKind;
+      description: string;
+      quantity: number;
+      sortOrder: number;
+      imagePaths: string[];
+      instructionKind: string;
+    }[] = [];
+
+    let sawSort = 0;
+    for (const item of order.productItems) {
+      if (
+        item.instructionKind === 'WINDOW_INSTRUCTION' ||
+        item.productType === ProductType.WINDOW
+      ) {
+        continue;
+      }
+      const sheetTitle = sheetNameFromProductLabelForSaws(item.label);
+      const rowS = item.planningBlockStartRow0 ?? 0;
+      const rowE = item.planningBlockEndRow0 ?? rowS;
+      for (const comp of item.components) {
+        if (!comp.sawsProfileCode) continue;
+        if (!sawKinds.includes(comp.kind)) continue;
+        if (comp.planningSourceCol0 == null) continue;
+
+        const imgs = pickPlanningImagesForColumn(
+          manifest,
+          sheetTitle,
+          comp.planningSourceCol0,
+          rowS,
+          rowE,
+          22,
+        );
+        const imagePaths: string[] = [];
+        let pic = 0;
+        for (const { file } of imgs) {
+          const src = join(importDir, file);
+          if (!existsSync(src)) continue;
+          const ext = extname(file) || '.bin';
+          const destName = `sl-${sawSort}-${pic++}${ext}`;
+          copyFileSync(src, join(captureRoot, destName));
+          imagePaths.push(`/planning-saws/${projectId}/${destName}`);
+        }
+
+        preparedSawLines.push({
+          componentKind: comp.kind,
+          description: `[${item.label}] ${comp.description}`,
+          quantity: comp.quantity,
+          sortOrder: sawSort++,
+          imagePaths,
+          instructionKind: item.instructionKind,
+        });
+      }
+    }
+
     await this.prisma.$transaction(async (tx) => {
       await tx.sawStationWorkLine.deleteMany({ where: { projectId } });
-      let sort = 0;
-      for (const item of order.productItems) {
-        for (const comp of item.components) {
-          if (!sawKinds.includes(comp.kind)) continue;
-          // quantity = סה״כ חיתוכים לשורה (כבר מוכפל בפרסור לפי עמודת QUANTITY ב־Excel)
-          await tx.sawStationWorkLine.create({
-            data: {
-              projectId,
-              componentKind: comp.kind,
-              description: `[${item.label}] ${comp.description}`,
-              quantity: comp.quantity,
-              sortOrder: sort++,
-            },
-          });
-        }
+      for (const row of preparedSawLines) {
+        await tx.sawStationWorkLine.create({
+          data: {
+            projectId,
+            componentKind: row.componentKind,
+            description: row.description,
+            quantity: row.quantity,
+            sortOrder: row.sortOrder,
+            imagePaths: row.imagePaths,
+            instructionKind: row.instructionKind,
+          },
+        });
       }
 
       await tx.projectPlanningSawsWorker.deleteMany({ where: { projectId } });

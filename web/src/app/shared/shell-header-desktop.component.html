@@ -1,0 +1,170 @@
+<header class="sf-desk-header" role="banner">
+  <div class="sf-desk-header__inner">
+    <div class="sf-desk-header__start">
+      <a
+        routerLink="/"
+        class="sf-desk-header__icon-btn"
+        [attr.aria-label]="'APP.HEADER_NAV_HOME' | translate"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V9.5Z" stroke-linejoin="round" />
+        </svg>
+      </a>
+
+      <button
+        type="button"
+        class="sf-desk-header__icon-btn sf-desk-header__icon-btn--muted"
+        disabled
+        [attr.aria-label]="'APP.HEADER_NOTIF_ARIA' | translate"
+        [title]="'APP.HEADER_NOTIF_SOON' | translate"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+      </button>
+
+      <a
+        routerLink="/worker"
+        class="sf-desk-header__icon-btn"
+        [attr.aria-label]="'APP.WORKER_HUB' | translate"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="4" width="7" height="6" rx="1" />
+          <rect x="14" y="4" width="7" height="6" rx="1" />
+          <rect x="3" y="14" width="7" height="6" rx="1" />
+          <rect x="14" y="14" width="7" height="6" rx="1" />
+        </svg>
+      </a>
+
+      <details class="sf-desk-header__icon-popover" name="desk-menu" #langMenu>
+        <summary
+          class="sf-desk-header__icon-btn"
+          [attr.aria-label]="'APP.HEADER_LANGUAGE_ARIA' | translate"
+          [title]="'APP.LANGUAGE' | translate"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+        </summary>
+        <div class="sf-desk-header__dropdown" role="menu">
+          @for (l of langs; track l.code) {
+            <button
+              type="button"
+              role="menuitem"
+              class="sf-desk-header__dropdown-item"
+              [class.sf-desk-header__dropdown-item--active]="langSvc.current() === l.code"
+              (click)="pickLang(l.code)"
+            >
+              {{ l.labelKey | translate }}
+            </button>
+          }
+        </div>
+      </details>
+
+      <details class="sf-desk-header__profile" name="desk-menu" #profileMenu>
+        <summary class="sf-desk-header__profile-summary">
+          @if (user.photoUrl(); as photo) {
+            <img [src]="photo" alt="" class="sf-desk-header__avatar" width="40" height="40" />
+          } @else {
+            <span class="sf-desk-header__avatar sf-desk-header__avatar--fallback">{{ user.initials() }}</span>
+          }
+          <span class="sf-desk-header__profile-name">{{ user.displayName() }}</span>
+          <span class="sf-desk-header__chev" aria-hidden="true">▾</span>
+        </summary>
+        <div class="sf-desk-header__dropdown" role="menu">
+          <a routerLink="/profile" role="menuitem" class="sf-desk-header__dropdown-item" (click)="closeProfile()">
+            {{ 'APP.HEADER_SETTINGS' | translate }}
+          </a>
+          @if (user.isAdmin()) {
+            <a routerLink="/admin/dashboard" role="menuitem" class="sf-desk-header__dropdown-item" (click)="closeProfile()">
+              {{ 'APP.ADMIN' | translate }}
+            </a>
+          }
+          @if (user.isPlanningRole()) {
+            <a routerLink="/admin/planning-new" role="menuitem" class="sf-desk-header__dropdown-item" (click)="closeProfile()">
+              {{ 'APP.PLANNING_CONSOLE' | translate }}
+            </a>
+          }
+          <button type="button" role="menuitem" class="sf-desk-header__dropdown-item sf-desk-header__dropdown-item--danger" (click)="logout()">
+            {{ 'APP.HEADER_LOGOUT' | translate }}
+          </button>
+        </div>
+      </details>
+    </div>
+
+    <label class="sf-desk-header__search">
+      <span class="sf-desk-header__search-lead" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+      </span>
+      <input
+        type="search"
+        class="sf-desk-header__search-input"
+        autocomplete="off"
+        [placeholder]="'APP.HEADER_SEARCH_PLACEHOLDER' | translate"
+        [attr.aria-label]="'APP.HEADER_GLOBAL_SEARCH_ARIA' | translate"
+        [value]="searchQuery()"
+        (focus)="openSearchFromInput()"
+        (input)="onSearchInput($any($event.target).value)"
+        (keydown.enter)="pickFirstHit()"
+      />
+      <kbd class="sf-desk-header__kbd">{{ 'APP.HEADER_SEARCH_KBD' | translate }}</kbd>
+    </label>
+
+    <div class="sf-desk-header__brand">
+      <skyflow-theme-toggle appearance="icon" />
+      <a routerLink="/" class="sf-desk-header__brand-link">
+        <img [src]="headerLogoSrc()" width="40" height="40" alt="" class="sf-desk-header__brand-logo" />
+        <span class="sf-desk-header__brand-title">{{ 'APP.TITLE' | translate }}</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+@if (searchOpen()) {
+  <div
+    class="sf-desk-search-backdrop"
+    role="presentation"
+    (click)="closeSearch()"
+  ></div>
+  <div
+    class="sf-desk-search-popover"
+    role="dialog"
+    [attr.aria-label]="'APP.HEADER_SEARCH_TITLE' | translate"
+  >
+    <div class="sf-desk-search-popover__head">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+      <input
+        #searchField
+        type="search"
+        class="sf-desk-search-popover__input"
+        autocomplete="off"
+        [placeholder]="'APP.HEADER_SEARCH_PLACEHOLDER' | translate"
+        [value]="searchQuery()"
+        (input)="onSearchInput($any($event.target).value)"
+        (keydown.escape)="closeSearch()"
+        (keydown.enter)="pickFirstHit()"
+      />
+    </div>
+    @if (filteredHits().length === 0) {
+      <p class="sf-desk-search-popover__empty">{{ 'APP.HEADER_SEARCH_EMPTY' | translate }}</p>
+    } @else {
+      <ul class="sf-desk-search-popover__list">
+        @for (h of filteredHits(); track h.path + h.titleKey) {
+          <li>
+            <a [routerLink]="h.path" class="sf-desk-search-popover__hit" (click)="closeSearch()">
+              {{ h.titleKey | translate }}
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+}

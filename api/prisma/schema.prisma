@@ -145,6 +145,10 @@ model ProductComponent {
   description   String               @db.Text
   quantity      Int                  @default(1)
   spec          String?
+  /// עמודת גליון Excel (0-based) למדידה — לשיוך תמונות לעמדת מסורים
+  planningSourceCol0 Int?
+  /// MPS-X | MPS-Y | MPB-X | MPB-Y בלבד כשמגיע למסורים; null לשאר רכיבים
+  sawsProfileCode      String? @db.VarChar(32)
   createdAt     DateTime             @default(now())
 
   productItem ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
@@ -152,7 +156,7 @@ model ProductComponent {
   @@index([productItemId])
 }
 
-/// צורף לאישור תכנון — חיתוך במסורים (קורות + משקופים)
+/// צורף לאישור תכנון — חיתוך במסורים (פרופילי MPS/MPB X2 מהתכנון)
 model SawStationWorkLine {
   id            String               @id @default(uuid())
   projectId     String
@@ -160,6 +164,10 @@ model SawStationWorkLine {
   description   String               @db.Text
   quantity      Int                  @default(1)
   sortOrder     Int                  @default(0)
+  /// נתיבים ציבוריים (למשל /planning-saws/{projectId}/...) אחרי העתקה מאישור תפ״י
+  imagePaths    String[]             @default([])
+  /// TYPE_2, TYPE_4, … מתוך ProductItem (לא WINDOW_INSTRUCTION)
+  instructionKind String             @default("") @db.VarChar(32)
   createdAt     DateTime             @default(now())
 
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)

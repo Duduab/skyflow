@@ -1,5 +1,5 @@
 <nav
-  class="sf-bottom-nav lg:hidden"
+  class="sf-bottom-nav xl:hidden"
   aria-label="Primary"
 >
   <div class="sf-bottom-nav__inner">
@@ -40,6 +40,26 @@
             'APP.THEME_STATE_LIGHT' | translate
           }}</span>
         </button>
+      </div>
+    }
+
+    @if (langMenuOpen()) {
+      <div
+        class="sf-bottom-nav__flyout sf-bottom-nav__flyout--langs"
+        role="menu"
+        [attr.aria-label]="'APP.HEADER_LANGUAGE_ARIA' | translate"
+      >
+        @for (l of langs; track l.code) {
+          <button
+            type="button"
+            class="sf-bottom-nav__flyout-item"
+            role="menuitem"
+            [class.is-current]="langSvc.current() === l.code"
+            (click)="pickLang($event, l.code)"
+          >
+            <span class="sf-bottom-nav__flyout-label">{{ l.labelKey | translate }}</span>
+          </button>
+        }
       </div>
     }
 
@@ -85,6 +105,24 @@
           </span>
           <span class="sf-bottom-nav__label">{{ 'APP.THEME_STATE_LIGHT' | translate }}</span>
         }
+      </button>
+
+      <button
+        type="button"
+        class="sf-bottom-nav__item"
+        [class.is-active]="langMenuOpen()"
+        [attr.aria-expanded]="langMenuOpen()"
+        [attr.aria-label]="'APP.HEADER_LANGUAGE_ARIA' | translate"
+        [title]="'APP.LANGUAGE' | translate"
+        (click)="toggleLangMenu($event)"
+      >
+        <span class="sf-bottom-nav__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+          </svg>
+        </span>
+        <span class="sf-bottom-nav__label">{{ 'APP.LANGUAGE' | translate }}</span>
       </button>
 
       <a

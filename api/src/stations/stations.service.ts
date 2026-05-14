@@ -2,7 +2,12 @@ import {
   BadRequestException,
   Injectable,
 } from '@nestjs/common';
-import { Prisma, ProjectFlowStatus, SkyflowRole } from '@prisma/client';
+import {
+  Prisma,
+  ProjectFlowStatus,
+  ProjectOrder,
+  SkyflowRole,
+} from '@prisma/client';
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import {
@@ -13,6 +18,18 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
+
+export type WorkerActivityLogEntry = {
+  id: string;
+  createdAt: string;
+  stationId: number;
+  stationManagerName: string;
+  reporterName: string | null;
+  processedQty: number;
+  summaryKey: string;
+  summaryParams: Record<string, string | number>;
+  issues: string | null;
+};
 
 const MIN_STATION = 1;
 const MAX_STATION = 7;
@@ -35,6 +52,181 @@ export class StationsService {
         `stationId must be between ${MIN_STATION} and ${MAX_STATION}`,
       );
     }
+  }
+
+  /**
+   * שורות מסור שנוצרו לפני שדה instructionKind — ממלאים מ־ProductItem לפי
+   * קידומת `[item.label]` בתיאור. ה־label עצמו מתחיל ב־`[שם גיליון]` —
+   * לכן התיאור הוא `[[Type 2] …] תיאור` וחייבים איזון סוגריים, לא regex ל־] הראשון.
+   */
+  private async backfillSawWorkLinesInstructionKinds(
+    projectId: string,
+    lines: {
+      id: string;
+      description: string;
+      instructionKind: string;
+    }[],
+  ): Promise<void> {
+    const missing = lines.filter((l) => !(l.instructionKind ?? '').trim());
+    if (!missing.length) return;
+
+    const productItemLabelFromSawDescription = (
+      description: string,
+    ): string | null => {
+      const t = description.trim();
+      if (!t.startsWith('[')) return null;
+      let depth = 0;
+      for (let i = 0; i < t.length; i++) {
+        const ch = t[i];
+        if (ch === '[') depth++;
+        else if (ch === ']') {
+          depth--;
+          if (depth === 0) {
+            const inner = t.slice(1, i).trim();
+            return inner.length ? inner : null;
+          }
+        }
+      }
+      return null;
+    };
+
+    const labels = new Set<string>();
+    for (const l of missing) {
+      const lb = productItemLabelFromSawDescription(l.description);
+      if (lb) labels.add(lb);
+    }
+    if (!labels.size) return;
+
+    const items = await this.prisma.productItem.findMany({
+      where: { projectId, label: { in: [...labels] } },
+      select: { label: true, instructionKind: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const byLabel = new Map<string, string>();
+    for (const i of items) {
+      const k = (i.instructionKind ?? '').trim();
+      if (!k || k === 'WINDOW_INSTRUCTION') continue;
+      if (!byLabel.has(i.label)) byLabel.set(i.label, k);
+    }
+
+    const toWrite: { id: string; instructionKind: string }[] = [];
+    for (const line of missing) {
+      const lb = productItemLabelFromSawDescription(line.description);
+      if (!lb) continue;
+      const kind = byLabel.get(lb);
+      if (!kind?.trim()) continue;
+      line.instructionKind = kind;
+      toWrite.push({ id: line.id, instructionKind: kind });
+    }
+    if (!toWrite.length) return;
+
+    const chunkSize = 80;
+    for (let i = 0; i < toWrite.length; i += chunkSize) {
+      const chunk = toWrite.slice(i, i + chunkSize);
+      await this.prisma.$transaction(
+        chunk.map((u) =>
+          this.prisma.sawStationWorkLine.update({
+            where: { id: u.id },
+            data: { instructionKind: u.instructionKind },
+          }),
+        ),
+      );
+    }
+  }
+
+  /** מיזוג אחרון מדיווחי מודאל מסור (שורה → כמות שנוסרה) */
+  private async latestSawLineSawnFromLogs(
+    projectId: string,
+  ): Promise<Record<string, number>> {
+    const logs = await this.prisma.stationLog.findMany({
+      where: { projectId, stationId: 1 },
+      orderBy: { createdAt: 'desc' },
+      take: 150,
+      select: { extraPayload: true },
+    });
+    const lineSawn = new Map<string, number>();
+    for (const log of logs) {
+      const ep = log.extraPayload as Record<string, unknown> | null;
+      if (!ep?.['sawModalSnapshot'] || !ep['sawLineSawnById']) continue;
+      const bag = ep['sawLineSawnById'] as Record<string, unknown>;
+      for (const [lineId, v] of Object.entries(bag)) {
+        if (lineSawn.has(lineId)) continue;
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= 0) {
+          lineSawn.set(lineId, Math.floor(n));
+        }
+      }
+    }
+    return Object.fromEntries(lineSawn);
+  }
+
+  /** מיזוג אחרון — מטרים לשורה ממודאל מסור */
+  private async latestSawLineMetersFromLogs(
+    projectId: string,
+  ): Promise<Record<string, number>> {
+    const logs = await this.prisma.stationLog.findMany({
+      where: { projectId, stationId: 1 },
+      orderBy: { createdAt: 'desc' },
+      take: 150,
+      select: { extraPayload: true },
+    });
+    const lineMeters = new Map<string, number>();
+    for (const log of logs) {
+      const ep = log.extraPayload as Record<string, unknown> | null;
+      if (!ep?.['sawModalSnapshot'] || !ep['sawLineMetersById']) continue;
+      const bag = ep['sawLineMetersById'] as Record<string, unknown>;
+      for (const [lineId, v] of Object.entries(bag)) {
+        if (lineMeters.has(lineId)) continue;
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= 0) {
+          lineMeters.set(lineId, Math.round(n * 100) / 100);
+        }
+      }
+    }
+    return Object.fromEntries(lineMeters);
+  }
+
+  /** מיזוג אחרון מדיווחי מודאל תחנות 2–4 (שורה → כמות שדווחה בעמדה) */
+  private async latestWorkLineDoneFromLogs(
+    projectId: string,
+    stationId: number,
+  ): Promise<Record<string, number>> {
+    const logs = await this.prisma.stationLog.findMany({
+      where: { projectId, stationId },
+      orderBy: { createdAt: 'desc' },
+      take: 150,
+      select: { extraPayload: true },
+    });
+    const lineDone = new Map<string, number>();
+    for (const log of logs) {
+      const ep = log.extraPayload as Record<string, unknown> | null;
+      if (!ep?.['workLineModalSnapshot'] || !ep['lineQtyById']) continue;
+      const bag = ep['lineQtyById'] as Record<string, unknown>;
+      for (const [lineId, v] of Object.entries(bag)) {
+        if (lineDone.has(lineId)) continue;
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= 0) {
+          lineDone.set(lineId, Math.floor(n));
+        }
+      }
+    }
+    return Object.fromEntries(lineDone);
+  }
+
+  private aggregateSawnByKind(
+    lines: { id: string; instructionKind: string }[],
+    lineSawn: Record<string, number>,
+  ): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const line of lines) {
+      const kind = (line.instructionKind ?? '').trim();
+      if (!kind || kind === 'WINDOW_INSTRUCTION') continue;
+      const n = lineSawn[line.id] ?? 0;
+      if (n <= 0) continue;
+      out[kind] = (out[kind] ?? 0) + n;
+    }
+    return out;
   }
 
   /** שם ותמונה להצגה במסוף עובד — לעמדה 1: מנהל משובץ מתכנון, אחרת משווה ישן, אחרת מנהל עמדה מהמערכת */
@@ -71,6 +263,173 @@ export class StationsService {
     });
   }
 
+  private displayName(
+    u: { firstName: string; lastName: string } | null,
+  ): string {
+    if (!u) return '—';
+    const n = `${u.firstName} ${u.lastName}`.trim();
+    return n.length ? n : '—';
+  }
+
+  private summaryForLog(log: {
+    stationId: number;
+    processedQty: number;
+    cutLength: Prisma.Decimal | null;
+    extraPayload: unknown;
+  }): { summaryKey: string; summaryParams: Record<string, string | number> } {
+    const qty = Math.max(0, log.processedQty);
+    switch (log.stationId) {
+      case 1: {
+        const ep = log.extraPayload as Record<string, unknown> | null;
+        if (ep?.['sawModalSnapshot']) {
+          const raw = ep['sawLineSawnById'] as
+            | Record<string, unknown>
+            | undefined;
+          const linesSum = raw
+            ? Object.values(raw).reduce<number>(
+                (s, v) =>
+                  s +
+                  (Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0),
+                0,
+              )
+            : 0;
+          return {
+            summaryKey: 'WORKER.ACT_LOG_SAW_MODAL',
+            summaryParams: {
+              kind: String(ep['instructionKind'] ?? ''),
+              lines: linesSum,
+            },
+          };
+        }
+        return {
+          summaryKey: 'WORKER.ACT_LOG_S1',
+          summaryParams: {
+            qty,
+            cm: log.cutLength != null ? Number(log.cutLength) : 0,
+          },
+        };
+      }
+      case 2:
+      case 3:
+      case 4: {
+        const ep234 = log.extraPayload as Record<string, unknown> | null;
+        if (ep234?.['workLineModalSnapshot']) {
+          const raw = ep234['lineQtyById'] as
+            | Record<string, unknown>
+            | undefined;
+          const linesSum = raw
+            ? Object.values(raw).reduce<number>(
+                (s, v) =>
+                  s +
+                  (Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0),
+                0,
+              )
+            : 0;
+          return {
+            summaryKey: 'WORKER.ACT_LOG_WORK_LINE_MODAL',
+            summaryParams: {
+              station: log.stationId,
+              kind: String(ep234['instructionKind'] ?? ''),
+              lines: linesSum,
+            },
+          };
+        }
+        if (log.stationId === 2) {
+          return { summaryKey: 'WORKER.ACT_LOG_S2', summaryParams: { qty } };
+        }
+        if (log.stationId === 3) {
+          return { summaryKey: 'WORKER.ACT_LOG_S3', summaryParams: { qty } };
+        }
+        return { summaryKey: 'WORKER.ACT_LOG_S4', summaryParams: { qty } };
+      }
+      case 5:
+        return { summaryKey: 'WORKER.ACT_LOG_S5', summaryParams: { qty } };
+      case 6:
+        return { summaryKey: 'WORKER.ACT_LOG_S6', summaryParams: { qty } };
+      case 7: {
+        const ep = log.extraPayload as Record<string, unknown> | null;
+        return {
+          summaryKey: 'WORKER.ACT_LOG_S7',
+          summaryParams: {
+            b: Number(ep?.['assembledBeams'] ?? 0),
+            g: Number(ep?.['assembledGlazing'] ?? 0),
+            u: Number(ep?.['assembledUnitized'] ?? 0),
+          },
+        };
+      }
+      default:
+        return {
+          summaryKey: 'WORKER.ACT_LOG_GENERIC',
+          summaryParams: { qty, station: log.stationId },
+        };
+    }
+  }
+
+  private async buildActivityLog(
+    projectId: string,
+    order: ProjectOrder,
+  ): Promise<WorkerActivityLogEntry[]> {
+    const logs = await this.prisma.stationLog.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        stationId: true,
+        processedQty: true,
+        cutLength: true,
+        extraPayload: true,
+        issues: true,
+        workerId: true,
+        createdAt: true,
+      },
+    });
+    if (!logs.length) return [];
+
+    const reporterIds = [
+      ...new Set(logs.map((l) => l.workerId).filter((x): x is string => !!x)),
+    ];
+    const reporters = reporterIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: reporterIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const reporterNameById = new Map(
+      reporters.map((u) => [
+        u.id,
+        `${u.firstName} ${u.lastName}`.trim() || '—',
+      ]),
+    );
+
+    const managerByStation = new Map<number, string>();
+    for (let sid = MIN_STATION; sid <= MAX_STATION; sid++) {
+      const disp = await this.resolveStationManagerDisplay(
+        sid,
+        order.planningSawsManagerUserId ?? null,
+        order.planningAssigneeUserId ?? null,
+      );
+      managerByStation.set(sid, this.displayName(disp));
+    }
+
+    return logs.map((log) => {
+      const sm = this.summaryForLog(log);
+      return {
+        id: log.id,
+        createdAt: log.createdAt.toISOString(),
+        stationId: log.stationId,
+        stationManagerName: managerByStation.get(log.stationId) ?? '—',
+        reporterName: log.workerId
+          ? (reporterNameById.get(log.workerId) ?? null)
+          : null,
+        processedQty: log.processedQty,
+        summaryKey: sm.summaryKey,
+        summaryParams: sm.summaryParams,
+        issues: log.issues?.trim() || null,
+      };
+    });
+  }
+
   async getWorkerContext(projectId: string, stationId: number) {
     this.assertStation(stationId);
     const order = await this.ordersService.findOne(projectId);
@@ -95,20 +454,66 @@ export class StationsService {
     const packedQty = qty(6);
     const readyToShip = packedQty >= order.totalItems;
 
-    const sawWorkLines =
-      stationId === 1 && order.flowStatus === ProjectFlowStatus.IN_PRODUCTION
-        ? await this.prisma.sawStationWorkLine.findMany({
-            where: { projectId },
-            orderBy: { sortOrder: 'asc' },
-            select: {
-              id: true,
-              componentKind: true,
-              description: true,
-              quantity: true,
-              sortOrder: true,
-            },
-          })
+    const inProduction = order.flowStatus === ProjectFlowStatus.IN_PRODUCTION;
+    const loadSawWorkLines =
+      inProduction && stationId >= 1 && stationId <= 4;
+
+    const sawWorkLines = loadSawWorkLines
+      ? await this.prisma.sawStationWorkLine.findMany({
+          where: { projectId },
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            id: true,
+            componentKind: true,
+            description: true,
+            quantity: true,
+            sortOrder: true,
+            imagePaths: true,
+            instructionKind: true,
+          },
+        })
+      : undefined;
+
+    if (sawWorkLines?.length) {
+      await this.backfillSawWorkLinesInstructionKinds(projectId, sawWorkLines);
+    }
+
+    const sawWorkTargetQty =
+      loadSawWorkLines &&
+      sawWorkLines?.length
+        ? sawWorkLines.reduce((s, l) => s + l.quantity, 0)
         : undefined;
+
+    let sawWorkSawnByLineId: Record<string, number> | undefined;
+    let sawWorkMetersByLineId: Record<string, number> | undefined;
+    let sawWorkSawnByKindPayload: Record<string, number> | undefined;
+    if (
+      stationId === 1 &&
+      inProduction &&
+      sawWorkLines?.length
+    ) {
+      sawWorkSawnByLineId = await this.latestSawLineSawnFromLogs(projectId);
+      sawWorkMetersByLineId = await this.latestSawLineMetersFromLogs(
+        projectId,
+      );
+      sawWorkSawnByKindPayload = this.aggregateSawnByKind(
+        sawWorkLines,
+        sawWorkSawnByLineId,
+      );
+    }
+
+    let workLineDoneByLineId: Record<string, number> | undefined;
+    if (
+      stationId >= 2 &&
+      stationId <= 4 &&
+      inProduction &&
+      sawWorkLines?.length
+    ) {
+      workLineDoneByLineId = await this.latestWorkLineDoneFromLogs(
+        projectId,
+        stationId,
+      );
+    }
 
     let siteAssembly: Record<string, unknown> | undefined;
     if (stationId === 7) {
@@ -159,6 +564,8 @@ export class StationsService {
       }
     }
 
+    const activityLog = await this.buildActivityLog(projectId, order);
+
     return {
       order,
       stationId,
@@ -169,11 +576,29 @@ export class StationsService {
       packedQty,
       requiredPackQty: order.totalItems,
       readyToShip,
+      activityLog,
       ...(stationManagerDisplay ? { stationManagerDisplay } : {}),
       ...(planningSawsTeam?.length ? { planningSawsTeam } : {}),
-      ...(stationId === 1 &&
-      order.flowStatus === ProjectFlowStatus.IN_PRODUCTION
-        ? { sawWorkLines: sawWorkLines ?? [] }
+      ...(loadSawWorkLines
+        ? {
+            sawWorkLines: sawWorkLines ?? [],
+            ...(sawWorkTargetQty != null && sawWorkTargetQty > 0
+              ? { sawWorkTargetQty }
+              : {}),
+          }
+        : {}),
+      ...(stationId === 1 && inProduction && sawWorkLines?.length
+        ? {
+            sawWorkSawnByLineId: sawWorkSawnByLineId ?? {},
+            sawWorkMetersByLineId: sawWorkMetersByLineId ?? {},
+            sawWorkSawnByKind: sawWorkSawnByKindPayload ?? {},
+          }
+        : {}),
+      ...(stationId >= 2 &&
+      stationId <= 4 &&
+      inProduction &&
+      sawWorkLines?.length
+        ? { workLineDoneByLineId: workLineDoneByLineId ?? {} }
         : {}),
       ...(siteAssembly ? { siteAssembly } : {}),
     };
@@ -205,7 +630,11 @@ export class StationsService {
     };
   }
 
-  async createStationLog(stationId: number, dto: CreateStationLogDto) {
+  async createStationLog(
+    stationId: number,
+    dto: CreateStationLogDto,
+    reporterUserId: string | null,
+  ) {
     this.assertStation(stationId);
     const orderRow = await this.ordersService.findOne(dto.projectId);
 
@@ -255,7 +684,7 @@ export class StationsService {
         stationId,
         processedQty: dto.processedQty,
         issues: dto.issues ?? null,
-        workerId: dto.workerId ?? null,
+        workerId: dto.workerId ?? reporterUserId ?? null,
         cutLength: dto.cutLength ?? null,
         extraPayload: dto.extraPayload
           ? (dto.extraPayload as Prisma.InputJsonValue)

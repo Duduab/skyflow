@@ -26,6 +26,25 @@ function qtyAt(ctx: WorkerContext, stationId: number): number {
   return ctx.totals.find((t) => t.stationId === stationId)?.processedQty ?? 0;
 }
 
+/** סכום פריטים שנוסרו לפי שורות תכנון (מודאל TYPE / לוגים) */
+function sumSawWorkSawnByLine(ctx: WorkerContext): number {
+  const m = ctx.sawWorkSawnByLineId;
+  if (!m || typeof m !== 'object') return 0;
+  return Object.values(m).reduce((s, v) => {
+    const n = typeof v === 'number' ? v : Number(v);
+    return s + (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0);
+  }, 0);
+}
+
+function sumWorkLineDoneByLine(ctx: WorkerContext): number {
+  const m = ctx.workLineDoneByLineId;
+  if (!m || typeof m !== 'object') return 0;
+  return Object.values(m).reduce((s, v) => {
+    const n = typeof v === 'number' ? v : Number(v);
+    return s + (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0);
+  }, 0);
+}
+
 function siteAssemblyPercent(s: SiteAssemblyContext): number {
   if (!s.deliveryNoteUrl?.trim()) return 0;
   const r = (a: number, e: number) =>
@@ -47,8 +66,18 @@ export function computeStationProgress(
   const doneRaw = qtyAt(ctx, sid);
 
   if (sid === 1) {
-    const target = ctx.order.totalItems;
-    const done = doneRaw;
+    const target =
+      ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0
+        ? ctx.sawWorkTargetQty
+        : ctx.order.totalItems;
+    const barsDone = doneRaw;
+    const piecesDone = sumSawWorkSawnByLine(ctx);
+    /** יעד מתכנון (MPS/MPB) — התקדמות לפי סכום «נוסרו» לשורה, לא לפי processedQty בלבד */
+    const usePlanningPieceProgress =
+      (ctx.sawWorkLines?.length ?? 0) > 0 &&
+      ctx.sawWorkTargetQty != null &&
+      ctx.sawWorkTargetQty > 0;
+    const done = usePlanningPieceProgress ? piecesDone : barsDone;
     const remaining = Math.max(0, target - done);
     const percent =
       target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
@@ -115,6 +144,30 @@ export function computeStationProgress(
     };
   }
 
+  if (sid >= 2 && sid <= 4) {
+    const target =
+      ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0
+        ? ctx.sawWorkTargetQty
+        : ctx.previousQty;
+    const usePlanningLineProgress =
+      (ctx.sawWorkLines?.length ?? 0) > 0 &&
+      ctx.sawWorkTargetQty != null &&
+      ctx.sawWorkTargetQty > 0;
+    const done = usePlanningLineProgress
+      ? sumWorkLineDoneByLine(ctx)
+      : doneRaw;
+    const remaining = Math.max(0, target - done);
+    const percent =
+      target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
+    return {
+      done,
+      target,
+      remaining,
+      percent,
+      noUpstreamTarget: sid >= 2 && sid <= 4 && target === 0,
+    };
+  }
+
   const target = ctx.previousQty;
   const done = doneRaw;
   const remaining = Math.max(0, target - done);
@@ -125,7 +178,7 @@ export function computeStationProgress(
     target,
     remaining,
     percent,
-    noUpstreamTarget: sid >= 2 && sid <= 4 && target === 0,
+    noUpstreamTarget: false,
   };
 }
 

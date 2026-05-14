@@ -8,6 +8,7 @@ import { LanguageSwitcherComponent } from './shared/language-switcher.component'
 import { ThemeService } from './core/theme.service';
 import { BottomNavComponent } from './shared/bottom-nav.component';
 import { ThemeToggleComponent } from './shared/theme-toggle.component';
+import { ShellHeaderDesktopComponent } from './shared/shell-header-desktop.component';
 import { CurrentUserService } from './core/current-user.service';
 
 @Component({
@@ -19,6 +20,7 @@ import { CurrentUserService } from './core/current-user.service';
     LanguageSwitcherComponent,
     ThemeToggleComponent,
     BottomNavComponent,
+    ShellHeaderDesktopComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

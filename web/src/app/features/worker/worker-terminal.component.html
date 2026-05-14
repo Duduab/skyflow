@@ -144,8 +144,19 @@
       }
       @if (stationId === 1) {
         <p class="mt-5 text-touch font-semibold text-white/90">
-          {{ 'WORKER.SAW_TARGET_BARS' | translate }}:
-          {{ ctx.order.totalItems }}
+          @if (
+            ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0
+          ) {
+            {{ 'WORKER.SAW_TARGET_PLANNING_LABEL' | translate }}:
+            <span class="font-black text-white">{{
+              ctx.sawWorkTargetQty
+            }}</span>
+          } @else {
+            {{ 'WORKER.SAW_TARGET_BARS' | translate }}:
+            <span class="font-black text-white">{{
+              ctx.order.totalItems
+            }}</span>
+          }
         </p>
       }
       @if (stationId === 6) {
@@ -157,6 +168,72 @@
         </p>
       }
     </section>
+
+    @if (stationId <= 4 && stationId >= 1 && ctx.sawWorkLines !== undefined) {
+      <section
+        class="sf-panel md:p-10 mt-6"
+        [attr.aria-label]="'WORKER.SAW_PROFILE_LINES_TITLE' | translate"
+      >
+        <h2 class="text-hero font-black text-white drop-shadow-md">
+          {{ 'WORKER.SAW_PROFILE_LINES_TITLE' | translate }}
+        </h2>
+        <p class="mt-2 text-touch text-white/75">
+          {{ 'WORKER.SAW_PROFILE_LINES_HINT' | translate }}
+        </p>
+        @if (ctx.sawWorkLines!.length === 0) {
+          <p class="mt-6 text-touch text-white/70">
+            {{ 'WORKER.SAW_PROFILE_LINES_EMPTY' | translate }}
+          </p>
+        } @else {
+          <div
+            class="mt-6 grid grid-cols-2 gap-4"
+            role="list"
+            [attr.aria-label]="'WORKER.SAW_TYPE_GRID_LABEL' | translate"
+          >
+            @for (g of sawTypeGroups(ctx); track g.instructionKind || 'other') {
+              <button
+                type="button"
+                class="saw-type-tile"
+                role="listitem"
+                [attr.aria-label]="sawInstructionKindTitle(g.instructionKind, g.typeNum)"
+                (click)="openSawTypeModal(g)"
+              >
+                <p class="saw-type-tile__kind text-touch font-black text-white" dir="ltr">
+                  {{ sawInstructionKindTitle(g.instructionKind, g.typeNum) }}
+                </p>
+                <p class="saw-type-tile__qty text-touch font-semibold text-white/70">
+                  {{ 'WORKER.SAW_TYPE_TOTAL_QTY' | translate }}:
+                  <span class="font-black text-white/95">{{
+                    g.totalQty
+                  }}</span>
+                </p>
+                <p class="saw-type-tile__sawn text-touch font-semibold text-emerald-200/95">
+                  @if (stationId === 1) {
+                    {{
+                      'WORKER.SAW_TYPE_SAWN_PROGRESS'
+                        | translate
+                          : {
+                              n: typeGroupDoneQty(ctx, g),
+                              total: g.totalQty,
+                            }
+                    }}
+                  } @else {
+                    {{
+                      'WORKER.LINE_TYPE_STATION_PROGRESS'
+                        | translate
+                          : {
+                              n: typeGroupDoneQty(ctx, g),
+                              total: g.totalQty,
+                            }
+                    }}
+                  }
+                </p>
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
 
     @let prog = stationProgress(ctx);
     <section
@@ -199,7 +276,14 @@
               class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
             >
               <p class="text-touch font-bold text-white/75">
-                @if (stationId === 1) {
+                @if (
+                  stationId === 1 ||
+                  (stationId >= 2 &&
+                    stationId <= 4 &&
+                    (ctx.sawWorkLines?.length ?? 0) > 0 &&
+                    ctx.sawWorkTargetQty != null &&
+                    ctx.sawWorkTargetQty > 0)
+                ) {
                   {{ 'WORKER.SAW_PROGRESS_DONE' | translate }}
                 } @else {
                   {{ 'WORKER.PROGRESS_DONE' | translate }}
@@ -213,7 +297,14 @@
               class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
             >
               <p class="text-touch font-bold text-white/75">
-                @if (stationId === 1) {
+                @if (
+                  stationId === 1 ||
+                  (stationId >= 2 &&
+                    stationId <= 4 &&
+                    (ctx.sawWorkLines?.length ?? 0) > 0 &&
+                    ctx.sawWorkTargetQty != null &&
+                    ctx.sawWorkTargetQty > 0)
+                ) {
                   {{ 'WORKER.SAW_PROGRESS_REMAINING' | translate }}
                 } @else {
                   {{ 'WORKER.PROGRESS_REMAINING' | translate }}
@@ -225,7 +316,14 @@
             </div>
           </div>
           <p class="text-touch font-semibold text-white/90">
-            @if (stationId === 1) {
+            @if (
+              stationId === 1 ||
+              (stationId >= 2 &&
+                stationId <= 4 &&
+                (ctx.sawWorkLines?.length ?? 0) > 0 &&
+                ctx.sawWorkTargetQty != null &&
+                ctx.sawWorkTargetQty > 0)
+            ) {
               {{ 'WORKER.SAW_PROGRESS_TARGET' | translate }}:
             } @else {
               {{ 'WORKER.PROGRESS_TARGET' | translate }}:
@@ -239,6 +337,54 @@
           }
         </div>
       </div>
+    </section>
+
+    <section
+      class="sf-panel md:p-10 mt-6"
+      [attr.aria-label]="'WORKER.ACTIVITY_LOG_TITLE' | translate"
+    >
+      <h3 class="text-hero font-black text-white drop-shadow-md">
+        {{ 'WORKER.ACTIVITY_LOG_TITLE' | translate }}
+      </h3>
+      @if (!(ctx.activityLog?.length ?? 0)) {
+        <p class="mt-4 text-touch text-white/70">
+          {{ 'WORKER.ACTIVITY_LOG_EMPTY' | translate }}
+        </p>
+      } @else {
+        <ul class="mt-5 divide-y divide-white/10" role="list">
+          @for (entry of ctx.activityLog!; track entry.id) {
+            <li class="py-4 text-touch" role="listitem">
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-white/80">
+                <time class="font-mono text-sm" [attr.datetime]="entry.createdAt">{{
+                  entry.createdAt | date: 'dd/MM/yyyy HH:mm'
+                }}</time>
+                <span class="font-bold text-sf-blue">{{
+                  'STATIONS.' + entry.stationId | translate
+                }}</span>
+              </div>
+              <p class="mt-1 text-sm text-white/70">
+                <span class="font-semibold">{{
+                  'WORKER.ACTIVITY_LOG_MANAGER' | translate
+                }}</span
+                >: {{ entry.stationManagerName }}
+                @if (entry.reporterName) {
+                  <span class="mx-2">·</span>
+                  <span class="font-semibold">{{
+                    'WORKER.ACTIVITY_LOG_REPORTER' | translate
+                  }}</span
+                  >: {{ entry.reporterName }}
+                }
+              </p>
+              <p class="mt-1 font-semibold text-white">
+                {{ entry.summaryKey | translate: entry.summaryParams }}
+              </p>
+              @if (entry.issues) {
+                <p class="mt-1 text-sm text-amber-200/90">{{ entry.issues }}</p>
+              }
+            </li>
+          }
+        </ul>
+      }
     </section>
 
     @if (doneMsg() && stationId === 6) {
@@ -256,43 +402,10 @@
       </div>
     }
 
-    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-10">
-      @switch (stationId) {
-        @case (1) {
-          <div class="grid gap-8 md:grid-cols-2">
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SAW_BARS_QTY' | translate }}
-              <input
-                type="number"
-                min="1"
-                step="1"
-                formControlName="barsQty"
-                class="sf-input mt-4"
-              />
-            </label>
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SAW_METERS_PER_BAR' | translate }}
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                formControlName="metersPerBar"
-                class="sf-input mt-4"
-              />
-            </label>
-          </div>
-          <p class="text-touch font-semibold text-white/85">
-            {{ 'WORKER.SAW_PROFILE_ORDER_LENGTH' | translate }}:
-            {{ ctx.order.originalLength }}
-            <span class="font-normal text-white/70">({{ 'WORKER.SAW_CM_UNIT' | translate }})</span>
-          </p>
-          <div class="sf-alert-scrap">
-            {{ 'WORKER.SAW_REMNANT_CALC' | translate }}:
-            {{ scrapCm() | number: '1.0-2' }}
-            {{ 'WORKER.SAW_CM_UNIT' | translate }}
-          </div>
-        }
-        @case (2) {
+    @if (stationId !== 1 && !usesWorkLineModalUi(ctx)) {
+      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-10">
+        @switch (stationId) {
+          @case (2) {
           <label class="block text-touch font-bold text-white">
             {{ 'WORKER.PROCESSED_QTY' | translate }}
             <input
@@ -586,10 +699,256 @@
         {{ 'WORKER.SUBMIT' | translate }}
       </skyflow-ui-button>
     </form>
+    }
 
     @if (saveToastVisible()) {
       <div class="worker-save-toast" role="status" aria-live="polite">
         {{ 'WORKER.SAVE_SUCCESS' | translate }}
+      </div>
+    }
+
+    @if (sawTypeModalGroup(); as mg) {
+      <div class="saw-type-modal__root">
+        <div
+          class="saw-type-modal__scrim"
+          tabindex="-1"
+          aria-hidden="true"
+          (click)="closeSawTypeModal()"
+        ></div>
+        <div
+          class="saw-type-modal__panel sf-panel"
+          role="dialog"
+          aria-modal="true"
+          [attr.aria-labelledby]="'saw-type-modal-title'"
+        >
+          <div class="saw-type-modal__head">
+            <div class="saw-type-modal__head-text">
+              <h2 id="saw-type-modal-title" class="saw-type-modal__title" dir="ltr">
+                {{ sawInstructionKindTitle(mg.instructionKind, mg.typeNum) }}
+              </h2>
+              <p class="saw-type-modal__total-line text-touch font-bold text-white/90">
+                @if (stationId === 1) {
+                  {{
+                    'WORKER.SAW_MODAL_TOTAL_TO_SAW'
+                      | translate: { qty: mg.totalQty | number: '1.0-0' }
+                  }}
+                } @else {
+                  {{
+                    'WORKER.WORK_LINE_MODAL_TOTAL_PLANNED'
+                      | translate: { qty: mg.totalQty | number: '1.0-0' }
+                  }}
+                }
+              </p>
+              <p class="saw-type-modal__count-line text-touch text-white/65">
+                {{
+                  'WORKER.SAW_MODAL_ITEM_COUNT'
+                    | translate: { count: mg.lines.length }
+                }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="saw-type-modal__close"
+              (click)="closeSawTypeModal()"
+              [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+          <div class="saw-type-modal__scroll">
+            <div class="saw-type-modal__grid" role="list">
+              @for (line of mg.lines; track line.id) {
+                <article class="saw-type-card" role="listitem">
+                  <div class="saw-type-card__img-slot">
+                    @if (firstSawLineImage(line); as imgUrl) {
+                      <button
+                        type="button"
+                        class="saw-type-card__ring saw-type-card__ring--btn"
+                        (click)="openSawLineImagePreview(imgUrl)"
+                        [attr.aria-label]="'WORKER.SAW_IMAGE_OPEN_FULL' | translate"
+                      >
+                        <img
+                          [src]="imgUrl"
+                          alt=""
+                          class="saw-type-card__img"
+                          loading="lazy"
+                        />
+                      </button>
+                    } @else {
+                      <div class="saw-type-card__ring" aria-hidden="true">
+                        <div class="saw-type-card__img--empty"></div>
+                      </div>
+                    }
+                  </div>
+                  <div class="saw-type-card__body">
+                    <p class="saw-type-card__unit-name">{{ sawLineNameRow(line) }}</p>
+                    <h3 class="saw-type-card__title">
+                      {{ sawLineShortTitle(line) }}
+                    </h3>
+                    <p class="saw-type-card__target">
+                      {{ 'WORKER.SAW_CARD_TARGET' | translate }}:
+                      <span class="saw-type-card__target-num">{{
+                        line.quantity | number: '1.0-0'
+                      }}</span>
+                    </p>
+                    <p class="saw-type-card__desc" [title]="sawLineDescriptionDisplay(line)">
+                      {{ sawLineDescriptionDisplay(line) }}
+                    </p>
+                  </div>
+                  <div class="saw-type-card__steppers">
+                    <div class="saw-type-card__stepper" dir="ltr">
+                      <span
+                        class="saw-type-card__stepper-val"
+                        [class.saw-type-card__stepper-val--empty]="modalLineSawnQty(line.id) <= 0"
+                        aria-live="polite"
+                      >
+                        @if (modalLineSawnQty(line.id) > 0) {
+                          {{ modalLineSawnQty(line.id) | number: '1.0-0' }}
+                        } @else {
+                          <span class="saw-type-card__stepper-placeholder">{{
+                            'WORKER.SAW_LINE_QTY' | translate
+                          }}</span>
+                        }
+                      </span>
+                      <div class="saw-type-card__stepper-btns">
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--minus"
+                          [disabled]="modalLineSawnQty(line.id) <= 0"
+                          (click)="nudgeModalLineSawn(line.id, line.quantity, -1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_MINUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">−</span>
+                        </button>
+                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--plus"
+                          [disabled]="modalLineSawnQty(line.id) >= line.quantity"
+                          (click)="nudgeModalLineSawn(line.id, line.quantity, 1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_PLUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">+</span>
+                        </button>
+                      </div>
+                    </div>
+                    @if (stationId === 1) {
+                    <div class="saw-type-card__stepper saw-type-card__stepper--meters" dir="ltr">
+                      <div class="saw-type-card__stepper-meter-col">
+                        <span class="saw-type-card__stepper-meter-label">{{
+                          'WORKER.SAW_MODAL_METERS' | translate
+                        }}</span>
+                        <span
+                          class="saw-type-card__stepper-val saw-type-card__stepper-val--meters"
+                          aria-live="polite"
+                          >{{ modalLineMeters(line.id) | number: '1.1-1' }}</span
+                        >
+                      </div>
+                      <div class="saw-type-card__stepper-btns">
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--minus"
+                          [disabled]="modalLineMeters(line.id) <= sawMetersMin + 0.0001"
+                          (click)="nudgeModalLineMeters(line.id, -0.1)"
+                          [attr.aria-label]="'WORKER.SAW_METERS_MINUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">−</span>
+                        </button>
+                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--plus"
+                          [disabled]="modalLineMeters(line.id) >= sawMetersMax - 0.0001"
+                          (click)="nudgeModalLineMeters(line.id, 0.1)"
+                          [attr.aria-label]="'WORKER.SAW_METERS_PLUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">+</span>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="saw-type-card__remnant">
+                      {{ 'WORKER.SAW_MODAL_REMNANT_CM' | translate }}:
+                      <span class="saw-type-card__remnant-val">{{
+                        modalLineRemnantCm(line) | number: '1.0-0'
+                      }}</span>
+                    </p>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          </div>
+          <div class="saw-type-modal__footer">
+            @if (workLineAuxForm; as aux) {
+              <div [formGroup]="aux" class="saw-type-modal__aux mb-6 space-y-5">
+                <label class="block text-touch font-bold text-white/90">
+                  {{ 'WORKER.ISSUES' | translate }}
+                  <textarea
+                    formControlName="issues"
+                    rows="2"
+                    class="sf-textarea mt-3"
+                  ></textarea>
+                </label>
+                @if (stationId >= 3) {
+                  <div class="grid gap-5 md:grid-cols-2">
+                    <label class="block text-touch font-bold text-white/90">
+                      {{ 'WORKER.SCRAP_QTY' | translate }}
+                      <input
+                        type="number"
+                        formControlName="scrapQty"
+                        min="0"
+                        class="sf-input mt-3"
+                      />
+                    </label>
+                    <label class="block text-touch font-bold text-white/90">
+                      {{ 'WORKER.SCRAP_LENGTH' | translate }}
+                      <input
+                        type="number"
+                        formControlName="scrapLength"
+                        min="0"
+                        step="0.01"
+                        class="sf-input mt-3"
+                      />
+                    </label>
+                  </div>
+                }
+              </div>
+            }
+            <skyflow-ui-button
+              type="button"
+              variant="primary"
+              size="touch"
+              [block]="true"
+              [loading]="sawTypeModalSaving()"
+              [disabled]="sawTypeModalSaving()"
+              btnClass="shadow-sf-lg"
+              (click)="saveSawTypeModal()"
+            >
+              {{ 'WORKER.SAW_MODAL_SAVE' | translate }}
+            </skyflow-ui-button>
+          </div>
+        </div>
+        @if (sawLineImagePreviewUrl(); as zoomUrl) {
+          <div
+            class="saw-line-img-preview"
+            role="dialog"
+            aria-modal="true"
+            [attr.aria-label]="'WORKER.SAW_IMAGE_PREVIEW_TITLE' | translate"
+            (click)="closeSawLineImagePreview()"
+          >
+            <button
+              type="button"
+              class="saw-line-img-preview__close"
+              (click)="closeSawLineImagePreview(); $event.stopPropagation()"
+              [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+            <div class="saw-line-img-preview__frame" (click)="$event.stopPropagation()">
+              <img [src]="zoomUrl" alt="" class="saw-line-img-preview__img" />
+            </div>
+          </div>
+        }
       </div>
     }
   </div>

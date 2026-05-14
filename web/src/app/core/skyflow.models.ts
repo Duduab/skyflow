@@ -54,12 +54,28 @@ export interface SawWorkLineDto {
   description: string;
   quantity: number;
   sortOrder: number;
+  /** TYPE_2, TYPE_4, … — לא WINDOW_INSTRUCTION */
+  instructionKind?: string;
+  /** נתיבים ציבוריים לתמונות (אחרי אישור תפ״י) */
+  imagePaths?: string[];
 }
 
 export interface WorkerStationManagerDisplayDto {
   firstName: string;
   lastName: string;
   photoUrl: string | null;
+}
+
+export interface WorkerActivityLogEntryDto {
+  id: string;
+  createdAt: string;
+  stationId: number;
+  stationManagerName: string;
+  reporterName: string | null;
+  processedQty: number;
+  summaryKey: string;
+  summaryParams: Record<string, string | number>;
+  issues: string | null;
 }
 
 export interface WorkerContext {
@@ -72,10 +88,31 @@ export interface WorkerContext {
   packedQty: number;
   requiredPackQty: number;
   readyToShip: boolean;
+  /** Station 1 — סכום כמויות חיתוך מהתכנון (MPS/MPB) ליעד התקדמות */
+  sawWorkTargetQty?: number;
+  /** דיווחים לכל התחנות בפרויקט — מהחדש לישן */
+  activityLog?: WorkerActivityLogEntryDto[];
   /** מנהל/משווה להצגה במסוף — מהמערכת או משיבוץ תכנון (עמדה 1) */
   stationManagerDisplay?: WorkerStationManagerDisplayDto | null;
   /** Station 1 — קווי עבודה למסורים אחרי אישור תכנון */
   sawWorkLines?: SawWorkLineDto[];
+  /**
+   * Station 1 — כמה נוסרו לפי instructionKind (TYPE_2, …).
+   * מוכן לדיווח עתידי לפי סוג; כרגע יכול להיות ריק או אפסים.
+   */
+  sawWorkSawnByKind?: Record<string, number>;
+  /**
+   * Station 1 — כמה נוסרו לפי מזהה שורת מסור (מדיווחי מודאל TYPE).
+   */
+  sawWorkSawnByLineId?: Record<string, number>;
+  /**
+   * Station 1 — מטרים לניסור לכל שורת מסור (מדיווחי מודאל TYPE).
+   */
+  sawWorkMetersByLineId?: Record<string, number>;
+  /**
+   * Stations 2–4 — כמה דווחו לפי מזהה שורת תכנון (מודאל TYPE, ללא מטרים).
+   */
+  workLineDoneByLineId?: Record<string, number>;
   /** Station 1 — עובדי מסורים משובצים מתכנון (מרובים) */
   planningSawsTeam?: WorkerStationManagerDisplayDto[];
   /** Station 7 — הרכבה באתר */

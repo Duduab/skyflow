@@ -9,6 +9,10 @@ export interface ParsedProductComponent {
   description: string;
   quantity: number;
   spec: string | null;
+  /** עמודת גליון (0-based) — לשיוך תמונות מסורים */
+  planningSourceCol0?: number;
+  /** MPS-X | MPS-Y | MPB-X | MPB-Y — רק עמודות שמגיעות למסורים */
+  sawsProfileCode?: string | null;
 }
 
 export interface ParsedProductItem {
@@ -63,6 +67,29 @@ function lineQtyFromLabel(label: string): number {
   if (!m) return 1;
   const n = parseInt(m[1], 10);
   return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+/**
+ * ארבעת פרופילי המסורים מהאקסל (כותרת ממוזגת / שורת משנה).
+ * לא כולל YAGUAR / SUBFRAME וכו׳.
+ */
+export function matchSawsProfileCode(combinedHeader: string): string | null {
+  const n = normalizeHeaderText(combinedHeader);
+  if (!n.includes('x2')) return null;
+  if (n.includes('mpb-y')) return 'MPB-Y';
+  if (n.includes('mpb-x')) return 'MPB-X';
+  if (n.includes('mps-y')) return 'MPS-Y';
+  if (n.includes('mps-x')) return 'MPS-X';
+  return null;
+}
+
+/** שורת מידה בעמודת CONSISTS OF שמתאימה לפרופילי B (B-1, B-2, B-A-1 …) — רק אליה נכנסים MPS/MPB למסורים */
+function isPlanningSawsBeamSubRow(row: string[], consistsCol: number): boolean {
+  if (consistsCol < 0) return true;
+  const cell = norm(row[consistsCol] ?? '');
+  if (!cell) return false;
+  const s = cell.replace(/\s+/g, ' ').trim();
+  return /^B-/i.test(s);
 }
 
 /**
@@ -258,12 +285,21 @@ function collectRowComponents(
 
     const label = shortHeaderLabel(hdr) || String(kind);
     const isNum = /^\d+(\.\d+)?$/.test(cell);
+    const sawsCode = matchSawsProfileCode(hdr);
+    if (
+      sawsCode !== null &&
+      !isPlanningSawsBeamSubRow(row, consistsCol)
+    ) {
+      continue;
+    }
     if (isNum) {
       into.push({
         kind,
         description: `${label} (mm)`,
         quantity: 1,
         spec: cell,
+        planningSourceCol0: c,
+        sawsProfileCode: sawsCode,
       });
     } else {
       into.push({
@@ -271,6 +307,8 @@ function collectRowComponents(
         description: label,
         quantity: 1,
         spec: cell,
+        planningSourceCol0: c,
+        sawsProfileCode: sawsCode,
       });
     }
   }

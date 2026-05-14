@@ -123,6 +123,8 @@ export class PlanningUploadService {
                   description: c.description,
                   quantity: c.quantity,
                   spec: c.spec,
+                  planningSourceCol0: c.planningSourceCol0 ?? null,
+                  sawsProfileCode: c.sawsProfileCode ?? null,
                 })),
               },
             },
