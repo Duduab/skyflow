@@ -227,24 +227,10 @@ export class WorkerTerminalComponent implements OnInit {
     }
     this.sawModalLineCounts.set(next);
 
-    if (this.stationId === 1) {
-      const fromM = ctx?.sawWorkMetersByLineId;
+    if (this.stationId === 1 && ctx) {
       const mNext = new Map<string, number>();
       for (const line of g.lines) {
-        const raw = fromM?.[line.id];
-        const m =
-          typeof raw === 'number' &&
-          Number.isFinite(raw) &&
-          raw >= WorkerTerminalComponent.SAW_MODAL_METERS_MIN
-            ? Math.round(raw * 100) / 100
-            : WorkerTerminalComponent.SAW_MODAL_METERS_DEFAULT;
-        mNext.set(
-          line.id,
-          Math.min(
-            WorkerTerminalComponent.SAW_MODAL_METERS_MAX,
-            Math.max(WorkerTerminalComponent.SAW_MODAL_METERS_MIN, m),
-          ),
-        );
+        mNext.set(line.id, this.effectiveSawMetersForLine(ctx, line));
       }
       this.sawModalLineMeters.set(mNext);
     } else {
@@ -303,6 +289,36 @@ export class WorkerTerminalComponent implements OnInit {
     );
   }
 
+  /**
+   * מטרים לניסור לשורה: דיווח אחרון מהמודאל (תחנה 1), אחרת אורך מהתכנון (ס״מ→מ׳),
+   * אחרת ברירת מחדל.
+   */
+  effectiveSawMetersForLine(ctx: WorkerContext, line: SawWorkLineDto): number {
+    const rawM = ctx.sawWorkMetersByLineId?.[line.id];
+    if (
+      typeof rawM === 'number' &&
+      Number.isFinite(rawM) &&
+      rawM >= WorkerTerminalComponent.SAW_MODAL_METERS_MIN
+    ) {
+      return Math.min(
+        WorkerTerminalComponent.SAW_MODAL_METERS_MAX,
+        Math.max(
+          WorkerTerminalComponent.SAW_MODAL_METERS_MIN,
+          Math.round(rawM * 100) / 100,
+        ),
+      );
+    }
+    const cm = line.planningCutLengthCm;
+    if (typeof cm === 'number' && Number.isFinite(cm) && cm > 0) {
+      const m = Math.round((cm / 100) * 100) / 100;
+      return Math.min(
+        WorkerTerminalComponent.SAW_MODAL_METERS_MAX,
+        Math.max(WorkerTerminalComponent.SAW_MODAL_METERS_MIN, m),
+      );
+    }
+    return WorkerTerminalComponent.SAW_MODAL_METERS_DEFAULT;
+  }
+
   nudgeModalLineMeters(lineId: string, delta: number): void {
     const step = WorkerTerminalComponent.SAW_MODAL_METERS_STEP;
     const d = Math.sign(delta) * step;
@@ -325,17 +341,36 @@ export class WorkerTerminalComponent implements OnInit {
     });
   }
 
-  /** פחת (ס״מ) לשורה: צורך לפי כמות×אורך פרופיל מינוס נוסרו×מטרים×100 */
+  /**
+   * אורך צורך (ס״מ) לקורה בשורת מסור: מתכנון (תא פרופיל) כשקיים,
+   * אחרת `originalLength` מהפרויקט — כדי שלא יערבבו אורך יחידה כללי עם מטרים לשורה.
+   */
+  private sawBarNeedLengthCm(
+    line: SawWorkLineDto,
+    orderOriginalCm: number,
+  ): number {
+    const p = line.planningCutLengthCm;
+    if (typeof p === 'number' && Number.isFinite(p) && p > 0) {
+      return p;
+    }
+    if (Number.isFinite(orderOriginalCm) && orderOriginalCm > 0) {
+      return orderOriginalCm;
+    }
+    return 0;
+  }
+
+  /** פחת (ס״מ) לשורה: צורך לפי כמות×אורך פרופיל (מתכנון או BOM) מינוס נוסרו×מטרים×100 */
   modalLineRemnantCm(line: SawWorkLineDto): number {
     const ctx = this.context();
     if (!ctx || this.stationId !== 1) return 0;
     const orig = Number(ctx.order.originalLength);
-    if (!Number.isFinite(orig) || orig <= 0) return 0;
+    const perBarNeed = this.sawBarNeedLengthCm(line, orig);
+    if (!Number.isFinite(perBarNeed) || perBarNeed <= 0) return 0;
     const sawn = this.modalLineSawnQty(line.id);
     const meters = this.modalLineMeters(line.id);
     const cl = meters * 100;
     if (!Number.isFinite(cl) || cl <= 0) return 0;
-    return Math.max(0, line.quantity * orig - sawn * cl);
+    return Math.max(0, line.quantity * perBarNeed - sawn * cl);
   }
   sawLineUnitLabel(line: SawWorkLineDto): string | null {
     const d = line.description.trim();
@@ -504,6 +539,49 @@ export class WorkerTerminalComponent implements OnInit {
     return this.stationId === 1
       ? this.sawnQtyForSawTypeGroup(ctx, g)
       : this.lineDoneQtyForTypeGroup(ctx, g);
+  }
+
+  /** אחוז התקדמות בתוך קבוצת TYPE (טבעת באריח) */
+  typeGroupProgressPercent(ctx: WorkerContext, g: SawTypeGroupVm): number {
+    const t = g.totalQty;
+    if (!Number.isFinite(t) || t <= 0) return 0;
+    const d = this.typeGroupDoneQty(ctx, g);
+    return Math.min(100, Math.round((d / t) * 100));
+  }
+
+  typeGroupIsComplete(ctx: WorkerContext, g: SawTypeGroupVm): boolean {
+    return this.typeGroupProgressPercent(ctx, g) >= 100;
+  }
+
+  /** פחת (ס״מ) לשורה לפי דיווחי מסור ב־context — כמו המודאל, בלי מפת המודאל */
+  lineRemnantCmAtSawFromContext(
+    ctx: WorkerContext,
+    line: SawWorkLineDto,
+  ): number {
+    const orig = Number(ctx.order.originalLength);
+    const perBarNeed = this.sawBarNeedLengthCm(line, orig);
+    if (!Number.isFinite(perBarNeed) || perBarNeed <= 0) return 0;
+    const rawS = ctx.sawWorkSawnByLineId?.[line.id];
+    const sawn =
+      typeof rawS === 'number' && Number.isFinite(rawS)
+        ? Math.max(0, Math.floor(rawS))
+        : 0;
+    const meters = this.effectiveSawMetersForLine(ctx, line);
+    const cl = meters * 100;
+    if (!Number.isFinite(cl) || cl <= 0) return 0;
+    return Math.max(0, line.quantity * perBarNeed - sawn * cl);
+  }
+
+  /** סה״כ פחת משוער (ס״מ) לכל שורות קבוצת TYPE — מצטבר ממסורים */
+  typeGroupRemnantCm(ctx: WorkerContext, g: SawTypeGroupVm): number {
+    return g.lines.reduce(
+      (s, line) => s + this.lineRemnantCmAtSawFromContext(ctx, line),
+      0,
+    );
+  }
+
+  typeGroupShowsRemnant(ctx: WorkerContext, g: SawTypeGroupVm): boolean {
+    return this.typeGroupRemnantCm(ctx, g) > 0;
   }
 
   /** תחנות 2–4 עם שורות תכנון — UI מודאל TYPE בלי טופס ראשי */

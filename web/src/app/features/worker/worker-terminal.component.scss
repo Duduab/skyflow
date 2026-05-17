@@ -328,8 +328,10 @@
   max-width: 12rem;
 }
 
-/* כרטיסי סוג ניסור — ריבוע (יחס 1:1) לפי רוחב העמודה */
+/* כרטיסי סוג ניסור — ריבוע (יחס 1:1) + טבעת התקדמות */
 .saw-type-tile {
+  --tile-ring-accent: #558fc3;
+  position: relative;
   width: 100%;
   min-width: 0;
   aspect-ratio: 1 / 1;
@@ -338,8 +340,8 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.4rem;
-  padding: clamp(0.7rem, 3.2vw, 1.2rem);
+  gap: 0.35rem;
+  padding: clamp(0.55rem, 2.8vw, 1rem);
   border-radius: 1.25rem;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(0, 0, 0, 0.35);
@@ -350,7 +352,7 @@
     box-shadow 0.15s ease;
   overflow: hidden;
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: rgba(251, 191, 129, 0.5);
     background: rgba(0, 0, 0, 0.45);
   }
@@ -359,6 +361,141 @@
     outline: 2px solid rgba(251, 191, 129, 0.95);
     outline-offset: 2px;
   }
+
+  &:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+
+  &:disabled:hover,
+  &:disabled:focus-visible {
+    outline: none;
+  }
+}
+
+.saw-type-tile--st-1 {
+  --tile-ring-accent: #fbbf24;
+}
+.saw-type-tile--st-2 {
+  --tile-ring-accent: #22d3ee;
+}
+.saw-type-tile--st-3 {
+  --tile-ring-accent: #34d399;
+}
+.saw-type-tile--st-4 {
+  --tile-ring-accent: #d8b4fe;
+}
+.saw-type-tile--st-5 {
+  --tile-ring-accent: #fb7185;
+}
+.saw-type-tile--st-6 {
+  --tile-ring-accent: #6ee7b7;
+}
+.saw-type-tile--st-7 {
+  --tile-ring-accent: #f59e0b;
+}
+
+.saw-type-tile--complete {
+  border-color: rgba(52, 211, 153, 0.72);
+  background: linear-gradient(
+    165deg,
+    rgba(6, 78, 59, 0.52) 0%,
+    rgba(4, 54, 54, 0.72) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(167, 243, 208, 0.12),
+    0 0 0 1px rgba(16, 185, 129, 0.22);
+}
+
+.saw-type-tile--complete:hover:not(:disabled) {
+  border-color: rgba(52, 211, 153, 0.88);
+  background: linear-gradient(
+    165deg,
+    rgba(6, 95, 70, 0.55) 0%,
+    rgba(4, 60, 56, 0.78) 100%
+  );
+}
+
+.saw-type-tile--complete .saw-type-tile__arc {
+  stroke: #34d399;
+}
+
+.saw-type-tile__ring-wrap {
+  position: relative;
+  width: clamp(4.5rem, 20vw, 5.35rem);
+  height: clamp(4.5rem, 20vw, 5.35rem);
+  flex-shrink: 0;
+  margin-bottom: 0.1rem;
+}
+
+.saw-type-tile__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.saw-type-tile__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 8;
+}
+
+.saw-type-tile__arc {
+  fill: none;
+  stroke: var(--tile-ring-accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.saw-type-tile__ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.saw-type-tile__pct-inner {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.04em;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--tile-ring-accent);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+
+.saw-type-tile__pct-value {
+  font-size: clamp(1.15rem, 4.5vw, 1.45rem);
+  letter-spacing: -0.03em;
+}
+
+.saw-type-tile__pct-sign {
+  font-size: clamp(0.72rem, 2.6vw, 0.88rem);
+  font-weight: 800;
+  opacity: 0.92;
+}
+
+.saw-type-tile__check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.85rem, 7vw, 2.2rem);
+  height: clamp(1.85rem, 7vw, 2.2rem);
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.95);
+  color: #ecfdf5;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.saw-type-tile__check-svg {
+  width: 68%;
+  height: 68%;
+  display: block;
 }
 
 .saw-type-tile__kind {
@@ -380,6 +517,13 @@
   margin: 0;
   line-height: 1.25;
   font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+}
+
+.saw-type-tile__remnant {
+  margin: 0.15rem 0 0;
+  line-height: 1.3;
+  font-size: clamp(0.78rem, 3vw, 0.95rem);
+  max-width: 100%;
 }
 
 .saw-type-modal__root {

@@ -58,6 +58,8 @@ export interface SawWorkLineDto {
   instructionKind?: string;
   /** נתיבים ציבוריים לתמונות (אחרי אישור תפ״י) */
   imagePaths?: string[];
+  /** אורך חיתוך מהתכנון (ס״מ) — מתא Excel; מקור למטרים לניסור */
+  planningCutLengthCm?: number | null;
 }
 
 export interface WorkerStationManagerDisplayDto {
@@ -103,10 +105,12 @@ export interface WorkerContext {
   sawWorkSawnByKind?: Record<string, number>;
   /**
    * Station 1 — כמה נוסרו לפי מזהה שורת מסור (מדיווחי מודאל TYPE).
+   * Stations 2–4 — אותם נתונים לתצוגת פחת משוער מתחנת המסורים.
    */
   sawWorkSawnByLineId?: Record<string, number>;
   /**
    * Station 1 — מטרים לניסור לכל שורת מסור (מדיווחי מודאל TYPE).
+   * Stations 2–4 — לתצוגת פחת משוער.
    */
   sawWorkMetersByLineId?: Record<string, number>;
   /**

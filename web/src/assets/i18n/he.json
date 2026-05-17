@@ -66,7 +66,11 @@
     "SEVERITY": "ציון עומס",
     "WORK_ORDERS_COL": "פקודות עבודה",
     "PURCHASE_ORDERS_COL": "הזמנות רכש",
-    "OPEN_PDF_HINT": "פתיחת PDF בלשונית חדשה"
+    "OPEN_PDF_HINT": "פתיחת PDF בלשונית חדשה",
+    "PROJECTS_RANGE": "מציג {{from}}–{{to}} מתוך {{total}}",
+    "PROJECTS_PAGE": "עמוד {{page}} מתוך {{totalPages}}",
+    "PROJECTS_PREV": "הקודם",
+    "PROJECTS_NEXT": "הבא"
   },
   "PLANNING": {
     "TITLE": "העלאת תכנון (תפ״י)",
@@ -380,6 +384,8 @@
     "SAW_TYPE_TOTAL_QTY": "סה״כ כמות",
     "SAW_TYPE_SAWN_PROGRESS": "נוסרו: {{n}} מתוך {{total}}",
     "LINE_TYPE_STATION_PROGRESS": "דווחו: {{n}} מתוך {{total}}",
+    "SAW_TYPE_TILE_ARIA_DONE": "הושלם",
+    "SAW_TYPE_TILE_REMNANT_IF_ANY": "פחת (אם קיים): {{cm}} ס״מ",
     "WORK_LINE_MODAL_TOTAL_PLANNED": "סה״כ לעיבוד במסך זה: {{qty}}",
     "SAW_TYPE_TAP_HINT": "הקש לרשימת ניסור",
     "SAW_TYPE_MODAL_SUB": "{{count}} שורות · סה״כ כמות: {{qty}}",

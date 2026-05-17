@@ -1,18 +1,140 @@
-.admin-dash__chart-canvas canvas {
-  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.42))
-    drop-shadow(0 2px 8px rgba(85, 143, 195, 0.18));
+/* פאנלים בדשבורד — צל ומסגרת עדינים, בלי תזוזה ב־hover */
+.admin-dash .sf-panel.shadow-sf {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.14),
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
 }
 
+.admin-dash .sf-panel.shadow-sf-lg {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 5px 20px rgba(0, 0, 0, 0.16),
+    0 1px 3px rgba(62, 93, 136, 0.07),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+}
+
+.admin-dash__chart-canvas canvas {
+  filter: drop-shadow(0 5px 16px rgba(0, 0, 0, 0.22))
+    drop-shadow(0 1px 4px rgba(85, 143, 195, 0.12));
+}
+
+.admin-dash table .shadow-sf {
+  box-shadow: 0 1px 4px rgba(62, 93, 136, 0.14) !important;
+}
+
+.admin-dash table .shadow-sf-in {
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* בורר פרויקט — חץ SVG + מילוי בשכבה נפרדת (WebKit מאפס background-image כשמגדירים background-color) */
+.admin-dash__project-select {
+  --admin-dash-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23a8c4e8' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --admin-dash-select-fill: linear-gradient(
+    180deg,
+    rgba(8, 12, 22, 0.55),
+    rgba(8, 12, 22, 0.55)
+  );
+  width: 100%;
+  min-height: 3.35rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding-block: 0.7rem;
+  /* חץ בצד שמאל פיזית — padding פיזי כדי שלא ייסחף עם כיוון השורה */
+  padding-left: 3.35rem;
+  padding-right: 1.15rem;
+  font-size: clamp(1rem, 2.6vw, 1.18rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.96);
+  background-color: transparent;
+  background-image: var(--admin-dash-select-chevron), var(--admin-dash-select-fill);
+  background-repeat: no-repeat, no-repeat;
+  background-size: 1.35rem 1.35rem, 100% 100%;
+  background-position: center left 1.35rem, 0 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-image 0.18s ease;
+}
+
+.admin-dash__project-select:hover {
+  border-color: rgba(85, 143, 195, 0.45);
+  background-image: var(--admin-dash-select-chevron),
+    linear-gradient(
+      180deg,
+      rgba(12, 18, 30, 0.62),
+      rgba(12, 18, 30, 0.62)
+    );
+}
+
+.admin-dash__project-select:focus-visible {
+  outline: none;
+  border-color: rgba(119, 184, 255, 0.55);
+  background-image: var(--admin-dash-select-chevron),
+    linear-gradient(
+      180deg,
+      rgba(14, 20, 34, 0.68),
+      rgba(14, 20, 34, 0.68)
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 22px rgba(0, 0, 0, 0.28),
+    0 0 0 3px rgba(85, 143, 195, 0.38);
+}
+
+.admin-dash__project-select::-ms-expand {
+  display: none;
+}
+
+.admin-dash__toolbar .sf-ui-btn {
+  min-height: 2.625rem;
+  padding-block: 0.55rem;
+  padding-inline: 1.2rem 1.35rem;
+  align-self: stretch;
+}
+
+@media (min-width: 640px) {
+  .admin-dash__toolbar .sf-ui-btn {
+    align-self: center;
+  }
+}
+
+/* כפתורי primary גלובליים זזים ב-hover — בדשבורד נשארים יציבים */
+.admin-dash .admin-dash__toolbar .sf-ui-btn.sf-ui-btn--primary:hover:not(:disabled),
+.admin-dash .admin-dash__toolbar .sf-ui-btn.sf-ui-btn--primary:active:not(:disabled) {
+  transform: none;
+}
 
 .admin-dash__kpi {
   transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.admin-dash__kpi > p:first-child {
+  font-weight: 500;
+}
+
+.admin-dash__kpi > p:nth-child(2) {
+  font-weight: 700;
 }
 
 .admin-dash__kpi:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--sf-shadow-hover);
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.18),
+    0 1px 3px rgba(62, 93, 136, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset !important;
 }
 
 .admin-doc-link {
@@ -24,18 +146,22 @@
   text-decoration: none;
   color: rgba(255, 255, 255, 0.95);
   background: rgba(0, 0, 0, 0.4);
-  border: 2px solid rgba(255, 255, 255, 0.14);
-  box-shadow: var(--sf-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
   transition:
-    transform 0.12s ease,
     border-color 0.15s ease,
-    background 0.15s ease;
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .admin-doc-link:hover {
-  transform: translateY(-2px);
-  border-color: rgba(85, 143, 195, 0.65);
-  background: rgba(85, 143, 195, 0.18);
+  border-color: rgba(85, 143, 195, 0.45);
+  background: rgba(85, 143, 195, 0.14);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
 }
 
 .admin-doc-link__badge {
@@ -44,7 +170,7 @@
   border-radius: 0.4rem;
   padding: 0.15rem 0.35rem;
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   color: #0f172a;
   background: linear-gradient(180deg, #f8fafc, #e2e8f0);
@@ -60,30 +186,29 @@
 
 .admin-doc-link__title {
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
 }
 
 .admin-doc-link__ref {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.65);
 }
 
 /* כמו כפתור worker-hub — פותח את מודאל בחירת פרויקט */
 .admin-dash__orders-open.sf-ui-btn {
   flex-shrink: 0;
-  min-height: 2.375rem;
-  height: auto;
   min-width: 0;
-  padding: 0.45rem 1.65rem;
+  min-height: 2.625rem;
+  padding: 0.55rem 1.35rem;
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
   color: #ecfdf5;
   text-shadow: none;
-  border-radius: 9999px;
+  border-radius: var(--sf-ui-btn-radius);
   background: linear-gradient(
     165deg,
     rgba(52, 211, 153, 0.95) 0%,
@@ -96,18 +221,16 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 
   transition:
-    transform 0.15s ease,
     box-shadow 0.15s ease,
     filter 0.15s ease,
     opacity 0.15s ease;
 
   &:hover {
-    filter: brightness(1.08);
-    transform: translateY(-2px);
+    filter: brightness(1.06);
     box-shadow:
-      0 0 26px rgba(52, 211, 153, 0.62),
-      0 3px 14px rgba(0, 0, 0, 0.32),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      0 0 18px rgba(52, 211, 153, 0.42),
+      0 2px 10px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
 
   &:focus-visible {

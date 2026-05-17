@@ -168,6 +168,8 @@ model SawStationWorkLine {
   imagePaths    String[]             @default([])
   /// TYPE_2, TYPE_4, … מתוך ProductItem (לא WINDOW_INSTRUCTION)
   instructionKind String             @default("") @db.VarChar(32)
+  /// אורך חיתוך מהתכנון (ס״מ) — מתא בעמודת הפרופיל (MPS/MPB); מקור למטרים לניסור
+  planningCutLengthCm Int?
   createdAt     DateTime             @default(now())
 
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)

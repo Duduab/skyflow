@@ -470,6 +470,7 @@ export class StationsService {
             sortOrder: true,
             imagePaths: true,
             instructionKind: true,
+            planningCutLengthCm: true,
           },
         })
       : undefined;
@@ -488,7 +489,8 @@ export class StationsService {
     let sawWorkMetersByLineId: Record<string, number> | undefined;
     let sawWorkSawnByKindPayload: Record<string, number> | undefined;
     if (
-      stationId === 1 &&
+      stationId >= 1 &&
+      stationId <= 4 &&
       inProduction &&
       sawWorkLines?.length
     ) {
@@ -496,6 +498,13 @@ export class StationsService {
       sawWorkMetersByLineId = await this.latestSawLineMetersFromLogs(
         projectId,
       );
+    }
+    if (
+      stationId === 1 &&
+      inProduction &&
+      sawWorkLines?.length &&
+      sawWorkSawnByLineId
+    ) {
       sawWorkSawnByKindPayload = this.aggregateSawnByKind(
         sawWorkLines,
         sawWorkSawnByLineId,
@@ -587,10 +596,17 @@ export class StationsService {
               : {}),
           }
         : {}),
-      ...(stationId === 1 && inProduction && sawWorkLines?.length
+      ...(stationId >= 1 &&
+      stationId <= 4 &&
+      inProduction &&
+      sawWorkLines?.length
         ? {
             sawWorkSawnByLineId: sawWorkSawnByLineId ?? {},
             sawWorkMetersByLineId: sawWorkMetersByLineId ?? {},
+          }
+        : {}),
+      ...(stationId === 1 && inProduction && sawWorkLines?.length
+        ? {
             sawWorkSawnByKind: sawWorkSawnByKindPayload ?? {},
           }
         : {}),

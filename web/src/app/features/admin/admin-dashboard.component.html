@@ -26,21 +26,21 @@
         <h1 class="text-hero font-black tracking-tight text-white drop-shadow-lg">
           {{ adminFilterSummary(d) }}
         </h1>
-        <p class="text-touch font-semibold text-white/80">
+        <p class="text-touch font-medium text-white/80">
           {{ 'APP.SUBTITLE' | translate }}
         </p>
       </div>
       <div
         class="sf-panel flex w-full flex-col gap-3 border-white/20 bg-black/40 px-5 py-4 shadow-sf"
       >
-        <span class="text-sm font-black text-white/80">{{
+        <span class="text-sm font-semibold text-white/80">{{
           'ADMIN_PAGE.FILTER_PROJECT' | translate
         }}</span>
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
           <label class="flex min-w-[min(100%,18rem)] flex-1 flex-col gap-2">
             <span class="sr-only">{{ 'ADMIN_PAGE.FILTER_PROJECT' | translate }}</span>
             <select
-              class="admin-dash__project-select w-full rounded-xl border border-white/20 bg-black/50 px-4 py-3 text-touch font-bold text-white shadow-sf focus:border-sf-blue focus:outline-none focus:ring-2 focus:ring-sf-blue/40"
+              class="admin-dash__project-select w-full"
               [value]="selectedProjectId() ?? ''"
               (change)="onProjectFilterChange($any($event.target).value)"
             >
@@ -51,7 +51,7 @@
             </select>
           </label>
           <div
-            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-3 lg:shrink-0"
+            class="admin-dash__toolbar flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-3 lg:shrink-0"
           >
             <button
               type="button"
@@ -77,50 +77,50 @@
       aria-label="stats"
     >
       <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg">
-        <p class="text-sm font-bold text-white/70">
+        <p class="text-sm text-white/70">
           {{ 'ADMIN_PAGE.ACTIVE_PROJECTS' | translate }}
         </p>
-        <p class="mt-2 text-4xl font-black tabular-nums text-white md:text-5xl">
+        <p class="mt-2 text-4xl tabular-nums text-white md:text-5xl">
           {{ d.summary.activeOrders }}
         </p>
       </article>
       <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg">
-        <p class="text-sm font-bold text-white/70">
+        <p class="text-sm text-white/70">
           {{ 'ADMIN_PAGE.TOTAL_ORDERS' | translate }}
         </p>
-        <p class="mt-2 text-4xl font-black tabular-nums text-sf-blue md:text-5xl">
+        <p class="mt-2 text-4xl tabular-nums text-sf-blue md:text-5xl">
           {{ d.summary.totalOrders }}
         </p>
       </article>
       <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg">
-        <p class="text-sm font-bold text-white/70">
+        <p class="text-sm text-white/70">
           {{ 'ADMIN_PAGE.PROCESSED_VOLUME' | translate }}
         </p>
-        <p class="mt-2 text-4xl font-black tabular-nums text-white md:text-5xl">
+        <p class="mt-2 text-4xl tabular-nums text-white md:text-5xl">
           {{ d.summary.processedVolume }}
         </p>
       </article>
       <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg">
-        <p class="text-sm font-bold text-white/70">
+        <p class="text-sm text-white/70">
           {{ 'ADMIN_PAGE.LOG_ENTRIES' | translate }}
         </p>
-        <p class="mt-2 text-4xl font-black tabular-nums text-white md:text-5xl">
+        <p class="mt-2 text-4xl tabular-nums text-white md:text-5xl">
           {{ d.summary.stationLogEntries }}
         </p>
       </article>
       <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg">
-        <p class="text-sm font-bold text-white/70">
+        <p class="text-sm text-white/70">
           {{ 'ADMIN_PAGE.SCRAP_UNITS' | translate }}
         </p>
-        <p class="mt-2 text-4xl font-black tabular-nums text-white md:text-5xl">
+        <p class="mt-2 text-4xl tabular-nums text-white md:text-5xl">
           {{ d.summary.scrapUnits }}
         </p>
       </article>
       <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg">
-        <p class="text-sm font-bold text-white/70">
+        <p class="text-sm text-white/70">
           {{ 'ADMIN_PAGE.SCRAP_RATE' | translate }}
         </p>
-        <p class="mt-2 text-4xl font-black tabular-nums text-white md:text-5xl">
+        <p class="mt-2 text-4xl tabular-nums text-white md:text-5xl">
           @if (d.summary.scrapRatePct !== null) {
             {{ d.summary.scrapRatePct }}%
           } @else {
@@ -129,10 +129,10 @@
         </p>
       </article>
       <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg sm:col-span-2 xl:col-span-2">
-        <p class="text-sm font-bold text-white/70">
+        <p class="text-sm text-white/70">
           {{ 'ADMIN_PAGE.LAST_ACTIVITY' | translate }}
         </p>
-        <p class="mt-2 text-2xl font-black tabular-nums text-white md:text-3xl">
+        <p class="mt-2 text-2xl tabular-nums text-white md:text-3xl">
           @if (d.summary.lastActivityAt) {
             {{ d.summary.lastActivityAt | date: 'medium' : undefined : dateLocale() }}
           } @else {
@@ -147,7 +147,7 @@
         <h2 class="mb-4 text-lg font-black text-white md:mb-6 md:text-xl">
           {{ 'ADMIN_PAGE.DAILY_PROGRESS' | translate }}
         </h2>
-        <p class="mb-4 text-sm font-semibold text-white/60">
+        <p class="mb-4 text-sm font-medium text-white/60">
           {{ 'ADMIN_PAGE.DAILY_PROGRESS_HINT' | translate }}
         </p>
         <div class="admin-dash__chart-canvas relative h-72 w-full md:h-80">
@@ -163,7 +163,7 @@
         <h2 class="mb-4 text-lg font-black text-white md:mb-6 md:text-xl">
           {{ 'ADMIN_PAGE.STATION_LOAD' | translate }}
         </h2>
-        <p class="mb-4 text-sm font-semibold text-white/60">
+        <p class="mb-4 text-sm font-medium text-white/60">
           {{ 'ADMIN_PAGE.STATION_LOAD_HINT' | translate }}
         </p>
         <div class="admin-dash__chart-canvas relative h-72 w-full md:h-80">
@@ -200,11 +200,11 @@
       <ul class="grid gap-6 md:grid-cols-3">
         @for (b of d.bottlenecks; track b.stationId) {
           <li class="sf-panel border-white/20 bg-black/50 py-6 shadow-sf">
-            <p class="text-touch font-black text-sf-blue">{{ b.name }}</p>
-            <p class="mt-3 text-lg font-semibold leading-snug text-white/90">
+            <p class="text-touch font-bold text-sf-blue">{{ b.name }}</p>
+            <p class="mt-3 text-lg font-medium leading-snug text-white/90">
               {{ b.detail }}
             </p>
-            <p class="mt-4 text-sm font-bold text-white/55">
+            <p class="mt-4 text-sm font-medium text-white/55">
               {{ 'ADMIN_PAGE.SEVERITY' | translate }}: {{ b.severity }}
             </p>
           </li>
@@ -217,49 +217,55 @@
         {{ 'ADMIN_PAGE.PROJECTS' | translate }}
       </h2>
       <div class="overflow-x-auto rounded-xl border border-white/10">
-        <table class="w-full min-w-[920px] text-left text-touch md:min-w-[1100px]">
+        <table
+          class="admin-dash__projects-table w-full min-w-[920px] text-right text-touch md:min-w-[1100px]"
+        >
           <thead>
             <tr class="border-b-4 border-white/15 text-white/65">
-              <th class="pb-4 pe-3 ps-2 pt-2 font-black">{{ 'WORKER.PROJECT' | translate }}</th>
-              <th class="pb-4 pe-3 font-black">{{ 'ADMIN_PAGE.STATUS_COL' | translate }}</th>
-              <th class="pb-4 pe-3 font-black">
+              <th class="pb-4 ps-3 pe-2 pt-2 font-black">
+                {{ 'WORKER.PROJECT' | translate }}
+              </th>
+              <th class="pb-4 ps-3 pe-3 font-black">{{ 'ADMIN_PAGE.STATUS_COL' | translate }}</th>
+              <th class="pb-4 ps-3 pe-3 font-black">
                 {{ 'ADMIN_PAGE.PROGRESS' | translate }}
               </th>
-              <th class="pb-4 pe-3 font-black">{{ 'ADMIN_PAGE.PACKED' | translate }}</th>
-              <th class="pb-4 pe-3 font-black">{{ 'ADMIN_PAGE.WORK_ORDERS_COL' | translate }}</th>
-              <th class="pb-4 pe-2 font-black">{{ 'ADMIN_PAGE.PURCHASE_ORDERS_COL' | translate }}</th>
+              <th class="pb-4 ps-3 pe-3 font-black">{{ 'ADMIN_PAGE.PACKED' | translate }}</th>
+              <th class="pb-4 ps-3 pe-3 font-black">{{ 'ADMIN_PAGE.WORK_ORDERS_COL' | translate }}</th>
+              <th class="pb-4 ps-2 pe-3 font-black">
+                {{ 'ADMIN_PAGE.PURCHASE_ORDERS_COL' | translate }}
+              </th>
             </tr>
           </thead>
           <tbody>
-            @for (p of d.projects; track p.id) {
+            @for (p of pagedProjectsList(); track p.id) {
               <tr
                 class="border-b border-white/10"
                 [class.bg-white/5]="selectedProjectId() === p.id"
               >
-                <td class="py-4 pe-3 ps-2 font-bold text-white">{{ p.name }}</td>
-                <td class="py-4 pe-3 font-semibold text-white/85">
+                <td class="py-4 ps-3 pe-2 font-semibold text-white">{{ p.name }}</td>
+                <td class="py-4 ps-3 pe-3 font-medium text-white/85">
                   {{ ('ORDER_STATUS.' + p.status) | translate }}
                 </td>
-                <td class="py-4 pe-3">
-                  <div class="flex items-center gap-3">
+                <td class="py-4 ps-3 pe-3">
+                  <div class="flex flex-row-reverse items-center gap-3">
                     <div
                       class="h-5 min-w-[4rem] flex-1 overflow-hidden rounded-full bg-black/50 shadow-sf-in"
                     >
                       <div
-                        class="h-full rounded-full bg-gradient-to-r from-sf-blue to-sf-indigo shadow-sf"
+                        class="h-full rounded-full bg-gradient-to-l from-sf-blue to-sf-indigo shadow-sf"
                         [style.width.%]="p.progressPct"
                       ></div>
                     </div>
-                    <span class="min-w-[2.75rem] font-black text-white">{{
+                    <span class="min-w-[2.75rem] font-bold text-white">{{
                       p.progressPct
                     }}%</span>
                   </div>
                 </td>
-                <td class="py-4 pe-3 font-bold text-white">
+                <td class="py-4 ps-3 pe-3 font-semibold text-white">
                   {{ p.packed }} / {{ p.totalItems }}
                 </td>
-                <td class="py-4 pe-3 align-top">
-                  <div class="flex max-w-xs flex-col gap-2">
+                <td class="py-4 ps-3 pe-3 align-top">
+                  <div class="admin-dash__projects-cell-stack flex max-w-xs flex-col items-end gap-2">
                     @for (doc of p.workOrders; track doc.id) {
                       <a
                         class="admin-doc-link"
@@ -281,8 +287,8 @@
                     }
                   </div>
                 </td>
-                <td class="py-4 pe-2 align-top">
-                  <div class="flex max-w-xs flex-col gap-2">
+                <td class="py-4 ps-2 pe-3 align-top">
+                  <div class="admin-dash__projects-cell-stack flex max-w-xs flex-col items-end gap-2">
                     @for (doc of p.purchaseOrders; track doc.id) {
                       <a
                         class="admin-doc-link"
@@ -309,6 +315,36 @@
           </tbody>
         </table>
       </div>
+      @if (projectsPagerMeta().showPager) {
+        <nav
+          class="admin-dash__projects-pager mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          aria-label="projects pagination"
+        >
+          <p class="text-sm font-medium text-white/75">
+            {{ 'ADMIN_PAGE.PROJECTS_RANGE' | translate: projectsPagerMeta() }}
+            ·
+            {{ 'ADMIN_PAGE.PROJECTS_PAGE' | translate: projectsPagerMeta() }}
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              class="admin-dash__pager-btn rounded-lg border border-white/20 bg-black/35 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="projectsPageIndex() === 0"
+              (click)="prevProjectsPage()"
+            >
+              {{ 'ADMIN_PAGE.PROJECTS_PREV' | translate }}
+            </button>
+            <button
+              type="button"
+              class="admin-dash__pager-btn rounded-lg border border-white/20 bg-black/35 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              [disabled]="projectsPageIndex() >= projectsPagerMeta().totalPages - 1"
+              (click)="nextProjectsPage()"
+            >
+              {{ 'ADMIN_PAGE.PROJECTS_NEXT' | translate }}
+            </button>
+          </div>
+        </nav>
+      }
     </section>
 
     <skyflow-order-picker-modal
@@ -331,7 +367,7 @@
           <h2 class="text-hero font-black text-white drop-shadow-md">
             {{ 'ADMIN_PAGE.SHIPPING_TITLE' | translate }}
           </h2>
-          <p class="mt-3 text-touch font-semibold text-white/90">
+          <p class="mt-3 text-touch font-medium text-white/90">
             {{ 'ADMIN_PAGE.SHIPPING_SUB' | translate }}
           </p>
         </div>
@@ -340,10 +376,26 @@
         <ul class="grid gap-6 md:grid-cols-2">
           @for (r of shipping()!.rows; track r.projectId) {
             <li
-              class="sf-panel border-white/25 bg-black/35 px-8 py-8 shadow-sf-lg"
+              class="relative sf-panel border-white/25 bg-black/35 px-8 py-8 shadow-sf-lg"
             >
-              <p class="text-hero font-black text-white">{{ r.name }}</p>
-              <p class="mt-4 text-touch font-bold text-white/90">
+              <span
+                class="pointer-events-none absolute left-4 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md ring-2 ring-black/25"
+                aria-hidden="true"
+              >
+                <svg
+                  class="h-3 w-3"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M2.5 6 5 8.5l4.5-5.5" />
+                </svg>
+              </span>
+              <p class="text-4xl font-thin leading-tight text-white">{{ r.name }}</p>
+              <p class="mt-4 text-touch font-semibold text-white/90">
                 {{ 'ADMIN_PAGE.PACKED' | translate }}: {{ r.packedQty }} /
                 {{ r.totalItems }}
               </p>
@@ -351,7 +403,7 @@
           }
         </ul>
       } @else {
-        <p class="text-touch font-semibold text-white/85">
+        <p class="text-touch font-medium text-white/85">
           {{ 'ADMIN_PAGE.NO_SHIPPING' | translate }}
         </p>
       }

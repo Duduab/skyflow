@@ -66,7 +66,11 @@
     "SEVERITY": "Load-risk score",
     "WORK_ORDERS_COL": "Work orders",
     "PURCHASE_ORDERS_COL": "Purchase orders",
-    "OPEN_PDF_HINT": "Open PDF in a new tab"
+    "OPEN_PDF_HINT": "Open PDF in a new tab",
+    "PROJECTS_RANGE": "Showing {{from}}–{{to}} of {{total}}",
+    "PROJECTS_PAGE": "Page {{page}} of {{totalPages}}",
+    "PROJECTS_PREV": "Previous",
+    "PROJECTS_NEXT": "Next"
   },
   "PLANNING": {
     "TITLE": "Planning upload (תפ״י)",
@@ -380,6 +384,8 @@
     "SAW_TYPE_TOTAL_QTY": "Total qty",
     "SAW_TYPE_SAWN_PROGRESS": "Sawn: {{n}} of {{total}}",
     "LINE_TYPE_STATION_PROGRESS": "Reported: {{n}} of {{total}}",
+    "SAW_TYPE_TILE_ARIA_DONE": "Completed",
+    "SAW_TYPE_TILE_REMNANT_IF_ANY": "Remnant (if any): {{cm}} cm",
     "WORK_LINE_MODAL_TOTAL_PLANNED": "Total to process on this screen: {{qty}}",
     "SAW_TYPE_TAP_HINT": "Tap for full cut list",
     "SAW_TYPE_MODAL_SUB": "{{count}} lines · total qty: {{qty}}",

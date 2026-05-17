@@ -24,6 +24,7 @@ import { loadOrderPickerPreviews } from '../../shared/order-picker-modal/order-p
 import { OrderPickerModalComponent } from '../../shared/order-picker-modal/order-picker-modal.component';
 import { OrderPickerPreview } from '../../shared/order-picker-modal/order-picker.types';
 import { LanguageService } from '../../core/language.service';
+import { ThemeService } from '../../core/theme.service';
 import {
   enhanceAdminBarDataset,
   enhanceAdminDoughnutDataset,
@@ -46,6 +47,7 @@ export class AdminDashboardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
   private readonly lang = inject(LanguageService);
+  private readonly theme = inject(ThemeService);
   private readonly reload$ = new Subject<void>();
 
   /** First response: default project = first in list (if user didn’t pick "all"). */
@@ -56,6 +58,10 @@ export class AdminDashboardComponent implements OnInit {
   readonly data = signal<AdminDashboard | null>(null);
   readonly shipping = signal<ShippingResponse | null>(null);
   readonly selectedProjectId = signal<string | null>(null);
+
+  /** טבלת פרויקטים בדשבורד — עימוד */
+  readonly projectsPageSize = 15;
+  readonly projectsPageIndex = signal(0);
 
   readonly adminOrdersModalOpen = signal(false);
   readonly adminOrderPreviews = signal<Map<string, OrderPickerPreview>>(
@@ -77,6 +83,38 @@ export class AdminDashboardComponent implements OnInit {
     }));
   });
 
+  /** פרויקטים בעמוד הנוכחי (טבלת דשבורד) */
+  readonly pagedProjectsList = computed(() => {
+    const d = this.data();
+    if (!d?.projects?.length) return [];
+    const total = d.projects.length;
+    const size = this.projectsPageSize;
+    const totalPages = Math.max(1, Math.ceil(total / size));
+    const page = Math.min(this.projectsPageIndex(), totalPages - 1);
+    const start = page * size;
+    return d.projects.slice(start, start + size);
+  });
+
+  /** מטא־עימוד לטבלת פרויקטים */
+  readonly projectsPagerMeta = computed(() => {
+    const d = this.data();
+    const total = d?.projects?.length ?? 0;
+    const size = this.projectsPageSize;
+    const totalPages = Math.max(1, Math.ceil(total / size));
+    const page = Math.min(this.projectsPageIndex(), totalPages - 1);
+    const start = page * size;
+    const from = total === 0 ? 0 : start + 1;
+    const to = Math.min(total, start + size);
+    return {
+      total,
+      totalPages,
+      page: page + 1,
+      from,
+      to,
+      showPager: total > size,
+    };
+  });
+
   readonly lineType = signal<ChartType>('line');
   readonly barType = signal<ChartType>('bar');
   readonly doughnutType = signal<'doughnut'>('doughnut');
@@ -96,11 +134,12 @@ export class AdminDashboardComponent implements OnInit {
     datasets: [],
   });
 
-  readonly chartOptions =
-    signal<ChartConfiguration['options']>(this.lineBarOptions());
-  readonly doughnutOptions = signal<ChartConfiguration<'doughnut'>['options']>(
-    this.doughnutChartOptions(),
+  readonly chartOptions = computed<ChartConfiguration['options']>(() =>
+    this.lineBarOptions(this.theme.mode() === 'light'),
   );
+  readonly doughnutOptions = computed<
+    ChartConfiguration<'doughnut'>['options']
+  >(() => this.doughnutChartOptions(this.theme.mode() === 'light'));
 
   ngOnInit(): void {
     this.reload$
@@ -185,7 +224,18 @@ export class AdminDashboardComponent implements OnInit {
 
   onProjectFilterChange(value: string): void {
     this.selectedProjectId.set(value || null);
+    this.projectsPageIndex.set(0);
     this.reload$.next();
+  }
+
+  prevProjectsPage(): void {
+    this.projectsPageIndex.update((i) => Math.max(0, i - 1));
+  }
+
+  nextProjectsPage(): void {
+    const meta = this.projectsPagerMeta();
+    if (!meta.showPager) return;
+    this.projectsPageIndex.update((i) => Math.min(meta.totalPages - 1, i + 1));
   }
 
   exportDashboardCsv(d: AdminDashboard): void {
@@ -217,6 +267,10 @@ export class AdminDashboardComponent implements OnInit {
 
   private applyDashboard(d: AdminDashboard): void {
     this.data.set(d);
+    const pages = Math.max(1, Math.ceil(d.projects.length / this.projectsPageSize));
+    if (this.projectsPageIndex() >= pages) {
+      this.projectsPageIndex.set(Math.max(0, pages - 1));
+    }
     if (
       this.firstDashboardLoad &&
       d.projects.length &&
@@ -271,9 +325,15 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  private lineBarOptions(): ChartConfiguration['options'] {
-    const axisColor = '#e8eef7';
-    const grid = 'rgba(255,255,255,0.06)';
+  private lineBarOptions(themeLight: boolean): ChartConfiguration['options'] {
+    const axisColor = themeLight ? '#334155' : '#e8eef7';
+    const grid = themeLight
+      ? 'rgba(15, 23, 42, 0.08)'
+      : 'rgba(255,255,255,0.06)';
+    const legendColor = themeLight ? '#0f172a' : '#ffffff';
+    const borderMuted = themeLight
+      ? 'rgba(15, 23, 42, 0.14)'
+      : 'rgba(255,255,255,0.14)';
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -296,7 +356,7 @@ export class AdminDashboardComponent implements OnInit {
       plugins: {
         legend: {
           labels: {
-            color: '#ffffff',
+            color: legendColor,
             font: { size: 15, weight: 600 },
             usePointStyle: true,
             pointStyle: 'circle',
@@ -319,7 +379,7 @@ export class AdminDashboardComponent implements OnInit {
           grid: { color: grid },
           border: {
             display: true,
-            color: 'rgba(255,255,255,0.14)',
+            color: borderMuted,
           },
         },
         y: {
@@ -328,14 +388,17 @@ export class AdminDashboardComponent implements OnInit {
           grid: { color: grid },
           border: {
             display: true,
-            color: 'rgba(255,255,255,0.14)',
+            color: borderMuted,
           },
         },
       },
     };
   }
 
-  private doughnutChartOptions(): ChartConfiguration<'doughnut'>['options'] {
+  private doughnutChartOptions(
+    themeLight: boolean,
+  ): ChartConfiguration<'doughnut'>['options'] {
+    const legendColor = themeLight ? '#0f172a' : '#ffffff';
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -362,7 +425,7 @@ export class AdminDashboardComponent implements OnInit {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#ffffff',
+            color: legendColor,
             font: { size: 14, weight: 600 },
             padding: 18,
             usePointStyle: true,

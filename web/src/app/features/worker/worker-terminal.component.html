@@ -193,11 +193,57 @@
             @for (g of sawTypeGroups(ctx); track g.instructionKind || 'other') {
               <button
                 type="button"
-                class="saw-type-tile"
+                [class]="
+                  'saw-type-tile saw-type-tile--st-' +
+                  stationId +
+                  (typeGroupIsComplete(ctx, g) ? ' saw-type-tile--complete' : '')
+                "
                 role="listitem"
-                [attr.aria-label]="sawInstructionKindTitle(g.instructionKind, g.typeNum)"
+                [disabled]="typeGroupIsComplete(ctx, g)"
+                [attr.aria-label]="
+                  typeGroupIsComplete(ctx, g)
+                    ? (('WORKER.SAW_TYPE_TILE_ARIA_DONE' | translate) +
+                        ' — ' +
+                        sawInstructionKindTitle(g.instructionKind, g.typeNum))
+                    : sawInstructionKindTitle(g.instructionKind, g.typeNum)
+                "
                 (click)="openSawTypeModal(g)"
               >
+                <div class="saw-type-tile__ring-wrap" aria-hidden="true">
+                  <svg class="saw-type-tile__svg" viewBox="0 0 100 100">
+                    <circle class="saw-type-tile__track" cx="50" cy="50" r="42" />
+                    <circle
+                      class="saw-type-tile__arc"
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      [attr.stroke-dasharray]="progressCircumference"
+                      [attr.stroke-dashoffset]="
+                        progressDashOffset(typeGroupProgressPercent(ctx, g))
+                      "
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                  <div class="saw-type-tile__ring-center">
+                    @if (typeGroupIsComplete(ctx, g)) {
+                      <span class="saw-type-tile__check">
+                        <svg viewBox="0 0 24 24" class="saw-type-tile__check-svg">
+                          <path
+                            fill="currentColor"
+                            d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                          />
+                        </svg>
+                      </span>
+                    } @else {
+                      <span class="saw-type-tile__pct-inner" dir="ltr">
+                        <span class="saw-type-tile__pct-value">{{
+                          typeGroupProgressPercent(ctx, g)
+                        }}</span
+                        ><span class="saw-type-tile__pct-sign">%</span>
+                      </span>
+                    }
+                  </div>
+                </div>
                 <p class="saw-type-tile__kind text-touch font-black text-white" dir="ltr">
                   {{ sawInstructionKindTitle(g.instructionKind, g.typeNum) }}
                 </p>
@@ -228,6 +274,19 @@
                     }}
                   }
                 </p>
+                @if (typeGroupShowsRemnant(ctx, g)) {
+                  <p
+                    class="saw-type-tile__remnant text-touch font-semibold text-amber-200/95"
+                  >
+                    {{
+                      'WORKER.SAW_TYPE_TILE_REMNANT_IF_ANY'
+                        | translate
+                          : {
+                              cm: typeGroupRemnantCm(ctx, g) | number: '1.0-0',
+                            }
+                    }}
+                  </p>
+                }
               </button>
             }
           </div>

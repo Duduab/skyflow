@@ -66,7 +66,11 @@
     "SEVERITY": "درجة الازدحام",
     "WORK_ORDERS_COL": "أوامر العمل",
     "PURCHASE_ORDERS_COL": "أوامر الشراء",
-    "OPEN_PDF_HINT": "فتح PDF في تبويب جديد"
+    "OPEN_PDF_HINT": "فتح PDF في تبويب جديد",
+    "PROJECTS_RANGE": "عرض {{from}}–{{to}} من {{total}}",
+    "PROJECTS_PAGE": "صفحة {{page}} من {{totalPages}}",
+    "PROJECTS_PREV": "السابق",
+    "PROJECTS_NEXT": "التالي"
   },
   "PLANNING": {
     "TITLE": "رفع التخطيط (תפ״י)",
@@ -380,6 +384,8 @@
     "SAW_TYPE_TOTAL_QTY": "الكمية الإجمالية",
     "SAW_TYPE_SAWN_PROGRESS": "تم النشر: {{n}} من {{total}}",
     "LINE_TYPE_STATION_PROGRESS": "تم الإبلاغ: {{n}} من {{total}}",
+    "SAW_TYPE_TILE_ARIA_DONE": "مكتمل",
+    "SAW_TYPE_TILE_REMNANT_IF_ANY": "الباقي (إن وُجد): {{cm}} سم",
     "WORK_LINE_MODAL_TOTAL_PLANNED": "الإجمالي للمعالجة في هذه الشاشة: {{qty}}",
     "SAW_TYPE_TAP_HINT": "اضغط لقائمة القطع",
     "SAW_TYPE_MODAL_SUB": "{{count}} أسطر · إجمالي الكمية: {{qty}}",

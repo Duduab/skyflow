@@ -23,6 +23,7 @@ import {
   type PlanningSheetImagesManifest,
 } from '../planning/planning-workbook-media';
 import { isProjectProductionComplete } from '../common/project-station-completion.util';
+import { planningCutLengthCmFromSpec } from '../common/planning-cut-length.util';
 import type { ApprovePlanningDto } from './dto/approve-planning.dto.js';
 import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto.js';
 
@@ -258,6 +259,7 @@ export class ProjectsService {
       sortOrder: number;
       imagePaths: string[];
       instructionKind: string;
+      planningCutLengthCm: number | null;
     }[] = [];
 
     let sawSort = 0;
@@ -302,6 +304,7 @@ export class ProjectsService {
           sortOrder: sawSort++,
           imagePaths,
           instructionKind: item.instructionKind,
+          planningCutLengthCm: planningCutLengthCmFromSpec(comp.spec),
         });
       }
     }
@@ -318,6 +321,7 @@ export class ProjectsService {
             sortOrder: row.sortOrder,
             imagePaths: row.imagePaths,
             instructionKind: row.instructionKind,
+            planningCutLengthCm: row.planningCutLengthCm,
           },
         });
       }
