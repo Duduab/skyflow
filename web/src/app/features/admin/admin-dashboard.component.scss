@@ -267,24 +267,37 @@
   margin-top: 1.35rem;
 }
 
-.admin-dash__hero {
+.admin-dash__hero-panel {
+  overflow: hidden;
+  border-radius: 1.35rem !important;
+  padding: 0 !important;
+}
+
+.admin-dash__hero-panel-inner {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(20rem, 28rem);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
+  gap: 0;
   align-items: stretch;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.14) 0%,
+    rgba(15, 23, 42, 0.35) 42%,
+    rgba(8, 12, 22, 0.5) 100%
+  );
 }
 
-.admin-dash__hero-copy,
-.admin-dash__project-panel {
-  border: 1px solid var(--dash-panel-border);
-  border-radius: 1.35rem;
-  background: var(--dash-panel-bg);
-  box-shadow: var(--dash-panel-shadow);
-  backdrop-filter: blur(14px);
+.admin-dash__hero-main {
+  padding: 1.35rem 1.5rem 1.4rem;
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.admin-dash__hero-copy {
-  padding: 1.35rem 1.45rem;
+.admin-dash__hero-controls {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 1.15rem 1.25rem 1.2rem;
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .admin-dash__eyebrow {
@@ -300,59 +313,82 @@
   text-transform: uppercase;
 }
 
-.admin-dash__hero h1 {
+.admin-dash__hero-title {
   margin: 0;
   color: var(--dash-strong) !important;
-  font-size: clamp(2rem, 4.8vw, 3.25rem) !important;
-  line-height: 0.98;
+  font-size: clamp(1.85rem, 4.2vw, 2.75rem) !important;
+  font-weight: 900 !important;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
   text-shadow: none;
 }
 
-.admin-dash__hero p {
-  margin-top: 0.7rem;
+.admin-dash__hero-scope {
+  margin: 0.65rem 0 0;
   color: var(--dash-muted) !important;
-  font-size: clamp(1rem, 2vw, 1.12rem) !important;
+  font-size: clamp(0.95rem, 1.8vw, 1.05rem) !important;
+  font-weight: 600 !important;
+  line-height: 1.45;
 }
 
-.admin-dash__hero p strong {
+.admin-dash__hero-scope strong {
   color: var(--dash-strong);
   font-weight: 900;
 }
 
-.admin-dash__project-panel {
+.admin-dash__hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  margin-top: 1.1rem;
+}
+
+.admin-dash__hero-stat {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.1rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(85, 143, 195, 0.22);
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.admin-dash__project-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.admin-dash__project-panel-head span {
-  color: var(--dash-muted);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.admin-dash__project-panel-head strong {
-  max-width: 16rem;
-  overflow: hidden;
-  color: var(--dash-strong);
-  font-size: 0.95rem;
+.admin-dash__hero-stat-val {
+  font-size: 1.35rem;
   font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--dash-strong);
+  line-height: 1.1;
 }
 
-.admin-dash__project-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.85rem;
+.admin-dash__hero-stat-lbl {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dash-muted);
+}
+
+:host-context(html.theme-light) .admin-dash__hero-panel-inner {
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.1) 0%,
+    #f8fafc 48%,
+    #fff 100%
+  );
+}
+
+:host-context(html.theme-light) .admin-dash__hero-main {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+:host-context(html.theme-light) .admin-dash__hero-controls {
+  background: rgba(241, 245, 249, 0.9);
+}
+
+:host-context(html.theme-light) .admin-dash__hero-stat {
+  border-color: rgba(37, 99, 235, 0.18);
+  background: #fff;
 }
 
 .admin-dash__project-field {
@@ -783,8 +819,13 @@
 }
 
 @media (max-width: 1023px) {
-  .admin-dash__hero {
+  .admin-dash__hero-panel-inner {
     grid-template-columns: 1fr;
+  }
+
+  .admin-dash__hero-main {
+    border-inline-end: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 }
 

@@ -1,42 +1,239 @@
 <div class="admin-settings">
-  <header class="admin-page__head">
-    <h1 class="admin-page__title">{{ 'ADMIN_SETTINGS_PAGE.TITLE' | translate }}</h1>
-    <p class="admin-page__sub">{{ 'ADMIN_SETTINGS_PAGE.SUB' | translate }}</p>
+  <header class="admin-settings__hero">
+    <div class="admin-settings__hero-copy">
+      <p class="admin-settings__eyebrow">{{ 'ADMIN_SETTINGS_PAGE.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">{{ 'ADMIN_SETTINGS_PAGE.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_SETTINGS_PAGE.SUB' | translate }}</p>
+    </div>
+    <aside class="admin-settings__account" aria-label="account">
+      <div class="admin-settings__avatar" aria-hidden="true">
+        @if (draftPhoto.trim() && !avatarBroken) {
+          <img
+            [src]="draftPhoto.trim()"
+            alt=""
+            class="admin-settings__avatar-img"
+            (error)="onAvatarError()"
+          />
+        } @else {
+          <span class="admin-settings__avatar-initials">{{ previewInitials() }}</span>
+        }
+      </div>
+      <div class="admin-settings__account-text">
+        <span class="admin-settings__account-name">{{ user.displayName() }}</span>
+        <span class="admin-settings__account-role">{{ roleLabelKey() | translate }}</span>
+        <span class="admin-settings__account-email" dir="ltr">{{ sessionEmail() }}</span>
+      </div>
+    </aside>
   </header>
 
-  <section class="admin-settings__card sf-panel">
-    <h2>{{ 'ADMIN_SETTINGS_PAGE.LANG' | translate }}</h2>
-    <skyflow-language-switcher />
+  <section class="admin-settings__kpis" aria-label="settings summary">
+    <article class="admin-settings-kpi">
+      <span class="admin-settings-kpi__label">{{ 'ADMIN_SETTINGS_PAGE.KPI_LANG' | translate }}</span>
+      <span class="admin-settings-kpi__value admin-settings-kpi__value--text">
+        {{ currentLangLabelKey() | translate }}
+      </span>
+    </article>
+    <article class="admin-settings-kpi">
+      <span class="admin-settings-kpi__label">{{ 'ADMIN_SETTINGS_PAGE.KPI_THEME' | translate }}</span>
+      <span class="admin-settings-kpi__value admin-settings-kpi__value--text">
+        {{ currentThemeLabelKey() | translate }}
+      </span>
+    </article>
+    <article class="admin-settings-kpi admin-settings-kpi--accent">
+      <span class="admin-settings-kpi__label">{{ 'ADMIN_SETTINGS_PAGE.KPI_ROLE' | translate }}</span>
+      <span class="admin-settings-kpi__value admin-settings-kpi__value--text">
+        {{ roleLabelKey() | translate }}
+      </span>
+    </article>
   </section>
 
-  <section class="admin-settings__card sf-panel">
-    <h2>{{ 'ADMIN_SETTINGS_PAGE.THEME' | translate }}</h2>
-    <div class="admin-settings__theme-row">
-      <button type="button" class="sf-ui-btn sf-ui-btn--secondary" (click)="setTheme('light')">
-        {{ 'APP.THEME_SWITCH_LIGHT' | translate }}
-      </button>
-      <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="setTheme('dark')">
-        {{ 'APP.THEME_SWITCH_DARK' | translate }}
-      </button>
-    </div>
-  </section>
+  <div class="admin-settings__grid">
+    <section class="admin-settings-card">
+      <header class="admin-settings-card__head">
+        <h2>{{ 'ADMIN_SETTINGS_PAGE.APPEARANCE_TITLE' | translate }}</h2>
+        <p>{{ 'ADMIN_SETTINGS_PAGE.APPEARANCE_SUB' | translate }}</p>
+      </header>
 
-  <section class="admin-settings__card sf-panel">
-    <h2>{{ 'ADMIN_SETTINGS_PAGE.PROFILE' | translate }}</h2>
-    <label class="admin-settings__field">
-      <span>שם פרטי</span>
-      <input class="sf-input" [(ngModel)]="draftFirst" />
-    </label>
-    <label class="admin-settings__field">
-      <span>שם משפחה</span>
-      <input class="sf-input" [(ngModel)]="draftLast" />
-    </label>
-    <label class="admin-settings__field">
-      <span>URL תמונה (אופציונלי)</span>
-      <input class="sf-input" [(ngModel)]="draftPhoto" type="url" />
-    </label>
-    <button type="button" class="sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg admin-settings__save" (click)="saveProfile()">
-      {{ 'ADMIN_SETTINGS_PAGE.SAVE' | translate }}
-    </button>
-  </section>
+      <div class="admin-settings-card__body">
+        <div class="admin-settings-block">
+          <span class="admin-settings-block__label">{{ 'ADMIN_SETTINGS_PAGE.LANG' | translate }}</span>
+          <div class="admin-settings__lang-grid" role="group" [attr.aria-label]="'ADMIN_SETTINGS_PAGE.LANG' | translate">
+            @for (opt of languages; track opt.code) {
+              <button
+                type="button"
+                class="admin-settings__lang-card"
+                [class.admin-settings__lang-card--active]="lang.current() === opt.code"
+                (click)="setLanguage(opt.code)"
+              >
+                <span class="admin-settings__lang-glyph" aria-hidden="true">{{ opt.glyph }}</span>
+                <span class="admin-settings__lang-name">{{ opt.labelKey | translate }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="admin-settings-block">
+          <span class="admin-settings-block__label">{{ 'ADMIN_SETTINGS_PAGE.THEME' | translate }}</span>
+          <div class="admin-settings__theme-grid" role="group" [attr.aria-label]="'ADMIN_SETTINGS_PAGE.THEME' | translate">
+            <button
+              type="button"
+              class="admin-settings__theme-card"
+              [class.admin-settings__theme-card--active]="theme.mode() === 'light'"
+              (click)="setTheme('light')"
+            >
+              <span class="admin-settings__theme-preview admin-settings__theme-preview--light" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span>{{ 'APP.THEME_SWITCH_LIGHT' | translate }}</span>
+            </button>
+            <button
+              type="button"
+              class="admin-settings__theme-card"
+              [class.admin-settings__theme-card--active]="theme.mode() === 'dark'"
+              (click)="setTheme('dark')"
+            >
+              <span class="admin-settings__theme-preview admin-settings__theme-preview--dark" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span>{{ 'APP.THEME_SWITCH_DARK' | translate }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-settings-card">
+      <header class="admin-settings-card__head">
+        <h2>{{ 'ADMIN_SETTINGS_PAGE.ACCOUNT_TITLE' | translate }}</h2>
+        <p>{{ 'ADMIN_SETTINGS_PAGE.ACCOUNT_SUB' | translate }}</p>
+      </header>
+      <div class="admin-settings-card__body">
+        <dl class="admin-settings__meta">
+          <div>
+            <dt>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</dt>
+            <dd dir="ltr">{{ sessionEmail() }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'PROFILE.ROLE' | translate }}</dt>
+            <dd>{{ roleLabelKey() | translate }}</dd>
+          </div>
+        </dl>
+        <div class="admin-settings-card__footer">
+          <div class="admin-settings__account-actions">
+            <button type="button" class="admin-settings__btn-danger" (click)="logout()">
+              {{ 'APP.HEADER_LOGOUT' | translate }}
+            </button>
+            <button type="button" class="admin-settings__btn-ghost" (click)="clearLocalData()">
+              {{ 'ADMIN_SETTINGS_PAGE.CLEAR_LOCAL' | translate }}
+            </button>
+          </div>
+          <p class="admin-settings__hint">{{ 'ADMIN_SETTINGS_PAGE.CLEAR_LOCAL_HINT' | translate }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-settings-card">
+      <header class="admin-settings-card__head">
+        <h2>{{ 'ADMIN_SETTINGS_PAGE.PROFILE' | translate }}</h2>
+        <p>{{ 'ADMIN_SETTINGS_PAGE.PROFILE_SUB' | translate }}</p>
+      </header>
+
+      <div class="admin-settings-card__body">
+        <div class="admin-settings__profile-preview">
+          <div class="admin-settings__avatar admin-settings__avatar--lg" aria-hidden="true">
+            @if (draftPhoto.trim() && !avatarBroken) {
+              <img
+                [src]="draftPhoto.trim()"
+                alt=""
+                class="admin-settings__avatar-img"
+                (error)="onAvatarError()"
+              />
+            } @else {
+              <span class="admin-settings__avatar-initials">{{ previewInitials() }}</span>
+            }
+          </div>
+          <span class="admin-settings__profile-preview-name">
+            {{ draftFirst.trim() || user.firstName() }}
+            {{ draftLast.trim() || user.lastName() }}
+          </span>
+        </div>
+
+        <label class="admin-settings-field">
+          <span>{{ 'PROFILE.FIRST_NAME' | translate }}</span>
+          <input class="admin-settings-field__input" [(ngModel)]="draftFirst" autocomplete="given-name" />
+        </label>
+        <label class="admin-settings-field">
+          <span>{{ 'PROFILE.LAST_NAME' | translate }}</span>
+          <input class="admin-settings-field__input" [(ngModel)]="draftLast" autocomplete="family-name" />
+        </label>
+        <label class="admin-settings-field">
+          <span>{{ 'ADMIN_SETTINGS_PAGE.PHOTO_URL' | translate }}</span>
+          <input
+            class="admin-settings-field__input"
+            [(ngModel)]="draftPhoto"
+            type="url"
+            autocomplete="off"
+            dir="ltr"
+            (input)="avatarBroken = false"
+          />
+        </label>
+
+        <div class="admin-settings-card__footer">
+          @if (profileSaved()) {
+            <p class="admin-settings__saved" role="status">{{ 'PROFILE.SAVED' | translate }}</p>
+          }
+
+          <button
+            type="button"
+            class="admin-settings__save sf-ui-btn sf-ui-btn--primary"
+            (click)="saveProfile()"
+          >
+            {{ 'ADMIN_SETTINGS_PAGE.SAVE' | translate }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-settings-card admin-settings-card--health">
+      <header class="admin-settings-card__head admin-settings-card__head--row">
+        <div>
+          <h2>{{ 'ADMIN_SETTINGS_PAGE.SYSTEM_TITLE' | translate }}</h2>
+          <p>{{ 'ADMIN_SETTINGS_PAGE.SYSTEM_SUB' | translate }}</p>
+        </div>
+        <span
+          class="admin-settings-health__badge"
+          [class.admin-settings-health__badge--ok]="healthStatus() === 'ok'"
+          [class.admin-settings-health__badge--err]="healthStatus() === 'error'"
+        >
+          @if (healthChecking()) {
+            {{ 'ADMIN_SETTINGS_PAGE.HEALTH_CHECKING' | translate }}
+          } @else if (healthStatus() === 'ok') {
+            {{ 'ADMIN_SETTINGS_PAGE.HEALTH_OK' | translate }}
+          } @else if (healthStatus() === 'error') {
+            {{ 'ADMIN_SETTINGS_PAGE.HEALTH_ERR' | translate }}
+          } @else {
+            {{ 'ADMIN_SETTINGS_PAGE.HEALTH_UNKNOWN' | translate }}
+          }
+        </span>
+      </header>
+      <div class="admin-settings-card__body">
+        @if (healthMs() !== null) {
+          <p class="admin-settings-health__ms">
+            {{ 'ADMIN_SETTINGS_PAGE.HEALTH_MS' | translate: { ms: healthMs() } }}
+          </p>
+        }
+        <div class="admin-settings-card__footer">
+          <button
+            type="button"
+            class="admin-settings__btn-ghost"
+            (click)="checkHealth()"
+            [disabled]="healthChecking()"
+          >
+            {{ 'ADMIN_SETTINGS_PAGE.HEALTH_RETRY' | translate }}
+          </button>
+          <p class="admin-settings__hint">{{ 'ADMIN_SETTINGS_PAGE.SERVER_HINT' | translate }}</p>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>

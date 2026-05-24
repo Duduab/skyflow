@@ -21,22 +21,28 @@
       </div>
     }
 
-    <header class="admin-dash__hero">
-      <div class="admin-dash__hero-copy">
-        <h1 class="text-hero font-black tracking-tight text-white drop-shadow-lg">
-          {{ 'ADMIN_PAGE.TITLE' | translate }}
-        </h1>
-        <p class="text-touch font-medium text-white/80">
-          {{ 'ADMIN_PAGE.SCOPE_PROJECT_HINT' | translate }}:
-          <strong>{{ adminFilterSummary(d) }}</strong>
-        </p>
-      </div>
-      <div class="admin-dash__project-panel sf-panel">
-        <div class="admin-dash__project-panel-head">
-          <span>{{ 'ADMIN_PAGE.FILTER_PROJECT' | translate }}</span>
-          <strong>{{ adminFilterSummary(d) }}</strong>
+    <header class="admin-dash__hero-panel sf-panel border-white/15 bg-black/40 shadow-sf-lg">
+      <div class="admin-dash__hero-panel-inner">
+        <div class="admin-dash__hero-main">
+          <h1 class="admin-dash__hero-title">
+            {{ 'ADMIN_PAGE.TITLE' | translate }}
+          </h1>
+          <p class="admin-dash__hero-scope">
+            {{ 'ADMIN_PAGE.SCOPE_PROJECT_HINT' | translate }}:
+            <strong>{{ adminFilterSummary(d) }}</strong>
+          </p>
+          <div class="admin-dash__hero-stats" aria-hidden="true">
+            <span class="admin-dash__hero-stat">
+              <span class="admin-dash__hero-stat-val">{{ d.summary.activeOrders }}</span>
+              <span class="admin-dash__hero-stat-lbl">{{ 'ADMIN_PAGE.ACTIVE_PROJECTS' | translate }}</span>
+            </span>
+            <span class="admin-dash__hero-stat">
+              <span class="admin-dash__hero-stat-val">{{ d.summary.totalOrders }}</span>
+              <span class="admin-dash__hero-stat-lbl">{{ 'ADMIN_PAGE.TOTAL_ORDERS' | translate }}</span>
+            </span>
+          </div>
         </div>
-        <div class="admin-dash__project-controls">
+        <div class="admin-dash__hero-controls">
           <label class="admin-dash__project-field">
             <span>{{ 'ADMIN_PAGE.FILTER_PROJECT' | translate }}</span>
             <select
@@ -50,9 +56,7 @@
               }
             </select>
           </label>
-          <div
-            class="admin-dash__toolbar"
-          >
+          <div class="admin-dash__toolbar">
             <button
               type="button"
               class="admin-dash__export sf-ui-btn sf-ui-btn--secondary shrink-0 border-white/25 bg-white/10 text-white hover:bg-white/15"
@@ -234,25 +238,6 @@
         </div>
       </section>
     }
-
-    <section class="sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
-      <h2 class="mb-6 text-lg font-black text-white md:mb-8 md:text-xl">
-        {{ 'ADMIN_PAGE.BOTTLENECKS' | translate }}
-      </h2>
-      <ul class="grid gap-6 md:grid-cols-3">
-        @for (b of d.bottlenecks; track b.stationId) {
-          <li class="sf-panel border-white/20 bg-black/50 py-6 shadow-sf">
-            <p class="text-touch font-bold text-sf-blue">{{ b.name }}</p>
-            <p class="mt-3 text-lg font-medium leading-snug text-white/90">
-              {{ b.detail }}
-            </p>
-            <p class="mt-4 text-sm font-medium text-white/55">
-              {{ 'ADMIN_PAGE.SEVERITY' | translate }}: {{ b.severity }}
-            </p>
-          </li>
-        }
-      </ul>
-    </section>
 
     <section class="sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
       <h2 class="mb-6 text-lg font-black text-white md:mb-8 md:text-xl">

@@ -63,7 +63,7 @@ export class AdminDashboardComponent implements OnInit {
   readonly selectedProjectId = signal<string | null>(null);
 
   /** טבלת פרויקטים בדשבורד — עימוד */
-  readonly projectsPageSize = 15;
+  readonly projectsPageSize = 10;
   readonly projectsPageIndex = signal(0);
 
   readonly adminOrdersModalOpen = signal(false);
