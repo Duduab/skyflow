@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartDataset, ChartType } from 'chart.js';
@@ -17,6 +18,7 @@ import { finalize, switchMap, take } from 'rxjs/operators';
 import { ApiService } from '../../core/api.service';
 import {
   AdminDashboard,
+  AdminProjectRow,
   ProjectOrder,
   ShippingResponse,
 } from '../../core/skyflow.models';
@@ -37,6 +39,7 @@ import {
     TranslateModule,
     BaseChartDirective,
     DatePipe,
+    RouterLink,
     OrderPickerModalComponent,
   ],
   templateUrl: './admin-dashboard.component.html',
@@ -195,6 +198,10 @@ export class AdminDashboardComponent implements OnInit {
       return this.translate.instant('ADMIN_PAGE.ALL_PROJECTS');
     }
     return d.projects.find((x) => x.id === id)?.name ?? id;
+  }
+
+  liveProjects(d: AdminDashboard): AdminProjectRow[] {
+    return d.projects.filter((p) => p.liveViewAvailable);
   }
 
   private refreshAdminOrderPreviews(): void {

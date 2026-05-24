@@ -1,90 +1,273 @@
-@if (loading()) {
+@if (loading() && !scrapData()) {
   <p class="admin-page__loading">…</p>
 } @else if (dashboard(); as dash) {
-  <header class="admin-page__head admin-scrap__head">
-    <div class="admin-scrap__head-text">
-      <h1 class="admin-page__title">{{ 'ADMIN_SCRAP_PAGE.TITLE' | translate }}</h1>
+  <header class="admin-scrap__hero">
+    <div class="admin-scrap__hero-copy">
+      <p class="admin-scrap__eyebrow">{{ 'ADMIN_SCRAP_PAGE.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">
+        @if (scrapFocusedProjectName(); as pn) {
+          {{ pn }}
+        } @else {
+          {{ 'ADMIN_SCRAP_PAGE.TITLE' | translate }}
+        }
+      </h1>
       <p class="admin-page__sub">{{ 'ADMIN_SCRAP_PAGE.SUB' | translate }}</p>
+      <p class="admin-scrap__scope">
+        {{ 'ADMIN_SCRAP_PAGE.SCOPE' | translate }}:
+        <strong>{{ scopeLabel() }}</strong>
+      </p>
     </div>
-    <div class="admin-scrap__actions">
-      <label class="admin-scrap__filter">
-        <span class="admin-scrap__filter-label">{{ 'ADMIN_SCRAP_PAGE.FILTER_LABEL' | translate }}</span>
-        <select
-          class="admin-scrap__filter-select"
-          [value]="projectFilter() ?? ''"
-          (change)="onProjectFilterChange($any($event.target).value)"
-        >
-          <option value="">{{ 'ADMIN_SCRAP_PAGE.FILTER_ALL' | translate }}</option>
-          @for (p of dash.projects; track p.id) {
-            <option [value]="p.id">{{ p.name }}</option>
-          }
-        </select>
-      </label>
-      <button
-        type="button"
-        class="admin-scrap__export sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg"
-        (click)="exportToExcel()"
-        [disabled]="detailRows().length === 0"
+    <div class="admin-scrap__hero-actions">
+      <a
+        routerLink="/admin/simulation"
+        class="admin-scrap__sim-link sf-ui-btn sf-ui-btn--primary"
       >
-        {{ 'ADMIN_SCRAP_PAGE.EXPORT_EXCEL' | translate }}
-      </button>
+        {{ 'ADMIN_SCRAP_PAGE.GO_SIMULATION' | translate }}
+      </a>
+      <div class="admin-scrap__hero-cluster">
+        <label class="admin-scrap__filter">
+          <span class="admin-scrap__filter-label">{{ 'ADMIN_SCRAP_PAGE.FILTER_LABEL' | translate }}</span>
+          <select
+            class="admin-scrap__filter-select"
+            [value]="projectFilter() ?? ''"
+            (change)="onProjectFilterChange($any($event.target).value)"
+          >
+            <option value="">{{ 'ADMIN_SCRAP_PAGE.FILTER_ALL' | translate }}</option>
+            @for (p of dash.projects; track p.id) {
+              <option [value]="p.id">{{ p.name }}</option>
+            }
+          </select>
+        </label>
+        <button
+          type="button"
+          class="admin-scrap__export sf-ui-btn sf-ui-btn--secondary"
+          (click)="exportToExcel()"
+          [disabled]="detailRows().length === 0"
+          [attr.aria-label]="'ADMIN_SCRAP_PAGE.EXPORT_EXCEL' | translate"
+        >
+          <svg class="admin-scrap__export-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="#217346"
+              d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"
+            />
+            <path fill="#33a867" d="M14 2v6h6" />
+            <path
+              fill="#fff"
+              d="M7.5 11h1.8l1.1 2.7 1.1-2.7H13l-1.9 4.8h-1.4L7.5 11zm6.2 0h4.8v1.2h-3.1v.9h2.9v1.2h-2.9v1.1h3.2v1.2h-4.9V11z"
+            />
+          </svg>
+          <span>{{ 'ADMIN_SCRAP_PAGE.EXPORT_SHORT' | translate }}</span>
+        </button>
+      </div>
     </div>
   </header>
 
   @if (scrapData(); as sd) {
     @if (!sd.rows.length) {
-      <p class="admin-scrap__empty">{{ 'ADMIN_SCRAP_PAGE.EMPTY' | translate }}</p>
+      <section class="admin-scrap__empty-panel">
+        <p class="admin-scrap__empty">{{ 'ADMIN_SCRAP_PAGE.EMPTY' | translate }}</p>
+        <a routerLink="/admin/simulation" class="admin-scrap__sim-link sf-ui-btn sf-ui-btn--primary">
+          {{ 'ADMIN_SCRAP_PAGE.GO_SIMULATION' | translate }}
+        </a>
+      </section>
     } @else {
+      @let m = metrics();
+
+      <section class="admin-scrap__insight" [class.admin-scrap__insight--better]="trendDirection() === 'better'" [class.admin-scrap__insight--worse]="trendDirection() === 'worse'">
+        <div class="admin-scrap__insight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5" />
+          </svg>
+        </div>
+        <div class="admin-scrap__insight-copy">
+          <h2 class="admin-scrap__insight-title">{{ 'ADMIN_SCRAP_PAGE.INSIGHT_TITLE' | translate }}</h2>
+          <p class="admin-scrap__insight-text">
+            @if (trendDirection() === 'better') {
+              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_BETTER' | translate: { delta: (-m.deltaCm | number: '1.0-0'), pct: (m.deltaPct != null ? (-m.deltaPct | number: '1.0-1') : '') } }}
+            } @else if (trendDirection() === 'worse') {
+              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_WORSE' | translate: { delta: (m.deltaCm | number: '1.0-0'), pct: (m.deltaPct | number: '1.0-1') } }}
+            } @else {
+              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_FLAT' | translate }}
+            }
+          </p>
+          @if (m.scrapRate != null) {
+            <p class="admin-scrap__insight-meta">
+              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_RATE' | translate: { rate: (m.scrapRate | number: '1.1-1') } }}
+              @if (m.processedVolume > 0) {
+                · {{ 'ADMIN_SCRAP_PAGE.INSIGHT_VOLUME' | translate: { vol: (m.processedVolume | number: '1.0-0') } }}
+              }
+            </p>
+          }
+        </div>
+      </section>
+
+      <section class="admin-scrap__kpis" aria-label="scrap kpis">
+        <article class="admin-scrap__kpi">
+          <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_TOTAL_CM' | translate }}</span>
+          <span class="admin-scrap__kpi-value">{{ m.totalCm | number: '1.0-0' }}</span>
+          <span class="admin-scrap__kpi-unit">{{ 'ADMIN_SCRAP_PAGE.UNIT_CM' | translate }}</span>
+        </article>
+        <article class="admin-scrap__kpi admin-scrap__kpi--today">
+          <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_TODAY' | translate }}</span>
+          <span class="admin-scrap__kpi-value">{{ m.todayCm | number: '1.0-0' }}</span>
+          <span class="admin-scrap__kpi-meta">{{ m.todayPieces | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}</span>
+        </article>
+        <article class="admin-scrap__kpi">
+          <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_YESTERDAY' | translate }}</span>
+          <span class="admin-scrap__kpi-value">{{ m.yesterdayCm | number: '1.0-0' }}</span>
+          <span class="admin-scrap__kpi-meta">{{ m.yesterdayPieces | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}</span>
+        </article>
+        <article class="admin-scrap__kpi" [class.admin-scrap__kpi--up]="m.deltaCm > 0" [class.admin-scrap__kpi--down]="m.deltaCm < 0">
+          <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_DELTA' | translate }}</span>
+          <span class="admin-scrap__kpi-value">
+            @if (m.deltaCm > 0) { + }{{ m.deltaCm | number: '1.0-0' }}
+          </span>
+          @if (m.deltaPct != null) {
+            <span class="admin-scrap__kpi-meta">{{ m.deltaPct }}%</span>
+          } @else if (m.todayCm > 0 && m.yesterdayCm === 0) {
+            <span class="admin-scrap__kpi-meta">{{ 'ADMIN_SCRAP_PAGE.KPI_NEW_TODAY' | translate }}</span>
+          }
+        </article>
+        <article class="admin-scrap__kpi">
+          <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_ENTRIES' | translate }}</span>
+          <span class="admin-scrap__kpi-value">{{ m.entryCount }}</span>
+          <span class="admin-scrap__kpi-meta">{{ m.totalPieces | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}</span>
+        </article>
+        @if (m.scrapRate != null) {
+          <article class="admin-scrap__kpi admin-scrap__kpi--rate">
+            <span class="admin-scrap__kpi-label">{{ 'ADMIN_PAGE.SCRAP_RATE' | translate }}</span>
+            <span class="admin-scrap__kpi-value">{{ m.scrapRate | number: '1.1-1' }}%</span>
+            <span class="admin-scrap__kpi-meta">{{ 'ADMIN_SCRAP_PAGE.KPI_RATE_HINT' | translate }}</span>
+          </article>
+        }
+      </section>
+
+      <section class="admin-scrap__charts">
+        <article class="admin-scrap__chart-card admin-scrap__chart-card--compare">
+          <header class="admin-scrap__chart-head">
+            <h2>{{ 'ADMIN_SCRAP_PAGE.CHART_COMPARE_TITLE' | translate }}</h2>
+            <p>{{ 'ADMIN_SCRAP_PAGE.CHART_COMPARE_SUB' | translate }}</p>
+          </header>
+          <div class="admin-scrap__chart-canvas">
+            <canvas
+              baseChart
+              [type]="barType()"
+              [data]="compareChartData()"
+              [options]="chartOptions()"
+            ></canvas>
+          </div>
+        </article>
+        <article class="admin-scrap__chart-card">
+          <header class="admin-scrap__chart-head">
+            <h2>{{ 'ADMIN_SCRAP_PAGE.CHART_DAILY_TITLE' | translate }}</h2>
+            <p>{{ 'ADMIN_SCRAP_PAGE.CHART_DAILY_SUB' | translate }}</p>
+          </header>
+          <div class="admin-scrap__chart-canvas admin-scrap__chart-canvas--tall">
+            <canvas
+              baseChart
+              [type]="lineType()"
+              [data]="dailyChartData()"
+              [options]="chartOptions()"
+            ></canvas>
+          </div>
+        </article>
+        <article class="admin-scrap__chart-card admin-scrap__chart-card--wide">
+          <header class="admin-scrap__chart-head">
+            <h2>
+              @if (projectFilter()) {
+                {{ 'ADMIN_SCRAP_PAGE.CHART_STATIONS_TITLE' | translate }}
+              } @else {
+                {{ 'ADMIN_SCRAP_PAGE.CHART_PROJECTS_TITLE' | translate }}
+              }
+            </h2>
+            <p>{{ 'ADMIN_SCRAP_PAGE.CHART_SPLIT_SUB' | translate }}</p>
+          </header>
+          <div class="admin-scrap__chart-canvas">
+            <canvas
+              baseChart
+              [type]="barType()"
+              [data]="splitChartData()"
+              [options]="chartOptions()"
+            ></canvas>
+          </div>
+        </article>
+      </section>
+
       @if (!projectFilter() && projectTotals().length) {
-        <section class="admin-scrap__summary" aria-labelledby="scrap-summary-title">
-          <h2 id="scrap-summary-title" class="admin-scrap__summary-title">
-            {{ 'ADMIN_SCRAP_PAGE.SUMMARY_TITLE' | translate }}
-          </h2>
-          <div class="admin-table-wrap">
-            <table class="admin-table admin-table--summary">
-              <thead>
-                <tr>
-                  <th>{{ 'ADMIN_PAGE.PROJECTS' | translate }}</th>
-                  <th>{{ 'ADMIN_SCRAP_PAGE.COL_TOTAL_SCRAP_CM' | translate }}</th>
-                  <th>{{ 'ADMIN_SCRAP_PAGE.COL_TOTAL_PIECES' | translate }}</th>
-                  <th>{{ 'ADMIN_SCRAP_PAGE.COL_ENTRIES' | translate }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (t of projectTotals(); track t.projectId) {
-                  <tr>
-                    <td>{{ t.projectName }}</td>
-                    <td>{{ t.totalScrapCm | number: '1.0-0' }}</td>
-                    <td>{{ t.totalPieces | number: '1.0-0' }}</td>
-                    <td>{{ t.rowCount }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+        <section class="admin-scrap__projects" aria-labelledby="scrap-projects-title">
+          <header class="admin-scrap__section-head">
+            <h2 id="scrap-projects-title">{{ 'ADMIN_SCRAP_PAGE.PROJECTS_TITLE' | translate }}</h2>
+            <p>{{ 'ADMIN_SCRAP_PAGE.PROJECTS_SUB' | translate }}</p>
+          </header>
+          <div class="admin-scrap__project-grid">
+            @for (t of projectTotals(); track t.projectId) {
+              <button
+                type="button"
+                class="admin-scrap__project-card"
+                (click)="filterByProject(t.projectId)"
+              >
+                <span class="admin-scrap__project-name">{{ t.projectName }}</span>
+                <span class="admin-scrap__project-cm">{{ t.totalScrapCm | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.UNIT_CM' | translate }}</span>
+                <span class="admin-scrap__project-meta">
+                  {{ t.totalPieces | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}
+                  · {{ t.rowCount }} {{ 'ADMIN_SCRAP_PAGE.COL_ENTRIES' | translate }}
+                </span>
+                <span class="admin-scrap__project-bar" aria-hidden="true">
+                  <span class="admin-scrap__project-bar-fill" [style.width.%]="t.sharePct"></span>
+                </span>
+                <span class="admin-scrap__project-share">{{ t.sharePct }}%</span>
+              </button>
+            }
           </div>
         </section>
       }
 
+      @if (stationTotals().length && projectFilter()) {
+        <section class="admin-scrap__stations" aria-labelledby="scrap-stations-title">
+          <header class="admin-scrap__section-head">
+            <h2 id="scrap-stations-title">{{ 'ADMIN_SCRAP_PAGE.STATIONS_TITLE' | translate }}</h2>
+          </header>
+          <ul class="admin-scrap__station-list">
+            @for (s of stationTotals(); track s.stationId) {
+              <li class="admin-scrap__station-row">
+                <span class="admin-scrap__station-name">{{ s.stationName }}</span>
+                <span class="admin-scrap__station-cm">{{ s.totalScrapCm | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.UNIT_CM' | translate }}</span>
+                <span class="admin-scrap__station-pieces">{{ s.totalPieces }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       <section class="admin-scrap__detail" [attr.aria-label]="'ADMIN_SCRAP_PAGE.DETAIL_TITLE' | translate">
-        <h2 class="admin-scrap__detail-title">{{ 'ADMIN_SCRAP_PAGE.DETAIL_TITLE' | translate }}</h2>
+        <header class="admin-scrap__section-head">
+          <h2>{{ 'ADMIN_SCRAP_PAGE.DETAIL_TITLE' | translate }}</h2>
+          <p>{{ 'ADMIN_SCRAP_PAGE.DETAIL_SUB' | translate }}</p>
+        </header>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>{{ 'ADMIN_PAGE.PROJECTS' | translate }}</th>
+                @if (!projectFilter()) {
+                  <th>{{ 'ADMIN_PAGE.PROJECTS' | translate }}</th>
+                }
                 <th>{{ 'ADMIN_PROJECTS.COL_STATION' | translate }}</th>
                 <th>{{ 'WORKER.SCRAP_LENGTH' | translate }}</th>
                 <th>{{ 'ADMIN_PROJECTS.COL_SCRAP_QTY' | translate }}</th>
+                <th>{{ 'ADMIN_SCRAP_PAGE.COL_LINE_CM' | translate }}</th>
                 <th>{{ 'ADMIN_PROJECTS.COL_TIME' | translate }}</th>
               </tr>
             </thead>
             <tbody>
               @for (r of detailRows(); track r.id) {
                 <tr>
-                  <td>{{ r.projectName }}</td>
+                  @if (!projectFilter()) {
+                    <td>{{ r.projectName }}</td>
+                  }
                   <td>{{ r.stationName }}</td>
                   <td>{{ r.itemLengthCm | number: '1.0-2' }}</td>
                   <td>{{ r.scrapQty }}</td>
+                  <td class="admin-scrap__td-cm">{{ rowCm(r) | number: '1.0-0' }}</td>
                   <td>{{ r.createdAt | date: 'short' : undefined : dateLocale() }}</td>
                 </tr>
               }
@@ -92,6 +275,13 @@
           </table>
         </div>
       </section>
+
+      <footer class="admin-scrap__footer-cta">
+        <p>{{ 'ADMIN_SCRAP_PAGE.SIM_CTA_TEXT' | translate }}</p>
+        <a routerLink="/admin/simulation" class="admin-scrap__sim-link sf-ui-btn sf-ui-btn--primary">
+          {{ 'ADMIN_SCRAP_PAGE.GO_SIMULATION' | translate }}
+        </a>
+      </footer>
     }
   }
 }

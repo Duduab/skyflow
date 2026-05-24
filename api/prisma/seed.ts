@@ -153,6 +153,12 @@ async function main() {
       role: SkyflowRole.STATION_MANAGER,
       managedStationId: i + 1,
     })),
+    {
+      email: 'demo.worker@skyflow.local',
+      firstName: 'יוסי',
+      lastName: 'הדגמה',
+      role: SkyflowRole.WORKER,
+    },
     ...Array.from({ length: 12 }, (_, i) => ({
       email: `worker${i + 1}@skyflow.local`,
       firstName: 'עובד',
@@ -243,6 +249,46 @@ async function main() {
         });
       }
     }
+  }
+
+  /* עובד הדגמה — דיווחים עם workerId לביצועים במסך משתמשים */
+  const demoWorker = await prisma.user.findUnique({
+    where: { email: 'demo.worker@skyflow.local' },
+  });
+  if (demoWorker) {
+    const demoProjects = PROJECT_SPECS.filter((p) => !p.id.startsWith('flow-demo'));
+    const perfLogs: {
+      projectId: string;
+      stationId: number;
+      processedQty: number;
+      workerId: string;
+      cutLength: number | null;
+      issues: string | null;
+      createdAt: Date;
+    }[] = [];
+    const seedNow = new Date();
+    for (let dayOffset = -18; dayOffset <= 0; dayOffset++) {
+      const base = new Date(seedNow);
+      base.setHours(0, 0, 0, 0);
+      base.setDate(base.getDate() + dayOffset);
+      const n = dayOffset === 0 ? 5 : dayOffset === -1 ? 4 : 2;
+      for (let r = 0; r < n; r++) {
+        const p = demoProjects[(Math.abs(dayOffset) + r) % demoProjects.length]!;
+        const sid = 1 + (r % 6);
+        const at = new Date(base);
+        at.setHours(8 + r * 2, 30, 0, 0);
+        perfLogs.push({
+          projectId: p.id,
+          stationId: sid,
+          processedQty: 3 + ((r + sid) % 6),
+          workerId: demoWorker.id,
+          cutLength: sid === 1 ? 600 : null,
+          issues: dayOffset === 0 && r === 0 ? 'דיווח הדגמה' : null,
+          createdAt: at,
+        });
+      }
+    }
+    await prisma.stationLog.createMany({ data: perfLogs });
   }
 
   /* דמו זרימה — קצת פחת בתחנות 1–3 */

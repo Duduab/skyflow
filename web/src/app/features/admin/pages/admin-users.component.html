@@ -1,138 +1,566 @@
 @if (loading()) {
   <p class="admin-page__loading">…</p>
 } @else {
-  <header class="admin-page__head">
-    <h1 class="admin-page__title">{{ 'ADMIN_USERS_PAGE.TITLE' | translate }}</h1>
-    <p class="admin-page__sub">{{ 'ADMIN_USERS_PAGE.SUB' | translate }}</p>
+  <header class="admin-users__hero">
+    <div class="admin-users__hero-copy">
+      <p class="admin-users__eyebrow">{{ 'ADMIN_USERS_PAGE.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">{{ 'ADMIN_USERS_PAGE.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_USERS_PAGE.SUB' | translate }}</p>
+    </div>
+    <div class="admin-users__hero-actions">
+      <button
+        type="button"
+        class="admin-users__export-roster sf-ui-btn sf-ui-btn--secondary"
+        (click)="exportRosterExcel()"
+        [disabled]="filteredUsers().length === 0"
+        [attr.aria-label]="'ADMIN_USERS_PAGE.EXPORT_ROSTER' | translate"
+      >
+        <svg class="admin-users__export-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#217346" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+          <path fill="#33a867" d="M14 2v6h6" />
+          <path fill="#fff" d="M7.5 11h1.8l1.1 2.7 1.1-2.7H13l-1.9 4.8h-1.4L7.5 11zm6.2 0h4.8v1.2h-3.1v.9h2.9v1.2h-2.9v1.1h3.2v1.2h-4.9V11z" />
+        </svg>
+        <span>{{ 'ADMIN_USERS_PAGE.EXPORT_SHORT' | translate }}</span>
+      </button>
+      <button
+        type="button"
+        class="admin-users__add sf-ui-btn sf-ui-btn--primary"
+        (click)="openCreateModal()"
+      >
+        {{ 'ADMIN_USERS_PAGE.ADD_USER' | translate }}
+      </button>
+    </div>
   </header>
 
-  <section class="admin-users__create" aria-labelledby="admin-users-create-title">
-    <h2 id="admin-users-create-title" class="admin-users__create-title">
-      {{ 'ADMIN_USERS_PAGE.CREATE_TITLE' | translate }}
-    </h2>
-    <form class="admin-users__form" (ngSubmit)="submitCreate()">
-      <div class="admin-users__row">
-        <label class="admin-users__field">
-          <span>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</span>
-          <input
-            type="email"
-            name="newEmail"
-            class="admin-users__input"
-            [(ngModel)]="newEmail"
-            autocomplete="off"
-            required
-          />
-        </label>
-        <label class="admin-users__field">
-          <span>{{ 'ADMIN_USERS_PAGE.PASSWORD' | translate }}</span>
-          <input
-            type="password"
-            name="newPassword"
-            class="admin-users__input"
-            [(ngModel)]="newPassword"
-            autocomplete="new-password"
-            minlength="6"
-            required
-          />
-        </label>
-      </div>
-      <div class="admin-users__row">
-        <label class="admin-users__field">
-          <span>{{ 'ADMIN_USERS_PAGE.FIRST_NAME' | translate }}</span>
-          <input
-            type="text"
-            name="newFirstName"
-            class="admin-users__input"
-            [(ngModel)]="newFirstName"
-            required
-          />
-        </label>
-        <label class="admin-users__field">
-          <span>{{ 'ADMIN_USERS_PAGE.LAST_NAME' | translate }}</span>
-          <input
-            type="text"
-            name="newLastName"
-            class="admin-users__input"
-            [(ngModel)]="newLastName"
-            required
-          />
-        </label>
-      </div>
-      <div class="admin-users__row admin-users__row--roles">
-        <label class="admin-users__field">
-          <span>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</span>
-          <select
-            name="newRole"
-            class="admin-users__input admin-users__select"
-            [(ngModel)]="newRole"
+  @if (users().length) {
+    <div class="admin-users__filters" role="toolbar" [attr.aria-label]="'ADMIN_USERS_PAGE.FILTER_TOOLBAR' | translate">
+      @for (opt of roleFilterOptions; track opt.value) {
+        <button
+          type="button"
+          class="admin-users__filter-chip"
+          [class.admin-users__filter-chip--active]="isRoleFilterActive(opt.value)"
+          (click)="setRoleFilter(opt.value)"
+        >
+          {{ opt.labelKey | translate }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (!users().length) {
+    <section class="admin-users__empty">
+      <p>{{ 'ADMIN_USERS_PAGE.LIST_EMPTY' | translate }}</p>
+      <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="openCreateModal()">
+        {{ 'ADMIN_USERS_PAGE.ADD_USER' | translate }}
+      </button>
+    </section>
+  } @else if (filterEmpty()) {
+    <section class="admin-users__empty admin-users__empty--filter">
+      <p>{{ 'ADMIN_USERS_PAGE.FILTER_EMPTY' | translate }}</p>
+      <button type="button" class="admin-users__filter-chip" (click)="setRoleFilter('')">
+        {{ 'ADMIN_USERS_PAGE.FILTER_ALL' | translate }}
+      </button>
+    </section>
+  } @else {
+    <div class="admin-users__grid">
+      @for (u of filteredUsers(); track u.id) {
+        <article class="admin-users__card">
+          <button
+            type="button"
+            class="admin-users__card-main"
+            (click)="openUserDetail(u)"
           >
-            @for (r of roleOptions; track r) {
-              <option [value]="r">
-                {{ ('ADMIN_USERS_PAGE.ROLE_' + r) | translate }}
-              </option>
+          <span class="admin-users__avatar" aria-hidden="true">
+            @if (u.photoUrl) {
+              <img [src]="u.photoUrl" alt="" />
+            } @else {
+              {{ initials(u) }}
             }
-          </select>
-        </label>
-        @if (needsStation()) {
+          </span>
+          <span class="admin-users__card-body">
+            <span class="admin-users__name">{{ u.firstName }} {{ u.lastName }}</span>
+            <span class="admin-users__email">{{ u.email }}</span>
+            <span class="admin-users__role" [class]="roleBadgeClass(u.role)">
+              {{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}
+            </span>
+            @if (u.managedStationId != null) {
+              <span class="admin-users__station-tag">
+                {{ 'ADMIN_USERS_PAGE.STATION_TAG' | translate: { n: u.managedStationId } }}
+              </span>
+            }
+          </span>
+          <span class="admin-users__card-cta">{{ 'ADMIN_USERS_PAGE.VIEW_PERFORMANCE' | translate }}</span>
+          </button>
+          <button
+            type="button"
+            class="admin-users__card-edit"
+            (click)="openEditModal(u, $event)"
+            [attr.aria-label]="'ADMIN_USERS_PAGE.EDIT_USER' | translate"
+          >
+            {{ 'ADMIN_USERS_PAGE.EDIT_USER' | translate }}
+          </button>
+        </article>
+      }
+    </div>
+  }
+}
+
+@if (editModalOpen()) {
+  <div class="admin-users-overlay admin-users-overlay--edit" (click)="closeEditModal()" role="presentation">
+    <div
+      class="admin-users-overlay__panel"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-users-edit-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-users-modal__head">
+        <h2 id="admin-users-edit-title" class="admin-users-modal__title">
+          {{ 'ADMIN_USERS_PAGE.EDIT_TITLE' | translate }}
+        </h2>
+        <button
+          type="button"
+          class="admin-users-modal__close"
+          (click)="closeEditModal()"
+          [attr.aria-label]="'ADMIN_USERS_PAGE.MODAL_CLOSE' | translate"
+        >
+          ×
+        </button>
+      </div>
+      <p class="admin-users-modal__sub">{{ 'ADMIN_USERS_PAGE.EDIT_SUB' | translate }}</p>
+
+      <form class="admin-users__form" (ngSubmit)="submitEdit()">
+        <div class="admin-users__row">
           <label class="admin-users__field">
-            <span>{{ 'ADMIN_USERS_PAGE.MANAGED_STATION' | translate }}</span>
+            <span>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</span>
+            <input
+              type="email"
+              name="editEmail"
+              class="admin-users__input"
+              [(ngModel)]="editEmail"
+              autocomplete="off"
+              required
+            />
+          </label>
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.PASSWORD_OPTIONAL' | translate }}</span>
+            <input
+              type="password"
+              name="editPassword"
+              class="admin-users__input"
+              [(ngModel)]="editPassword"
+              autocomplete="new-password"
+              [placeholder]="'ADMIN_USERS_PAGE.PASSWORD_KEEP' | translate"
+            />
+          </label>
+        </div>
+        <div class="admin-users__row">
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.FIRST_NAME' | translate }}</span>
+            <input
+              type="text"
+              name="editFirstName"
+              class="admin-users__input"
+              [(ngModel)]="editFirstName"
+              required
+            />
+          </label>
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.LAST_NAME' | translate }}</span>
+            <input
+              type="text"
+              name="editLastName"
+              class="admin-users__input"
+              [(ngModel)]="editLastName"
+              required
+            />
+          </label>
+        </div>
+        <div class="admin-users__row admin-users__row--roles">
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</span>
             <select
-              name="newManagedStationId"
+              name="editRole"
               class="admin-users__input admin-users__select"
-              [(ngModel)]="newManagedStationId"
+              [(ngModel)]="editRole"
             >
-              <option [ngValue]="null">
-                {{ 'ADMIN_USERS_PAGE.STATION_OPTIONAL' | translate }}
-              </option>
-              @for (n of [1, 2, 3, 4, 5, 6, 7]; track n) {
-                <option [ngValue]="n">{{ n }}</option>
+              @for (r of roleOptions; track r) {
+                <option [value]="r">
+                  {{ ('ADMIN_USERS_PAGE.ROLE_' + r) | translate }}
+                </option>
               }
             </select>
           </label>
+          @if (needsStationEdit()) {
+            <label class="admin-users__field">
+              <span>{{ 'ADMIN_USERS_PAGE.MANAGED_STATION' | translate }}</span>
+              <select
+                name="editManagedStationId"
+                class="admin-users__input admin-users__select"
+                [(ngModel)]="editManagedStationId"
+              >
+                <option [ngValue]="null">
+                  {{ 'ADMIN_USERS_PAGE.STATION_OPTIONAL' | translate }}
+                </option>
+                @for (n of [1, 2, 3, 4, 5, 6, 7]; track n) {
+                  <option [ngValue]="n">{{ n }}</option>
+                }
+              </select>
+            </label>
+          }
+        </div>
+        @if (formError(); as fe) {
+          <p class="admin-users__err" role="alert">{{ fe | translate }}</p>
         }
-      </div>
-      @if (formError(); as fe) {
-        <p class="admin-users__err" role="alert">{{ fe | translate }}</p>
-      }
-      <div class="admin-users__actions">
-        <skyflow-ui-button
-          type="submit"
-          variant="primary"
-          [loading]="saving()"
-          btnClass="admin-users__submit shadow-sf-lg"
-        >
-          {{ 'ADMIN_USERS_PAGE.CREATE_SUBMIT' | translate }}
-        </skyflow-ui-button>
-      </div>
-    </form>
-  </section>
+        <div class="admin-users-modal__actions">
+          <button type="button" class="admin-users-modal__btn secondary" (click)="closeEditModal()">
+            {{ 'ADMIN_USERS_PAGE.MODAL_CANCEL' | translate }}
+          </button>
+          <skyflow-ui-button
+            type="submit"
+            variant="primary"
+            [loading]="saving()"
+            btnClass="admin-users__submit"
+          >
+            {{ 'ADMIN_USERS_PAGE.EDIT_SUBMIT' | translate }}
+          </skyflow-ui-button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
 
-  <div class="admin-table-wrap">
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>{{ 'ADMIN_USERS_PAGE.NAME' | translate }}</th>
-          <th>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</th>
-          <th>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</th>
-          <th>{{ 'ADMIN_USERS_PAGE.STATION_COL' | translate }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (u of users(); track u.id) {
-          <tr>
-            <td>{{ u.firstName }} {{ u.lastName }}</td>
-            <td>{{ u.email }}</td>
-            <td>{{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}</td>
-            <td>
-              @if (u.managedStationId != null) {
-                {{ u.managedStationId }}
-              } @else {
-                —
+@if (createModalOpen()) {
+  <div class="admin-users-overlay" (click)="closeCreateModal()" role="presentation">
+    <div
+      class="admin-users-overlay__panel"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-users-create-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-users-modal__head">
+        <h2 id="admin-users-create-title" class="admin-users-modal__title">
+          {{ 'ADMIN_USERS_PAGE.CREATE_TITLE' | translate }}
+        </h2>
+        <button
+          type="button"
+          class="admin-users-modal__close"
+          (click)="closeCreateModal()"
+          [attr.aria-label]="'ADMIN_USERS_PAGE.MODAL_CLOSE' | translate"
+        >
+          ×
+        </button>
+      </div>
+      <p class="admin-users-modal__sub">{{ 'ADMIN_USERS_PAGE.CREATE_SUB' | translate }}</p>
+
+      <form class="admin-users__form" (ngSubmit)="submitCreate()">
+        <div class="admin-users__row">
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</span>
+            <input
+              type="email"
+              name="newEmail"
+              class="admin-users__input"
+              [(ngModel)]="newEmail"
+              autocomplete="off"
+              required
+            />
+          </label>
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.PASSWORD' | translate }}</span>
+            <input
+              type="password"
+              name="newPassword"
+              class="admin-users__input"
+              [(ngModel)]="newPassword"
+              autocomplete="new-password"
+              minlength="6"
+              required
+            />
+          </label>
+        </div>
+        <div class="admin-users__row">
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.FIRST_NAME' | translate }}</span>
+            <input
+              type="text"
+              name="newFirstName"
+              class="admin-users__input"
+              [(ngModel)]="newFirstName"
+              required
+            />
+          </label>
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.LAST_NAME' | translate }}</span>
+            <input
+              type="text"
+              name="newLastName"
+              class="admin-users__input"
+              [(ngModel)]="newLastName"
+              required
+            />
+          </label>
+        </div>
+        <div class="admin-users__row admin-users__row--roles">
+          <label class="admin-users__field">
+            <span>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</span>
+            <select
+              name="newRole"
+              class="admin-users__input admin-users__select"
+              [(ngModel)]="newRole"
+            >
+              @for (r of roleOptions; track r) {
+                <option [value]="r">
+                  {{ ('ADMIN_USERS_PAGE.ROLE_' + r) | translate }}
+                </option>
               }
-            </td>
-          </tr>
+            </select>
+          </label>
+          @if (needsStation()) {
+            <label class="admin-users__field">
+              <span>{{ 'ADMIN_USERS_PAGE.MANAGED_STATION' | translate }}</span>
+              <select
+                name="newManagedStationId"
+                class="admin-users__input admin-users__select"
+                [(ngModel)]="newManagedStationId"
+              >
+                <option [ngValue]="null">
+                  {{ 'ADMIN_USERS_PAGE.STATION_OPTIONAL' | translate }}
+                </option>
+                @for (n of [1, 2, 3, 4, 5, 6, 7]; track n) {
+                  <option [ngValue]="n">{{ n }}</option>
+                }
+              </select>
+            </label>
+          }
+        </div>
+        @if (formError(); as fe) {
+          <p class="admin-users__err" role="alert">{{ fe | translate }}</p>
         }
-      </tbody>
-    </table>
+        <div class="admin-users-modal__actions">
+          <button type="button" class="admin-users-modal__btn secondary" (click)="closeCreateModal()">
+            {{ 'ADMIN_USERS_PAGE.MODAL_CANCEL' | translate }}
+          </button>
+          <skyflow-ui-button
+            type="submit"
+            variant="primary"
+            [loading]="saving()"
+            btnClass="admin-users__submit"
+          >
+            {{ 'ADMIN_USERS_PAGE.CREATE_SUBMIT' | translate }}
+          </skyflow-ui-button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (detailUser(); as u) {
+  <div class="admin-users-overlay" (click)="closeUserDetail()" role="presentation">
+    <div
+      class="admin-users-overlay__panel admin-users-overlay__panel--wide"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'admin-users-detail-' + u.id"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-users-modal__head">
+        <div class="admin-users-detail__identity">
+          <span class="admin-users__avatar admin-users__avatar--lg" aria-hidden="true">
+            @if (u.photoUrl) {
+              <img [src]="u.photoUrl" alt="" />
+            } @else {
+              {{ initials(u) }}
+            }
+          </span>
+          <div>
+            <h2 [id]="'admin-users-detail-' + u.id" class="admin-users-modal__title">
+              {{ u.firstName }} {{ u.lastName }}
+            </h2>
+            <p class="admin-users-detail__meta">{{ u.email }}</p>
+            <span class="admin-users__role" [class]="roleBadgeClass(u.role)">
+              {{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}
+            </span>
+          </div>
+        </div>
+        <div class="admin-users-detail__toolbar">
+          <button
+            type="button"
+            class="admin-users-detail__tool secondary"
+            (click)="openEditFromDetail()"
+          >
+            {{ 'ADMIN_USERS_PAGE.EDIT_USER' | translate }}
+          </button>
+          <button
+            type="button"
+            class="admin-users-detail__tool secondary"
+            (click)="exportPerformanceExcel()"
+            [disabled]="!performance()"
+          >
+            <svg class="admin-users__export-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#217346" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+              <path fill="#33a867" d="M14 2v6h6" />
+              <path fill="#fff" d="M7.5 11h1.8l1.1 2.7 1.1-2.7H13l-1.9 4.8h-1.4L7.5 11zm6.2 0h4.8v1.2h-3.1v.9h2.9v1.2h-2.9v1.1h3.2v1.2h-4.9V11z" />
+            </svg>
+            {{ 'ADMIN_USERS_PAGE.EXPORT_PERF' | translate }}
+          </button>
+          <button
+            type="button"
+            class="admin-users-modal__close"
+            (click)="closeUserDetail()"
+            [attr.aria-label]="'ADMIN_USERS_PAGE.MODAL_CLOSE' | translate"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+
+      @if (performanceLoading()) {
+        <p class="admin-users-detail__loading">{{ 'ADMIN_USERS_PAGE.PERF_LOADING' | translate }}</p>
+      } @else if (performanceError()) {
+        <p class="admin-users-detail__error" role="alert">
+          {{ 'ADMIN_USERS_PAGE.PERF_ERROR' | translate }}
+        </p>
+      } @else if (performance(); as p) {
+        <p class="admin-users-modal__sub">{{ 'ADMIN_USERS_PAGE.PERF_SUB' | translate }}</p>
+
+        <section class="admin-users-detail__kpis">
+          <article class="admin-users-kpi">
+            <span class="admin-users-kpi__label">{{ 'ADMIN_USERS_PAGE.KPI_HOURS' | translate }}</span>
+            <span class="admin-users-kpi__value">{{ p.summary.estimatedActiveHours | number: '1.0-1' }}</span>
+            <span class="admin-users-kpi__hint">{{ 'ADMIN_USERS_PAGE.KPI_HOURS_HINT' | translate }}</span>
+          </article>
+          <article class="admin-users-kpi admin-users-kpi--accent">
+            <span class="admin-users-kpi__label">{{ 'ADMIN_USERS_PAGE.KPI_TODAY' | translate }}</span>
+            <span class="admin-users-kpi__value">{{ p.summary.todayReports }}</span>
+            <span class="admin-users-kpi__hint">
+              {{ p.summary.todayProcessedQty | number: '1.0-0' }}
+              {{ 'ADMIN_USERS_PAGE.KPI_UNITS' | translate }}
+            </span>
+          </article>
+          <article class="admin-users-kpi">
+            <span class="admin-users-kpi__label">{{ 'ADMIN_USERS_PAGE.KPI_YESTERDAY' | translate }}</span>
+            <span class="admin-users-kpi__value">{{ p.summary.yesterdayReports }}</span>
+            <span class="admin-users-kpi__hint">
+              {{ p.summary.yesterdayProcessedQty | number: '1.0-0' }}
+              {{ 'ADMIN_USERS_PAGE.KPI_UNITS' | translate }}
+            </span>
+          </article>
+          <article class="admin-users-kpi">
+            <span class="admin-users-kpi__label">{{ 'ADMIN_USERS_PAGE.KPI_REPORTS' | translate }}</span>
+            <span class="admin-users-kpi__value">{{ p.summary.totalReports }}</span>
+            <span class="admin-users-kpi__hint">
+              {{ p.summary.totalProcessedQty | number: '1.0-0' }}
+              {{ 'ADMIN_USERS_PAGE.KPI_UNITS' | translate }}
+            </span>
+          </article>
+          <article class="admin-users-kpi">
+            <span class="admin-users-kpi__label">{{ 'ADMIN_USERS_PAGE.KPI_PROJECTS' | translate }}</span>
+            <span class="admin-users-kpi__value">{{ p.summary.projectsTouched }}</span>
+            <span class="admin-users-kpi__hint">
+              {{ p.summary.activeDays }}
+              {{ 'ADMIN_USERS_PAGE.KPI_ACTIVE_DAYS' | translate }}
+            </span>
+          </article>
+          @if (p.summary.paceVsPlantPct != null) {
+            <article
+              class="admin-users-kpi"
+              [class.admin-users-kpi--good]="p.summary.paceVsPlantPct >= 100"
+              [class.admin-users-kpi--low]="p.summary.paceVsPlantPct < 80"
+            >
+              <span class="admin-users-kpi__label">{{ 'ADMIN_USERS_PAGE.KPI_PACE' | translate }}</span>
+              <span class="admin-users-kpi__value">{{ p.summary.paceVsPlantPct }}%</span>
+              <span class="admin-users-kpi__hint">{{ 'ADMIN_USERS_PAGE.KPI_PACE_HINT' | translate }}</span>
+            </article>
+          }
+        </section>
+
+        @if (p.summary.lastActivityAt) {
+          <p class="admin-users-detail__last">
+            {{ 'ADMIN_USERS_PAGE.LAST_ACTIVITY' | translate }}:
+            <strong>{{ p.summary.lastActivityAt | date: 'medium' : undefined : dateLocale() }}</strong>
+          </p>
+        }
+
+        <div class="admin-users-detail__panels">
+          @if (p.byStation.length) {
+            <section class="admin-users-panel">
+              <h3>{{ 'ADMIN_USERS_PAGE.BY_STATION' | translate }}</h3>
+              <ul class="admin-users-bars">
+                @for (row of p.byStation; track row.stationId) {
+                  <li class="admin-users-bars__row">
+                    <span class="admin-users-bars__label">
+                      {{ 'ADMIN_USERS_PAGE.STATION_TAG' | translate: { n: row.stationId } }}
+                    </span>
+                    <span class="admin-users-bars__track" aria-hidden="true">
+                      <span
+                        class="admin-users-bars__fill"
+                        [style.width.%]="stationBarPct(row)"
+                      ></span>
+                    </span>
+                    <span class="admin-users-bars__val">
+                      {{ row.processedQty | number: '1.0-0' }}
+                    </span>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (p.dailyActivity.length) {
+            <section class="admin-users-panel">
+              <h3>{{ 'ADMIN_USERS_PAGE.DAILY_TREND' | translate }}</h3>
+              <div class="admin-users-spark" role="img" [attr.aria-label]="'ADMIN_USERS_PAGE.DAILY_TREND' | translate">
+                @for (day of p.dailyActivity; track day.date) {
+                  <div class="admin-users-spark__col" [title]="formatDayLabel(day.date)">
+                    <span
+                      class="admin-users-spark__bar"
+                      [style.height.%]="dayBarPct(day.reports)"
+                    ></span>
+                    <span class="admin-users-spark__lbl">{{ formatDayLabel(day.date) }}</span>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        </div>
+
+        <section class="admin-users-panel admin-users-panel--activity">
+          <h3>{{ 'ADMIN_USERS_PAGE.RECENT_ACTIVITY' | translate }}</h3>
+          @if (!p.recentActivity.length) {
+            <p class="admin-users-detail__empty-act">
+              {{ 'ADMIN_USERS_PAGE.NO_ACTIVITY' | translate }}
+            </p>
+          } @else {
+            <div class="admin-table-wrap">
+              <table class="admin-table admin-table--compact">
+                <thead>
+                  <tr>
+                    <th>{{ 'ADMIN_USERS_PAGE.COL_TIME' | translate }}</th>
+                    <th>{{ 'ADMIN_USERS_PAGE.COL_PROJECT' | translate }}</th>
+                    <th>{{ 'ADMIN_USERS_PAGE.STATION_COL' | translate }}</th>
+                    <th>{{ 'ADMIN_USERS_PAGE.COL_QTY' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (a of p.recentActivity; track a.id) {
+                    <tr>
+                      <td>{{ a.createdAt | date: 'short' : undefined : dateLocale() }}</td>
+                      <td>{{ a.projectName }}</td>
+                      <td>{{ a.stationId }}</td>
+                      <td>{{ a.processedQty }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+      }
+    </div>
   </div>
 }

@@ -158,6 +158,12 @@ export interface ProjectDocumentDto {
   createdAt: string;
 }
 
+export interface SendProjectDocumentEmailResponse {
+  sent: boolean;
+  mode: 'smtp' | 'mailto';
+  mailto?: string;
+}
+
 export interface AdminProjectRow {
   id: string;
   name: string;
@@ -301,6 +307,54 @@ export interface UserDto {
   role: SkyflowRole;
   photoUrl: string | null;
   managedStationId: number | null;
+}
+
+export interface UserPerformanceSummary {
+  totalReports: number;
+  totalProcessedQty: number;
+  projectsTouched: number;
+  activeDays: number;
+  estimatedActiveHours: number;
+  todayReports: number;
+  yesterdayReports: number;
+  todayProcessedQty: number;
+  yesterdayProcessedQty: number;
+  avgReportsPerActiveDay: number;
+  weeklyReports: number;
+  paceVsPlantPct: number | null;
+  lastActivityAt: string | null;
+  firstActivityAt: string | null;
+}
+
+export interface UserPerformanceStationRow {
+  stationId: number;
+  reports: number;
+  processedQty: number;
+}
+
+export interface UserPerformanceDayRow {
+  date: string;
+  reports: number;
+  processedQty: number;
+  estimatedHours: number;
+}
+
+export interface UserPerformanceActivityRow {
+  id: string;
+  createdAt: string;
+  stationId: number;
+  projectId: string;
+  projectName: string;
+  processedQty: number;
+  issues: string | null;
+}
+
+export interface UserPerformanceResponse {
+  user: UserDto;
+  summary: UserPerformanceSummary;
+  byStation: UserPerformanceStationRow[];
+  dailyActivity: UserPerformanceDayRow[];
+  recentActivity: UserPerformanceActivityRow[];
 }
 
 export interface ScrapOverviewRow {

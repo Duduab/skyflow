@@ -8,6 +8,7 @@ import {
   PlanningParsePreviewDto,
   ProjectDocumentDto,
   ProjectDocumentKind,
+  SendProjectDocumentEmailResponse,
   ProjectOrder,
   ShippingResponse,
   WorkerContext,
@@ -15,6 +16,7 @@ import {
   SimulationSnapshotResponse,
   ProjectActivityResponse,
   UserDto,
+  UserPerformanceResponse,
   StationManagersResponse,
   SkyflowRole,
 } from './skyflow.models';
@@ -110,6 +112,12 @@ export class ApiService {
     return this.http.get<UserDto[]>(`${this.base}/users`);
   }
 
+  getUserPerformance(userId: string): Observable<UserPerformanceResponse> {
+    return this.http.get<UserPerformanceResponse>(
+      `${this.base}/users/${userId}/performance`,
+    );
+  }
+
   createUser(body: {
     email: string;
     password: string;
@@ -134,7 +142,18 @@ export class ApiService {
     );
   }
 
-  updateUser(id: string, body: Partial<{ firstName: string; lastName: string; photoUrl: string | null; password: string }>) {
+  updateUser(
+    id: string,
+    body: {
+      email?: string;
+      password?: string;
+      firstName?: string;
+      lastName?: string;
+      role?: SkyflowRole;
+      photoUrl?: string | null;
+      managedStationId?: number | null;
+    },
+  ): Observable<UserDto> {
     return this.http.patch<UserDto>(`${this.base}/users/${id}`, body);
   }
 
@@ -150,6 +169,20 @@ export class ApiService {
 
   postPlanningDraft(name: string): Observable<ProjectOrder> {
     return this.http.post<ProjectOrder>(`${this.base}/projects`, { name });
+  }
+
+  sendProjectDocumentEmail(
+    documentId: string,
+    body: {
+      recipients: string[];
+      message?: string;
+      origin?: string;
+    },
+  ): Observable<SendProjectDocumentEmailResponse> {
+    return this.http.post<SendProjectDocumentEmailResponse>(
+      `${this.base}/projects/documents/${encodeURIComponent(documentId)}/send-email`,
+      body,
+    );
   }
 
   postProjectDocument(

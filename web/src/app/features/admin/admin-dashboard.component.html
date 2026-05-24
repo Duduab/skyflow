@@ -21,24 +21,24 @@
       </div>
     }
 
-    <header class="flex flex-col gap-6">
-      <div class="flex flex-col gap-2">
+    <header class="admin-dash__hero">
+      <div class="admin-dash__hero-copy">
         <h1 class="text-hero font-black tracking-tight text-white drop-shadow-lg">
-          {{ adminFilterSummary(d) }}
+          {{ 'ADMIN_PAGE.TITLE' | translate }}
         </h1>
         <p class="text-touch font-medium text-white/80">
-          {{ 'APP.SUBTITLE' | translate }}
+          {{ 'ADMIN_PAGE.SCOPE_PROJECT_HINT' | translate }}:
+          <strong>{{ adminFilterSummary(d) }}</strong>
         </p>
       </div>
-      <div
-        class="sf-panel flex w-full flex-col gap-3 border-white/20 bg-black/40 px-5 py-4 shadow-sf"
-      >
-        <span class="text-sm font-semibold text-white/80">{{
-          'ADMIN_PAGE.FILTER_PROJECT' | translate
-        }}</span>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-6">
-          <label class="flex min-w-[min(100%,18rem)] flex-1 flex-col gap-2">
-            <span class="sr-only">{{ 'ADMIN_PAGE.FILTER_PROJECT' | translate }}</span>
+      <div class="admin-dash__project-panel sf-panel">
+        <div class="admin-dash__project-panel-head">
+          <span>{{ 'ADMIN_PAGE.FILTER_PROJECT' | translate }}</span>
+          <strong>{{ adminFilterSummary(d) }}</strong>
+        </div>
+        <div class="admin-dash__project-controls">
+          <label class="admin-dash__project-field">
+            <span>{{ 'ADMIN_PAGE.FILTER_PROJECT' | translate }}</span>
             <select
               class="admin-dash__project-select w-full"
               [value]="selectedProjectId() ?? ''"
@@ -51,7 +51,7 @@
             </select>
           </label>
           <div
-            class="admin-dash__toolbar flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-3 lg:shrink-0"
+            class="admin-dash__toolbar"
           >
             <button
               type="button"
@@ -128,19 +128,61 @@
           }
         </p>
       </article>
-      <article class="sf-panel admin-dash__kpi border-white/15 bg-black/45 py-6 shadow-sf-lg sm:col-span-2 xl:col-span-2">
-        <p class="text-sm text-white/70">
-          {{ 'ADMIN_PAGE.LAST_ACTIVITY' | translate }}
-        </p>
-        <p class="mt-2 text-2xl tabular-nums text-white md:text-3xl">
-          @if (d.summary.lastActivityAt) {
-            {{ d.summary.lastActivityAt | date: 'medium' : undefined : dateLocale() }}
-          } @else {
-            —
-          }
-        </p>
+      <article class="sf-panel admin-dash__kpi admin-dash__kpi--activity border-white/15 bg-black/45 py-6 shadow-sf-lg sm:col-span-2 xl:col-span-2">
+        <span class="admin-dash__activity-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+            <path d="M4 12h4l2-6 4 12 2-6h4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <div>
+          <p class="text-sm text-white/70">
+            {{ 'ADMIN_PAGE.LAST_ACTIVITY' | translate }}
+          </p>
+          <p class="mt-2 text-2xl tabular-nums text-white md:text-3xl">
+            @if (d.summary.lastActivityAt) {
+              {{ d.summary.lastActivityAt | date: 'medium' : undefined : dateLocale() }}
+            } @else {
+              —
+            }
+          </p>
+        </div>
       </article>
     </section>
+
+    @if (liveProjects(d).length) {
+      <section class="admin-dash__live sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
+        <div class="admin-dash__live-head">
+          <div>
+            <h2>{{ 'ADMIN_PAGE.LIVE_PROJECTS_TITLE' | translate }}</h2>
+            <p>{{ 'ADMIN_PAGE.LIVE_PROJECTS_SUB' | translate }}</p>
+          </div>
+        </div>
+        <div class="admin-dash__live-rail" aria-label="live projects carousel">
+          @for (p of liveProjects(d); track p.id) {
+            <a class="admin-dash__live-card" [routerLink]="['/admin/projects', p.id, 'live']">
+              <span class="admin-dash__live-badge">{{ 'ADMIN_PROJECTS.LIVE_BADGE' | translate }}</span>
+              <strong>{{ p.name }}</strong>
+              <span class="admin-dash__live-progress">
+                {{ 'ADMIN_PAGE.PROGRESS' | translate }} {{ p.progressPct }}%
+              </span>
+              <span class="admin-dash__live-link">
+                {{ 'ADMIN_PAGE.OPEN_LIVE_VIEW' | translate }}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M11 5l-7 7 7 7M4 12h16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2.3"
+                  />
+                </svg>
+              </span>
+            </a>
+          }
+        </div>
+      </section>
+    }
 
     <section class="grid gap-8 xl:grid-cols-2">
       <div class="sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
@@ -359,11 +401,18 @@
     />
 
     <section
-      class="sf-panel border-white/25 bg-gradient-to-br from-sf-navy/80 to-black/60 p-8 shadow-sf-lg md:p-10"
+      class="admin-dash__shipping sf-panel border-white/25 bg-gradient-to-br from-sf-navy/80 to-black/60 p-8 shadow-sf-lg md:p-10"
       aria-label="shipping"
     >
-      <div class="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div class="admin-dash__shipping-head mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
+          <span class="admin-dash__shipping-kicker" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 7h11v9H3zM14 10h3.5l2.5 3v3h-6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
+              <circle cx="7" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.9" />
+              <circle cx="17" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.9" />
+            </svg>
+          </span>
           <h2 class="text-hero font-black text-white drop-shadow-md">
             {{ 'ADMIN_PAGE.SHIPPING_TITLE' | translate }}
           </h2>
@@ -373,37 +422,36 @@
         </div>
       </div>
       @if (shipping()?.rows?.length) {
-        <ul class="grid gap-6 md:grid-cols-2">
+        <ul class="admin-dash__shipping-grid grid gap-6 md:grid-cols-2">
           @for (r of shipping()!.rows; track r.projectId) {
             <li
-              class="relative sf-panel border-white/25 bg-black/35 px-8 py-8 shadow-sf-lg"
+              class="admin-dash__shipping-card relative sf-panel border-white/25 bg-black/35 px-8 py-8 shadow-sf-lg"
             >
-              <span
-                class="pointer-events-none absolute left-4 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md ring-2 ring-black/25"
-                aria-hidden="true"
-              >
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M2.5 6 5 8.5l4.5-5.5" />
-                </svg>
-              </span>
-              <p class="text-4xl font-thin leading-tight text-white">{{ r.name }}</p>
-              <p class="mt-4 text-touch font-semibold text-white/90">
-                {{ 'ADMIN_PAGE.PACKED' | translate }}: {{ r.packedQty }} /
-                {{ r.totalItems }}
-              </p>
+              <div class="admin-dash__shipping-card-top">
+                <span class="admin-dash__shipping-status">
+                  <svg viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M2.5 6 5 8.5l4.5-5.5" />
+                  </svg>
+                  {{ 'ADMIN_PAGE.SHIPPING_READY_BADGE' | translate }}
+                </span>
+                <span class="admin-dash__shipping-truck" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M3 7h11v9H3zM14 10h3.5l2.5 3v3h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                    <circle cx="7" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.8" />
+                    <circle cx="17" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.8" />
+                  </svg>
+                </span>
+              </div>
+              <p class="admin-dash__shipping-name text-4xl font-thin leading-tight text-white">{{ r.name }}</p>
+              <div class="admin-dash__shipping-pack">
+                <span>{{ 'ADMIN_PAGE.PACKED' | translate }}</span>
+                <strong>{{ r.packedQty }} / {{ r.totalItems }}</strong>
+              </div>
             </li>
           }
         </ul>
       } @else {
-        <p class="text-touch font-medium text-white/85">
+        <p class="admin-dash__shipping-empty text-touch font-medium text-white/85">
           {{ 'ADMIN_PAGE.NO_SHIPPING' | translate }}
         </p>
       }

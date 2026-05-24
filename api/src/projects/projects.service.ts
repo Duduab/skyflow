@@ -26,6 +26,8 @@ import { isProjectProductionComplete } from '../common/project-station-completio
 import { planningCutLengthCmFromSpec } from '../common/planning-cut-length.util';
 import type { ApprovePlanningDto } from './dto/approve-planning.dto.js';
 import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto.js';
+import type { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto.js';
+import { MailService } from '../mail/mail.service.js';
 
 /** PDFs attached to projects — served as static files from the web app. */
 export function ensureProjectDocsUploadDir(): string {
@@ -103,6 +105,7 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planningUpload: PlanningUploadService,
+    private readonly mail: MailService,
   ) {}
 
   async createPlanningDraft(name: string) {
@@ -484,5 +487,82 @@ export class ProjectsService {
         createdAt: doc.createdAt.toISOString(),
       },
     };
+  }
+
+  async sendProjectDocumentEmail(
+    documentId: string,
+    dto: SendProjectDocumentEmailDto,
+  ) {
+    const doc = await this.prisma.projectDocument.findUnique({
+      where: { id: documentId },
+      include: { project: { select: { name: true } } },
+    });
+    if (!doc) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    const absolutePdfPath = join(
+      process.cwd(),
+      '..',
+      'web',
+      'public',
+      doc.pdfPath.replace(/^\//, ''),
+    );
+    if (!existsSync(absolutePdfPath)) {
+      throw new NotFoundException('PDF file not found on disk');
+    }
+
+    const recipients = [
+      ...new Set(dto.recipients.map((e) => e.trim().toLowerCase())),
+    ];
+    const origin = dto.origin?.trim().replace(/\/$/, '') ?? '';
+    const link = origin ? `${origin}${doc.pdfPath}` : doc.pdfPath;
+    const kindLabel =
+      doc.kind === 'WORK_ORDER' ? 'Work order' : 'Purchase order';
+    const message = dto.message?.trim() ?? '';
+    const text = [
+      message,
+      message ? '' : undefined,
+      `Project: ${doc.project.name}`,
+      `Type: ${kindLabel}`,
+      doc.reference ? `Reference: ${doc.reference}` : undefined,
+      `File: ${link}`,
+    ]
+      .filter((line): line is string => line !== undefined)
+      .join('\n');
+
+    const subject = doc.title;
+    const attachmentName = subject.toLowerCase().endsWith('.pdf')
+      ? subject
+      : `${subject}.pdf`;
+
+    if (this.mail.isConfigured()) {
+      await this.mail.sendDocumentPdf({
+        to: recipients,
+        subject,
+        text,
+        absolutePdfPath,
+        attachmentName,
+      });
+      return { sent: true as const, mode: 'smtp' as const };
+    }
+
+    return {
+      sent: false as const,
+      mode: 'mailto' as const,
+      mailto: this.buildDocumentMailto(recipients, subject, text),
+    };
+  }
+
+  private buildDocumentMailto(
+    recipients: string[],
+    subject: string,
+    body: string,
+  ): string {
+    const to = recipients.join(',');
+    const params = new URLSearchParams();
+    params.set('subject', subject);
+    params.set('body', body);
+    return `mailto:${to}?${params.toString()}`;
   }
 }

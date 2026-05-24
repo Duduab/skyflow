@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -7,8 +7,6 @@ import { TranslateModule } from '@ngx-translate/core';
 import { UiButtonComponent } from '../../shared/ui-button.component';
 import { ApiService } from '../../core/api.service';
 import { CurrentUserService } from '../../core/current-user.service';
-import { ThemeService } from '../../core/theme.service';
-
 @Component({
   selector: 'skyflow-login-page',
   imports: [FormsModule, RouterLink, TranslateModule, UiButtonComponent],
@@ -21,14 +19,9 @@ export class LoginPageComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly theme = inject(ThemeService);
 
-  /** כמו בכותרת — בהיר: לוגו כהה; כהה: לוגו בהיר */
-  readonly logoSrc = computed(() =>
-    this.theme.mode() === 'light'
-      ? '/assets/logo/dark-mode.png'
-      : '/assets/logo/bright-mode.png',
-  );
+  /** כרטיס לוגין לבן — תמיד לוגו כהה לניגודיות */
+  readonly logoSrc = '/assets/logo/dark-mode.png';
 
   email = '';
   password = '';

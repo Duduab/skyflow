@@ -17,7 +17,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -68,6 +68,7 @@ function allCheckedValidator(): ValidatorFn {
     DecimalPipe,
     DatePipe,
     UiButtonComponent,
+    RouterLink,
   ],
   templateUrl: './worker-terminal.component.html',
   styleUrl: './worker-terminal.component.scss',
@@ -176,6 +177,14 @@ export class WorkerTerminalComponent implements OnInit {
 
   stationProgress(ctx: WorkerContext): StationProgressVm {
     return computeStationProgress(this.stationId, ctx);
+  }
+
+  nextStationId(): number | null {
+    return this.stationId >= 1 && this.stationId < 7 ? this.stationId + 1 : null;
+  }
+
+  canMoveToNextStation(ctx: WorkerContext): boolean {
+    return this.nextStationId() !== null && this.stationProgress(ctx).percent >= 100;
   }
 
   /** קיבוץ שורות מסורים לפי instructionKind (ללא WINDOW_INSTRUCTION) */

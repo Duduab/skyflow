@@ -19,6 +19,7 @@ import { Roles } from '../auth/roles.decorator.js';
 import { CreatePlanningDraftDto } from './dto/create-planning-draft.dto';
 import { ApprovePlanningDto } from './dto/approve-planning.dto';
 import { UploadProjectDocumentDto } from './dto/upload-project-document.dto';
+import { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto';
 import {
   ensureProjectDocsUploadDir,
   ProjectsService,
@@ -42,6 +43,15 @@ export class ProjectsController {
   @Post()
   createDraft(@Body() dto: CreatePlanningDraftDto) {
     return this.projectsService.createPlanningDraft(dto.name);
+  }
+
+  @Roles(SkyflowRole.ADMIN)
+  @Post('documents/:documentId/send-email')
+  sendDocumentEmail(
+    @Param('documentId') documentId: string,
+    @Body() dto: SendProjectDocumentEmailDto,
+  ) {
+    return this.projectsService.sendProjectDocumentEmail(documentId, dto);
   }
 
   @Roles(SkyflowRole.ADMIN)

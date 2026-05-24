@@ -1,10 +1,71 @@
 .admin-page__loading {
   padding: 2rem;
   text-align: center;
+  color: var(--admin-muted, #64748b);
 }
 
-.admin-sim-toolbar {
+.admin-page__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--admin-fg, #0f172a);
+}
+
+.admin-page__sub {
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  color: var(--admin-muted, #64748b);
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+.admin-sim__hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.25rem;
   margin-bottom: 1.25rem;
+}
+
+.admin-sim__hero-copy {
+  flex: 1 1 16rem;
+}
+
+.admin-sim__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #2563eb;
+}
+
+.admin-sim__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.admin-sim__link-scrap.sf-ui-btn--secondary,
+.admin-sim__refresh.sf-ui-btn--secondary {
+  min-height: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-sim-new.sf-ui-btn--primary {
+  min-height: 0;
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(62, 93, 136, 0.32);
 }
 
 .admin-sim-new:disabled {
@@ -12,27 +73,155 @@
   cursor: not-allowed;
 }
 
-.admin-sim-layout {
+.admin-sim__plant-kpis {
   display: grid;
-  gap: 1.5rem;
-  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1.35rem;
 }
 
-@media (min-width: 900px) {
-  .admin-sim-layout {
-    grid-template-columns: minmax(14rem, 22rem) minmax(0, 1fr);
-  }
+.admin-sim-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(62, 93, 136, 0.07);
+}
+
+:host-context(html:not(.theme-light)) .admin-sim-kpi {
+  background: #1e293b;
+}
+
+.admin-sim-kpi--accent {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: linear-gradient(160deg, rgba(239, 246, 255, 0.95), #fff);
+}
+
+.admin-sim-kpi__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim-kpi__value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-fg, #0f172a);
+}
+
+.admin-sim-kpi__unit,
+.admin-sim-kpi__hint {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim__section-head {
+  margin-bottom: 0.75rem;
+}
+
+.admin-sim__section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.admin-sim__section-head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim__inventory {
+  margin-bottom: 1.5rem;
+}
+
+.admin-sim__project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.65rem;
+}
+
+.admin-sim__project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(62, 93, 136, 0.07);
+  cursor: pointer;
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+:host-context(html:not(.theme-light)) .admin-sim__project-card {
+  background: #1e293b;
+}
+
+.admin-sim__project-card:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.admin-sim__project-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.admin-sim__project-scrap {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.admin-sim__project-bar {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+
+.admin-sim__project-bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  border-radius: inherit;
+}
+
+.admin-sim__project-meta {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--admin-muted, #64748b);
 }
 
 .admin-sim-list-panel {
   padding: 1rem 1.15rem;
   border-radius: 1rem;
   border: 1px solid rgba(15, 23, 42, 0.1);
-  background: rgba(255, 255, 255, 0.85);
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(62, 93, 136, 0.07);
+}
+
+.admin-sim-list-panel--full {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 1.5rem;
 }
 
 :host-context(html:not(.theme-light)) .admin-sim-list-panel {
-  background: rgba(15, 23, 42, 0.6);
+  background: #1e293b;
   border-color: rgba(248, 250, 252, 0.1);
 }
 
@@ -40,11 +229,6 @@
   margin: 0 0 0.75rem;
   font-size: 1rem;
   font-weight: 800;
-  color: var(--admin-fg, #0f172a);
-}
-
-:host-context(html:not(.theme-light)) .admin-sim-list-panel__title {
-  color: #f8fafc;
 }
 
 .admin-sim-list-panel__empty {
@@ -60,18 +244,22 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: min(60vh, 28rem);
-  overflow-y: auto;
+}
+
+.admin-sim-list--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.65rem;
 }
 
 .admin-sim-list__item {
   position: relative;
   width: 100%;
-  text-align: right;
+  text-align: start;
   padding: 0.65rem 2rem 0.65rem 0.75rem;
   border-radius: 0.75rem;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #fff;
+  background: rgba(241, 245, 249, 0.5);
   cursor: pointer;
   font: inherit;
 }
@@ -82,40 +270,44 @@
   color: #f1f5f9;
 }
 
-.admin-sim-list__item:focus-visible {
-  outline: 2px solid rgba(85, 143, 195, 0.65);
-  outline-offset: 2px;
-}
-
 .admin-sim-list__item--active {
-  border-color: rgba(85, 143, 195, 0.55);
-  box-shadow: 0 0 0 1px rgba(85, 143, 195, 0.25);
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  background: rgba(239, 246, 255, 0.85);
 }
 
 .admin-sim-list__title {
   display: block;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .admin-sim-list__meta {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   opacity: 0.85;
+  margin-top: 0.1rem;
+}
+
+.admin-sim-list__nums {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.75;
   margin-top: 0.15rem;
 }
 
 .admin-sim-list__time {
   display: block;
-  font-size: 0.72rem;
-  opacity: 0.7;
-  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  opacity: 0.65;
+  margin-top: 0.15rem;
 }
 
 .admin-sim-list__del {
   position: absolute;
   top: 0.35rem;
-  left: 0.35rem;
+  inset-inline-end: 0.35rem;
   width: 1.65rem;
   height: 1.65rem;
   border: none;
@@ -128,27 +320,13 @@
   font-weight: 700;
 }
 
-.admin-sim-list__del:hover {
-  background: rgba(185, 28, 28, 0.22);
+.admin-sim-overlay__panel--detail {
+  max-width: min(52rem, 96vw);
+  max-height: min(94vh, 52rem);
 }
 
 .admin-sim-detail {
   min-width: 0;
-}
-
-.admin-sim-detail__head {
-  margin-bottom: 1rem;
-}
-
-.admin-sim-detail__title {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 900;
-  color: var(--admin-fg, #0f172a);
-}
-
-:host-context(html:not(.theme-light)) .admin-sim-detail__title {
-  color: #f8fafc;
 }
 
 .admin-sim-detail__project {
@@ -157,130 +335,332 @@
   color: var(--admin-muted, #64748b);
 }
 
-.admin-sim-detail__hint {
-  margin: 0.5rem 0 0;
+.admin-sim-detail__drift {
+  margin: 0.35rem 0 0;
   font-size: 0.82rem;
+  font-weight: 700;
+  color: #d97706;
+}
+
+.admin-sim-detail__hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
   color: var(--admin-muted, #64748b);
   line-height: 1.4;
 }
 
-.admin-sim-detail__empty {
-  margin: 0;
-  padding: 2rem 1rem;
-  text-align: center;
-  color: var(--admin-muted, #64748b);
-  border: 1px dashed rgba(15, 23, 42, 0.15);
-  border-radius: 1rem;
-}
-
-.admin-sim-breakdown {
-  display: grid;
-  gap: 0.35rem 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-  margin: 0 0 1.25rem;
-  padding: 1rem;
-  border-radius: 0.85rem;
-  background: rgba(15, 23, 42, 0.04);
-}
-
-:host-context(html:not(.theme-light)) .admin-sim-breakdown {
-  background: rgba(248, 250, 252, 0.06);
-}
-
-.admin-sim-breakdown__row {
+.admin-sim__insight {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.85rem;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+  border-radius: 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.9), #fff);
 }
 
-.admin-sim-breakdown__row dt {
+.admin-sim__insight--ok {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.95), #fff);
+}
+
+.admin-sim__insight--warn {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.95), #fff);
+}
+
+.admin-sim__insight h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.admin-sim__insight p {
   margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  max-width: 28rem;
+}
+
+.admin-sim__coverage-ring {
+  --pct: 0;
+  flex-shrink: 0;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(
+    #2563eb calc(var(--pct) * 1%),
+    rgba(15, 23, 42, 0.08) 0
+  );
+  position: relative;
+}
+
+.admin-sim__coverage-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0.45rem;
+  border-radius: 50%;
+  background: #fff;
+}
+
+:host-context(html:not(.theme-light)) .admin-sim__coverage-ring::before {
+  background: #1e293b;
+}
+
+.admin-sim__coverage-val,
+.admin-sim__coverage-lbl {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-sim__coverage-val {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #2563eb;
+}
+
+.admin-sim__coverage-lbl {
+  font-size: 0.62rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.admin-sim__compare-bar {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.admin-sim__compare-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.admin-sim__compare-fill--scrap {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+.admin-sim__compare-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim__scenarios {
+  margin-bottom: 1rem;
+}
+
+.admin-sim__scenarios-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--admin-muted, #64748b);
+  margin-bottom: 0.45rem;
+}
+
+.admin-sim__scenario-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.admin-sim__scenario-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: inherit;
+}
+
+.admin-sim__scenario-chip--active {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #1d4ed8;
+}
+
+.admin-sim__scenario-mult {
+  font-size: 0.68rem;
+  opacity: 0.8;
+}
+
+.admin-sim-field--inline {
+  margin-top: 0.65rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-sim__inline-input {
+  width: 5rem;
+}
+
+.admin-sim__lines-head {
+  margin-bottom: 0.65rem;
+}
+
+.admin-sim__lines-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.admin-sim__lines-head p {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-sim__alloc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-sim__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.admin-sim-line {
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(241, 245, 249, 0.6);
+}
+
+.admin-sim-line--full {
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.admin-sim-line__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.admin-sim-line__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-sim-line__qty {
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--admin-muted, #64748b);
 }
 
-.admin-sim-breakdown__row dd {
-  margin: 0;
-  font-weight: 800;
-  color: var(--admin-fg, #0f172a);
+.admin-sim-line__bar {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  margin-bottom: 0.4rem;
 }
 
-:host-context(html:not(.theme-light)) .admin-sim-breakdown__row dd {
-  color: #f1f5f9;
+.admin-sim-line__bar-covered {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #059669, #34d399);
+  border-radius: inherit;
 }
 
-.admin-sim-breakdown__row--sub dt {
-  font-size: 0.8rem;
-}
-
-.admin-sim-controls {
+.admin-sim-line__stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
+  gap: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.admin-sim-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 12rem;
-  font-weight: 700;
-  font-size: 0.88rem;
+.admin-sim-line__covered {
+  color: #059669;
+}
+
+.admin-sim-line__gap {
+  color: #e11d48;
 }
 
 .admin-sim-cards {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
 }
 
 .admin-sim-card {
-  padding: 1.25rem;
-  border-radius: 1rem;
-  background: #fff;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
   border: 1px solid rgba(15, 23, 42, 0.08);
-}
-
-:host-context(html:not(.theme-light)) .admin-sim-card {
-  background: #0f172a;
-  border-color: rgba(248, 250, 252, 0.1);
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .admin-sim-card h3 {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--admin-muted, #64748b);
 }
 
 .admin-sim-card__num {
-  margin: 0.5rem 0 0;
-  font-size: 1.75rem;
+  margin: 0.35rem 0 0;
+  font-size: 1.45rem;
   font-weight: 800;
-  color: var(--admin-fg, #0f172a);
+  font-variant-numeric: tabular-nums;
 }
 
-:host-context(html:not(.theme-light)) .admin-sim-card__num {
-  color: #f8fafc;
+.admin-sim-card__hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+.admin-sim-card--savings .admin-sim-card__num {
+  color: #059669;
 }
 
 .admin-sim-card--accent {
-  border-color: rgba(85, 143, 195, 0.45);
-  background: rgba(85, 143, 195, 0.08);
+  border-color: rgba(225, 29, 72, 0.25);
+}
+
+.admin-sim-card--accent .admin-sim-card__num {
+  color: #e11d48;
 }
 
 .admin-sim-reorder-hint {
-  margin: 1rem 0 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--admin-fg, #0f172a);
-}
-
-:host-context(html:not(.theme-light)) .admin-sim-reorder-hint {
-  color: #e2e8f0;
+  margin: 0.75rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 800;
 }
 
 /* Modal */
@@ -299,11 +679,15 @@
 .admin-sim-overlay__panel {
   width: 100%;
   max-width: 36rem;
-  max-height: min(92vh, 44rem);
+  max-height: min(92vh, 48rem);
   overflow-y: auto;
   border-radius: 1.25rem;
   padding: 1.35rem 1.5rem 1.5rem;
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
+}
+
+.admin-sim-overlay__panel--wide {
+  max-width: min(40rem, 96vw);
 }
 
 .admin-sim-overlay__panel[data-surface='light'] {
@@ -343,14 +727,6 @@
   color: inherit;
 }
 
-.admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__close {
-  background: rgba(248, 250, 252, 0.08);
-}
-
-.admin-sim-modal__close:hover {
-  opacity: 0.85;
-}
-
 .admin-sim-modal__sub {
   margin: 0.5rem 0 1rem;
   font-size: 0.9rem;
@@ -379,12 +755,49 @@
   font-size: 0.95rem;
   font-weight: 600;
   font-family: inherit;
+  background: #fff;
+  color: #0f172a;
 }
 
 .admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__input {
   background: #020617;
   border-color: rgba(248, 250, 252, 0.14);
   color: #f8fafc;
+}
+
+.admin-sim-modal__preview {
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: rgba(239, 246, 255, 0.6);
+}
+
+.admin-sim-modal__preview h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.admin-sim-modal__preview-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  margin-bottom: 0.25rem;
+}
+
+.admin-sim-modal__preview-bar {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.admin-sim-modal__preview-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  border-radius: inherit;
 }
 
 .admin-sim-modal__hint {
@@ -418,10 +831,6 @@
   border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-.admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__actions {
-  border-top-color: rgba(248, 250, 252, 0.1);
-}
-
 .admin-sim-modal__btn {
   padding: 0.55rem 1.1rem;
   border-radius: 0.75rem;
@@ -436,12 +845,4 @@
   background: transparent;
   border: 1px solid rgba(15, 23, 42, 0.18);
   color: inherit;
-}
-
-.admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__btn.secondary {
-  border-color: rgba(248, 250, 252, 0.2);
-}
-
-.admin-sim-modal__btn.primary {
-  border: none;
 }

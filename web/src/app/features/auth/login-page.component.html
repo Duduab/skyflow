@@ -1,21 +1,32 @@
-<section class="login-page mx-auto max-w-md px-4 py-12">
-  <div class="login-panel rounded-3xl p-8 shadow-sf-lg">
+<section class="login-page">
+  <div class="login-page__backdrop" aria-hidden="true">
+    <span class="login-page__orb login-page__orb--primary"></span>
+    <span class="login-page__orb login-page__orb--secondary"></span>
+  </div>
+
+  <div class="login-panel">
+    <div class="login-panel__beam" aria-hidden="true"></div>
+
     <a
       routerLink="/"
       class="login-panel__logo-link"
       [attr.aria-label]="'APP.TITLE' | translate"
     >
+      <span class="login-panel__logo-ring" aria-hidden="true"></span>
       <img
-        [src]="logoSrc()"
+        [src]="logoSrc"
         width="160"
         height="160"
         alt=""
         class="login-panel__logo-img"
       />
     </a>
+
     <div class="login-panel__intro">
-      <h1 class="login-page__title">{{ 'LOGIN.TITLE' | translate }}</h1>
-      <p class="login-page__sub">{{ 'LOGIN.SUB' | translate }}</p>
+      <h1 class="login-page__brand">
+        <span>Sky</span>
+        <strong>Flow</strong>
+      </h1>
     </div>
 
     <form class="login-page__form" (ngSubmit)="submit()">
@@ -51,16 +62,14 @@
       <skyflow-ui-button
         type="submit"
         variant="primary"
+        size="lg"
+        style="padding-top: 27px;"
         [loading]="busy()"
         [block]="true"
-        btnClass="login-page__submit shadow-sf-lg"
+        btnClass="login-page__submit"
       >
         {{ 'LOGIN.SUBMIT' | translate }}
       </skyflow-ui-button>
     </form>
-
-    <p class="login-page__back">
-      <a routerLink="/" class="login-page__link">{{ 'LOGIN.BACK_HOME' | translate }}</a>
-    </p>
   </div>
 </section>

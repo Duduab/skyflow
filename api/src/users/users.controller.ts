@@ -43,6 +43,11 @@ export class UsersController {
     return this.users.planningAssignees();
   }
 
+  @Get(':id/performance')
+  performance(@Param('id') id: string) {
+    return this.users.getPerformance(id);
+  }
+
   @Post()
   create(@Body() dto: CreateUserDto) {
     return this.users.create(dto);

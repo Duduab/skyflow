@@ -1,33 +1,94 @@
-@if (loading()) {
+@if (loading() && !snap()) {
   <p class="admin-page__loading">…</p>
-} @else if (snap()) {
-  <header class="admin-page__head">
-    <h1 class="admin-page__title">{{ 'ADMIN_SIM_PAGE.TITLE' | translate }}</h1>
-    <p class="admin-page__sub">{{ 'ADMIN_SIM_PAGE.SUB' | translate }}</p>
+} @else if (snap(); as sn) {
+  <header class="admin-sim__hero">
+    <div class="admin-sim__hero-copy">
+      <p class="admin-sim__eyebrow">{{ 'ADMIN_SIM_PAGE.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">{{ 'ADMIN_SIM_PAGE.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_SIM_PAGE.SUB' | translate }}</p>
+    </div>
+    <div class="admin-sim__hero-actions">
+      <a routerLink="/admin/scrap" class="admin-sim__link-scrap sf-ui-btn sf-ui-btn--secondary">
+        {{ 'ADMIN_SIM_PAGE.GO_SCRAP' | translate }}
+      </a>
+      <button
+        type="button"
+        class="admin-sim__refresh sf-ui-btn sf-ui-btn--secondary"
+        (click)="refreshSnapshot()"
+        [disabled]="loading()"
+      >
+        {{ 'ADMIN_SIM_PAGE.REFRESH' | translate }}
+      </button>
+      <button
+        type="button"
+        class="admin-sim-new sf-ui-btn sf-ui-btn--primary"
+        (click)="openNewModal()"
+        [disabled]="loading() || projectList().length === 0"
+      >
+        {{ 'ADMIN_SIM_PAGE.NEW_SIM' | translate }}
+      </button>
+    </div>
   </header>
 
-  <div class="admin-sim-toolbar">
-    <button
-      type="button"
-      class="admin-sim-new sf-ui-btn sf-ui-btn--primary sf-ui-btn--lg shadow-sf-lg"
-      (click)="openNewModal()"
-      [disabled]="loading() || projectList().length === 0"
-    >
-      {{ 'ADMIN_SIM_PAGE.NEW_SIM' | translate }}
-    </button>
-  </div>
+  @let plant = plantTotals();
+  <section class="admin-sim__plant-kpis" aria-label="plant scrap">
+    <article class="admin-sim-kpi">
+      <span class="admin-sim-kpi__label">{{ 'ADMIN_SIM_PAGE.PLANT_SCRAP' | translate }}</span>
+      <span class="admin-sim-kpi__value">{{ plant.scrapCm | number: '1.0-0' }}</span>
+      <span class="admin-sim-kpi__unit">{{ 'ADMIN_SIM_PAGE.UNIT_CM' | translate }}</span>
+    </article>
+    <article class="admin-sim-kpi">
+      <span class="admin-sim-kpi__label">{{ 'ADMIN_SIM_PAGE.PLANT_PROJECTS' | translate }}</span>
+      <span class="admin-sim-kpi__value">{{ plant.projectCount }}</span>
+    </article>
+    <article class="admin-sim-kpi">
+      <span class="admin-sim-kpi__label">{{ 'ADMIN_SIM_PAGE.MY_SIMULATIONS' | translate }}</span>
+      <span class="admin-sim-kpi__value">{{ simulations().length }}</span>
+    </article>
+    <article class="admin-sim-kpi admin-sim-kpi--accent">
+      <span class="admin-sim-kpi__label">{{ 'ADMIN_SIM_PAGE.PLANT_COVERAGE' | translate }}</span>
+      <span class="admin-sim-kpi__value">{{ plant.coveragePct }}%</span>
+      <span class="admin-sim-kpi__hint">{{ 'ADMIN_SIM_PAGE.PLANT_COVERAGE_HINT' | translate }}</span>
+    </article>
+  </section>
 
-  <div class="admin-sim-layout">
-    <aside class="admin-sim-list-panel" aria-labelledby="sim-list-heading">
+  <section class="admin-sim__inventory" aria-labelledby="sim-inventory-title">
+    <header class="admin-sim__section-head">
+      <h2 id="sim-inventory-title">{{ 'ADMIN_SIM_PAGE.INVENTORY_TITLE' | translate }}</h2>
+      <p>{{ 'ADMIN_SIM_PAGE.INVENTORY_SUB' | translate }}</p>
+    </header>
+    <div class="admin-sim__project-grid">
+      @for (p of projectList(); track p.projectId) {
+        <button type="button" class="admin-sim__project-card" (click)="selectProjectCard(p)">
+          <span class="admin-sim__project-name">{{ p.name }}</span>
+          <span class="admin-sim__project-scrap">
+            {{ p.scrapCm | number: '1.0-0' }}
+            {{ 'ADMIN_SIM_PAGE.UNIT_CM' | translate }}
+            {{ 'ADMIN_SIM_PAGE.SCRAP' | translate }}
+          </span>
+          <span class="admin-sim__project-bar" aria-hidden="true">
+            <span
+              class="admin-sim__project-bar-fill"
+              [style.width.%]="projectCoveragePct(p)"
+            ></span>
+          </span>
+          <span class="admin-sim__project-meta">
+            {{ 'ADMIN_SIM_PAGE.COVERAGE' | translate }}: {{ projectCoveragePct(p) }}%
+          </span>
+        </button>
+      }
+    </div>
+  </section>
+
+  @if (simulations().length) {
+    <aside
+      class="admin-sim-list-panel admin-sim-list-panel--full"
+      aria-labelledby="sim-list-heading"
+    >
       <h2 id="sim-list-heading" class="admin-sim-list-panel__title">
         {{ 'ADMIN_SIM_PAGE.MY_SIMULATIONS' | translate }}
       </h2>
-      @if (simulations().length === 0) {
-        <p class="admin-sim-list-panel__empty">
-          {{ 'ADMIN_SIM_PAGE.LIST_EMPTY' | translate }}
-        </p>
-      } @else {
-        <ul class="admin-sim-list">
+      <ul class="admin-sim-list admin-sim-list--grid">
           @for (sim of simulations(); track sim.id) {
             <li>
               <div
@@ -41,11 +102,15 @@
               >
                 <span class="admin-sim-list__title">{{ sim.title }}</span>
                 <span class="admin-sim-list__meta">{{ sim.projectName }}</span>
-                <time
-                  class="admin-sim-list__time"
-                  [attr.datetime]="sim.createdAt"
-                  >{{ sim.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time
-                >
+                <span class="admin-sim-list__nums">
+                  {{ 'ADMIN_SIM_PAGE.NEED' | translate }}
+                  {{ sim.baseNeedCm | number: '1.0-0' }}
+                  · {{ 'ADMIN_SIM_PAGE.SCRAP' | translate }}
+                  {{ sim.scrapCmAtSave | number: '1.0-0' }}
+                </span>
+                <time class="admin-sim-list__time" [attr.datetime]="sim.createdAt">
+                  {{ sim.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                </time>
                 <button
                   type="button"
                   class="admin-sim-list__del"
@@ -57,76 +122,166 @@
               </div>
             </li>
           }
-        </ul>
-      }
+      </ul>
     </aside>
+  }
+}
 
-    <section class="admin-sim-detail" aria-live="polite">
-      @if (selectedSim(); as sel) {
-        <div class="admin-sim-detail__head">
-          <h2 class="admin-sim-detail__title">{{ sel.title }}</h2>
-          <p class="admin-sim-detail__project">
-            {{ 'ADMIN_SIM_PAGE.LINKED_PROJECT' | translate }}:
-            <strong>{{ sel.projectName }}</strong>
-          </p>
-          <p class="admin-sim-detail__hint">
-            {{ 'ADMIN_SIM_PAGE.SCRAP_FROZEN_HINT' | translate }}
-          </p>
+@if (selectedSim(); as sel) {
+  <div class="admin-sim-overlay" (click)="closeDetail()" role="presentation">
+    <div
+      class="admin-sim-overlay__panel admin-sim-overlay__panel--detail"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-sim-detail-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-sim-modal__head">
+        <h2 id="admin-sim-detail-title" class="admin-sim-modal__title">{{ sel.title }}</h2>
+        <button
+          type="button"
+          class="admin-sim-modal__close"
+          (click)="closeDetail()"
+          [attr.aria-label]="'ADMIN_SIM_PAGE.MODAL_CLOSE' | translate"
+        >
+          ×
+        </button>
+      </div>
+      <section class="admin-sim-detail" aria-live="polite">
+        <p class="admin-sim-detail__project">
+          {{ 'ADMIN_SIM_PAGE.LINKED_PROJECT' | translate }}:
+          <strong>{{ sel.projectName }}</strong>
+        </p>
+        @if (scrapDrift(); as drift) {
+          @if (drift !== 0) {
+            <p class="admin-sim-detail__drift">
+              {{ 'ADMIN_SIM_PAGE.SCRAP_DRIFT' | translate: { cm: drift } }}
+            </p>
+          }
+        }
+
+        <div
+          class="admin-sim__insight"
+          [class.admin-sim__insight--ok]="canFullyCover()"
+          [class.admin-sim__insight--warn]="!canFullyCover() && adjustedNeed() > 0"
+        >
+          <div class="admin-sim__insight-copy">
+            <h3>{{ 'ADMIN_SIM_PAGE.SAVINGS_TITLE' | translate }}</h3>
+            @if (canFullyCover()) {
+              <p>{{ 'ADMIN_SIM_PAGE.SAVINGS_FULL' | translate }}</p>
+            } @else if (adjustedNeed() > 0) {
+              <p>
+                {{
+                  'ADMIN_SIM_PAGE.SAVINGS_PARTIAL'
+                    | translate: {
+                        covered: (savingsCm() | number: '1.0-0'),
+                        pct: savingsPctOfNeed(),
+                        gap: (adjustedGap() | number: '1.0-0'),
+                      }
+                }}
+              </p>
+            } @else {
+              <p>{{ 'ADMIN_SIM_PAGE.SAVINGS_EMPTY' | translate }}</p>
+            }
+          </div>
+          <div class="admin-sim__coverage-ring" [style.--pct]="coveragePct()">
+            <span class="admin-sim__coverage-val">{{ coveragePct() }}%</span>
+            <span class="admin-sim__coverage-lbl">{{ 'ADMIN_SIM_PAGE.COVERAGE' | translate }}</span>
+          </div>
         </div>
 
-        <dl class="admin-sim-breakdown">
-          <div class="admin-sim-breakdown__row">
-            <dt>{{ 'ADMIN_SIM_PAGE.BEAMS_QTY' | translate }}</dt>
-            <dd>{{ sel.beamsQty | number: '1.0-0' }}</dd>
-          </div>
-          <div class="admin-sim-breakdown__row">
-            <dt>{{ 'ADMIN_SIM_PAGE.GLAZING_QTY' | translate }}</dt>
-            <dd>{{ sel.glazingQty | number: '1.0-0' }}</dd>
-          </div>
-          <div class="admin-sim-breakdown__row">
-            <dt>{{ 'ADMIN_SIM_PAGE.UNITIZED_QTY' | translate }}</dt>
-            <dd>{{ sel.unitizedQty | number: '1.0-0' }}</dd>
-          </div>
-          <div class="admin-sim-breakdown__row admin-sim-breakdown__row--sub">
-            <dt>{{ 'ADMIN_SIM_PAGE.CM_PER_BEAM' | translate }}</dt>
-            <dd>{{ sel.cmPerBeam | number: '1.0-2' }}</dd>
-          </div>
-          <div class="admin-sim-breakdown__row admin-sim-breakdown__row--sub">
-            <dt>{{ 'ADMIN_SIM_PAGE.CM_PER_GLAZING' | translate }}</dt>
-            <dd>{{ sel.cmPerGlazing | number: '1.0-2' }}</dd>
-          </div>
-          <div class="admin-sim-breakdown__row admin-sim-breakdown__row--sub">
-            <dt>{{ 'ADMIN_SIM_PAGE.CM_PER_UNITIZED' | translate }}</dt>
-            <dd>{{ sel.cmPerUnitized | number: '1.0-2' }}</dd>
-          </div>
-        </dl>
+        <div class="admin-sim__compare-bar" aria-hidden="true">
+          <span
+            class="admin-sim__compare-fill admin-sim__compare-fill--scrap"
+            [style.width.%]="coveragePct()"
+          ></span>
+        </div>
+        <p class="admin-sim__compare-legend">
+          <span>{{ 'ADMIN_SIM_PAGE.SCRAP_USED' | translate }}: {{ coveredTotalCm() | number: '1.0-0' }}</span>
+          <span>{{ 'ADMIN_SIM_PAGE.NEED' | translate }}: {{ adjustedNeed() | number: '1.0-0' }}</span>
+        </p>
 
-        <div class="admin-sim-controls sf-panel">
-          <label class="admin-sim-field">
-            <span>{{ 'ADMIN_SIM_PAGE.PICK_SCENARIO' | translate }}</span>
-            <select
-              class="sf-select"
-              [ngModel]="scenario()"
-              (ngModelChange)="setScenario($event)"
-            >
-              <option value="full">{{ 'ADMIN_SIM_PAGE.SCEN_FULL' | translate }}</option>
-              <option value="half">{{ 'ADMIN_SIM_PAGE.SCEN_HALF' | translate }}</option>
-              <option value="extra">{{ 'ADMIN_SIM_PAGE.SCEN_EXTRA' | translate }}</option>
-              <option value="custom">{{ 'ADMIN_SIM_PAGE.SCEN_CUSTOM' | translate }}</option>
-            </select>
-          </label>
+        <div class="admin-sim__scenarios">
+          <span class="admin-sim__scenarios-label">{{ 'ADMIN_SIM_PAGE.PICK_SCENARIO' | translate }}</span>
+          <div class="admin-sim__scenario-chips">
+            @for (opt of scenarioOptions; track opt.id) {
+              <button
+                type="button"
+                class="admin-sim__scenario-chip"
+                [class.admin-sim__scenario-chip--active]="scenario() === opt.id"
+                (click)="setScenario(opt.id)"
+              >
+                {{ opt.labelKey | translate }}
+                @if (opt.id !== 'custom') {
+                  <span class="admin-sim__scenario-mult">×{{ opt.mult }}</span>
+                }
+              </button>
+            }
+          </div>
           @if (scenario() === 'custom') {
-            <label class="admin-sim-field">
-              <span>×</span>
+            <label class="admin-sim-field admin-sim-field--inline">
+              <span>{{ 'ADMIN_SIM_PAGE.SCEN_CUSTOM' | translate }}</span>
               <input
                 type="number"
                 min="0.1"
                 step="0.05"
-                class="sf-input"
+                class="admin-sim-modal__input admin-sim__inline-input"
                 [ngModel]="customMult()"
                 (ngModelChange)="customMult.set(+$event)"
               />
             </label>
+          }
+        </div>
+
+        <div class="admin-sim__lines-head">
+          <h3>{{ 'ADMIN_SIM_PAGE.LINES_TITLE' | translate }}</h3>
+          <p>{{ 'ADMIN_SIM_PAGE.LINES_SUB' | translate }}</p>
+          <label class="admin-sim__alloc-toggle">
+            <input
+              type="checkbox"
+              [ngModel]="allocateBeamsFirst()"
+              (ngModelChange)="allocateBeamsFirst.set($event)"
+            />
+            {{ 'ADMIN_SIM_PAGE.ALLOC_BEAMS_FIRST' | translate }}
+          </label>
+        </div>
+
+        <div class="admin-sim__lines">
+          @for (line of lineBreakdown(); track line.key) {
+            <article class="admin-sim-line" [class.admin-sim-line--full]="line.gapCm === 0">
+              <div class="admin-sim-line__head">
+                <label class="admin-sim-line__toggle">
+                  <input
+                    type="checkbox"
+                    [checked]="isLineEnabled(line.key)"
+                    (change)="toggleLine(line.key)"
+                  />
+                  <span>{{ line.labelKey | translate }}</span>
+                </label>
+                <span class="admin-sim-line__qty">
+                  {{ line.qty | number: '1.0-0' }} × {{ line.cmPerUnit | number: '1.0-0' }}
+                  {{ 'ADMIN_SIM_PAGE.UNIT_CM' | translate }}
+                </span>
+              </div>
+              <div class="admin-sim-line__bar" aria-hidden="true">
+                <span
+                  class="admin-sim-line__bar-covered"
+                  [style.width.%]="line.coveredPct"
+                ></span>
+              </div>
+              <div class="admin-sim-line__stats">
+                <span>{{ 'ADMIN_SIM_PAGE.NEED' | translate }}: {{ line.needCm | number: '1.0-0' }}</span>
+                <span class="admin-sim-line__covered">
+                  {{ 'ADMIN_SIM_PAGE.FROM_SCRAP' | translate }}: {{ line.coveredCm | number: '1.0-0' }}
+                </span>
+                @if (line.gapCm > 0) {
+                  <span class="admin-sim-line__gap">
+                    {{ 'ADMIN_SIM_PAGE.GAP' | translate }}: {{ line.gapCm | number: '1.0-0' }}
+                  </span>
+                }
+              </div>
+            </article>
           }
         </div>
 
@@ -136,12 +291,17 @@
             <p class="admin-sim-card__num">{{ adjustedNeed() | number: '1.0-0' }}</p>
           </article>
           <article class="admin-sim-card">
-            <h3>{{ 'ADMIN_SIM_PAGE.SCRAP' | translate }}</h3>
-            <p class="admin-sim-card__num">
-              {{ sel.scrapCmAtSave | number: '1.0-0' }}
-            </p>
+            <h3>{{ 'ADMIN_SIM_PAGE.SCRAP_POOL' | translate }}</h3>
+            <p class="admin-sim-card__num">{{ activeScrapPool() | number: '1.0-0' }}</p>
+            @if (liveProject(); as lp) {
+              <p class="admin-sim-card__hint">{{ 'ADMIN_SIM_PAGE.SCRAP_LIVE' | translate }}</p>
+            }
           </article>
-          <article class="admin-sim-card admin-sim-card--accent">
+          <article class="admin-sim-card admin-sim-card--savings">
+            <h3>{{ 'ADMIN_SIM_PAGE.SAVINGS_CM' | translate }}</h3>
+            <p class="admin-sim-card__num">{{ savingsCm() | number: '1.0-0' }}</p>
+          </article>
+          <article class="admin-sim-card" [class.admin-sim-card--accent]="adjustedGap() > 0">
             <h3>{{ 'ADMIN_SIM_PAGE.GAP' | translate }}</h3>
             <p class="admin-sim-card__num">{{ adjustedGap() | number: '1.0-0' }}</p>
           </article>
@@ -150,23 +310,20 @@
         <p class="admin-sim-reorder-hint">
           @if (adjustedGap() > 0) {
             {{ 'ADMIN_SIM_PAGE.REORDER_NEEDED' | translate }}
-          } @else {
+          } @else if (adjustedNeed() > 0) {
             {{ 'ADMIN_SIM_PAGE.REORDER_OK' | translate }}
           }
         </p>
-      } @else {
-        <p class="admin-sim-detail__empty">
-          {{ 'ADMIN_SIM_PAGE.DETAIL_EMPTY' | translate }}
-        </p>
-      }
-    </section>
+        <p class="admin-sim-detail__hint">{{ 'ADMIN_SIM_PAGE.SCRAP_FROZEN_HINT' | translate }}</p>
+      </section>
+    </div>
   </div>
 }
 
 @if (modalOpen()) {
   <div class="admin-sim-overlay" (click)="closeModal()" role="presentation">
     <div
-      class="admin-sim-overlay__panel"
+      class="admin-sim-overlay__panel admin-sim-overlay__panel--wide"
       [attr.data-surface]="theme.mode()"
       role="dialog"
       aria-modal="true"
@@ -210,10 +367,34 @@
             required
           >
             @for (p of snap()?.projects ?? []; track p.projectId) {
-              <option [value]="p.projectId">{{ p.name }}</option>
+              <option [value]="p.projectId">
+                {{ p.name }} ({{ p.scrapCm | number: '1.0-0' }} {{ 'ADMIN_SIM_PAGE.UNIT_CM' | translate }})
+              </option>
             }
           </select>
         </label>
+
+        @let prev = draftPreview();
+        @if (prev.projectName) {
+          <div class="admin-sim-modal__preview">
+            <h3>{{ 'ADMIN_SIM_PAGE.MODAL_PREVIEW' | translate }}</h3>
+            <div class="admin-sim-modal__preview-row">
+              <span>{{ 'ADMIN_SIM_PAGE.NEED' | translate }}</span>
+              <strong>{{ prev.needCm | number: '1.0-0' }}</strong>
+            </div>
+            <div class="admin-sim-modal__preview-row">
+              <span>{{ 'ADMIN_SIM_PAGE.SCRAP' | translate }}</span>
+              <strong>{{ prev.scrapCm | number: '1.0-0' }}</strong>
+            </div>
+            <div class="admin-sim-modal__preview-row">
+              <span>{{ 'ADMIN_SIM_PAGE.COVERAGE' | translate }}</span>
+              <strong>{{ prev.coveragePct }}%</strong>
+            </div>
+            <div class="admin-sim-modal__preview-bar" aria-hidden="true">
+              <span [style.width.%]="prev.coveragePct"></span>
+            </div>
+          </div>
+        }
 
         <p class="admin-sim-modal__hint">
           {{ 'ADMIN_SIM_PAGE.MODAL_PROJECT_HINT' | translate }}

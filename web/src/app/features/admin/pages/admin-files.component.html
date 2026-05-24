@@ -1,305 +1,496 @@
 @if (loading()) {
   <p class="admin-page__loading">…</p>
 } @else if (data(); as d) {
-  <header class="admin-page__head">
-    <h1 class="admin-page__title">{{ 'ADMIN_FILES_PAGE.TITLE' | translate }}</h1>
-    <p class="admin-page__sub">{{ 'ADMIN_FILES_PAGE.SUB' | translate }}</p>
+  @let s = stats();
+
+  <header class="admin-files__hero">
+    <div class="admin-files__hero-copy">
+      <p class="admin-files__eyebrow">{{ 'ADMIN_FILES_PAGE.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">{{ 'ADMIN_FILES_PAGE.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_FILES_PAGE.SUB' | translate }}</p>
+    </div>
+    <div class="admin-files__hero-actions">
+      <button
+        type="button"
+        class="admin-files__upload sf-ui-btn sf-ui-btn--primary"
+        (click)="openUploadModal()"
+      >
+        {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
+      </button>
+    </div>
   </header>
 
-  <section class="admin-files-upload" aria-labelledby="admin-files-upload-title">
-    <h2 id="admin-files-upload-title" class="admin-files-upload__title">
-      {{ 'ADMIN_FILES_PAGE.UPLOAD_TITLE' | translate }}
-    </h2>
-    <p class="admin-files-upload__hint">{{ 'ADMIN_FILES_PAGE.UPLOAD_HINT' | translate }}</p>
+  <section class="admin-files__kpis" aria-label="files summary">
+    <article class="admin-files-kpi">
+      <span class="admin-files-kpi__label">{{ 'ADMIN_FILES_PAGE.KPI_PROJECTS' | translate }}</span>
+      <span class="admin-files-kpi__value">{{ s.projects }}</span>
+    </article>
+    <article class="admin-files-kpi">
+      <span class="admin-files-kpi__label">{{ 'ADMIN_PAGE.WORK_ORDERS_COL' | translate }}</span>
+      <span class="admin-files-kpi__value">{{ s.workOrders }}</span>
+    </article>
+    <article class="admin-files-kpi">
+      <span class="admin-files-kpi__label">{{ 'ADMIN_PAGE.PURCHASE_ORDERS_COL' | translate }}</span>
+      <span class="admin-files-kpi__value">{{ s.purchaseOrders }}</span>
+    </article>
+    <article class="admin-files-kpi admin-files-kpi--accent">
+      <span class="admin-files-kpi__label">{{ 'ADMIN_FILES_PAGE.KPI_TOTAL' | translate }}</span>
+      <span class="admin-files-kpi__value">{{ s.total }}</span>
+    </article>
+  </section>
 
-    <fieldset class="admin-files-upload__modes">
-      <legend class="sr-only">{{ 'ADMIN_FILES_PAGE.UPLOAD_MODE_LEGEND' | translate }}</legend>
-      <label class="admin-files-upload__mode">
-        <input
-          type="radio"
-          name="filesUploadMode"
-          value="existing"
-          [checked]="uploadMode() === 'existing'"
-          (change)="setUploadMode('existing')"
-        />
-        <span>{{ 'ADMIN_FILES_PAGE.MODE_EXISTING' | translate }}</span>
-      </label>
-      <label class="admin-files-upload__mode">
-        <input
-          type="radio"
-          name="filesUploadMode"
-          value="new"
-          [checked]="uploadMode() === 'new'"
-          (change)="setUploadMode('new')"
-        />
-        <span>{{ 'ADMIN_FILES_PAGE.MODE_NEW' | translate }}</span>
-      </label>
-    </fieldset>
-
-    <div class="admin-files-upload__grid">
-      @if (uploadMode() === 'existing') {
-        <label class="admin-files-upload__field">
-          <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.SELECT_PROJECT' | translate }}</span>
-          <select
-            class="admin-files-upload__select"
-            [value]="selectedProjectId()"
-            (change)="onProjectSelect($any($event.target).value)"
-            [disabled]="!d.projects.length"
-          >
-            @for (p of d.projects; track p.id) {
-              <option [value]="p.id">{{ p.name }}</option>
-            }
-          </select>
-        </label>
-      } @else {
-        <label class="admin-files-upload__field">
-          <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.NEW_PROJECT_NAME' | translate }}</span>
-          <input
-            type="text"
-            class="admin-files-upload__input"
-            [value]="newProjectName()"
-            (input)="newProjectName.set($any($event.target).value)"
-            [placeholder]="'ADMIN_FILES_PAGE.NEW_PROJECT_PLACEHOLDER' | translate"
-            maxlength="200"
-            autocomplete="off"
-          />
-        </label>
-      }
-
-      <label class="admin-files-upload__field">
-        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.DOC_KIND' | translate }}</span>
+  @if (s.total > 0) {
+    <div class="admin-files__toolbar">
+      <label class="admin-files__filter">
+        <span class="admin-files__filter-label">{{ 'ADMIN_FILES_PAGE.FILTER_PROJECT' | translate }}</span>
         <select
-          class="admin-files-upload__select"
-          [value]="docKind()"
-          (change)="onDocKindSelect($any($event.target).value)"
+          class="admin-files__filter-select"
+          [value]="projectFilter()"
+          (change)="onProjectFilterChange($any($event.target).value)"
         >
-          <option value="WORK_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_WORK_ORDER' | translate }}</option>
-          <option value="PURCHASE_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER' | translate }}</option>
+          <option value="">{{ 'ADMIN_FILES_PAGE.FILTER_ALL' | translate }}</option>
+          @for (p of d.projects; track p.id) {
+            <option [value]="p.id">{{ p.name }}</option>
+          }
         </select>
       </label>
+      <div class="admin-files__chips" role="toolbar" [attr.aria-label]="'ADMIN_FILES_PAGE.FILTER_TOOLBAR' | translate">
+        @for (opt of kindFilterOptions; track opt.value) {
+          <button
+            type="button"
+            class="admin-files__chip"
+            [class.admin-files__chip--active]="isKindFilterActive(opt.value)"
+            (click)="setKindFilter(opt.value)"
+          >
+            {{ opt.labelKey | translate }}
+          </button>
+        }
+      </div>
+    </div>
+  }
 
-      <label class="admin-files-upload__field">
-        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.DOC_TITLE_OPTIONAL' | translate }}</span>
-        <input
-          type="text"
-          class="admin-files-upload__input"
-          [value]="uploadTitle()"
-          (input)="uploadTitle.set($any($event.target).value)"
-          maxlength="500"
-          autocomplete="off"
-        />
+  @if (s.total === 0) {
+    <section class="admin-files__empty">
+      <p>{{ 'ADMIN_FILES_PAGE.LIST_EMPTY' | translate }}</p>
+      <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="openUploadModal()">
+        {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
+      </button>
+    </section>
+  } @else if (filterEmpty()) {
+    <section class="admin-files__empty admin-files__empty--filter">
+      <p>{{ 'ADMIN_FILES_PAGE.FILTER_EMPTY' | translate }}</p>
+      <button type="button" class="admin-files__chip" (click)="setKindFilter(''); onProjectFilterChange('')">
+        {{ 'ADMIN_FILES_PAGE.CLEAR_FILTERS' | translate }}
+      </button>
+    </section>
+  } @else {
+    <ul class="admin-files__grid">
+      @for (f of visibleFiles(); track f.id) {
+        <li>
+          <button
+            type="button"
+            class="admin-files-doc"
+            (click)="openPreview(f)"
+            [attr.aria-label]="f.title"
+          >
+            <span class="admin-files-doc__icon" aria-hidden="true">PDF</span>
+            <span class="admin-files-doc__main">
+              <span class="admin-files-doc__title">{{ f.title }}</span>
+              <span class="admin-files-doc__meta">
+                <span class="admin-files-doc__project">{{ f.projectName }}</span>
+                <span class="admin-files-doc__dot" aria-hidden="true">·</span>
+                <span class="admin-files-doc__kind">{{ kindLabelKey(f.kind) | translate }}</span>
+              </span>
+              @if (f.reference) {
+                <span class="admin-files-doc__ref" dir="ltr">{{ f.reference }}</span>
+              }
+            </span>
+            <time
+              class="admin-files-doc__date"
+              [attr.datetime]="f.createdAt"
+              [attr.title]="f.createdAt | date: 'full' : undefined : dateLocale()"
+            >
+              {{ f.createdAt | date: 'dd/MM/yy' : undefined : dateLocale() }}
+            </time>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+}
+
+@if (previewFile(); as f) {
+  <div class="admin-files-overlay" (click)="closePreview()" role="presentation">
+    <div
+      class="admin-files-overlay__panel admin-files-overlay__panel--preview"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-files-preview-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-files-modal__head">
+        <div class="admin-files-preview__head-text">
+          <h2 id="admin-files-preview-title" class="admin-files-modal__title">{{ f.title }}</h2>
+          <p class="admin-files-preview__sub">
+            <span>{{ f.projectName }}</span>
+            <span class="admin-files-doc__dot" aria-hidden="true">·</span>
+            <span>{{ kindLabelKey(f.kind) | translate }}</span>
+            @if (f.reference) {
+              <span class="admin-files-doc__dot" aria-hidden="true">·</span>
+              <span class="admin-files-preview__ref" dir="ltr">{{ f.reference }}</span>
+            }
+          </p>
+        </div>
+        <button
+          type="button"
+          class="admin-files-modal__close"
+          (click)="closePreview()"
+          [attr.aria-label]="'ADMIN_FILES_PAGE.MODAL_CLOSE' | translate"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="admin-files-preview__frame">
+        <iframe
+          class="admin-files-preview__iframe"
+          [src]="f.pdfUrl"
+          [title]="f.title"
+        ></iframe>
+      </div>
+
+      <div class="admin-files-preview__actions">
+        <button
+          type="button"
+          class="admin-files-modal__btn secondary"
+          (click)="openSendModal()"
+        >
+          {{ 'ADMIN_FILES_PAGE.SEND' | translate }}
+        </button>
+        <button
+          type="button"
+          class="admin-files-modal__btn secondary"
+          (click)="openPreviewInNewTab()"
+        >
+          {{ 'ADMIN_FILES_PAGE.OPEN_NEW_TAB' | translate }}
+        </button>
+        <button
+          type="button"
+          class="admin-files-modal__btn primary sf-ui-btn sf-ui-btn--primary"
+          (click)="downloadPreview()"
+        >
+          {{ 'ADMIN_FILES_PAGE.DOWNLOAD' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (sendModalOpen() && previewFile(); as f) {
+  <div
+    class="admin-files-overlay admin-files-overlay--send"
+    (click)="closeSendModal()"
+    role="presentation"
+  >
+    <div
+      class="admin-files-overlay__panel admin-files-overlay__panel--send"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-files-send-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-files-modal__head">
+        <h2 id="admin-files-send-title" class="admin-files-modal__title">
+          {{ 'ADMIN_FILES_PAGE.SEND_TITLE' | translate }}
+        </h2>
+        <button
+          type="button"
+          class="admin-files-modal__close"
+          (click)="closeSendModal()"
+          [disabled]="sendBusy()"
+          [attr.aria-label]="'ADMIN_FILES_PAGE.MODAL_CLOSE' | translate"
+        >
+          ×
+        </button>
+      </div>
+      <p class="admin-files-modal__sub">{{ 'ADMIN_FILES_PAGE.SEND_SUB' | translate }}</p>
+      <p class="admin-files-send__doc">{{ f.title }}</p>
+
+      @if (companyUsers().length) {
+        <div class="admin-files-send__section">
+          <span class="admin-files-send__label">{{ 'ADMIN_FILES_PAGE.SEND_EMPLOYEES' | translate }}</span>
+          <div class="admin-files-send__people">
+            @for (u of companyUsers(); track u.id) {
+              <button
+                type="button"
+                class="admin-files-send__person"
+                [class.admin-files-send__person--active]="isSendRecipient(u.email)"
+                (click)="toggleSendRecipient(u.email)"
+              >
+                <span class="admin-files-send__person-name">{{ userDisplayName(u) }}</span>
+                <span class="admin-files-send__person-email">{{ u.email }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="admin-files-send__section">
+        <span class="admin-files-send__label">{{ 'ADMIN_FILES_PAGE.SEND_CUSTOM_EMAIL' | translate }}</span>
+        <div class="admin-files-send__custom-row">
+          <input
+            type="email"
+            class="admin-files-modal__input"
+            [value]="sendCustomEmail()"
+            (input)="sendCustomEmail.set($any($event.target).value)"
+            (keydown.enter)="$event.preventDefault(); addCustomSendRecipient()"
+            autocomplete="email"
+          />
+          <button
+            type="button"
+            class="admin-files-modal__btn secondary"
+            (click)="addCustomSendRecipient()"
+          >
+            {{ 'ADMIN_FILES_PAGE.SEND_ADD_EMAIL' | translate }}
+          </button>
+        </div>
+      </div>
+
+      @if (sendRecipients().length) {
+        <div class="admin-files-send__section">
+          <span class="admin-files-send__label">{{ 'ADMIN_FILES_PAGE.SEND_RECIPIENTS' | translate }}</span>
+          <ul class="admin-files-send__recipients">
+            @for (email of sendRecipients(); track email) {
+              <li>
+                <span class="admin-files-send__recipient">{{ email }}</span>
+                <button
+                  type="button"
+                  class="admin-files-send__recipient-remove"
+                  (click)="removeSendRecipient(email)"
+                  [attr.aria-label]="'ADMIN_FILES_PAGE.SEND_REMOVE' | translate"
+                >
+                  ×
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      <label class="admin-files-send__section admin-files-modal__field">
+        <span class="admin-files-send__label">{{ 'ADMIN_FILES_PAGE.SEND_MESSAGE' | translate }}</span>
+        <textarea
+          class="admin-files-modal__input admin-files-send__message"
+          rows="3"
+          [value]="sendMessage()"
+          (input)="sendMessage.set($any($event.target).value)"
+          maxlength="2000"
+        ></textarea>
       </label>
 
-      <label class="admin-files-upload__field">
-        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.REF_OPTIONAL' | translate }}</span>
-        <input
-          type="text"
-          class="admin-files-upload__input"
-          [value]="uploadReference()"
-          (input)="uploadReference.set($any($event.target).value)"
-          maxlength="120"
-          autocomplete="off"
-        />
-      </label>
+      @if (sendError(); as errKey) {
+        <p class="admin-files-modal__msg admin-files-modal__msg--err" role="alert">
+          {{ errKey | translate }}
+        </p>
+      }
+      @if (sendOk()) {
+        <p class="admin-files-modal__msg admin-files-modal__msg--ok">
+          {{ 'ADMIN_FILES_PAGE.SEND_OK' | translate }}
+        </p>
+      }
 
-      <div class="admin-files-upload__field admin-files-upload__field--file">
-        <span class="admin-files-upload__label">{{ 'ADMIN_FILES_PAGE.CHOOSE_FILE' | translate }}</span>
-        <div class="admin-files-upload__file-row">
+      <div class="admin-files-modal__actions">
+        <button
+          type="button"
+          class="admin-files-modal__btn secondary"
+          (click)="closeSendModal()"
+          [disabled]="sendBusy()"
+        >
+          {{ 'ADMIN_FILES_PAGE.MODAL_CANCEL' | translate }}
+        </button>
+        <button
+          type="button"
+          class="admin-files-modal__btn primary sf-ui-btn sf-ui-btn--primary"
+          [disabled]="sendBusy() || !sendRecipients().length"
+          (click)="submitSend()"
+        >
+          @if (sendBusy()) {
+            {{ 'ADMIN_FILES_PAGE.SEND_BUSY' | translate }}
+          } @else {
+            {{ 'ADMIN_FILES_PAGE.SEND' | translate }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (uploadModalOpen()) {
+  <div class="admin-files-overlay" (click)="closeUploadModal()" role="presentation">
+    <div
+      class="admin-files-overlay__panel"
+      [attr.data-surface]="theme.mode()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-files-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="admin-files-modal__head">
+        <h2 id="admin-files-modal-title" class="admin-files-modal__title">
+          {{ 'ADMIN_FILES_PAGE.UPLOAD_TITLE' | translate }}
+        </h2>
+        <button
+          type="button"
+          class="admin-files-modal__close"
+          (click)="closeUploadModal()"
+          [disabled]="uploading()"
+          [attr.aria-label]="'ADMIN_FILES_PAGE.MODAL_CLOSE' | translate"
+        >
+          ×
+        </button>
+      </div>
+      <p class="admin-files-modal__sub">{{ 'ADMIN_FILES_PAGE.UPLOAD_HINT' | translate }}</p>
+
+      <fieldset class="admin-files-modal__modes">
+        <legend class="sr-only">{{ 'ADMIN_FILES_PAGE.UPLOAD_MODE_LEGEND' | translate }}</legend>
+        <label class="admin-files-modal__mode">
+          <input
+            type="radio"
+            name="filesUploadMode"
+            value="existing"
+            [checked]="uploadMode() === 'existing'"
+            (change)="setUploadMode('existing')"
+          />
+          <span>{{ 'ADMIN_FILES_PAGE.MODE_EXISTING' | translate }}</span>
+        </label>
+        <label class="admin-files-modal__mode">
+          <input
+            type="radio"
+            name="filesUploadMode"
+            value="new"
+            [checked]="uploadMode() === 'new'"
+            (change)="setUploadMode('new')"
+          />
+          <span>{{ 'ADMIN_FILES_PAGE.MODE_NEW' | translate }}</span>
+        </label>
+      </fieldset>
+
+      <div class="admin-files-modal__form">
+        @if (uploadMode() === 'existing') {
+          <label class="admin-files-modal__field">
+            <span>{{ 'ADMIN_FILES_PAGE.SELECT_PROJECT' | translate }}</span>
+            <select
+              class="admin-files-modal__input"
+              [value]="selectedProjectId()"
+              (change)="onProjectSelect($any($event.target).value)"
+              [disabled]="!(data()?.projects ?? []).length"
+            >
+              @for (p of data()?.projects ?? []; track p.id) {
+                <option [value]="p.id">{{ p.name }}</option>
+              }
+            </select>
+          </label>
+        } @else {
+          <label class="admin-files-modal__field">
+            <span>{{ 'ADMIN_FILES_PAGE.NEW_PROJECT_NAME' | translate }}</span>
+            <input
+              type="text"
+              class="admin-files-modal__input"
+              [value]="newProjectName()"
+              (input)="newProjectName.set($any($event.target).value)"
+              [placeholder]="'ADMIN_FILES_PAGE.NEW_PROJECT_PLACEHOLDER' | translate"
+              maxlength="200"
+              autocomplete="off"
+            />
+          </label>
+        }
+
+        <label class="admin-files-modal__field">
+          <span>{{ 'ADMIN_FILES_PAGE.DOC_KIND' | translate }}</span>
+          <select
+            class="admin-files-modal__input"
+            [value]="docKind()"
+            (change)="onDocKindSelect($any($event.target).value)"
+          >
+            <option value="WORK_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_WORK_ORDER' | translate }}</option>
+            <option value="PURCHASE_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER' | translate }}</option>
+          </select>
+        </label>
+
+        <label class="admin-files-modal__field">
+          <span>{{ 'ADMIN_FILES_PAGE.CHOOSE_FILE' | translate }}</span>
           <input
             #docFile
             type="file"
-            class="admin-files-upload__file"
+            class="admin-files-modal__file"
             accept=".pdf,application/pdf"
           />
+        </label>
+
+        <details class="admin-files-modal__more">
+          <summary>{{ 'ADMIN_FILES_PAGE.MORE_FIELDS' | translate }}</summary>
+          <div class="admin-files-modal__more-grid">
+            <label class="admin-files-modal__field">
+              <span>{{ 'ADMIN_FILES_PAGE.DOC_TITLE_OPTIONAL' | translate }}</span>
+              <input
+                type="text"
+                class="admin-files-modal__input"
+                [value]="uploadTitle()"
+                (input)="uploadTitle.set($any($event.target).value)"
+                maxlength="500"
+                autocomplete="off"
+              />
+            </label>
+            <label class="admin-files-modal__field">
+              <span>{{ 'ADMIN_FILES_PAGE.REF_OPTIONAL' | translate }}</span>
+              <input
+                type="text"
+                class="admin-files-modal__input"
+                [value]="uploadReference()"
+                (input)="uploadReference.set($any($event.target).value)"
+                maxlength="120"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+        </details>
+
+        @if (uploadError(); as errKey) {
+          <p class="admin-files-modal__msg admin-files-modal__msg--err" role="alert">
+            {{ errKey | translate }}
+          </p>
+        }
+        @if (uploadOk()) {
+          <p class="admin-files-modal__msg admin-files-modal__msg--ok">
+            {{ 'ADMIN_FILES_PAGE.UPLOAD_OK' | translate }}
+          </p>
+        }
+
+        <div class="admin-files-modal__actions">
+          <button
+            type="button"
+            class="admin-files-modal__btn secondary"
+            (click)="closeUploadModal()"
+            [disabled]="uploading()"
+          >
+            {{ 'ADMIN_FILES_PAGE.MODAL_CANCEL' | translate }}
+          </button>
+          <button
+            type="button"
+            class="admin-files-modal__btn primary sf-ui-btn sf-ui-btn--primary"
+            [disabled]="uploading()"
+            (click)="submitUpload()"
+          >
+            @if (uploading()) {
+              {{ 'ADMIN_FILES_PAGE.UPLOADING' | translate }}
+            } @else {
+              {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
+            }
+          </button>
         </div>
       </div>
     </div>
-
-    @if (uploadError(); as errKey) {
-      <p class="admin-files-upload__msg admin-files-upload__msg--err" role="alert">
-        {{ errKey | translate }}
-      </p>
-    }
-    @if (uploadOk()) {
-      <p class="admin-files-upload__msg admin-files-upload__msg--ok">
-        {{ 'ADMIN_FILES_PAGE.UPLOAD_OK' | translate }}
-      </p>
-    }
-
-    <div class="admin-files-upload__actions">
-      <button
-        type="button"
-        class="admin-files-upload__btn sf-ui-btn sf-ui-btn--primary"
-        [disabled]="uploading()"
-        (click)="submitUpload()"
-      >
-        @if (uploading()) {
-          {{ 'ADMIN_FILES_PAGE.UPLOADING' | translate }}
-        } @else {
-          {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
-        }
-      </button>
-    </div>
-  </section>
-
-  <div class="admin-files-stack">
-    @for (p of d.projects; track p.id) {
-      <section class="admin-files-project" [attr.aria-label]="p.name">
-        <header class="admin-files-project__head">
-          <span class="admin-files-project__folder-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-              <path
-                stroke-linejoin="round"
-                d="M3 7.5h5.2L10.4 10H21a1 1 0 011 1v8.5a1 1 0 01-1 1H3a1 1 0 01-1-1v-10a1 1 0 011-1z"
-              />
-              <path stroke-linejoin="round" d="M3 7.5V6a1 1 0 011-1h4.2L9.4 7.5" />
-            </svg>
-          </span>
-          <div class="admin-files-project__head-text">
-            <h2 class="admin-files-project__title">{{ p.name }}</h2>
-            <p class="admin-files-project__summary">
-              {{
-                'ADMIN_FILES_PAGE.PROJECT_SUMMARY'
-                  | translate: { wo: p.workOrders.length, po: p.purchaseOrders.length }
-              }}
-            </p>
-          </div>
-        </header>
-
-        <div class="admin-files-project__lanes">
-          <div class="admin-files-lane">
-            <h3 class="admin-files-lane__label">{{ 'ADMIN_PAGE.WORK_ORDERS_COL' | translate }}</h3>
-            @if (!p.workOrders.length) {
-              <p class="admin-files-lane__empty">{{ 'ADMIN_FILES_PAGE.EMPTY_DOCS' | translate }}</p>
-            } @else {
-              <ul class="admin-files-lane__grid">
-                @for (doc of p.workOrders; track doc.id) {
-                  <li class="admin-files-lane__cell">
-                    <a
-                      class="admin-file-card"
-                      [href]="doc.pdfUrl"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      [attr.title]="'ADMIN_FILES_PAGE.OPEN_NEW_TAB' | translate"
-                    >
-                      <span class="admin-file-card__thumb" aria-hidden="true">
-                        <svg class="admin-file-card__pdf-svg" viewBox="0 0 40 48" fill="none">
-                          <path
-                            fill="var(--admin-file-paper, #f1f5f9)"
-                            stroke="var(--admin-border)"
-                            stroke-width="1"
-                            d="M6 4.5h18l8 8.5V43a2 2 0 01-2 2H6a2 2 0 01-2-2V6.5a2 2 0 012-2z"
-                          />
-                          <path fill="var(--admin-file-paper-fold, #e2e8f0)" d="M24 4.5v8h8" />
-                          <path
-                            fill="#dc2626"
-                            d="M8 28h24v3H8zm0-5.5h18v3H8zm0-5.5h14v3H8z"
-                            opacity="0.92"
-                          />
-                        </svg>
-                      </span>
-                      <span class="admin-file-card__body">
-                        <time
-                          class="admin-file-card__date"
-                          [attr.datetime]="doc.createdAt"
-                          [attr.title]="
-                            doc.createdAt | date: 'full' : undefined : dateLocale()
-                          "
-                        >
-                          {{
-                            doc.createdAt
-                              | date: 'dd/MM/yyyy · HH:mm' : undefined : dateLocale()
-                          }}
-                        </time>
-                        <span class="admin-file-card__title">{{ doc.title }}</span>
-                        @if (doc.reference) {
-                          <span class="admin-file-card__ref" dir="ltr">{{ doc.reference }}</span>
-                        }
-                      </span>
-                      <span class="admin-file-card__badge">{{ 'ADMIN_FILES_PAGE.FILE_BADGE_PDF' | translate }}</span>
-                      <span class="admin-file-card__open" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M11 5h7v7M17 4L6 15M4 16v-4h4"
-                          />
-                        </svg>
-                      </span>
-                    </a>
-                  </li>
-                }
-              </ul>
-            }
-          </div>
-
-          <div class="admin-files-lane">
-            <h3 class="admin-files-lane__label">{{ 'ADMIN_PAGE.PURCHASE_ORDERS_COL' | translate }}</h3>
-            @if (!p.purchaseOrders.length) {
-              <p class="admin-files-lane__empty">{{ 'ADMIN_FILES_PAGE.EMPTY_DOCS' | translate }}</p>
-            } @else {
-              <ul class="admin-files-lane__grid">
-                @for (doc of p.purchaseOrders; track doc.id) {
-                  <li class="admin-files-lane__cell">
-                    <a
-                      class="admin-file-card"
-                      [href]="doc.pdfUrl"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      [attr.title]="'ADMIN_FILES_PAGE.OPEN_NEW_TAB' | translate"
-                    >
-                      <span class="admin-file-card__thumb" aria-hidden="true">
-                        <svg class="admin-file-card__pdf-svg" viewBox="0 0 40 48" fill="none">
-                          <path
-                            fill="var(--admin-file-paper, #f1f5f9)"
-                            stroke="var(--admin-border)"
-                            stroke-width="1"
-                            d="M6 4.5h18l8 8.5V43a2 2 0 01-2 2H6a2 2 0 01-2-2V6.5a2 2 0 012-2z"
-                          />
-                          <path fill="var(--admin-file-paper-fold, #e2e8f0)" d="M24 4.5v8h8" />
-                          <path
-                            fill="#dc2626"
-                            d="M8 28h24v3H8zm0-5.5h18v3H8zm0-5.5h14v3H8z"
-                            opacity="0.92"
-                          />
-                        </svg>
-                      </span>
-                      <span class="admin-file-card__body">
-                        <time
-                          class="admin-file-card__date"
-                          [attr.datetime]="doc.createdAt"
-                          [attr.title]="
-                            doc.createdAt | date: 'full' : undefined : dateLocale()
-                          "
-                        >
-                          {{
-                            doc.createdAt
-                              | date: 'dd/MM/yyyy · HH:mm' : undefined : dateLocale()
-                          }}
-                        </time>
-                        <span class="admin-file-card__title">{{ doc.title }}</span>
-                        @if (doc.reference) {
-                          <span class="admin-file-card__ref" dir="ltr">{{ doc.reference }}</span>
-                        }
-                      </span>
-                      <span class="admin-file-card__badge">{{ 'ADMIN_FILES_PAGE.FILE_BADGE_PDF' | translate }}</span>
-                      <span class="admin-file-card__open" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M11 5h7v7M17 4L6 15M4 16v-4h4"
-                          />
-                        </svg>
-                      </span>
-                    </a>
-                  </li>
-                }
-              </ul>
-            }
-          </div>
-        </div>
-      </section>
-    }
   </div>
 }

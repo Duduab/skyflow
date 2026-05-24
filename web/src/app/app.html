@@ -1,38 +1,6 @@
 <div class="sf-shell flex min-h-dvh flex-col">
-@if (!adminChromeHidden()) {
-  @if (user.accessToken()) {
-    <skyflow-shell-header-desktop class="sticky top-0 z-40 w-full" />
-  } @else {
-    <header class="sf-header">
-      <a routerLink="/login" class="sf-brand-link">
-        <img
-          [src]="headerLogoSrc()"
-          width="160"
-          height="160"
-          alt="SkyFlow"
-          class="h-16 w-auto shrink-0 object-contain drop-shadow-lg md:h-20"
-        />
-      </a>
-      <div class="sf-brand-text">
-        <span class="text-hero font-black tracking-tight text-white drop-shadow-md">
-          {{ 'APP.TITLE' | translate }}
-        </span>
-        <span class="text-touch font-semibold text-white/85">{{
-          'APP.SUBTITLE' | translate
-        }}</span>
-      </div>
-      <div class="sf-header__actions">
-        <nav class="hidden flex-wrap items-center gap-4 md:gap-5 lg:flex">
-          <skyflow-theme-toggle />
-          <skyflow-language-switcher />
-        </nav>
-        <div class="flex items-center gap-3 lg:hidden">
-          <skyflow-theme-toggle />
-          <skyflow-language-switcher />
-        </div>
-      </div>
-    </header>
-  }
+@if (!adminChromeHidden() && user.accessToken()) {
+  <skyflow-shell-header-desktop class="sticky top-0 z-40 w-full" />
 }
 
   <main
