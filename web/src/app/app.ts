@@ -4,6 +4,7 @@ import { filter } from 'rxjs/operators';
 
 import { LanguageService } from './core/language.service';
 import { BottomNavComponent } from './shared/bottom-nav.component';
+import { GlobalHttpLoaderComponent } from './shared/global-http-loader/global-http-loader.component';
 import { ShellHeaderDesktopComponent } from './shared/shell-header-desktop.component';
 import { CurrentUserService } from './core/current-user.service';
 
@@ -13,6 +14,7 @@ import { CurrentUserService } from './core/current-user.service';
     RouterOutlet,
     BottomNavComponent,
     ShellHeaderDesktopComponent,
+    GlobalHttpLoaderComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

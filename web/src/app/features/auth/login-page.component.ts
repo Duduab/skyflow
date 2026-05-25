@@ -5,11 +5,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { UiButtonComponent } from '../../shared/ui-button.component';
+import { SkyflowLogoLoaderComponent } from '../../shared/skyflow-logo-loader/skyflow-logo-loader.component';
 import { ApiService } from '../../core/api.service';
 import { CurrentUserService } from '../../core/current-user.service';
 @Component({
   selector: 'skyflow-login-page',
-  imports: [FormsModule, RouterLink, TranslateModule, UiButtonComponent],
+  imports: [FormsModule, RouterLink, TranslateModule, UiButtonComponent, SkyflowLogoLoaderComponent],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
 })
@@ -19,9 +20,6 @@ export class LoginPageComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
-
-  /** כרטיס לוגין לבן — תמיד לוגו כהה לניגודיות */
-  readonly logoSrc = '/assets/logo/dark-mode.png';
 
   email = '';
   password = '';

@@ -2,6 +2,7 @@ import {
   SiteAssemblyContext,
   WorkerContext,
 } from '../../core/skyflow.models';
+import { packPhotoRequiredCount } from './pack-photo.util';
 
 /** SVG ring math (viewBox 0–100, r=42) — same as worker terminal */
 export const PROGRESS_RING_C = 2 * Math.PI * 42;
@@ -117,13 +118,19 @@ export function computeStationProgress(
   }
 
   if (sid === 6) {
-    const target = ctx.requiredPackQty;
-    const done = ctx.packedQty;
-    const remaining = Math.max(0, target - done);
+    const target =
+      ctx.packReport?.requiredCount ??
+      packPhotoRequiredCount(ctx.order.totalItems);
+    const photos = ctx.packReport?.photos ?? [];
+    let uploaded = 0;
+    for (let i = 0; i < target; i++) {
+      if (photos.some((p) => p.slotIndex === i)) uploaded++;
+    }
+    const remaining = Math.max(0, target - uploaded);
     const percent =
-      target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
+      target > 0 ? Math.min(100, Math.round((uploaded / target) * 100)) : 0;
     return {
-      done,
+      done: uploaded,
       target,
       remaining,
       percent,

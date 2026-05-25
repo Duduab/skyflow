@@ -97,6 +97,7 @@ model ProjectOrder {
   productItems        ProductItem[]
   sawStationWorkLines SawStationWorkLine[]
   planningSawsWorkers ProjectPlanningSawsWorker[]
+  packReportPhotos    PackReportPhoto[]
 
   @@index([planningAssigneeUserId])
   @@index([planningSawsManagerUserId])
@@ -230,4 +231,18 @@ model ScrapReport {
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, stationId])
+}
+
+/// Station 6 — תמונות תיעוד סידור ואריזה (לפי slot)
+model PackReportPhoto {
+  id        String   @id @default(uuid())
+  projectId String
+  slotIndex Int
+  imagePath String
+  createdAt DateTime @default(now())
+
+  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, slotIndex])
+  @@index([projectId])
 }

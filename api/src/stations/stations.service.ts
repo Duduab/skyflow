@@ -14,6 +14,7 @@ import {
   assembledFromLogPayload,
   computeSiteAssemblyPercent,
 } from '../common/site-assembly.util';
+import { packPhotoRequiredCount, MAX_PACK_PHOTO_SLOTS } from '../common/pack-photo.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
@@ -37,6 +38,11 @@ const MAX_STATION = 7;
 /** Writable public folder for delivery-note PDFs (served by Angular dev server / static hosting). */
 export function siteDeliveryUploadDir(): string {
   return join(process.cwd(), '..', 'web', 'public', 'assets', 'site-delivery');
+}
+
+/** Writable public folder for station 6 pack report photos. */
+export function packPhotoUploadDir(): string {
+  return join(process.cwd(), '..', 'web', 'public', 'assets', 'pack-photos');
 }
 
 @Injectable()
@@ -575,6 +581,20 @@ export class StationsService {
 
     const activityLog = await this.buildActivityLog(projectId, order);
 
+    let packReport:
+      | {
+          requiredCount: number;
+          photos: { slotIndex: number; url: string }[];
+          complete: boolean;
+        }
+      | undefined;
+    if (stationId === 6) {
+      packReport = await this.buildPackReportContext(
+        projectId,
+        order.totalItems,
+      );
+    }
+
     return {
       order,
       stationId,
@@ -617,7 +637,102 @@ export class StationsService {
         ? { workLineDoneByLineId: workLineDoneByLineId ?? {} }
         : {}),
       ...(siteAssembly ? { siteAssembly } : {}),
+      ...(packReport ? { packReport } : {}),
     };
+  }
+
+  private async buildPackReportContext(
+    projectId: string,
+    totalItems: number,
+  ): Promise<{
+    requiredCount: number;
+    photos: { slotIndex: number; url: string }[];
+    complete: boolean;
+  }> {
+    const requiredCount = packPhotoRequiredCount(totalItems);
+    const rows = await this.prisma.packReportPhoto.findMany({
+      where: { projectId },
+      orderBy: { slotIndex: 'asc' },
+    });
+    const photos = rows.map((r) => ({
+      slotIndex: r.slotIndex,
+      url: r.imagePath,
+    }));
+    const complete = Array.from({ length: requiredCount }, (_, i) =>
+      photos.some((p) => p.slotIndex === i),
+    ).every(Boolean);
+    return {
+      requiredCount,
+      photos,
+      complete,
+    };
+  }
+
+  async ingestPackPhoto(
+    projectId: string,
+    slotIndex: number,
+    filename: string,
+    reporterUserId: string | null,
+  ) {
+    const orderRow = await this.ordersService.findOne(projectId);
+    if (orderRow.flowStatus === ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException(
+        'Planning not approved — stations are locked',
+      );
+    }
+
+    const requiredCount = packPhotoRequiredCount(orderRow.totalItems);
+    if (
+      !Number.isInteger(slotIndex) ||
+      slotIndex < 0 ||
+      slotIndex >= MAX_PACK_PHOTO_SLOTS
+    ) {
+      throw new BadRequestException('Invalid photo slot index');
+    }
+
+    const publicPath = `/assets/pack-photos/${filename}`;
+
+    await this.prisma.packReportPhoto.upsert({
+      where: {
+        projectId_slotIndex: { projectId, slotIndex },
+      },
+      create: {
+        projectId,
+        slotIndex,
+        imagePath: publicPath,
+      },
+      update: {
+        imagePath: publicPath,
+      },
+    });
+
+    const packReport = await this.buildPackReportContext(
+      projectId,
+      orderRow.totalItems,
+    );
+
+    if (packReport.complete) {
+      const totals = await this.ordersService.stationTotals(projectId);
+      const packed =
+        totals.find((t) => t.stationId === 6)?.processedQty ?? 0;
+      const remaining = Math.max(0, orderRow.totalItems - packed);
+      if (remaining > 0) {
+        await this.prisma.stationLog.create({
+          data: {
+            projectId,
+            stationId: 6,
+            processedQty: remaining,
+            workerId: reporterUserId,
+            extraPayload: {
+              packPhotoReport: true,
+              photoCount: packReport.photos.length,
+            },
+          },
+        });
+      }
+    }
+
+    return { ok: true, ...packReport };
   }
 
   /** After PDF/image upload: stub “scan” fills expected counts from order scope (replace with real OCR later). */
@@ -734,6 +849,12 @@ export class StationsService {
 /** Ensure upload directory exists (called from controller before multer). */
 export function ensureSiteDeliveryDir(): string {
   const dir = siteDeliveryUploadDir();
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+export function ensurePackPhotoDir(): string {
+  const dir = packPhotoUploadDir();
   mkdirSync(dir, { recursive: true });
   return dir;
 }

@@ -89,21 +89,42 @@
                 <div class="station-card__hero-glow"></div>
               </div>
 
-              <div class="station-card__badge" aria-hidden="true">
-                <svg class="station-card__badge-ring" viewBox="0 0 100 100">
-                  <circle class="station-card__badge-track" cx="50" cy="50" r="42" />
-                  <circle
-                    class="station-card__badge-arc"
-                    cx="50" cy="50" r="42"
-                    [attr.stroke-dasharray]="progressCircumference"
-                    [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
-                <span class="station-card__badge-num">
-                  <span class="station-card__badge-pct">{{ prog.percent }}</span>
-                  <span class="station-card__badge-pct-sign">%</span>
-                </span>
+              <div
+                class="station-card__gauge"
+                [class.station-card__gauge--done]="prog.percent >= 100"
+                aria-hidden="true"
+              >
+                <div class="station-card__gauge-frame">
+                  <svg class="station-card__gauge-svg" viewBox="0 0 100 100">
+                    <circle class="station-card__gauge-outer" cx="50" cy="50" r="47" />
+                    <circle class="station-card__gauge-track" cx="50" cy="50" r="42" />
+                    <circle
+                      class="station-card__gauge-glow"
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      [attr.stroke-dasharray]="progressCircumference"
+                      [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+                      transform="rotate(-90 50 50)"
+                    />
+                    <circle
+                      class="station-card__gauge-arc"
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      [attr.stroke-dasharray]="progressCircumference"
+                      [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+                      transform="rotate(-90 50 50)"
+                    />
+                    <circle class="station-card__gauge-inner" cx="50" cy="50" r="33.5" />
+                  </svg>
+                  <div class="station-card__gauge-core">
+                    <span class="station-card__gauge-readout" dir="ltr">
+                      <span class="station-card__gauge-value">{{ prog.percent }}</span>
+                      <span class="station-card__gauge-unit">%</span>
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div class="station-card__panel">

@@ -61,6 +61,21 @@ export class ApiService {
     );
   }
 
+  /** Station 6 — upload pack report photo (multipart). */
+  postPackPhoto(projectId: string, slotIndex: number, file: File) {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<{
+      ok: boolean;
+      requiredCount: number;
+      photos: { slotIndex: number; url: string }[];
+      complete: boolean;
+    }>(
+      `${this.base}/stations/6/pack-photo?projectId=${encodeURIComponent(projectId)}&slotIndex=${slotIndex}`,
+      fd,
+    );
+  }
+
   getAdminDashboard(projectId?: string | null): Observable<AdminDashboard> {
     let url = `${this.base}/admin/dashboard`;
     if (projectId) {

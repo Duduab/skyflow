@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import {
   Component,
   computed,
@@ -43,6 +44,7 @@ export interface AdminFileListItem {
 export class AdminFilesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly lang = inject(LanguageService);
+  private readonly sanitizer = inject(DomSanitizer);
   readonly theme = inject(ThemeService);
 
   readonly docFile = viewChild<ElementRef<HTMLInputElement>>('docFile');
@@ -168,6 +170,17 @@ export class AdminFilesComponent implements OnInit {
 
   openPreview(file: AdminFileListItem): void {
     this.previewFile.set(file);
+  }
+
+  previewPdfSrc(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfEmbedUrl(url, true));
+  }
+
+  /** In-modal preview: hide built-in PDF viewer chrome (toolbar, side panes). */
+  private pdfEmbedUrl(url: string, chromeless: boolean): string {
+    if (!chromeless) return url;
+    const path = url.split('#')[0] ?? url;
+    return `${path}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&view=FitH`;
   }
 
   closePreview(): void {

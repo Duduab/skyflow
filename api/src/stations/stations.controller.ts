@@ -22,6 +22,7 @@ import type { Request } from 'express';
 
 import { OrdersService } from '../orders/orders.service';
 import {
+  ensurePackPhotoDir,
   ensureSiteDeliveryDir,
   StationsService,
 } from './stations.service';
@@ -123,6 +124,68 @@ export class StationsController {
     return this.stationsService.ingestSiteDeliveryNote(
       projectId.trim(),
       file.filename,
+    );
+  }
+
+  /** Station 6 — upload pack report photo — query ?projectId=&slotIndex= */
+  @Post(':stationId/pack-photo')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req: Request, _file: Express.Multer.File, cb) => {
+          cb(null, ensurePackPhotoDir());
+        },
+        filename: (req: Request, file: Express.Multer.File, cb) => {
+          const raw = req.query['projectId'] ?? 'proj';
+          const safe =
+            String(raw).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80) || 'proj';
+          const slot = String(req.query['slotIndex'] ?? '0').replace(
+            /[^0-9]/g,
+            '',
+          );
+          const ext = extname(file.originalname).toLowerCase();
+          const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+          const suf = allowed.includes(ext) ? ext : '.jpg';
+          cb(null, `${safe}-slot${slot}-${Date.now()}${suf}`);
+        },
+      }),
+      limits: { fileSize: 12 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(
+          file.mimetype,
+        );
+        cb(
+          ok ? null : new BadRequestException('Image file required'),
+          ok,
+        );
+      },
+    }),
+  )
+  async uploadPackPhoto(
+    @Req() req: { user?: { userId?: string } },
+    @Param('stationId', ParseIntPipe) stationId: number,
+    @Query('projectId') projectId: string,
+    @Query('slotIndex') slotIndexRaw: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (stationId !== 6) {
+      throw new BadRequestException('Pack photo upload is only for station 6');
+    }
+    if (!projectId?.trim()) {
+      throw new BadRequestException('projectId query parameter is required');
+    }
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    const slotIndex = Number(slotIndexRaw);
+    if (!Number.isInteger(slotIndex)) {
+      throw new BadRequestException('slotIndex query parameter is required');
+    }
+    return this.stationsService.ingestPackPhoto(
+      projectId.trim(),
+      slotIndex,
+      file.filename,
+      req.user?.userId ?? null,
     );
   }
 }

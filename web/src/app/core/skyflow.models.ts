@@ -121,6 +121,14 @@ export interface WorkerContext {
   planningSawsTeam?: WorkerStationManagerDisplayDto[];
   /** Station 7 — הרכבה באתר */
   siteAssembly?: SiteAssemblyContext | null;
+  /** Station 6 — תמונות סידור ואריזה */
+  packReport?: PackReportContext | null;
+}
+
+export interface PackReportContext {
+  requiredCount: number;
+  photos: { slotIndex: number; url: string }[];
+  complete: boolean;
 }
 
 export interface ChartDataset {

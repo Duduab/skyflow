@@ -1,0 +1,13 @@
+@if (loading.visible()) {
+  <div
+    class="http-loader-overlay"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+    [attr.aria-label]="'HTTP_LOADER.ARIA' | translate"
+  >
+    <div class="http-loader-overlay__panel">
+      <skyflow-logo-loader size="lg" />
+    </div>
+  </div>
+}

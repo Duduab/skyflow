@@ -85,98 +85,10 @@
 .login-panel__logo-link {
   position: relative;
   z-index: 1;
-  display: grid;
-  width: clamp(6.5rem, 22vw, 8.75rem);
-  height: clamp(6.5rem, 22vw, 8.75rem);
-  place-items: center;
+  display: block;
+  width: fit-content;
   margin: 0 auto 1rem;
-  line-height: 0;
   text-decoration: none;
-}
-
-.login-panel__logo-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: linear-gradient(#fff, #f8fafc);
-  box-shadow:
-    0 0 0 10px rgba(85, 143, 195, 0.06),
-    0 16px 36px rgba(62, 93, 136, 0.14),
-    inset 0 0 0 1px rgba(85, 143, 195, 0.14);
-}
-
-.login-panel__logo-ring::before,
-.login-panel__logo-ring::after {
-  position: absolute;
-  inset: -5px;
-  content: '';
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-.login-panel__logo-ring::before {
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 34deg,
-    rgba(75, 104, 157, 0.34) 58deg,
-    rgba(85, 143, 195, 0.95) 88deg,
-    #7dd3fc 112deg,
-    #0ea5e9 138deg,
-    transparent 174deg,
-    transparent 360deg
-  );
-  filter: drop-shadow(0 0 12px rgba(14, 165, 233, 0.5));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
-  animation: login-logo-progress 6.5s linear infinite;
-}
-
-.login-panel__logo-ring::after {
-  inset: -13px;
-  background: conic-gradient(
-    from 180deg,
-    transparent,
-    rgba(85, 143, 195, 0.18),
-    rgba(125, 211, 252, 0.5),
-    transparent 36%
-  );
-  filter: blur(8px);
-  opacity: 0.72;
-  mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 6px));
-  animation: login-logo-aura 10s linear infinite reverse;
-}
-
-.login-panel__logo-img {
-  position: relative;
-  z-index: 1;
-  height: 72%;
-  width: auto;
-  max-width: 78%;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(62, 93, 136, 0.18));
-}
-
-@keyframes login-logo-progress {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-@keyframes login-logo-aura {
-  0% {
-    transform: rotate(0deg) scale(1);
-    opacity: 0.55;
-  }
-
-  50% {
-    transform: rotate(180deg) scale(1.04);
-    opacity: 0.9;
-  }
-
-  100% {
-    transform: rotate(360deg) scale(1);
-    opacity: 0.55;
-  }
 }
 
 .login-panel__intro {
@@ -325,12 +237,5 @@
 @media (max-width: 420px) {
   .login-panel {
     border-radius: 1.5rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .login-panel__logo-ring::before,
-  .login-panel__logo-ring::after {
-    animation: none;
   }
 }

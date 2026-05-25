@@ -5,13 +5,14 @@ import { provideTranslateService, TranslateLoader } from '@ngx-translate/core';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 import { authInterceptor } from './core/auth.interceptor';
+import { httpLoadingInterceptor } from './core/http-loading.interceptor';
 import { bundledTranslateLoader } from './core/bundled-translate.loader';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, httpLoadingInterceptor])),
     ...provideTranslateService({
       fallbackLang: 'he',
       lang: 'he',

@@ -2,6 +2,11 @@
   display: block;
 }
 
+@import './finish-verify';
+@import './pack-report';
+@import './activity-log';
+@import './station-brief';
+
 .station-progress {
   scroll-margin-top: 1.25rem;
 }
@@ -94,6 +99,71 @@
   line-height: 1;
   opacity: 0.95;
   padding-left: 4px;
+}
+
+.station-back-nav {
+  margin-bottom: -0.35rem;
+}
+
+.station-back-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1rem 0.55rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(248, 250, 252, 0.92);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 55%),
+    rgba(15, 23, 42, 0.35);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.station-back-cta:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.16), transparent 55%),
+    rgba(15, 23, 42, 0.42);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.station-back-cta:focus-visible {
+  outline: none;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.22),
+    0 0 0 3px rgba(85, 143, 195, 0.55);
+}
+
+.station-back-cta__icon {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.station-back-cta__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.station-back-cta__text {
+  line-height: 1.2;
 }
 
 .station-next-cta-wrap {
@@ -216,198 +286,7 @@
   }
 }
 
-/* כרטיס מנהל עמדה — בהשראת פרופיל קומפקטי (Figma user row) */
-.station-manager {
-  margin-top: 1.35rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.15rem;
-  border-radius: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.station-manager__avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-  width: 3.35rem;
-  height: 3.35rem;
-}
-
-.station-manager__avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  border-radius: 0.45rem;
-  border: 2px solid rgba(255, 255, 255, 0.38);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  clip-path: polygon(
-    30% 0%,
-    70% 0%,
-    100% 30%,
-    100% 70%,
-    70% 100%,
-    30% 100%,
-    0% 70%,
-    0% 30%
-  );
-}
-
-.station-manager__avatar-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.station-manager__avatar-fallback svg {
-  width: 1.85rem;
-  height: 1.85rem;
-}
-
-.station-manager__body {
-  min-width: 0;
-  flex: 1;
-}
-
-.station-manager__role {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.station-manager__name {
-  margin: 0.35rem 0 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #fff;
-  line-height: 1.2;
-}
-
-.station-manager__hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: rgba(235, 235, 245, 0.72);
-  line-height: 1.35;
-}
-
-.station-manager--1 {
-  border-color: color-mix(in srgb, #fbbf24 35%, rgba(255, 255, 255, 0.14));
-}
-
-.station-manager--2 {
-  border-color: color-mix(in srgb, #22d3ee 35%, rgba(255, 255, 255, 0.14));
-}
-
-.station-manager--3 {
-  border-color: color-mix(in srgb, #34d399 35%, rgba(255, 255, 255, 0.14));
-}
-
-.station-manager--4 {
-  border-color: color-mix(in srgb, #d8b4fe 35%, rgba(255, 255, 255, 0.14));
-}
-
-.station-manager--5 {
-  border-color: color-mix(in srgb, #fb7185 35%, rgba(255, 255, 255, 0.14));
-}
-
-.station-manager--6 {
-  border-color: color-mix(in srgb, #6ee7b7 35%, rgba(255, 255, 255, 0.14));
-}
-
-.station-manager--7 {
-  border-color: color-mix(in srgb, #f59e0b 35%, rgba(255, 255, 255, 0.14));
-}
-
-.planning-saws-team {
-  margin-top: 1.25rem;
-  padding: 1rem 1.1rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.22);
-}
-
-.planning-saws-team__title {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.planning-saws-team__hint {
-  margin: 0.35rem 0 0.85rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.4;
-  color: rgba(235, 235, 245, 0.78);
-}
-
-.planning-saws-team__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem 1rem;
-}
-
-.planning-saws-team__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-}
-
-.planning-saws-team__avatar {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 999px;
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(145deg, #0ea5e9, #6366f1);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-}
-
-.planning-saws-team__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.planning-saws-team__initials {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: 0.03em;
-}
-
-.planning-saws-team__name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 12rem;
-}
+/* station-brief styles live in ./_station-brief.scss */
 
 /* כרטיסי סוג ניסור — ריבוע (יחס 1:1) + טבעת התקדמות */
 .saw-type-tile {
@@ -1065,6 +944,14 @@ button.saw-type-card__ring--btn {
   box-shadow:
     var(--sf-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.saw-type-card__btn--fill {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  box-shadow:
+    0 4px 14px rgba(5, 150, 105, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  font-size: 1.65rem;
 }
 
 /* תצוגת תמונה מלאה מתוך מודאל סוגי ניסור */

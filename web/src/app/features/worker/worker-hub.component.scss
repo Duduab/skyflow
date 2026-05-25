@@ -264,9 +264,9 @@ html[dir='ltr'] .worker-hub__row {
     rgba(15, 23, 42, 0.35) 0%,
     rgba(6, 10, 18, 0.85) 100%
   );
-  /* תג אחוזים — גודל ומיקום על קו הפרידה בין hero לפאנל */
-  --badge-size: 7rem;
-  --badge-half: 3.5rem;
+  /* מד התקדמות — גודל ומיקום על קו הפרידה בין hero לפאנל */
+  --gauge-size: 7.25rem;
+  --gauge-half: 3.625rem;
   /* גובה פס התמונה / גרדיאנט בראש הכרטיס — קצת יותר גבוה מהגרסה הקודמת */
   --station-hero-h: 11.25rem;
 
@@ -307,7 +307,7 @@ html[dir='ltr'] .worker-hub__row {
   }
 }
 
-/* מספר תחנה — פינה ימנית עליונה; ירוק כשהושלם 100% */
+/* מספר תחנה — לבן, טקסט שחור, מסגרת בצבע accent של התחנה */
 .station-card__index {
   position: absolute;
   top: 0.85rem;
@@ -325,33 +325,28 @@ html[dir='ltr'] .worker-hub__row {
   font-variant-numeric: tabular-nums;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(15, 23, 42, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #0f172a;
+  background: #fff;
+  border: 2px solid var(--accent, #558fc3);
   box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 2px 10px rgba(0, 0, 0, 0.28),
+    0 0 14px color-mix(in srgb, var(--accent, #558fc3) 28%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   pointer-events: none;
   transition:
     color 0.35s ease,
     background 0.35s ease,
     border-color 0.35s ease,
-    box-shadow 0.35s ease;
+    box-shadow 0.35s ease,
+    border-radius 0.35s ease;
 }
 
 .station-card__index--done {
-  color: #ecfdf5;
   border-radius: 50%;
-  background: linear-gradient(
-    165deg,
-    rgba(52, 211, 153, 0.95) 0%,
-    rgba(16, 185, 129, 0.88) 100%
-  );
-  border-color: rgba(167, 243, 208, 0.65);
   box-shadow:
-    0 0 22px rgba(52, 211, 153, 0.55),
+    0 0 20px color-mix(in srgb, var(--accent, #558fc3) 42%, transparent),
     0 2px 12px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .station-card--locked .station-card__index {
@@ -405,81 +400,167 @@ html[dir='ltr'] .worker-hub__row {
   pointer-events: none;
 }
 
-.station-card__badge {
+.station-card__gauge {
   position: absolute;
-  top: calc(var(--station-hero-h) - var(--badge-half));
+  top: calc(var(--station-hero-h) - var(--gauge-half));
   left: 50%;
   z-index: 4;
+  width: var(--gauge-size);
+  height: var(--gauge-size);
+  margin-left: calc(-1 * var(--gauge-half));
+  pointer-events: none;
+}
+
+.station-card__gauge-frame {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
-  width: var(--badge-size);
-  height: var(--badge-size);
-  margin-left: calc(-1 * var(--badge-half));
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  font-weight: 500;
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.92);
-  background: linear-gradient(155deg, var(--accent, #558fc3) 0%, #2a3448 48%, #121a2a 100%);
-  border: 3px solid rgba(255, 255, 255, 0.42);
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(in srgb, var(--accent, #558fc3) 18%, transparent) 0%,
+      transparent 52%
+    ),
+    linear-gradient(
+      165deg,
+      rgba(15, 23, 42, 0.94) 0%,
+      rgba(6, 10, 18, 0.98) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
-    0 14px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 0, 0, 0.25),
-    inset 0 2px 0 rgba(255, 255, 255, 0.28);
+    0 16px 38px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 28px color-mix(in srgb, var(--accent, #558fc3) 22%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   isolation: isolate;
+  transition:
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
 }
 
-.station-card__badge-ring {
+.station-card:not(.station-card--locked):hover .station-card__gauge-frame {
+  border-color: color-mix(in srgb, var(--accent, #558fc3) 45%, rgba(255, 255, 255, 0.2));
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 36px color-mix(in srgb, var(--accent, #558fc3) 38%, transparent);
+}
+
+.station-card__gauge-svg {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 78%;
-  height: 78%;
-  transform: translate(-50%, -50%);
+  inset: 7%;
+  width: 86%;
+  height: 86%;
   overflow: visible;
   pointer-events: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
-.station-card__badge-track {
+.station-card__gauge-outer {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.22);
-  stroke-width: 6;
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1.2;
+  stroke-dasharray: 2.4 7.8;
+  transform-origin: 50% 50%;
+  transform: rotate(-8deg);
 }
 
-.station-card__badge-arc {
+.station-card__gauge-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 5.5;
+}
+
+.station-card__gauge-glow {
   fill: none;
   stroke: var(--accent, #558fc3);
-  stroke-width: 6;
+  stroke-width: 9;
   stroke-linecap: round;
-  transition: stroke-dashoffset 0.45s ease;
+  opacity: 0.28;
+  filter: blur(2px);
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
-.station-card__badge-num {
+.station-card__gauge-arc {
+  fill: none;
+  stroke: var(--accent, #558fc3);
+  stroke-width: 5.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.33, 1, 0.68, 1);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent, #558fc3) 55%, transparent));
+}
+
+.station-card__gauge-inner {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+  stroke-dasharray: 1.5 4.2;
+}
+
+.station-card__gauge-core {
   position: relative;
   z-index: 1;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.05em;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.88);
-  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
-  direction: ltr;
+  width: 58%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.06) 0%, transparent 68%);
+  background-size:
+    10px 10px,
+    10px 10px,
+    auto;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.station-card__badge-pct {
-  font-size: clamp(1.05rem, 2.6vw, 1.28rem);
+.station-card__gauge-readout {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.06em;
   line-height: 1;
-  letter-spacing: -0.02em;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--accent, #558fc3) 45%, transparent),
+    0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
-.station-card__badge-pct-sign {
-  font-size: clamp(0.68rem, 1.55vw, 0.8rem);
-  font-weight: 600;
-  opacity: 0.82;
+.station-card__gauge-value {
+  font-size: clamp(1.12rem, 2.8vw, 1.38rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.station-card__gauge-unit {
+  font-size: clamp(0.62rem, 1.5vw, 0.74rem);
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.station-card__gauge--done .station-card__gauge-frame {
+  border-color: rgba(167, 243, 208, 0.35);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 32px rgba(52, 211, 153, 0.42);
+}
+
+.station-card__gauge--done .station-card__gauge-glow,
+.station-card__gauge--done .station-card__gauge-arc {
+  stroke: #34d399;
+  filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.65));
 }
 
 .station-card__panel {
@@ -575,7 +656,7 @@ html[dir='ltr'] .worker-hub__row {
   letter-spacing: 0.02em;
   text-align: center;
   cursor: pointer;
-  /* אותו צבע כמו קשת התקדמות (.station-card__badge-arc): --accent */
+  /* אותו צבע כמו קשת ההתקדמות (.station-card__gauge-arc): --accent */
   background: linear-gradient(
     165deg,
     color-mix(in srgb, var(--accent, #558fc3) 88%, #ffffff) 0%,
@@ -755,7 +836,8 @@ html[dir='ltr'] .worker-hub__row {
     filter: none;
   }
 
-  .station-card__badge-arc {
+  .station-card__gauge-arc,
+  .station-card__gauge-glow {
     transition: none;
   }
 

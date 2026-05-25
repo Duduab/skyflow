@@ -27,6 +27,8 @@ import { UiButtonComponent } from '../../shared/ui-button.component';
 import {
   ProjectOrder,
   SawWorkLineDto,
+  SummaryStationRow,
+  WorkerActivityLogEntryDto,
   WorkerContext,
   WorkerStationManagerDisplayDto,
 } from '../../core/skyflow.models';
@@ -37,6 +39,7 @@ import {
   PROGRESS_RING_C,
   StationProgressVm,
 } from './station-progress';
+import { packPhotoRequiredCount, MAX_PACK_PHOTO_SLOTS } from './pack-photo.util';
 
 interface SawTypeGroupVm {
   instructionKind: string;
@@ -44,6 +47,14 @@ interface SawTypeGroupVm {
   typeNum: string | null;
   lines: SawWorkLineDto[];
   totalQty: number;
+}
+
+type FinishingCheckKey = 's1' | 's2' | 's3' | 's4';
+
+interface FinishingCheckStep {
+  key: FinishingCheckKey;
+  stationId: number;
+  accent: string;
 }
 
 function sawTypeOrderKey(kind: string): number {
@@ -96,6 +107,9 @@ export class WorkerTerminalComponent implements OnInit {
 
   readonly managerPhotoFailed = signal(false);
   readonly uploadingDelivery = signal(false);
+  readonly uploadingPackSlot = signal<number | null>(null);
+  /** משבצות תמונה נוספות מעבר לנדרש (עמדה 6) */
+  readonly packExtraSlots = signal(0);
   /** אינדקסים שבהם נכשלה טעינת תמונת פרופיל בצוות מסורים */
   private readonly teamPhotoFailedIdx = signal<Set<number>>(new Set());
 
@@ -103,6 +117,21 @@ export class WorkerTerminalComponent implements OnInit {
   readonly sawTypeModalGroup = signal<SawTypeGroupVm | null>(null);
 
   readonly sawTypeModalSaving = signal(false);
+
+  /** מודאל אימות שלב — תחנה 5 (פינישים) */
+  readonly finishingVerifyKey = signal<FinishingCheckKey | null>(null);
+
+  /** יומן דיווחים — תחנות פתוחות באקורדיון */
+  private readonly activityLogExpanded = signal<Set<number>>(new Set());
+
+  private static readonly ACTIVITY_LOG_STATION_IDS = [1, 2, 3, 4, 5, 6, 7] as const;
+
+  readonly finishingCheckSteps: FinishingCheckStep[] = [
+    { key: 's1', stationId: 1, accent: '#fbbf24' },
+    { key: 's2', stationId: 2, accent: '#22d3ee' },
+    { key: 's3', stationId: 3, accent: '#34d399' },
+    { key: 's4', stationId: 4, accent: '#d8b4fe' },
+  ];
 
   /** כמויות «נוסרו» מקומיות במודאל לפי מזהה שורת מסור — עד חיבור לשרת */
   private readonly sawModalLineCounts = signal<Map<string, number>>(
@@ -128,9 +157,6 @@ export class WorkerTerminalComponent implements OnInit {
   readonly sawMetersMax = WorkerTerminalComponent.SAW_MODAL_METERS_MAX;
 
   form!: FormGroup;
-
-  /** תחנות 2–4: הערות / גרוטאות במודאל TYPE (בלי שדות בטופס הראשי) */
-  workLineAuxForm: FormGroup | null = null;
 
   ngOnInit(): void {
     this.destroyRef.onDestroy(() => {
@@ -184,7 +210,11 @@ export class WorkerTerminalComponent implements OnInit {
   }
 
   canMoveToNextStation(ctx: WorkerContext): boolean {
-    return this.nextStationId() !== null && this.stationProgress(ctx).percent >= 100;
+    if (this.nextStationId() === null) return false;
+    if (this.stationId === 6) {
+      return ctx.packReport?.complete === true;
+    }
+    return this.stationProgress(ctx).percent >= 100;
   }
 
   /** קיבוץ שורות מסורים לפי instructionKind (ללא WINDOW_INSTRUCTION) */
@@ -287,6 +317,15 @@ export class WorkerTerminalComponent implements OnInit {
       const cur = next.get(lineId) ?? 0;
       const n = Math.max(0, Math.min(maxQty, cur + delta));
       next.set(lineId, n);
+      return next;
+    });
+  }
+
+  fillModalLineSawn(lineId: string, maxQty: number): void {
+    if (maxQty <= 0) return;
+    this.sawModalLineCounts.update((m) => {
+      const next = new Map(m);
+      next.set(lineId, maxQty);
       return next;
     });
   }
@@ -461,33 +500,14 @@ export class WorkerTerminalComponent implements OnInit {
     for (const line of mg.lines) {
       lineQtyById[line.id] = this.modalLineSawnQty(line.id);
     }
-    const issuesRaw = this.workLineAuxForm?.get('issues')?.value;
-    const issues =
-      typeof issuesRaw === 'string' && issuesRaw.trim().length
-        ? issuesRaw.trim()
-        : undefined;
-    const scrapQty = Number(this.workLineAuxForm?.get('scrapQty')?.value ?? 0);
-    const scrapLen = Number(
-      this.workLineAuxForm?.get('scrapLength')?.value ?? 0,
-    );
 
     this.sawTypeModalSaving.set(true);
     this.error.set(null);
     try {
-      if ([3, 4].includes(sid) && scrapQty > 0 && scrapLen > 0) {
-        await firstValueFrom(
-          this.api.postScrap(sid, {
-            projectId: pid,
-            scrapQty,
-            itemLength: scrapLen,
-          }),
-        );
-      }
       await firstValueFrom(
         this.api.postStationLog(sid, {
           projectId: pid,
           processedQty: 0,
-          issues,
           extraPayload: {
             workLineModalSnapshot: true,
             instructionKind: mg.instructionKind || 'OTHER',
@@ -602,6 +622,206 @@ export class WorkerTerminalComponent implements OnInit {
     );
   }
 
+  finishingCheckStep(key: FinishingCheckKey): FinishingCheckStep {
+    return this.finishingCheckSteps.find((s) => s.key === key)!;
+  }
+
+  isFinishingCheckDone(key: FinishingCheckKey): boolean {
+    return this.form?.get('checks')?.get(key)?.value === true;
+  }
+
+  finishingChecksDoneCount(): number {
+    const checks = this.form?.get('checks');
+    if (!checks) return 0;
+    return this.finishingCheckSteps.filter(
+      (s) => checks.get(s.key)?.value === true,
+    ).length;
+  }
+
+  finishingChecksPercent(): number {
+    return (this.finishingChecksDoneCount() / this.finishingCheckSteps.length) * 100;
+  }
+
+  summaryRowForStation(
+    ctx: WorkerContext,
+    stationId: number,
+  ): SummaryStationRow | undefined {
+    return ctx.summaryStations?.find((r) => r.stationId === stationId);
+  }
+
+  activityLogForStation(
+    ctx: WorkerContext,
+    stationId: number,
+  ): WorkerActivityLogEntryDto[] {
+    return (ctx.activityLog ?? []).filter((e) => e.stationId === stationId);
+  }
+
+  /** האם להציג עמודת מטריקות בכרטיס התחנה */
+  stationBriefHasStats(): boolean {
+    if (this.stationId >= 2 && this.stationId <= 4) return true;
+    if (this.stationId === 1) return true;
+    if (this.stationId === 6) return true;
+    if (this.stationId === 7) return true;
+    return false;
+  }
+
+  activityLogStationIds(ctx: WorkerContext): number[] {
+    const ids = new Set((ctx.activityLog ?? []).map((e) => e.stationId));
+    return WorkerTerminalComponent.ACTIVITY_LOG_STATION_IDS.filter((id) =>
+      ids.has(id),
+    );
+  }
+
+  isActivityLogExpanded(stationId: number): boolean {
+    return this.activityLogExpanded().has(stationId);
+  }
+
+  toggleActivityLogStation(stationId: number): void {
+    const next = new Set(this.activityLogExpanded());
+    if (next.has(stationId)) {
+      next.delete(stationId);
+    } else {
+      next.add(stationId);
+    }
+    this.activityLogExpanded.set(next);
+  }
+
+  openFinishingVerify(key: FinishingCheckKey): void {
+    if (this.stationId !== 5 || !this.form?.get('checks')) return;
+    this.finishingVerifyKey.set(key);
+  }
+
+  closeFinishingVerify(): void {
+    this.finishingVerifyKey.set(null);
+  }
+
+  confirmFinishingVerify(key: FinishingCheckKey): void {
+    const ctrl = this.form?.get('checks')?.get(key);
+    if (!ctrl) return;
+    ctrl.setValue(true);
+    ctrl.markAsTouched();
+    this.closeFinishingVerify();
+  }
+
+  packPhotoSlotIndexes(ctx: WorkerContext): number[] {
+    const n = this.packPhotoVisibleCount(ctx);
+    return Array.from({ length: n }, (_, i) => i);
+  }
+
+  packPhotoVisibleCount(ctx: WorkerContext): number {
+    return this.packReportRequiredCount(ctx) + this.packExtraSlots();
+  }
+
+  canAddPackPhotoSlot(ctx: WorkerContext): boolean {
+    return this.packPhotoVisibleCount(ctx) < MAX_PACK_PHOTO_SLOTS;
+  }
+
+  addPackPhotoSlot(): void {
+    const ctx = this.context();
+    if (!ctx || !this.canAddPackPhotoSlot(ctx)) return;
+    this.packExtraSlots.update((n) => n + 1);
+  }
+
+  isPackPhotoSlotOptional(ctx: WorkerContext, slotIndex: number): boolean {
+    return slotIndex >= this.packReportRequiredCount(ctx);
+  }
+
+  private syncPackExtraSlots(ctx: WorkerContext): void {
+    const required = this.packReportRequiredCount(ctx);
+    const photos = ctx.packReport?.photos ?? [];
+    const maxSlot = photos.reduce(
+      (max, photo) => Math.max(max, photo.slotIndex),
+      -1,
+    );
+    const minVisible = Math.max(required, maxSlot + 1);
+    this.packExtraSlots.set(Math.max(0, minVisible - required));
+  }
+
+  packReportRequiredCount(ctx: WorkerContext): number {
+    return (
+      ctx.packReport?.requiredCount ??
+      packPhotoRequiredCount(ctx.order.totalItems)
+    );
+  }
+
+  packReportComplete(ctx: WorkerContext): boolean {
+    if (ctx.packReport?.complete) return true;
+    const required = this.packReportRequiredCount(ctx);
+    return (
+      required > 0 && this.packPhotosUploadedCount(ctx) >= required
+    );
+  }
+
+  packPhotoUrl(ctx: WorkerContext, slotIndex: number): string | null {
+    return (
+      ctx.packReport?.photos.find((p) => p.slotIndex === slotIndex)?.url ??
+      null
+    );
+  }
+
+  packPhotosUploadedCount(ctx: WorkerContext): number {
+    const required = this.packReportRequiredCount(ctx);
+    const photos = ctx.packReport?.photos ?? [];
+    let filled = 0;
+    for (let i = 0; i < required; i++) {
+      if (photos.some((p) => p.slotIndex === i)) filled++;
+    }
+    return filled;
+  }
+
+  packPhotosProgressPercent(ctx: WorkerContext): number {
+    const required = this.packReportRequiredCount(ctx);
+    if (required <= 0) return 0;
+    return Math.min(
+      100,
+      Math.round((this.packPhotosUploadedCount(ctx) / required) * 100),
+    );
+  }
+
+  isPackPhotoSlotUploading(slotIndex: number): boolean {
+    return this.uploadingPackSlot() === slotIndex;
+  }
+
+  triggerPackPhotoInput(slotIndex: number): void {
+    this.doc.getElementById(`pack-photo-input-${slotIndex}`)?.click();
+  }
+
+  async onPackPhotoSelected(ev: Event, slotIndex: number): Promise<void> {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const pid = this.projectSelection.selectedProjectId();
+    if (!file || !pid || this.stationId !== 6) return;
+    this.uploadingPackSlot.set(slotIndex);
+    this.error.set(null);
+    try {
+      const res = await firstValueFrom(
+        this.api.postPackPhoto(pid, slotIndex, file),
+      );
+      const ctx = await firstValueFrom(
+        this.api.getWorkerContext(6, pid),
+      );
+      this.context.set({
+        ...ctx,
+        activityLog: ctx.activityLog ?? [],
+        sawWorkSawnByKind: ctx.sawWorkSawnByKind ?? {},
+        sawWorkSawnByLineId: ctx.sawWorkSawnByLineId ?? {},
+        sawWorkMetersByLineId: ctx.sawWorkMetersByLineId ?? {},
+        workLineDoneByLineId: ctx.workLineDoneByLineId ?? {},
+      });
+      this.syncPackExtraSlots(ctx);
+      if (res.complete) {
+        this.doneMsg.set(true);
+        this.showSaveToast();
+        this.scrollToProgress();
+      }
+    } catch {
+      this.error.set('העלאת תמונת אריזה נכשלה — נסה שוב');
+    } finally {
+      this.uploadingPackSlot.set(null);
+      input.value = '';
+    }
+  }
+
   managerAvatarSrc(): string {
     const ctx = this.context();
     const u = ctx?.stationManagerDisplay?.photoUrl?.trim();
@@ -706,6 +926,7 @@ export class WorkerTerminalComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     this.doneMsg.set(false);
+    this.activityLogExpanded.set(new Set());
     this.api
       .getWorkerContext(this.stationId, pid)
       .subscribe({
@@ -722,10 +943,10 @@ export class WorkerTerminalComponent implements OnInit {
           this.teamPhotoFailedIdx.set(new Set());
           this.closeSawTypeModal();
           this.loading.set(false);
-          if (
-            this.stationId === 6 &&
-            ctx.packedQty >= ctx.requiredPackQty
-          ) {
+          if (this.stationId === 6) {
+            this.syncPackExtraSlots(ctx);
+          }
+          if (this.stationId === 6 && ctx.packReport?.complete) {
             this.doneMsg.set(true);
           }
           if (this.stationId === 7) {
@@ -750,7 +971,6 @@ export class WorkerTerminalComponent implements OnInit {
 
   private buildForm(): void {
     const sid = this.stationId;
-    this.workLineAuxForm = null;
 
     if (sid === 5) {
       const checks = this.fb.group(
@@ -768,60 +988,30 @@ export class WorkerTerminalComponent implements OnInit {
       return;
     }
 
-    const base = {
-      issues: [''],
-    };
-
     switch (sid) {
       case 1:
         this.form = this.fb.group({});
         break;
       case 2:
-        this.workLineAuxForm = this.fb.group({
-          issues: [''],
-        });
         this.form = this.fb.group({
-          ...base,
           processedQty: [0, [Validators.required, Validators.min(0)]],
         });
         break;
       case 3:
-        this.workLineAuxForm = this.fb.group({
-          issues: [''],
-          scrapQty: [0, [Validators.min(0)]],
-          scrapLength: [0, [Validators.min(0)]],
-        });
         this.form = this.fb.group({
-          ...base,
           usedQty: [0, [Validators.required, Validators.min(0)]],
-          scrapQty: [0, [Validators.min(0)]],
-          scrapLength: [0, [Validators.min(0)]],
         });
         break;
       case 4:
-        this.workLineAuxForm = this.fb.group({
-          issues: [''],
-          scrapQty: [0, [Validators.min(0)]],
-          scrapLength: [0, [Validators.min(0)]],
-        });
         this.form = this.fb.group({
-          ...base,
           gluedQty: [0, [Validators.required, Validators.min(0)]],
-          scrapQty: [0, [Validators.min(0)]],
-          scrapLength: [0, [Validators.min(0)]],
         });
         break;
       case 6:
-        this.form = this.fb.group({
-          ...base,
-          packedQty: [0, [Validators.required, Validators.min(0)]],
-          scrapQty: [0, [Validators.min(0)]],
-          scrapLength: [0, [Validators.min(0)]],
-        });
+        this.form = this.fb.group({});
         break;
       case 7:
         this.form = this.fb.group({
-          ...base,
           assembledBeams: [
             0,
             [Validators.required, Validators.min(0)],
@@ -837,7 +1027,7 @@ export class WorkerTerminalComponent implements OnInit {
         });
         break;
       default:
-        this.form = this.fb.group({ ...base });
+        this.form = this.fb.group({});
     }
   }
 
@@ -893,7 +1083,6 @@ export class WorkerTerminalComponent implements OnInit {
     const logBody: Record<string, unknown> = {
       projectId: pid,
       processedQty,
-      issues: raw['issues'] || undefined,
     };
 
     if (sid === 1) {
@@ -903,9 +1092,6 @@ export class WorkerTerminalComponent implements OnInit {
     if (extraPayload) {
       logBody['extraPayload'] = extraPayload;
     }
-
-    const scrapQty = Number(raw['scrapQty'] ?? 0);
-    const scrapLen = Number(raw['scrapLength'] ?? 0);
 
     try {
       if (sid === 1) {
@@ -919,16 +1105,6 @@ export class WorkerTerminalComponent implements OnInit {
             }),
           );
         }
-      }
-
-      if ([3, 4, 6].includes(sid) && scrapQty > 0 && scrapLen > 0) {
-        await firstValueFrom(
-          this.api.postScrap(sid, {
-            projectId: pid,
-            scrapQty,
-            itemLength: scrapLen,
-          }),
-        );
       }
 
       await firstValueFrom(this.api.postStationLog(sid, logBody));

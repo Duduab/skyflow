@@ -1,3 +1,25 @@
+<div class="mx-auto max-w-4xl space-y-10">
+  <nav class="station-back-nav" [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate">
+    <a
+      class="station-back-cta"
+      routerLink="/worker"
+      [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate"
+    >
+      <span class="station-back-cta__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <path
+            d="M9 18l6-6-6-6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </span>
+      <span class="station-back-cta__text">{{
+        'WORKER.BACK_TO_STATIONS' | translate
+      }}</span>
+    </a>
+  </nav>
+
 @if (loading()) {
   <div class="py-24 text-center text-touch font-bold text-white/80">
     …
@@ -9,7 +31,6 @@
     {{ err }}
   </div>
 } @else if (context(); as ctx) {
-  <div class="mx-auto max-w-4xl space-y-10">
     <div
       class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between"
     >
@@ -40,133 +61,168 @@
       }
     </div>
 
-    <section class="sf-panel md:p-10">
-      <h2 class="text-hero font-black text-white drop-shadow-md">
-        {{ ctx.order.name }}
-      </h2>
-
-      <div [class]="'station-manager station-manager--' + stationId">
-        <div class="station-manager__avatar-wrap">
-          @if (!managerPhotoFailed()) {
-            <img
-              class="station-manager__avatar-img"
-              [src]="managerAvatarSrc()"
-              (error)="onManagerPhotoError()"
-              [alt]="
-                ('WORKER.STATION_MANAGER_NAME_' + stationId) | translate
-              "
-            />
-          } @else {
-            <div class="station-manager__avatar-fallback" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
-          }
-        </div>
-        <div class="station-manager__body">
-          <p class="station-manager__role">
-            {{ 'WORKER.STATION_MANAGER_ROLE' | translate }}
+    <section
+      [class]="'station-brief station-brief--' + stationId + ' sf-panel'"
+      [attr.aria-label]="(('STATIONS.' + stationId) | translate) + ' — ' + ctx.order.name"
+    >
+      <div class="station-brief__hero" aria-hidden="true">
+        <div class="station-brief__hero-bg"></div>
+        <div class="station-brief__hero-grid"></div>
+        <div class="station-brief__hero-glow"></div>
+        <span class="station-brief__index" dir="ltr">{{ stationId }}</span>
+        <div class="station-brief__hero-content">
+          <p class="station-brief__eyebrow">
+            {{ 'STATIONS.' + stationId | translate }}
           </p>
-          <p class="station-manager__name">
-            @if (ctx.stationManagerDisplay; as sm) {
-              {{ sm.firstName }} {{ sm.lastName }}
-            } @else {
-              {{ ('WORKER.STATION_MANAGER_NAME_' + stationId) | translate }}
-            }
-          </p>
-          <p class="station-manager__hint">
-            {{ 'WORKER.STATION_MANAGER_HINT' | translate }}
-          </p>
+          <h2 class="station-brief__order">{{ ctx.order.name }}</h2>
         </div>
       </div>
 
-      @if (stationId === 1 && ctx.planningSawsTeam?.length) {
-        <div class="planning-saws-team">
-          <p class="planning-saws-team__title">
-            {{ 'WORKER.PLANNING_SAWS_TEAM_TITLE' | translate }}
-          </p>
-          <p class="planning-saws-team__hint">
-            {{ 'WORKER.PLANNING_SAWS_TEAM_HINT' | translate }}
-          </p>
-          <ul class="planning-saws-team__list" role="list">
-            @for (m of ctx.planningSawsTeam!; track $index) {
-              <li class="planning-saws-team__item" role="listitem">
-                <div class="planning-saws-team__avatar" aria-hidden="true">
-                  @if (m.photoUrl?.trim() && !teamPhotoFailed($index)) {
-                    <img
-                      [src]="m.photoUrl!"
-                      [alt]="m.firstName + ' ' + m.lastName"
-                      (error)="onTeamPhotoError($index)"
-                    />
-                  } @else {
-                    <span class="planning-saws-team__initials">{{
-                      teamMemberInitials(m)
-                    }}</span>
-                  }
+      <div class="station-brief__body">
+        <div
+          [class]="
+            'station-brief__layout' +
+            (stationBriefHasStats() ? '' : ' station-brief__layout--solo')
+          "
+        >
+          <article class="station-brief__lead">
+            <div class="station-brief__avatar-wrap">
+              <span class="station-brief__avatar-ring" aria-hidden="true"></span>
+              @if (!managerPhotoFailed()) {
+                <img
+                  class="station-brief__avatar-img"
+                  [src]="managerAvatarSrc()"
+                  (error)="onManagerPhotoError()"
+                  [alt]="('WORKER.STATION_MANAGER_NAME_' + stationId) | translate"
+                />
+              } @else {
+                <div class="station-brief__avatar-fallback" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
                 </div>
-                <span class="planning-saws-team__name"
-                  >{{ m.firstName }} {{ m.lastName }}</span
-                >
-              </li>
-            }
-          </ul>
-        </div>
-      }
+              }
+            </div>
+            <div class="station-brief__lead-body">
+              <p class="station-brief__lead-role">
+                {{ 'WORKER.STATION_MANAGER_ROLE' | translate }}
+              </p>
+              <p class="station-brief__lead-name">
+                @if (ctx.stationManagerDisplay; as sm) {
+                  {{ sm.firstName }} {{ sm.lastName }}
+                } @else {
+                  {{ ('WORKER.STATION_MANAGER_NAME_' + stationId) | translate }}
+                }
+              </p>
+              <p class="station-brief__lead-hint">
+                {{ 'WORKER.STATION_MANAGER_HINT' | translate }}
+              </p>
+            </div>
+          </article>
 
-      <p class="mt-5 text-touch leading-relaxed text-white/95">
-        {{ 'WORKER.REQ' | translate }}: {{ ctx.order.requirements }}
-      </p>
-      @if (stationId !== 5 && stationId !== 6 && stationId !== 7) {
-        <p class="mt-8 text-touch font-black text-white">
-          {{ 'WORKER.FROM_PREV' | translate }}:
-          <span class="border-b-4 border-sf-blue pb-1 text-white">{{
-            ctx.previousQty
-          }}</span>
-        </p>
-      }
-      @if (stationId === 7) {
-        <p class="mt-8 text-touch font-black text-white">
-          {{ 'WORKER.SITE_FROM_PACK' | translate }}:
-          <span class="border-b-4 border-sf-blue pb-1 text-white"
-            >{{ ctx.packedQty }} / {{ ctx.requiredPackQty }}</span
-          >
-        </p>
-        <p class="mt-6 text-touch leading-relaxed text-white/95">
-          {{ 'WORKER.SITE_STATION_INTRO' | translate }}
-        </p>
-      }
-      @if (stationId === 1) {
-        <p class="mt-5 text-touch font-semibold text-white/90">
-          @if (
-            ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0
-          ) {
-            {{ 'WORKER.SAW_TARGET_PLANNING_LABEL' | translate }}:
-            <span class="font-black text-white">{{
-              ctx.sawWorkTargetQty
-            }}</span>
-          } @else {
-            {{ 'WORKER.SAW_TARGET_BARS' | translate }}:
-            <span class="font-black text-white">{{
-              ctx.order.totalItems
-            }}</span>
+          @if (stationBriefHasStats()) {
+            <div class="station-brief__stats">
+              @if (stationId >= 2 && stationId <= 4) {
+                <div class="station-brief__stat">
+                  <p class="station-brief__stat-label">
+                    {{ 'WORKER.FROM_PREV' | translate }}
+                  </p>
+                  <p class="station-brief__stat-value" dir="ltr">
+                    {{ ctx.previousQty | number: '1.0-0' }}
+                  </p>
+                </div>
+              }
+              @if (stationId === 1) {
+                <div class="station-brief__stat">
+                  <p class="station-brief__stat-label">
+                    @if (ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0) {
+                      {{ 'WORKER.SAW_TARGET_PLANNING_LABEL' | translate }}
+                    } @else {
+                      {{ 'WORKER.SAW_TARGET_BARS' | translate }}
+                    }
+                  </p>
+                  <p class="station-brief__stat-value" dir="ltr">
+                    @if (ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0) {
+                      {{ ctx.sawWorkTargetQty | number: '1.0-0' }}
+                    } @else {
+                      {{ ctx.order.totalItems | number: '1.0-0' }}
+                    }
+                  </p>
+                </div>
+              }
+              @if (stationId === 6) {
+                <div class="station-brief__stat">
+                  <p class="station-brief__stat-label">
+                    {{ 'WORKER.PACK_PHOTOS_STAT_LABEL' | translate }}
+                  </p>
+                  <p class="station-brief__stat-value" dir="ltr">
+                    {{ packReportRequiredCount(ctx) | number: '1.0-0' }}
+                  </p>
+                </div>
+              }
+              @if (stationId === 7) {
+                <div class="station-brief__stat">
+                  <p class="station-brief__stat-label">
+                    {{ 'WORKER.SITE_FROM_PACK' | translate }}
+                  </p>
+                  <p class="station-brief__stat-value station-brief__stat-value--pair" dir="ltr">
+                    {{ ctx.packedQty | number: '1.0-0' }}
+                    <span class="station-brief__stat-sep">/</span>
+                    {{ ctx.requiredPackQty | number: '1.0-0' }}
+                  </p>
+                </div>
+              }
+            </div>
           }
-        </p>
-      }
-      @if (stationId === 6) {
-        <p class="mt-8 text-touch font-black text-white">
-          {{ 'WORKER.REQ_PACK' | translate }}:
-          <span class="border-b-4 border-sf-blue pb-1 text-white">{{
-            ctx.requiredPackQty
-          }}</span>
-        </p>
-      }
+        </div>
+
+        <div class="station-brief__req">
+          <p class="station-brief__req-label">{{ 'WORKER.REQ' | translate }}</p>
+          <p class="station-brief__req-text">{{ ctx.order.requirements }}</p>
+        </div>
+
+        @if (stationId === 1 && ctx.planningSawsTeam?.length) {
+          <div class="station-brief__team">
+            <div class="station-brief__team-head">
+              <p class="station-brief__team-title">
+                {{ 'WORKER.PLANNING_SAWS_TEAM_TITLE' | translate }}
+              </p>
+              <p class="station-brief__team-hint">
+                {{ 'WORKER.PLANNING_SAWS_TEAM_HINT' | translate }}
+              </p>
+            </div>
+            <ul class="station-brief__team-list" role="list">
+              @for (m of ctx.planningSawsTeam!; track $index) {
+                <li class="station-brief__team-chip" role="listitem">
+                  <span class="station-brief__team-avatar" aria-hidden="true">
+                    @if (m.photoUrl?.trim() && !teamPhotoFailed($index)) {
+                      <img
+                        [src]="m.photoUrl!"
+                        [alt]="m.firstName + ' ' + m.lastName"
+                        (error)="onTeamPhotoError($index)"
+                      />
+                    } @else {
+                      <span class="station-brief__team-initials">{{
+                        teamMemberInitials(m)
+                      }}</span>
+                    }
+                  </span>
+                  <span class="station-brief__team-name"
+                    >{{ m.firstName }} {{ m.lastName }}</span
+                  >
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (stationId === 7) {
+          <p class="station-brief__intro">
+            {{ 'WORKER.SITE_STATION_INTRO' | translate }}
+          </p>
+        }
+      </div>
     </section>
 
     @if (stationId <= 4 && stationId >= 1 && ctx.sawWorkLines !== undefined) {
@@ -294,6 +350,239 @@
       </section>
     }
 
+    @if (stationId === 6) {
+      <section
+        class="pack-report"
+        [attr.aria-label]="'WORKER.PACK_PHOTOS_TITLE' | translate"
+      >
+        <header class="pack-report__hero sf-panel">
+          <div class="pack-report__hero-head">
+            <div class="pack-report__hero-copy">
+              <p class="pack-report__eyebrow">
+                {{ 'WORKER.PACK_PHOTOS_EYEBROW' | translate }}
+              </p>
+              <h2 class="pack-report__title">
+                {{ 'WORKER.PACK_PHOTOS_TITLE' | translate }}
+              </h2>
+              <p class="pack-report__hint">
+                {{ 'WORKER.PACK_PHOTOS_HINT' | translate }}
+              </p>
+            </div>
+            <div
+              class="pack-report__hero-ring"
+              role="img"
+              [attr.aria-label]="
+                'WORKER.PACK_PHOTOS_PROGRESS'
+                  | translate
+                    : {
+                        done: packPhotosUploadedCount(ctx),
+                        total: packReportRequiredCount(ctx),
+                      }
+              "
+            >
+              <svg viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="pack-report__ring-track" cx="50" cy="50" r="42" />
+                <circle
+                  class="pack-report__ring-arc"
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  [attr.stroke-dasharray]="progressCircumference"
+                  [attr.stroke-dashoffset]="
+                    progressDashOffset(packPhotosProgressPercent(ctx))
+                  "
+                  transform="rotate(-90 50 50)"
+                />
+              </svg>
+              <div class="pack-report__ring-pct" dir="ltr">
+                <span class="pack-report__ring-value">{{
+                  packPhotosProgressPercent(ctx)
+                }}</span
+                ><span class="pack-report__ring-sign">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pack-report__stats" role="list">
+            <div class="pack-report__stat" role="listitem">
+              <p class="pack-report__stat-label">
+                {{ 'WORKER.PACK_PHOTOS_PROGRESS_DONE' | translate }}
+              </p>
+              <p class="pack-report__stat-value" dir="ltr">
+                {{ packPhotosUploadedCount(ctx) | number: '1.0-0' }}
+              </p>
+            </div>
+            <div class="pack-report__stat pack-report__stat--blue" role="listitem">
+              <p class="pack-report__stat-label">
+                {{ 'WORKER.PACK_PHOTOS_PROGRESS_REMAINING' | translate }}
+              </p>
+              <p class="pack-report__stat-value" dir="ltr">
+                {{
+                  packReportRequiredCount(ctx) - packPhotosUploadedCount(ctx)
+                    | number: '1.0-0'
+                }}
+              </p>
+            </div>
+            <div class="pack-report__stat pack-report__stat--blue" role="listitem">
+              <p class="pack-report__stat-label">
+                {{ 'WORKER.PACK_PHOTOS_PROGRESS_TARGET' | translate }}
+              </p>
+              <p class="pack-report__stat-value" dir="ltr">
+                {{ packReportRequiredCount(ctx) | number: '1.0-0' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="pack-report__progress-wrap">
+            <div
+              class="pack-report__progress-track"
+              role="progressbar"
+              [attr.aria-valuenow]="packPhotosUploadedCount(ctx)"
+              aria-valuemin="0"
+              [attr.aria-valuemax]="packReportRequiredCount(ctx)"
+            >
+              <div
+                class="pack-report__progress-fill"
+                [style.width.%]="packPhotosProgressPercent(ctx)"
+              ></div>
+            </div>
+            <p class="pack-report__progress-label">
+              {{
+                'WORKER.PACK_PHOTOS_PROGRESS'
+                  | translate
+                    : {
+                        done: packPhotosUploadedCount(ctx),
+                        total: packReportRequiredCount(ctx),
+                      }
+              }}
+            </p>
+          </div>
+        </header>
+
+        <div class="pack-report__body sf-panel">
+          <aside class="pack-report__steps">
+            <h3 class="pack-report__steps-title">
+              {{ 'WORKER.PACK_PHOTOS_STEPS_TITLE' | translate }}
+            </h3>
+            <ol class="pack-report__steps-list">
+              <li>{{ 'WORKER.PACK_PHOTOS_STEP_1' | translate }}</li>
+              <li>{{ 'WORKER.PACK_PHOTOS_STEP_2' | translate }}</li>
+              <li>{{ 'WORKER.PACK_PHOTOS_STEP_3' | translate }}</li>
+            </ol>
+          </aside>
+
+          <div class="pack-report__uploads">
+            <ul class="pack-report__grid" role="list">
+              @for (slot of packPhotoSlotIndexes(ctx); track slot) {
+                @let photoUrl = packPhotoUrl(ctx, slot);
+                @let uploading = isPackPhotoSlotUploading(slot);
+                @let optional = isPackPhotoSlotOptional(ctx, slot);
+                <li class="pack-report__slot" role="listitem">
+                  <article
+                    class="pack-report__slot-card"
+                    [class.pack-report__slot-card--done]="!!photoUrl"
+                    [class.pack-report__slot-card--uploading]="uploading"
+                    [class.pack-report__slot-card--optional]="optional"
+                  >
+                    <span class="pack-report__slot-index" aria-hidden="true">{{
+                      slot + 1
+                    }}</span>
+                    <input
+                      [id]="'pack-photo-input-' + slot"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      class="pack-report__file-input"
+                      (change)="onPackPhotoSelected($event, slot)"
+                      [disabled]="uploading"
+                    />
+                    <button
+                      type="button"
+                      class="pack-report__slot-btn"
+                      [disabled]="uploading"
+                      (click)="triggerPackPhotoInput(slot)"
+                    >
+                      @if (photoUrl) {
+                        <img [src]="photoUrl" alt="" class="pack-report__thumb" />
+                        <span class="pack-report__slot-badge" aria-hidden="true"
+                          >✓</span
+                        >
+                      } @else {
+                        <span class="pack-report__slot-empty">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="1.6"
+                            />
+                          </svg>
+                          <span>{{ 'WORKER.PACK_PHOTOS_UPLOAD' | translate }}</span>
+                          <span class="pack-report__slot-empty-sub">{{
+                            'WORKER.PACK_PHOTOS_SLOT_EMPTY' | translate
+                          }}</span>
+                        </span>
+                      }
+                      @if (uploading) {
+                        <span class="pack-report__slot-loading">…</span>
+                      }
+                    </button>
+                    <p class="pack-report__slot-label">
+                      @if (optional) {
+                        {{
+                          'WORKER.PACK_PHOTOS_SLOT_EXTRA'
+                            | translate: { n: slot + 1 }
+                        }}
+                      } @else {
+                        {{
+                          'WORKER.PACK_PHOTOS_SLOT'
+                            | translate
+                              : {
+                                  n: slot + 1,
+                                  total: packReportRequiredCount(ctx),
+                                }
+                        }}
+                      }
+                    </p>
+                  </article>
+                </li>
+              }
+            </ul>
+
+            @if (canAddPackPhotoSlot(ctx)) {
+              <button
+                type="button"
+                class="pack-report__add-btn"
+                (click)="addPackPhotoSlot()"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 5v14M5 12h14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-width="2"
+                  />
+                </svg>
+                {{ 'WORKER.PACK_PHOTOS_ADD_MORE' | translate }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (!packReportComplete(ctx)) {
+          <p class="pack-report__next-hint">
+            {{ 'WORKER.PACK_PHOTOS_NEXT_HINT' | translate }}
+          </p>
+        } @else {
+          <p class="pack-report__complete" role="status">
+            {{ 'WORKER.PACK_PHOTOS_COMPLETE' | translate }}
+          </p>
+        }
+      </section>
+    }
+
     @let prog = stationProgress(ctx);
     <section
       id="station-progress-panel"
@@ -344,6 +633,8 @@
                     ctx.sawWorkTargetQty > 0)
                 ) {
                   {{ 'WORKER.SAW_PROGRESS_DONE' | translate }}
+                } @else if (stationId === 6) {
+                  {{ 'WORKER.PACK_PHOTOS_PROGRESS_DONE' | translate }}
                 } @else {
                   {{ 'WORKER.PROGRESS_DONE' | translate }}
                 }
@@ -365,6 +656,8 @@
                     ctx.sawWorkTargetQty > 0)
                 ) {
                   {{ 'WORKER.SAW_PROGRESS_REMAINING' | translate }}
+                } @else if (stationId === 6) {
+                  {{ 'WORKER.PACK_PHOTOS_PROGRESS_REMAINING' | translate }}
                 } @else {
                   {{ 'WORKER.PROGRESS_REMAINING' | translate }}
                 }
@@ -384,6 +677,8 @@
                 ctx.sawWorkTargetQty > 0)
             ) {
               {{ 'WORKER.SAW_PROGRESS_TARGET' | translate }}:
+            } @else if (stationId === 6) {
+              {{ 'WORKER.PACK_PHOTOS_PROGRESS_TARGET' | translate }}:
             } @else {
               {{ 'WORKER.PROGRESS_TARGET' | translate }}:
             }
@@ -398,101 +693,7 @@
       </div>
     </section>
 
-    <section
-      class="sf-panel md:p-10 mt-6"
-      [attr.aria-label]="'WORKER.ACTIVITY_LOG_TITLE' | translate"
-    >
-      <h3 class="text-hero font-black text-white drop-shadow-md">
-        {{ 'WORKER.ACTIVITY_LOG_TITLE' | translate }}
-      </h3>
-      @if (!(ctx.activityLog?.length ?? 0)) {
-        <p class="mt-4 text-touch text-white/70">
-          {{ 'WORKER.ACTIVITY_LOG_EMPTY' | translate }}
-        </p>
-      } @else {
-        <ul class="mt-5 divide-y divide-white/10" role="list">
-          @for (entry of ctx.activityLog!; track entry.id) {
-            <li class="py-4 text-touch" role="listitem">
-              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-white/80">
-                <time class="font-mono text-sm" [attr.datetime]="entry.createdAt">{{
-                  entry.createdAt | date: 'dd/MM/yyyy HH:mm'
-                }}</time>
-                <span class="font-bold text-sf-blue">{{
-                  'STATIONS.' + entry.stationId | translate
-                }}</span>
-              </div>
-              <p class="mt-1 text-sm text-white/70">
-                <span class="font-semibold">{{
-                  'WORKER.ACTIVITY_LOG_MANAGER' | translate
-                }}</span
-                >: {{ entry.stationManagerName }}
-                @if (entry.reporterName) {
-                  <span class="mx-2">·</span>
-                  <span class="font-semibold">{{
-                    'WORKER.ACTIVITY_LOG_REPORTER' | translate
-                  }}</span
-                  >: {{ entry.reporterName }}
-                }
-              </p>
-              <p class="mt-1 font-semibold text-white">
-                {{ entry.summaryKey | translate: entry.summaryParams }}
-              </p>
-              @if (entry.issues) {
-                <p class="mt-1 text-sm text-amber-200/90">{{ entry.issues }}</p>
-              }
-            </li>
-          }
-        </ul>
-      }
-    </section>
-
-    @if (canMoveToNextStation(ctx) && nextStationId(); as nextSid) {
-      <div class="station-next-cta-wrap">
-        <a
-          class="station-next-cta"
-          [routerLink]="['/worker', nextSid]"
-          [attr.aria-label]="
-            ('WORKER.GO_TO_NEXT_STATION' | translate: { station: ('STATIONS.' + nextSid | translate) })
-          "
-        >
-          <span class="station-next-cta__text">
-            {{
-              'WORKER.GO_TO_NEXT_STATION'
-                | translate: { station: ('STATIONS.' + nextSid | translate) }
-            }}
-          </span>
-          <span class="station-next-cta__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M11 5l-7 7 7 7M4 12h16"
-                fill="none"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2.4"
-              />
-            </svg>
-          </span>
-        </a>
-      </div>
-    }
-
-    @if (doneMsg() && stationId === 6) {
-      <div class="sf-success-banner" role="status">
-        <p class="text-hero font-black leading-tight text-white md:text-5xl">
-          {{ 'WORKER.SUCCESS_PACK' | translate }}
-        </p>
-      </div>
-    }
-    @if (doneMsg() && stationId === 7) {
-      <div class="sf-success-banner" role="status">
-        <p class="text-hero font-black leading-tight text-white md:text-5xl">
-          {{ 'WORKER.SUCCESS_SITE_ASSEMBLY' | translate }}
-        </p>
-      </div>
-    }
-
-    @if (stationId !== 1 && !usesWorkLineModalUi(ctx)) {
+    @if (stationId !== 1 && stationId !== 6 && !usesWorkLineModalUi(ctx)) {
       <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-10">
         @switch (stationId) {
           @case (2) {
@@ -514,26 +715,6 @@
               class="sf-input mt-4"
             />
           </label>
-          <div class="grid gap-8 md:grid-cols-2">
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SCRAP_QTY' | translate }}
-              <input
-                type="number"
-                formControlName="scrapQty"
-                class="sf-input mt-4"
-              />
-            </label>
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SCRAP_LENGTH' | translate }}
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                formControlName="scrapLength"
-                class="sf-input mt-4"
-              />
-            </label>
-          </div>
         }
         @case (4) {
           <label class="block text-touch font-bold text-white">
@@ -544,117 +725,121 @@
               class="sf-input mt-4"
             />
           </label>
-          <div class="grid gap-8 md:grid-cols-2">
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SCRAP_QTY' | translate }}
-              <input
-                type="number"
-                formControlName="scrapQty"
-                class="sf-input mt-4"
-              />
-            </label>
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SCRAP_LENGTH' | translate }}
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                formControlName="scrapLength"
-                class="sf-input mt-4"
-              />
-            </label>
-          </div>
         }
         @case (5) {
-          <div class="space-y-8">
-            <h3 class="text-hero font-black text-white">
-              {{ 'WORKER.SUMMARY' | translate }}
-            </h3>
-            <ul class="grid gap-4 md:grid-cols-2">
-              @for (row of ctx.summaryStations; track row.stationId) {
-                <li
-                  class="sf-panel border-white/25 bg-black/40 py-5 text-touch font-bold text-white"
+          <div class="finish-verify" formGroupName="checks">
+            <section class="finish-verify__hero sf-panel">
+              <p class="finish-verify__eyebrow">
+                {{ 'WORKER.FINISH_VERIFY_EYEBROW' | translate }}
+              </p>
+              <h3 class="finish-verify__title">{{ 'WORKER.VERIFY_TITLE' | translate }}</h3>
+              <p class="finish-verify__hint">{{ 'WORKER.VERIFY_HINT' | translate }}</p>
+              <div class="finish-verify__progress-wrap">
+                <div
+                  class="finish-verify__progress-track"
+                  role="progressbar"
+                  [attr.aria-valuenow]="finishingChecksDoneCount()"
+                  aria-valuemin="0"
+                  [attr.aria-valuemax]="finishingCheckSteps.length"
+                  [attr.aria-label]="'WORKER.VERIFY_TITLE' | translate"
                 >
-                  {{ 'STATIONS.' + row.stationId | translate }}:
-                  {{ row.processedQty }} · {{ 'WORKER.SCRAP_QTY' | translate }}
-                  {{ row.scrapQty }}
+                  <div
+                    class="finish-verify__progress-fill"
+                    [style.width.%]="finishingChecksPercent()"
+                  ></div>
+                </div>
+                <p class="finish-verify__progress-label">
+                  {{
+                    'WORKER.FINISH_VERIFY_PROGRESS'
+                      | translate
+                        : {
+                            done: finishingChecksDoneCount(),
+                            total: finishingCheckSteps.length,
+                          }
+                  }}
+                </p>
+              </div>
+            </section>
+
+            @if (ctx.summaryStations?.length) {
+              <ul class="finish-verify__summary" role="list">
+                @for (row of ctx.summaryStations; track row.stationId) {
+                  <li
+                    class="finish-verify__summary-card finish-verify__summary-card--{{
+                      row.stationId
+                    }}"
+                    role="listitem"
+                  >
+                    <span class="finish-verify__summary-id" dir="ltr">{{
+                      row.stationId
+                    }}</span>
+                    <div class="finish-verify__summary-body">
+                      <p class="finish-verify__summary-name">
+                        {{ 'STATIONS.' + row.stationId | translate }}
+                      </p>
+                      <p class="finish-verify__summary-qty">
+                        {{ row.processedQty | number: '1.0-0' }}
+                        {{ 'WORKER.FINISH_VERIFY_UNITS' | translate }}
+                      </p>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+
+            <ul class="finish-verify__steps" role="list">
+              @for (step of finishingCheckSteps; track step.key) {
+                @let done = isFinishingCheckDone(step.key);
+                @let row = summaryRowForStation(ctx, step.stationId);
+                <li role="listitem">
+                  <button
+                    type="button"
+                    class="finish-verify__step"
+                    [class.finish-verify__step--done]="done"
+                    [style.--step-accent]="step.accent"
+                    (click)="openFinishingVerify(step.key)"
+                  >
+                    <span class="finish-verify__step-index" dir="ltr">{{
+                      step.stationId
+                    }}</span>
+                    <span class="finish-verify__step-main">
+                      <span class="finish-verify__step-name">{{
+                        'STATIONS.' + step.stationId | translate
+                      }}</span>
+                      <span class="finish-verify__step-meta">
+                        @if (row) {
+                          {{ row.processedQty | number: '1.0-0' }}
+                          {{ 'WORKER.FINISH_VERIFY_UNITS' | translate }}
+                        }
+                      </span>
+                    </span>
+                    <span class="finish-verify__step-status">
+                      @if (done) {
+                        <span class="finish-verify__step-chip finish-verify__step-chip--done">
+                          <span aria-hidden="true">✓</span>
+                          {{ 'WORKER.FINISH_VERIFY_STEP_DONE' | translate }}
+                        </span>
+                      } @else {
+                        <span class="finish-verify__step-chip finish-verify__step-chip--pending">
+                          {{ 'WORKER.FINISH_VERIFY_STEP_PENDING' | translate }}
+                        </span>
+                      }
+                    </span>
+                    <span class="finish-verify__step-cta">{{
+                      done
+                        ? ('WORKER.FINISH_VERIFY_REVIEW' | translate)
+                        : ('WORKER.FINISH_VERIFY_OPEN' | translate)
+                    }}</span>
+                  </button>
                 </li>
               }
             </ul>
-            <div class="sf-panel border-white/25 bg-black/40 py-6 shadow-sf">
-              <p class="text-hero font-black text-white">
-                {{ 'WORKER.VERIFY_TITLE' | translate }}
-              </p>
-              <p class="mt-3 text-touch font-semibold text-white/85">
+
+            @if (form.get('checks')?.invalid && form.get('checks')?.touched) {
+              <p class="finish-verify__error" role="alert">
                 {{ 'WORKER.VERIFY_HINT' | translate }}
               </p>
-              <div formGroupName="checks" class="mt-8 space-y-6">
-                <label
-                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
-                >
-                  <input type="checkbox" formControlName="s1" class="sf-check" />
-                  {{ 'WORKER.CHECK_S1' | translate }}
-                </label>
-                <label
-                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
-                >
-                  <input type="checkbox" formControlName="s2" class="sf-check" />
-                  {{ 'WORKER.CHECK_S2' | translate }}
-                </label>
-                <label
-                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
-                >
-                  <input type="checkbox" formControlName="s3" class="sf-check" />
-                  {{ 'WORKER.CHECK_S3' | translate }}
-                </label>
-                <label
-                  class="flex min-h-[4rem] cursor-pointer items-center gap-5 text-touch font-bold text-white"
-                >
-                  <input type="checkbox" formControlName="s4" class="sf-check" />
-                  {{ 'WORKER.CHECK_S4' | translate }}
-                </label>
-              </div>
-              @if (
-                form.get('checks')?.invalid &&
-                form.get('checks')?.touched
-              ) {
-                <p class="mt-6 text-touch font-bold text-rose-200">
-                  {{ 'WORKER.VERIFY_HINT' | translate }}
-                </p>
-              }
-            </div>
-          </div>
-        }
-        @case (6) {
-          <label class="block text-touch font-bold text-white">
-            {{ 'WORKER.PACKED_QTY' | translate }}
-            <input
-              type="number"
-              formControlName="packedQty"
-              class="sf-input mt-4 min-h-[5rem] text-hero"
-            />
-          </label>
-          <div class="grid gap-8 md:grid-cols-2">
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SCRAP_QTY' | translate }} ({{
-                'WORKER.UNPACKED_SCRAP' | translate
-              }})
-              <input
-                type="number"
-                formControlName="scrapQty"
-                class="sf-input mt-4"
-              />
-            </label>
-            <label class="block text-touch font-bold text-white">
-              {{ 'WORKER.SCRAP_LENGTH' | translate }}
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                formControlName="scrapLength"
-                class="sf-input mt-4"
-              />
-            </label>
+            }
           </div>
         }
         @case (7) {
@@ -764,17 +949,6 @@
         }
       }
 
-      @if (stationId !== 5 && !(stationId === 7 && !ctx.siteAssembly?.deliveryNoteUrl)) {
-        <label class="block text-touch font-bold text-white">
-          {{ 'WORKER.ISSUES' | translate }}
-          <textarea
-            formControlName="issues"
-            rows="3"
-            class="sf-textarea mt-4"
-          ></textarea>
-        </label>
-      }
-
       <skyflow-ui-button
         type="submit"
         variant="primary"
@@ -790,6 +964,151 @@
       </skyflow-ui-button>
     </form>
     }
+
+    <section
+      class="activity-log sf-panel md:p-10 mt-6"
+      [attr.aria-label]="'WORKER.ACTIVITY_LOG_TITLE' | translate"
+    >
+      <h3 class="activity-log__title text-hero font-black text-white drop-shadow-md">
+        {{ 'WORKER.ACTIVITY_LOG_TITLE' | translate }}
+      </h3>
+      @if (!(ctx.activityLog?.length ?? 0)) {
+        <p class="activity-log__empty mt-4 text-touch text-white/70">
+          {{ 'WORKER.ACTIVITY_LOG_EMPTY' | translate }}
+        </p>
+      } @else {
+        <div class="activity-log__accordion mt-5">
+          @for (sid of activityLogStationIds(ctx); track sid) {
+            @let entries = activityLogForStation(ctx, sid);
+            @let expanded = isActivityLogExpanded(sid);
+            <div
+              class="activity-log__item activity-log__item--{{ sid }}"
+              [class.activity-log__item--open]="expanded"
+            >
+              <button
+                type="button"
+                class="activity-log__trigger"
+                [attr.aria-expanded]="expanded"
+                [attr.aria-controls]="'activity-log-panel-' + sid"
+                (click)="toggleActivityLogStation(sid)"
+              >
+                <span class="activity-log__trigger-main">
+                  <span class="activity-log__station-id" dir="ltr">{{ sid }}</span>
+                  <span class="activity-log__station-name">{{
+                    'STATIONS.' + sid | translate
+                  }}</span>
+                </span>
+                <span class="activity-log__meta">
+                  <span class="activity-log__count">{{
+                    'WORKER.ACTIVITY_LOG_STATION_REPORTS'
+                      | translate: { count: entries.length }
+                  }}</span>
+                  <svg
+                    class="activity-log__chevron"
+                    [class.activity-log__chevron--open]="expanded"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M6 9l6 6 6-6"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.4"
+                    />
+                  </svg>
+                </span>
+              </button>
+              @if (expanded) {
+                <ul
+                  [id]="'activity-log-panel-' + sid"
+                  class="activity-log__entries"
+                  role="list"
+                >
+                  @for (entry of entries; track entry.id) {
+                    <li class="activity-log__entry" role="listitem">
+                      <div class="activity-log__entry-head">
+                        <time
+                          class="activity-log__entry-time"
+                          [attr.datetime]="entry.createdAt"
+                          >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time>
+                      </div>
+                      <p class="activity-log__entry-meta">
+                        <span class="font-semibold">{{
+                          'WORKER.ACTIVITY_LOG_MANAGER' | translate
+                        }}</span
+                        >: {{ entry.stationManagerName }}
+                        @if (entry.reporterName) {
+                          <span class="activity-log__sep">·</span>
+                          <span class="font-semibold">{{
+                            'WORKER.ACTIVITY_LOG_REPORTER' | translate
+                          }}</span
+                          >: {{ entry.reporterName }}
+                        }
+                      </p>
+                      <p class="activity-log__entry-summary">
+                        {{ entry.summaryKey | translate: entry.summaryParams }}
+                      </p>
+                      @if (entry.issues) {
+                        <p class="activity-log__entry-issues">{{ entry.issues }}</p>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    @if (canMoveToNextStation(ctx) && nextStationId(); as nextSid) {
+      <div class="station-next-cta-wrap">
+        <a
+          class="station-next-cta"
+          [routerLink]="['/worker', nextSid]"
+          [attr.aria-label]="
+            ('WORKER.GO_TO_NEXT_STATION' | translate: { station: ('STATIONS.' + nextSid | translate) })
+          "
+        >
+          <span class="station-next-cta__text">
+            {{
+              'WORKER.GO_TO_NEXT_STATION'
+                | translate: { station: ('STATIONS.' + nextSid | translate) }
+            }}
+          </span>
+          <span class="station-next-cta__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M11 5l-7 7 7 7M4 12h16"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.4"
+              />
+            </svg>
+          </span>
+        </a>
+      </div>
+    }
+
+    @if (doneMsg() && stationId === 6) {
+      <div class="sf-success-banner" role="status">
+        <p class="text-hero font-black leading-tight text-white md:text-5xl">
+          {{ 'WORKER.SUCCESS_PACK' | translate }}
+        </p>
+      </div>
+    }
+    @if (doneMsg() && stationId === 7) {
+      <div class="sf-success-banner" role="status">
+        <p class="text-hero font-black leading-tight text-white md:text-5xl">
+          {{ 'WORKER.SUCCESS_SITE_ASSEMBLY' | translate }}
+        </p>
+      </div>
+    }
+
 
     @if (saveToastVisible()) {
       <div class="worker-save-toast" role="status" aria-live="polite">
@@ -920,6 +1239,25 @@
                         >
                           <span aria-hidden="true">+</span>
                         </button>
+                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--fill"
+                          [disabled]="
+                            line.quantity <= 0 || modalLineSawnQty(line.id) >= line.quantity
+                          "
+                          (click)="fillModalLineSawn(line.id, line.quantity)"
+                          [attr.aria-label]="
+                            'WORKER.SAW_CARD_FILL_A11Y'
+                              | translate: { qty: line.quantity | number: '1.0-0' }
+                          "
+                          [attr.title]="
+                            'WORKER.SAW_CARD_FILL_A11Y'
+                              | translate: { qty: line.quantity | number: '1.0-0' }
+                          "
+                        >
+                          <span aria-hidden="true">✓</span>
+                        </button>
                       </div>
                     </div>
                     @if (stationId === 1) {
@@ -969,41 +1307,6 @@
             </div>
           </div>
           <div class="saw-type-modal__footer">
-            @if (workLineAuxForm; as aux) {
-              <div [formGroup]="aux" class="saw-type-modal__aux mb-6 space-y-5">
-                <label class="block text-touch font-bold text-white/90">
-                  {{ 'WORKER.ISSUES' | translate }}
-                  <textarea
-                    formControlName="issues"
-                    rows="2"
-                    class="sf-textarea mt-3"
-                  ></textarea>
-                </label>
-                @if (stationId >= 3) {
-                  <div class="grid gap-5 md:grid-cols-2">
-                    <label class="block text-touch font-bold text-white/90">
-                      {{ 'WORKER.SCRAP_QTY' | translate }}
-                      <input
-                        type="number"
-                        formControlName="scrapQty"
-                        min="0"
-                        class="sf-input mt-3"
-                      />
-                    </label>
-                    <label class="block text-touch font-bold text-white/90">
-                      {{ 'WORKER.SCRAP_LENGTH' | translate }}
-                      <input
-                        type="number"
-                        formControlName="scrapLength"
-                        min="0"
-                        step="0.01"
-                        class="sf-input mt-3"
-                      />
-                    </label>
-                  </div>
-                }
-              </div>
-            }
             <skyflow-ui-button
               type="button"
               variant="primary"
@@ -1041,5 +1344,105 @@
         }
       </div>
     }
-  </div>
+
+    @if (stationId === 5 && finishingVerifyKey(); as verifyKey) {
+      @let step = finishingCheckStep(verifyKey);
+      @let verifyDone = isFinishingCheckDone(verifyKey);
+      <div class="finish-verify-modal__root">
+        <div
+          class="finish-verify-modal__scrim"
+          tabindex="-1"
+          aria-hidden="true"
+          (click)="closeFinishingVerify()"
+        ></div>
+        <div
+          class="finish-verify-modal__panel sf-panel"
+          role="dialog"
+          aria-modal="true"
+          [attr.aria-labelledby]="'finish-verify-modal-title'"
+          [style.--step-accent]="step.accent"
+        >
+          <div class="finish-verify-modal__head">
+            <div class="finish-verify-modal__head-text">
+              <p class="finish-verify-modal__eyebrow">
+                {{ 'WORKER.FINISH_VERIFY_MODAL_EYEBROW' | translate }}
+              </p>
+              <h2 id="finish-verify-modal-title" class="finish-verify-modal__title">
+                {{
+                  'WORKER.FINISH_VERIFY_MODAL_TITLE'
+                    | translate: { station: ('STATIONS.' + step.stationId | translate) }
+                }}
+              </h2>
+              <p class="finish-verify-modal__sub">
+                {{ 'WORKER.FINISH_VERIFY_MODAL_SUB' | translate }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="finish-verify-modal__close"
+              (click)="closeFinishingVerify()"
+              [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+
+          <div class="finish-verify-modal__scroll">
+            @if (activityLogForStation(ctx, step.stationId).length === 0) {
+              <div class="finish-verify-modal__empty">
+                {{ 'WORKER.FINISH_VERIFY_LOG_EMPTY' | translate }}
+              </div>
+            } @else {
+              <ul class="finish-verify-modal__log" role="list">
+                @for (
+                  entry of activityLogForStation(ctx, step.stationId);
+                  track entry.id
+                ) {
+                  <li class="finish-verify-modal__log-item" role="listitem">
+                    <div class="finish-verify-modal__log-head">
+                      <time
+                        class="finish-verify-modal__log-time"
+                        [attr.datetime]="entry.createdAt"
+                        >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time
+                      >
+                      @if (entry.reporterName) {
+                        <span class="finish-verify-modal__log-reporter">{{
+                          entry.reporterName
+                        }}</span>
+                      }
+                    </div>
+                    <p class="finish-verify-modal__log-summary">
+                      {{ entry.summaryKey | translate: entry.summaryParams }}
+                    </p>
+                    @if (entry.issues) {
+                      <p class="finish-verify-modal__log-issues">{{ entry.issues }}</p>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+
+          <div class="finish-verify-modal__footer">
+            <button
+              type="button"
+              class="finish-verify-modal__btn finish-verify-modal__btn--ghost"
+              (click)="closeFinishingVerify()"
+            >
+              {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+            </button>
+            @if (!verifyDone) {
+              <button
+                type="button"
+                class="finish-verify-modal__btn finish-verify-modal__btn--approve"
+                (click)="confirmFinishingVerify(verifyKey)"
+              >
+                {{ 'WORKER.FINISH_VERIFY_APPROVE' | translate }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
 }
+</div>
