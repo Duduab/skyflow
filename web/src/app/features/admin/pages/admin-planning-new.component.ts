@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, take } from 'rxjs/operators';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { ApiService } from '../../../core/api.service';
 import {
@@ -12,6 +13,13 @@ import { PlanningPanelComponent } from '../planning/planning-panel.component';
 
 type WizardStep = 1 | 2 | 3;
 
+export interface PlanningSuccessSnapshot {
+  name: string;
+  notes: string;
+  manager: string;
+  workers: string;
+}
+
 @Component({
   selector: 'skyflow-admin-planning-new',
   standalone: true,
@@ -21,6 +29,9 @@ type WizardStep = 1 | 2 | 3;
 })
 export class AdminPlanningNewComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   readonly loading = signal(true);
   readonly listError = signal<string | null>(null);
@@ -28,13 +39,15 @@ export class AdminPlanningNewComponent implements OnInit {
 
   readonly step = signal<WizardStep>(1);
   readonly newProjectName = signal('');
+  readonly newProjectDetails = signal('');
   readonly creating = signal(false);
   readonly createErrorKey = signal<string | null>(null);
 
   readonly selectedProjectId = signal<string | null>(null);
   readonly selectedFlow = signal<ProjectFlowStatus | null>(null);
   readonly selectedName = signal<string | null>(null);
-  readonly approvedMovedToProduction = signal(false);
+  readonly successModalOpen = signal(false);
+  readonly successSnapshot = signal<PlanningSuccessSnapshot | null>(null);
 
   readonly assignees = signal<PlanningAssigneeOptionDto[]>([]);
   readonly assigneesLoadError = signal<string | null>(null);
@@ -60,6 +73,13 @@ export class AdminPlanningNewComponent implements OnInit {
       .subscribe({
         next: (rows) => {
           this.drafts.set(rows);
+          const draftId = this.route.snapshot.queryParamMap.get('draftId');
+          if (draftId) {
+            const pick = rows.find((r) => r.id === draftId);
+            if (pick) {
+              this.resumeDraft(pick);
+            }
+          }
           const cur = this.selectedProjectId();
           if (cur && rows.some((r) => r.id === cur)) {
             const r = rows.find((x) => x.id === cur)!;
@@ -74,10 +94,9 @@ export class AdminPlanningNewComponent implements OnInit {
             this.selectedSawsManagerId.set(null);
             this.selectedWorkerIds.set([]);
             this.newProjectName.set('');
-            this.approvedMovedToProduction.set(true);
+            this.newProjectDetails.set('');
             return;
           }
-          this.approvedMovedToProduction.set(false);
         },
         error: () => this.listError.set('PLANNING_NEW.LOAD_LIST_FAILED'),
       });
@@ -93,6 +112,10 @@ export class AdminPlanningNewComponent implements OnInit {
     this.createErrorKey.set(null);
   }
 
+  onWizardDetailsInput(ev: Event): void {
+    this.newProjectDetails.set((ev.target as HTMLTextAreaElement).value);
+  }
+
   createProjectAndGoStep2(): void {
     const name = this.newProjectName().trim();
     if (name.length < 2) {
@@ -101,9 +124,9 @@ export class AdminPlanningNewComponent implements OnInit {
     }
     this.creating.set(true);
     this.createErrorKey.set(null);
-    this.approvedMovedToProduction.set(false);
+    const details = this.newProjectDetails().trim();
     this.api
-      .postPlanningDraft(name)
+      .postPlanningDraft(name, details || undefined)
       .pipe(
         take(1),
         finalize(() => this.creating.set(false)),
@@ -204,13 +227,13 @@ export class AdminPlanningNewComponent implements OnInit {
   }
 
   resumeDraft(d: PlanningDraftListItemDto): void {
-    this.approvedMovedToProduction.set(false);
     this.createErrorKey.set(null);
     this.selectedSawsManagerId.set(null);
     this.selectedWorkerIds.set([]);
     this.selectedProjectId.set(d.id);
     this.applyPick(d);
     this.newProjectName.set(d.name);
+    this.newProjectDetails.set(d.requirements?.trim() ?? '');
     this.api
       .getPlanningPreview(d.id)
       .pipe(take(1))
@@ -233,8 +256,52 @@ export class AdminPlanningNewComponent implements OnInit {
     this.reloadDrafts();
   }
 
+  onPlanningApproved(): void {
+    this.successSnapshot.set(this.buildSuccessSnapshot());
+    this.successModalOpen.set(true);
+    this.selectedFlow.set('IN_PRODUCTION');
+    this.reloadDrafts();
+  }
+
+  private buildSuccessSnapshot(): PlanningSuccessSnapshot {
+    const name =
+      this.selectedName()?.trim() || this.newProjectName().trim() || '—';
+    const notesRaw = this.newProjectDetails().trim();
+    const notes = notesRaw.length
+      ? notesRaw
+      : this.translate.instant('PLANNING_NEW.SUCCESS_NOTES_EMPTY');
+
+    let manager = this.translate.instant('PLANNING_NEW.WIZARD_MANAGER_NONE');
+    const mgrId = this.selectedSawsManagerId();
+    if (mgrId) {
+      const a = this.assignees().find((x) => x.id === mgrId);
+      if (a) manager = `${a.firstName} ${a.lastName}`.trim();
+    }
+
+    let workers = this.translate.instant('PLANNING_NEW.WIZARD_WORKERS_NONE');
+    const wids = this.selectedWorkerIds();
+    if (wids.length) {
+      const names = wids
+        .map((id) => this.assignees().find((a) => a.id === id))
+        .filter((a): a is PlanningAssigneeOptionDto => !!a)
+        .map((a) => `${a.firstName} ${a.lastName}`.trim());
+      if (names.length) workers = names.join(' · ');
+    }
+
+    return { name, notes, manager, workers };
+  }
+
+  confirmSuccessModal(): void {
+    this.successModalOpen.set(false);
+    this.successSnapshot.set(null);
+    void this.router.navigate(['/admin/projects']);
+  }
+
+  cancelSuccessModal(): void {
+    this.successModalOpen.set(false);
+  }
+
   startNewWizard(): void {
-    this.approvedMovedToProduction.set(false);
     this.step.set(1);
     this.selectedProjectId.set(null);
     this.selectedFlow.set(null);
@@ -242,8 +309,11 @@ export class AdminPlanningNewComponent implements OnInit {
     this.selectedSawsManagerId.set(null);
     this.selectedWorkerIds.set([]);
     this.newProjectName.set('');
+    this.newProjectDetails.set('');
     this.createErrorKey.set(null);
     this.assigneesLoadError.set(null);
+    this.successModalOpen.set(false);
+    this.successSnapshot.set(null);
     this.reloadDrafts();
   }
 }

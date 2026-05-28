@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -17,6 +19,7 @@ import { SkyflowRole } from '@prisma/client';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { CreatePlanningDraftDto } from './dto/create-planning-draft.dto';
+import { UpdatePlanningDraftDto } from './dto/update-planning-draft.dto';
 import { ApprovePlanningDto } from './dto/approve-planning.dto';
 import { UploadProjectDocumentDto } from './dto/upload-project-document.dto';
 import { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto';
@@ -42,7 +45,25 @@ export class ProjectsController {
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post()
   createDraft(@Body() dto: CreatePlanningDraftDto) {
-    return this.projectsService.createPlanningDraft(dto.name);
+    return this.projectsService.createPlanningDraft(
+      dto.name,
+      dto.requirements,
+    );
+  }
+
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Patch('planning/:id')
+  updatePlanningDraft(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlanningDraftDto,
+  ) {
+    return this.projectsService.updatePlanningDraft(id, dto.name);
+  }
+
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Delete('planning/:id')
+  deletePlanningDraft(@Param('id') id: string) {
+    return this.projectsService.deletePlanningDraft(id);
   }
 
   @Roles(SkyflowRole.ADMIN)

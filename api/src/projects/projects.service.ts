@@ -17,6 +17,10 @@ import { extname, join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanningUploadService } from '../planning/planning-upload.service';
 import {
+  normalizeSheetTabName,
+  pickPlanningImagesForColumn,
+} from '../planning/planning-image-match.util';
+import {
   clearPlanningImportDir,
   loadPlanningImportManifest,
   planningImportStorageDir,
@@ -28,6 +32,7 @@ import type { ApprovePlanningDto } from './dto/approve-planning.dto.js';
 import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto.js';
 import type { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto.js';
 import { MailService } from '../mail/mail.service.js';
+import { planningDraftWizardMeta } from '../common/planning-draft-progress.util.js';
 
 /** PDFs attached to projects — served as static files from the web app. */
 export function ensureProjectDocsUploadDir(): string {
@@ -61,45 +66,6 @@ function sheetNameFromProductLabelForSaws(label: string): string {
   return m ? m[1].trim() : '—';
 }
 
-function normalizeSheetTabNameForSaws(name: string): string {
-  return name.replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-function imageRowDistanceToBlock(
-  anchorRow: number,
-  blockStart: number,
-  blockEnd: number,
-): number {
-  if (anchorRow < blockStart) return blockStart - anchorRow;
-  if (anchorRow > blockEnd) return anchorRow - blockEnd;
-  return 0;
-}
-
-function pickPlanningImagesForColumn(
-  manifest: PlanningSheetImagesManifest[],
-  sheetTitle: string,
-  col0: number,
-  rowStart: number,
-  rowEnd: number,
-  maxSkew: number,
-): { file: string }[] {
-  const key = normalizeSheetTabNameForSaws(sheetTitle);
-  const sheet = manifest.find(
-    (m) => normalizeSheetTabNameForSaws(m.sheetName) === key,
-  );
-  if (!sheet) return [];
-  const hits: (typeof sheet.images)[number][] = [];
-  for (const im of sheet.images) {
-    if (im.anchorCol !== col0) continue;
-    const d = imageRowDistanceToBlock(im.anchorRow, rowStart, rowEnd);
-    if (d <= maxSkew) hits.push(im);
-  }
-  hits.sort(
-    (a, b) => a.anchorRow - b.anchorRow || a.anchorCol - b.anchorCol,
-  );
-  return hits.map(({ file }) => ({ file }));
-}
-
 @Injectable()
 export class ProjectsService {
   constructor(
@@ -108,12 +74,13 @@ export class ProjectsService {
     private readonly mail: MailService,
   ) {}
 
-  async createPlanningDraft(name: string) {
+  async createPlanningDraft(name: string, requirements?: string) {
+    const details = requirements?.trim() ?? '';
     return this.prisma.projectOrder.create({
       data: {
         name: name.trim(),
         totalItems: 0,
-        requirements: '',
+        requirements: details,
         status: OrderStatus.PENDING,
         flowStatus: ProjectFlowStatus.PENDING_PLANNING,
         originalLength: new Prisma.Decimal(0),
@@ -121,17 +88,82 @@ export class ProjectsService {
     });
   }
 
+  /** טיוטות בלבד — פרויקטים שלא אושרו עדיין (ללא popup «נוצר בהצלחה»). אחרי approve → IN_PRODUCTION ולא ברשימה זו. */
   listPlanningDrafts() {
-    return this.prisma.projectOrder.findMany({
-      where: { flowStatus: ProjectFlowStatus.PENDING_PLANNING },
-      orderBy: { updatedAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        flowStatus: true,
-        updatedAt: true,
-      },
+    return this.prisma.projectOrder
+      .findMany({
+        where: { flowStatus: ProjectFlowStatus.PENDING_PLANNING },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          flowStatus: true,
+          updatedAt: true,
+          createdAt: true,
+          requirements: true,
+          _count: { select: { productItems: true } },
+        },
+      })
+      .then((rows) =>
+        rows.map((r) => {
+          const itemCount = r._count.productItems;
+          const { wizardStep, progressPct } = planningDraftWizardMeta(itemCount);
+          return {
+            id: r.id,
+            name: r.name,
+            flowStatus: r.flowStatus,
+            updatedAt: r.updatedAt,
+            createdAt: r.createdAt,
+            requirements: r.requirements ?? '',
+            itemCount,
+            wizardStep,
+            progressPct,
+          };
+        }),
+      );
+  }
+
+  async updatePlanningDraft(projectId: string, name: string) {
+    const order = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
     });
+    if (!order) throw new NotFoundException(`Project ${projectId} not found`);
+    if (order.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException('Only planning drafts can be renamed');
+    }
+    const trimmed = name.trim();
+    const updated = await this.prisma.projectOrder.update({
+      where: { id: projectId },
+      data: { name: trimmed },
+    });
+    const itemCount = await this.prisma.productItem.count({
+      where: { projectId },
+    });
+    const { wizardStep, progressPct } = planningDraftWizardMeta(itemCount);
+    return {
+      id: projectId,
+      name: trimmed,
+      flowStatus: updated.flowStatus,
+      updatedAt: updated.updatedAt,
+      createdAt: updated.createdAt,
+      requirements: updated.requirements ?? '',
+      itemCount,
+      wizardStep,
+      progressPct,
+    };
+  }
+
+  async deletePlanningDraft(projectId: string) {
+    const order = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+    });
+    if (!order) throw new NotFoundException(`Project ${projectId} not found`);
+    if (order.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException('Only planning drafts can be deleted');
+    }
+    clearPlanningImportDir(projectId);
+    await this.prisma.projectOrder.delete({ where: { id: projectId } });
+    return { ok: true };
   }
 
   async ingestPlanningFile(projectId: string, buffer: Buffer) {

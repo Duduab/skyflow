@@ -49,6 +49,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'planning-drafts',
+        canActivate: [adminOrPlanningGuard],
+        loadComponent: () =>
+          import('./features/admin/pages/admin-planning-drafts.component').then(
+            (m) => m.AdminPlanningDraftsComponent,
+          ),
+      },
+      {
         path: 'dashboard',
         canActivate: [adminOnlyGuard],
         loadComponent: () =>

@@ -12,11 +12,14 @@ import { finalize, take } from 'rxjs/operators';
 import { ApiService } from '../../../core/api.service';
 import {
   PlanningParsePreviewDto,
+  PlanningPreviewComponentCardDto,
+  PlanningPreviewLineDto,
   PlanningPreviewSheetTabDto,
   PlanningWizardPanelMode,
   ProjectFlowStatus,
 } from '../../../core/skyflow.models';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { parsePlanningComponentLabel } from './planning-component-label.util';
 
 function httpErrorMessage(err: unknown, fallback: string): string {
   const body = (err as { error?: { message?: string | string[] } })?.error;
@@ -73,6 +76,7 @@ export class PlanningPanelComponent {
   readonly sawsWorkerUserIds = input<readonly string[]>([]);
 
   readonly planningChanged = output<void>();
+  readonly planningApproved = output<void>();
   readonly projectCreated = output<string>();
   readonly wizardContinue = output<void>();
 
@@ -192,13 +196,19 @@ export class PlanningPanelComponent {
           row.productType === 'WINDOW'
             ? t('PLANNING.TYPE_WINDOW')
             : t('PLANNING.TYPE_UNIT');
-        const lines = row.componentLines
-          .map((line) => `<li>${esc(line)}</li>`)
-          .join('');
-        body += `<article class="row"><h3>${esc(row.displayLabel)}</h3><p><strong>${t('PLANNING.COL_INSTRUCTION')}</strong> ${esc(row.instructionKind)} · <strong>${t('PLANNING.COL_PRODUCT')}</strong> ${pt} · <strong>${t('PLANNING.COL_COMP_TOTAL')}</strong> ${row.componentCount}</p><ul>${lines}</ul>`;
-        if (row.images?.length) {
+        const cards = this.rowComponentCards(row);
+        let cardsHtml = '';
+        for (const card of cards) {
+          const img = card.image
+            ? `<img src="${esc(card.image.url)}" alt=""/>`
+            : '';
+          cardsHtml += `<article class="comp-card"><div class="comp-card__media">${img}</div><div class="comp-card__body"><p>${esc(card.label)}</p></div></article>`;
+        }
+        body += `<article class="row"><h3>${esc(row.displayLabel)}</h3><p><strong>${t('PLANNING.COL_INSTRUCTION')}</strong> ${esc(row.instructionKind)} · <strong>${t('PLANNING.COL_PRODUCT')}</strong> ${pt} · <strong>${t('PLANNING.COL_COMP_TOTAL')}</strong> ${row.componentCount}</p><div class="comp-grid">${cardsHtml}</div>`;
+        const extras = this.rowExtraImages(row);
+        if (extras?.length) {
           body += `<div class="imgs imgs--nested"><p class="img-head">${t('PLANNING.IMAGES_FOR_ROW')}</p>`;
-          for (const im of row.images) {
+          for (const im of extras) {
             const loc = this.translate.instant('PLANNING.IMAGE_ANCHOR', {
               row: im.anchorRow + 1,
               col: this.excelColLetter(im.anchorCol),
@@ -241,7 +251,11 @@ h1{font-size:1.35rem;margin:0 0 .5rem}
 .meta{font-size:.85rem;color:#555;margin:.35rem 0 .75rem}
 .row{border:1px solid #ddd;border-radius:10px;padding:.75rem;margin:.5rem 0;background:#fafafa}
 .row h3{margin:0 0 .4rem;font-size:1rem}
-.row ul{margin:.4rem 0 0;padding-right:1.1rem;font-size:.78rem;font-family:ui-monospace,monospace}
+.comp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.65rem;margin-top:.5rem}
+.comp-card{border:1px solid #ddd;border-radius:10px;overflow:hidden;background:#fff}
+.comp-card__media{min-height:100px;background:#f1f5f9;display:flex;align-items:center;justify-content:center}
+.comp-card__media img{max-width:100%;max-height:140px;object-fit:contain;display:block}
+.comp-card__body{padding:.5rem .65rem;font-size:.8rem;font-weight:600;line-height:1.4}
 .imgs--nested{margin-top:.5rem;padding-top:.5rem;border-top:1px dashed #ccc}
 .img-head{font-size:.95rem;font-weight:700;margin:0 0 .25rem}
 .img-hint{font-size:.8rem;color:#555;margin:0 0 .6rem}
@@ -275,6 +289,32 @@ ${body || `<p>${t('PLANNING.PDF_NO_SHEETS')}</p>`}
     this.wizardContinue.emit();
   }
 
+  readonly parseComponentLabel = parsePlanningComponentLabel;
+
+  /** כרטיסי רכיב לשורה — תומך גם בתשובת API ישנה (componentLines + images) */
+  rowComponentCards(row: PlanningPreviewLineDto): PlanningPreviewComponentCardDto[] {
+    if (row.componentCards?.length) {
+      return row.componentCards;
+    }
+    const lines = row.componentLines ?? [];
+    const imgs = row.images ?? [];
+    return lines.map((label, i) => ({
+      label,
+      image: imgs[i],
+    }));
+  }
+
+  /** תמונות שלא שויכו לכרטיס רכיב (רק ב-API חדש; בישן — ריק אם הכל בכרטיסים) */
+  rowExtraImages(row: PlanningPreviewLineDto): PlanningPreviewLineDto['images'] {
+    if (row.componentCards?.length) {
+      return row.images;
+    }
+    const cards = this.rowComponentCards(row);
+    const used = cards.filter((c) => c.image).length;
+    const imgs = row.images ?? [];
+    return imgs.length > used ? imgs.slice(used) : undefined;
+  }
+
   /** תווית עמודה בגליון Excel (A…Z, AA…) — `col0` הוא 0-based כמו ב־API */
   excelColLetter(col0: number): string {
     let n = col0 + 1;
@@ -304,6 +344,7 @@ ${body || `<p>${t('PLANNING.PDF_NO_SHEETS')}</p>`}
       )
       .subscribe({
         next: () => {
+          this.planningApproved.emit();
           this.planningChanged.emit();
         },
         error: (err) => {

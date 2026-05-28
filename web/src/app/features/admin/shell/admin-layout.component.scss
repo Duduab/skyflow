@@ -225,6 +225,12 @@
   padding: 1.75rem 2rem 2.5rem;
 }
 
+/* תפ״י — בלי שכבת אפור כפולה מריפוד המעטפת */
+.admin-shell__main:has(skyflow-admin-planning-new) {
+  padding: 0;
+  background: transparent;
+}
+
 @media (min-width: 1024px) {
   .admin-shell__sidebar {
     grid-column: 1;
@@ -311,6 +317,10 @@
   .admin-shell__main {
     flex: 1;
     padding: 1.25rem 1.15rem 2rem;
+  }
+
+  .admin-shell__main:has(skyflow-admin-planning-new) {
+    padding: 0;
   }
 
   /* במגירה: סימון מותג גם למעלה — דופק מינימלי מול ה־topbar */

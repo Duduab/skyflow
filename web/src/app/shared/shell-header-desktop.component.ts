@@ -84,10 +84,12 @@ export class ShellHeaderDesktopComponent {
         { titleKey: 'ADMIN_NAV.FILES', path: '/admin/files' },
         { titleKey: 'ADMIN_NAV.SETTINGS', path: '/admin/settings' },
         { titleKey: 'ADMIN_NAV.PLANNING_NEW', path: '/admin/planning-new' },
+        { titleKey: 'ADMIN_NAV.PLANNING_DRAFTS', path: '/admin/planning-drafts' },
       );
     } else if (role === 'PLANNING') {
       hits.push(
         { titleKey: 'ADMIN_NAV.PLANNING_NEW', path: '/admin/planning-new' },
+        { titleKey: 'ADMIN_NAV.PLANNING_DRAFTS', path: '/admin/planning-drafts' },
         { titleKey: 'ADMIN_NAV.PROJECTS', path: '/admin/projects' },
       );
     }

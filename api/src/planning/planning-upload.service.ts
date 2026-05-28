@@ -7,6 +7,13 @@ import { Prisma, ProjectFlowStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { parsePlanningWorkbook } from './planning-excel.parser';
 import {
+  buildRowComponentCards,
+  imageRowDistanceToBlock,
+  normalizeSheetTabName,
+  previewImageDto,
+  type PlanningPreviewComponentCardDto,
+} from './planning-image-match.util';
+import {
   clearPlanningImportDir,
   extractPlanningWorkbookImages,
   isXlsxZipBuffer,
@@ -20,55 +27,8 @@ function sheetNameFromProductLabel(label: string): string {
   return m ? m[1].trim() : '—';
 }
 
-function normalizeSheetTabName(name: string): string {
-  return name.replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
 function displayLabelWithoutSheetPrefix(label: string): string {
   return label.replace(/^\[[^\]]+\]\s*/, '').trim();
-}
-
-function componentToPreviewLine(c: {
-  kind: string;
-  description: string;
-  spec: string | null;
-  quantity: number;
-}): string {
-  const spec = c.spec?.trim();
-  const base = spec
-    ? `${c.kind}: ${c.description} — ${spec}`
-    : `${c.kind}: ${c.description}`;
-  const q = Math.max(1, Math.floor(Number(c.quantity) || 1));
-  if (q > 1) return `${base} · ×${q}`;
-  return base;
-}
-
-/** מרחק אנכי משורת תמונה לטווח שורות בלוק יחידה (0 = בתוך הטווח) */
-function imageRowDistanceToBlock(
-  anchorRow: number,
-  blockStart: number,
-  blockEnd: number,
-): number {
-  if (anchorRow < blockStart) return blockStart - anchorRow;
-  if (anchorRow > blockEnd) return anchorRow - blockEnd;
-  return 0;
-}
-
-function previewImageDto(
-  projectId: string,
-  im: {
-    file: string;
-    anchorRow: number;
-    anchorCol: number;
-    pictureName?: string;
-  },
-) {
-  return {
-    url: `/api/planning-imports/${projectId}/${im.file}`,
-    anchorRow: im.anchorRow,
-    anchorCol: im.anchorCol,
-    pictureName: im.pictureName,
-  };
 }
 
 @Injectable()
@@ -190,10 +150,18 @@ export class PlanningUploadService {
           instructionKind: string;
           productType: string;
           componentCount: number;
-          componentLines: string[];
+          components: {
+            kind: string;
+            description: string;
+            spec: string | null;
+            quantity: number;
+            planningSourceCol0: number | null;
+          }[];
           planningBlockStartRow0: number | null;
           planningBlockEndRow0: number | null;
+          overflowExtra: number;
           images?: ReturnType<typeof previewImageDto>[];
+          componentCards?: PlanningPreviewComponentCardDto[];
         }[];
         orphanImages?: ReturnType<typeof previewImageDto>[];
       }
@@ -213,25 +181,28 @@ export class PlanningUploadService {
       if (it.productType === 'UNIT') bucket.unitCount++;
       else bucket.windowCount++;
 
-      const lines = it.components
-        .slice(0, PREVIEW_MAX_COMPONENT_LINES)
-        .map((c) => componentToPreviewLine(c));
-      if (it.components.length > PREVIEW_MAX_COMPONENT_LINES) {
-        lines.push(
-          `… +${it.components.length - PREVIEW_MAX_COMPONENT_LINES} רכיבים נוספים`,
-        );
-      }
       let compQty = 0;
       for (const c of it.components) compQty += c.quantity;
+      const overflowExtra = Math.max(
+        0,
+        it.components.length - PREVIEW_MAX_COMPONENT_LINES,
+      );
 
       bucket.rows.push({
         displayLabel: displayLabelWithoutSheetPrefix(it.label),
         instructionKind: it.instructionKind,
         productType: it.productType,
         componentCount: compQty,
-        componentLines: lines,
+        components: it.components.map((c) => ({
+          kind: c.kind,
+          description: c.description,
+          spec: c.spec,
+          quantity: c.quantity,
+          planningSourceCol0: c.planningSourceCol0 ?? null,
+        })),
         planningBlockStartRow0: it.planningBlockStartRow0 ?? null,
         planningBlockEndRow0: it.planningBlockEndRow0 ?? null,
+        overflowExtra,
       });
     }
 
@@ -313,6 +284,22 @@ export class PlanningUploadService {
           )
           .map((im) => previewImageDto(projectId, im));
       }
+
+      for (const row of b.rows) {
+        const { cards, extraImages } = buildRowComponentCards(
+          projectId,
+          sheetName,
+          row.components,
+          row.planningBlockStartRow0,
+          row.planningBlockEndRow0,
+          row.images ?? [],
+          manifestSheets,
+          PREVIEW_MAX_COMPONENT_LINES,
+          row.overflowExtra,
+        );
+        row.componentCards = cards;
+        row.images = extraImages.length ? extraImages : undefined;
+      }
     }
 
     const sheets = sheetOrder.map((sheetName) => {
@@ -326,6 +313,8 @@ export class PlanningUploadService {
           ({
             planningBlockStartRow0: _rs,
             planningBlockEndRow0: _re,
+            components: _c,
+            overflowExtra: _ox,
             ...row
           }) => row,
         ),

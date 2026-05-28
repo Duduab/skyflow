@@ -182,8 +182,14 @@ export class ApiService {
     );
   }
 
-  postPlanningDraft(name: string): Observable<ProjectOrder> {
-    return this.http.post<ProjectOrder>(`${this.base}/projects`, { name });
+  postPlanningDraft(
+    name: string,
+    requirements?: string,
+  ): Observable<ProjectOrder> {
+    const body: { name: string; requirements?: string } = { name };
+    const details = requirements?.trim();
+    if (details) body.requirements = details;
+    return this.http.post<ProjectOrder>(`${this.base}/projects`, body);
   }
 
   sendProjectDocumentEmail(
@@ -227,6 +233,22 @@ export class ApiService {
   getPlanningDraftsList(): Observable<PlanningDraftListItemDto[]> {
     return this.http.get<PlanningDraftListItemDto[]>(
       `${this.base}/projects/planning/list`,
+    );
+  }
+
+  patchPlanningDraft(
+    projectId: string,
+    name: string,
+  ): Observable<PlanningDraftListItemDto> {
+    return this.http.patch<PlanningDraftListItemDto>(
+      `${this.base}/projects/planning/${encodeURIComponent(projectId)}`,
+      { name },
+    );
+  }
+
+  deletePlanningDraft(projectId: string): Observable<{ ok: true }> {
+    return this.http.delete<{ ok: true }>(
+      `${this.base}/projects/planning/${encodeURIComponent(projectId)}`,
     );
   }
 

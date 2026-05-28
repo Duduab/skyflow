@@ -153,9 +153,7 @@
 }
 
 .planning-panel--classic .planning-sheet__chev {
-  border-color: rgba(255, 255, 255, 0.18) !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: rgba(248, 250, 252, 0.9);
 }
 
 .planning-panel--classic .planning-sheet[open] .planning-sheet__summary {
@@ -546,15 +544,11 @@
 }
 
 .planning-panel--wizard .planning-sheet__chev {
-  border-color: rgb(226 232 240) !important;
-  background: rgb(248 250 252) !important;
-  color: #64748b !important;
+  color: #334155;
 }
 
 :host-context(html:not(.theme-light)) .planning-panel--wizard .planning-sheet__chev {
-  border-color: rgba(71, 85, 105, 0.65) !important;
-  background: rgba(15, 23, 42, 0.5) !important;
-  color: rgba(226, 232, 240, 0.85) !important;
+  color: rgba(248, 250, 252, 0.92);
 }
 
 .planning-panel--wizard .planning-sheet__body {
@@ -973,6 +967,28 @@
   display: none;
 }
 
+/* חץ accordion: סגור ← · פתוח ↓ */
+.planning-sheet__chev {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: #334155;
+}
+
+.planning-sheet__chev-icon {
+  display: block;
+  transition: transform 0.22s ease;
+  transform: rotate(0deg);
+}
+
+details.planning-sheet[open] > summary .planning-sheet__chev-icon,
+.planning-sheet[open] .planning-sheet__chev-icon {
+  transform: rotate(90deg);
+}
+
 .planning-sheet[open] .planning-sheet__summary {
   border-bottom: 1px solid rgb(226 232 240);
 }
@@ -986,6 +1002,351 @@
     border-color 0.15s ease,
     background 0.15s ease,
     box-shadow 0.15s ease;
+}
+
+/* ═══ כרטיסי רכיב + תמונה (תצוגה מקדימה) ═══ */
+.planning-comp-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 520px) {
+  .planning-comp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .planning-comp-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.planning-comp-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgb(226 232 240);
+  background: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 8px 22px rgba(62, 93, 136, 0.08);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.planning-comp-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--sf-blue, #558fc3) 28%, rgb(226 232 240));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 14px 32px rgba(62, 93, 136, 0.14);
+}
+
+.planning-comp-card__media {
+  position: relative;
+  display: flex;
+  min-height: 7.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem;
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--sf-blue, #558fc3) 8%, #f8fafc) 0%,
+    #f1f5f9 55%,
+    #e8eef5 100%
+  );
+  border-bottom: 1px solid rgb(241 245 249);
+}
+
+.planning-comp-card__img {
+  display: block;
+  width: 100%;
+  max-height: 9.5rem;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.12));
+}
+
+.planning-comp-card__badge {
+  position: absolute;
+  top: 0.5rem;
+  inset-inline-start: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sf-indigo, #4b689d);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid color-mix(in srgb, var(--sf-blue, #558fc3) 22%, transparent);
+  box-shadow: 0 4px 12px rgba(62, 93, 136, 0.12);
+}
+
+.planning-comp-card__badge-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sf-blue, #558fc3), var(--sf-indigo, #4b689d));
+}
+
+.planning-comp-card__placeholder {
+  display: flex;
+  width: 100%;
+  min-height: 5.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  border: 1px dashed rgb(203 213 225);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.planning-comp-card__placeholder-icon {
+  font-size: 1.75rem;
+  font-weight: 300;
+  line-height: 1;
+  color: rgb(148 163 184);
+}
+
+.planning-comp-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.8rem 0.85rem 0.95rem;
+}
+
+.planning-comp-card__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.planning-comp-card__kind {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0.18rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--sf-indigo, #4b689d);
+  background: color-mix(in srgb, var(--sf-blue, #558fc3) 11%, #fff);
+  border: 1px solid color-mix(in srgb, var(--sf-blue, #558fc3) 24%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planning-comp-card__title {
+  margin: 0;
+  font-family: var(--sf-font);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--sf-navy, #3e5d88);
+  word-break: break-word;
+}
+
+.planning-comp-card__tags {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.1rem;
+}
+
+.planning-comp-card__tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.5rem;
+  font-family: var(--sf-font);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+
+.planning-comp-card__tag--w {
+  color: #0c4a6e;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--sf-blue, #558fc3) 14%, #fff),
+    color-mix(in srgb, var(--sf-blue, #558fc3) 6%, #f8fafc)
+  );
+  border-color: color-mix(in srgb, var(--sf-blue, #558fc3) 28%, #e2e8f0);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--sf-blue, #558fc3) 12%, transparent);
+}
+
+.planning-comp-card__tag--h {
+  color: #312e81;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--sf-indigo, #4b689d) 12%, #fff),
+    color-mix(in srgb, var(--sf-indigo, #4b689d) 5%, #f8fafc)
+  );
+  border-color: color-mix(in srgb, var(--sf-indigo, #4b689d) 26%, #e2e8f0);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--sf-indigo, #4b689d) 10%, transparent);
+}
+
+.planning-comp-card__tag--qty {
+  color: #14532d;
+  background: linear-gradient(145deg, #ecfdf5, #d1fae5);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.planning-comp-card__tag--spec {
+  max-width: 100%;
+  color: #475569;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  font-weight: 700;
+  font-size: 0.68rem;
+  word-break: break-word;
+}
+
+.planning-comp-card__overflow {
+  margin: 0;
+  font-family: var(--sf-font);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.planning-panel--classic .planning-comp-card {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.32);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.planning-panel--classic .planning-comp-card:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.planning-panel--classic .planning-comp-card__media {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    165deg,
+    rgba(56, 189, 248, 0.12) 0%,
+    rgba(15, 23, 42, 0.55) 100%
+  );
+}
+
+.planning-panel--classic .planning-comp-card__title {
+  color: #f8fafc;
+}
+
+.planning-panel--classic .planning-comp-card__kind {
+  color: #bae6fd;
+  background: rgba(12, 74, 110, 0.55);
+  border-color: rgba(56, 189, 248, 0.28);
+  box-shadow: none;
+}
+
+.planning-panel--classic .planning-comp-card__overflow {
+  color: rgba(203, 213, 225, 0.8);
+}
+
+.planning-panel--classic .planning-comp-card__badge {
+  color: #bae6fd;
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(56, 189, 248, 0.28);
+}
+
+.planning-panel--classic .planning-comp-card__placeholder {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card {
+  border-color: rgba(71, 85, 105, 0.5);
+  background: rgba(30, 41, 59, 0.72);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card:hover {
+  border-color: color-mix(in srgb, var(--sf-blue, #558fc3) 35%, transparent);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__media {
+  border-bottom-color: rgba(71, 85, 105, 0.45);
+  background: linear-gradient(
+    165deg,
+    rgba(56, 189, 248, 0.12) 0%,
+    rgba(15, 23, 42, 0.55) 100%
+  );
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__title {
+  color: #f8fafc;
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__kind {
+  color: #bae6fd;
+  background: rgba(12, 74, 110, 0.5);
+  border-color: rgba(56, 189, 248, 0.28);
+  box-shadow: none;
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__tag--w {
+  color: #bae6fd;
+  background: rgba(12, 74, 110, 0.45);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__tag--h {
+  color: #e9d5ff;
+  background: rgba(46, 16, 101, 0.4);
+  border-color: rgba(167, 139, 250, 0.28);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__tag--qty {
+  color: #bbf7d0;
+  background: rgba(6, 78, 59, 0.45);
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__tag--spec {
+  color: rgba(226, 232, 240, 0.9);
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(71, 85, 105, 0.5);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__overflow {
+  color: rgba(203, 213, 225, 0.78);
+}
+
+:host-context(html:not(.theme-light)) .planning-panel--wizard .planning-comp-card__badge {
+  color: #bae6fd;
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(56, 189, 248, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planning-comp-card:hover {
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

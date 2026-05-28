@@ -1,0 +1,338 @@
+@if (loading()) {
+  <p class="admin-page__loading">…</p>
+} @else if (listError(); as err) {
+  <div class="admin-page__err">{{ err | translate }}</div>
+  <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="reload()">
+    {{ 'ADMIN_PLANNING_DRAFTS.RETRY' | translate }}
+  </button>
+} @else {
+  @let s = stats();
+
+  <header class="planning-drafts__hero">
+    <div class="planning-drafts__hero-copy">
+      <p class="planning-drafts__eyebrow">{{ 'ADMIN_PLANNING_DRAFTS.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">{{ 'ADMIN_PLANNING_DRAFTS.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_PLANNING_DRAFTS.SUB' | translate }}</p>
+      <p class="planning-drafts__hint">{{ 'ADMIN_PLANNING_DRAFTS.SUB_HINT' | translate }}</p>
+    </div>
+    <div class="planning-drafts__hero-actions">
+      <a routerLink="/admin/planning-new" class="sf-ui-btn sf-ui-btn--primary">
+        {{ 'ADMIN_PLANNING_DRAFTS.NEW_PROJECT' | translate }}
+      </a>
+    </div>
+  </header>
+
+  <section class="planning-drafts__kpis" aria-label="drafts summary">
+    <article class="planning-drafts-kpi">
+      <span class="planning-drafts-kpi__label">{{
+        'ADMIN_PLANNING_DRAFTS.KPI_TOTAL' | translate
+      }}</span>
+      <span class="planning-drafts-kpi__value">{{ s.total | number: '1.0-0' }}</span>
+    </article>
+    <article class="planning-drafts-kpi">
+      <span class="planning-drafts-kpi__label">{{
+        'ADMIN_PLANNING_DRAFTS.KPI_WITH_FILE' | translate
+      }}</span>
+      <span class="planning-drafts-kpi__value">{{ s.withFile | number: '1.0-0' }}</span>
+    </article>
+    <article class="planning-drafts-kpi planning-drafts-kpi--accent">
+      <span class="planning-drafts-kpi__label">{{
+        'ADMIN_PLANNING_DRAFTS.KPI_AWAITING_FILE' | translate
+      }}</span>
+      <span class="planning-drafts-kpi__value">{{ s.awaitingFile | number: '1.0-0' }}</span>
+    </article>
+  </section>
+
+  <div class="planning-drafts__toolbar">
+    <label class="admin-proj-search">
+      <span class="admin-proj-search__label">{{
+        'ADMIN_PLANNING_DRAFTS.SEARCH_LABEL' | translate
+      }}</span>
+      <input
+        type="search"
+        class="admin-proj-search__input"
+        [value]="searchQuery()"
+        (input)="setSearch($any($event.target).value)"
+        [placeholder]="'ADMIN_PLANNING_DRAFTS.SEARCH_PLACEHOLDER' | translate"
+        autocomplete="off"
+      />
+    </label>
+
+    <div
+      class="planning-drafts__view-toggle"
+      role="group"
+      [attr.aria-label]="'ADMIN_PLANNING_DRAFTS.VIEW_ARIA' | translate"
+    >
+      <button
+        type="button"
+        class="planning-drafts__view-btn"
+        [class.planning-drafts__view-btn--active]="viewMode() === 'cards'"
+        (click)="setViewMode('cards')"
+      >
+        {{ 'ADMIN_PLANNING_DRAFTS.VIEW_CARDS' | translate }}
+      </button>
+      <button
+        type="button"
+        class="planning-drafts__view-btn"
+        [class.planning-drafts__view-btn--active]="viewMode() === 'rows'"
+        (click)="setViewMode('rows')"
+      >
+        {{ 'ADMIN_PLANNING_DRAFTS.VIEW_ROWS' | translate }}
+      </button>
+    </div>
+  </div>
+
+  @if (drafts().length === 0) {
+    <section class="planning-drafts__empty">
+      <p>{{ 'PLANNING_NEW.WIZARD_NO_DRAFTS' | translate }}</p>
+      <a routerLink="/admin/planning-new" class="sf-ui-btn sf-ui-btn--primary">
+        {{ 'ADMIN_PLANNING_DRAFTS.NEW_PROJECT' | translate }}
+      </a>
+    </section>
+  } @else if (filteredDrafts().length === 0) {
+    <p class="planning-drafts__empty-hint">{{ 'ADMIN_PLANNING_DRAFTS.SEARCH_EMPTY' | translate }}</p>
+  } @else if (viewMode() === 'cards') {
+    <div class="planning-drafts__grid">
+      @for (d of filteredDrafts(); track d.id) {
+        <article class="planning-drafts-card">
+          <div class="planning-drafts-card__head">
+            @if (editingId() === d.id) {
+              <label class="planning-drafts-card__edit-field">
+                <span class="sr-only">{{ 'ADMIN_PLANNING_DRAFTS.EDIT_NAME' | translate }}</span>
+                <input
+                  type="text"
+                  class="planning-drafts-card__edit-input"
+                  [value]="editName()"
+                  (input)="onEditNameInput($event)"
+                  (keydown.enter)="saveEdit()"
+                  (keydown.escape)="cancelEdit()"
+                />
+              </label>
+            } @else {
+              <h2 class="planning-drafts-card__name">{{ d.name }}</h2>
+            }
+            <span class="planning-drafts-card__step">{{
+              stepLabelKey(d) | translate
+            }}</span>
+          </div>
+
+          <div class="planning-drafts-card__progress-wrap">
+            <div class="planning-drafts-card__progress-meta">
+              <span>{{ 'ADMIN_PLANNING_DRAFTS.PROGRESS_LABEL' | translate }}</span>
+              <span dir="ltr">{{ d.progressPct }}%</span>
+            </div>
+            <div
+              class="planning-drafts-card__progress-track"
+              role="progressbar"
+              [attr.aria-valuenow]="d.progressPct"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <div
+                class="planning-drafts-card__progress-fill"
+                [style.width.%]="d.progressPct"
+              ></div>
+            </div>
+          </div>
+
+          <dl class="planning-drafts-card__stats">
+            <div>
+              <dt>{{ 'ADMIN_PLANNING_DRAFTS.STAT_ITEMS' | translate }}</dt>
+              <dd dir="ltr">{{ d.itemCount | number: '1.0-0' }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'ADMIN_PLANNING_DRAFTS.STAT_UPDATED' | translate }}</dt>
+              <dd>{{ d.updatedAt | date: 'dd/MM/yy HH:mm' }}</dd>
+            </div>
+          </dl>
+
+          <div class="planning-drafts-card__actions">
+            <a
+              [routerLink]="['/admin/planning-new']"
+              [queryParams]="{ draftId: d.id }"
+              class="planning-drafts-card__cta sf-ui-btn sf-ui-btn--primary"
+            >
+              {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+            </a>
+            @if (editingId() === d.id) {
+              <button
+                type="button"
+                class="sf-ui-btn"
+                [disabled]="editSaving()"
+                (click)="saveEdit()"
+              >
+                {{ 'ADMIN_PLANNING_DRAFTS.SAVE' | translate }}
+              </button>
+              <button type="button" class="sf-ui-btn" (click)="cancelEdit()">
+                {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="sf-ui-btn"
+                (click)="startEdit(d, $event)"
+              >
+                {{ 'ADMIN_PLANNING_DRAFTS.EDIT' | translate }}
+              </button>
+              <button
+                type="button"
+                class="sf-ui-btn planning-drafts-card__delete"
+                (click)="openDeleteConfirm(d, $event)"
+              >
+                {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
+              </button>
+            }
+          </div>
+          @if (editingId() === d.id && editError(); as ek) {
+            <p class="planning-drafts-card__err" role="alert">{{ ek | translate }}</p>
+          }
+        </article>
+      }
+    </div>
+  } @else {
+    <div class="planning-drafts__table-wrap">
+      <table class="planning-drafts-table">
+        <thead>
+          <tr>
+            <th scope="col">{{ 'ADMIN_PLANNING_DRAFTS.COL_NAME' | translate }}</th>
+            <th scope="col">{{ 'ADMIN_PLANNING_DRAFTS.COL_PROGRESS' | translate }}</th>
+            <th scope="col">{{ 'ADMIN_PLANNING_DRAFTS.COL_STEP' | translate }}</th>
+            <th scope="col">{{ 'ADMIN_PLANNING_DRAFTS.COL_ITEMS' | translate }}</th>
+            <th scope="col">{{ 'ADMIN_PLANNING_DRAFTS.COL_UPDATED' | translate }}</th>
+            <th scope="col">{{ 'ADMIN_PLANNING_DRAFTS.COL_ACTIONS' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of filteredDrafts(); track d.id) {
+            <tr>
+              <td class="planning-drafts-table__name">
+                @if (editingId() === d.id) {
+                  <input
+                    type="text"
+                    class="planning-drafts-table__edit-input"
+                    [value]="editName()"
+                    (input)="onEditNameInput($event)"
+                    (keydown.enter)="saveEdit()"
+                    (keydown.escape)="cancelEdit()"
+                  />
+                } @else {
+                  <span class="planning-drafts-table__name-text">{{ d.name }}</span>
+                }
+              </td>
+              <td>
+                <div class="planning-drafts-table__progress">
+                  <div
+                    class="planning-drafts-table__progress-track"
+                    role="progressbar"
+                    [attr.aria-valuenow]="d.progressPct"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    <div
+                      class="planning-drafts-table__progress-fill"
+                      [style.width.%]="d.progressPct"
+                    ></div>
+                  </div>
+                  <span class="planning-drafts-table__pct" dir="ltr"
+                    >{{ d.progressPct }}%</span
+                  >
+                </div>
+              </td>
+              <td>{{ stepLabelKey(d) | translate }}</td>
+              <td dir="ltr">{{ d.itemCount | number: '1.0-0' }}</td>
+              <td>{{ d.updatedAt | date: 'dd/MM/yy HH:mm' }}</td>
+              <td>
+                <div class="planning-drafts-table__actions">
+                  <a
+                    [routerLink]="['/admin/planning-new']"
+                    [queryParams]="{ draftId: d.id }"
+                    class="sf-ui-btn sf-ui-btn--primary"
+                  >
+                    {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+                  </a>
+                  @if (editingId() === d.id) {
+                    <button
+                      type="button"
+                      class="sf-ui-btn"
+                      [disabled]="editSaving()"
+                      (click)="saveEdit()"
+                    >
+                      {{ 'ADMIN_PLANNING_DRAFTS.SAVE' | translate }}
+                    </button>
+                    <button
+                      type="button"
+                      class="sf-ui-btn"
+                      (click)="cancelEdit()"
+                    >
+                      {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="sf-ui-btn"
+                      (click)="startEdit(d)"
+                    >
+                      {{ 'ADMIN_PLANNING_DRAFTS.EDIT' | translate }}
+                    </button>
+                    <button
+                      type="button"
+                      class="sf-ui-btn planning-drafts-table__delete"
+                      (click)="openDeleteConfirm(d)"
+                    >
+                      {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}
+
+@if (deleteTarget(); as target) {
+  <div
+    class="planning-drafts-modal"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="'ADMIN_PLANNING_DRAFTS.DELETE_TITLE' | translate"
+  >
+    <button
+      type="button"
+      class="planning-drafts-modal__scrim"
+      (click)="closeDeleteConfirm()"
+      [attr.aria-label]="'ADMIN_PLANNING_DRAFTS.CANCEL' | translate"
+    ></button>
+    <div class="planning-drafts-modal__panel">
+      <h2 class="planning-drafts-modal__title">
+        {{ 'ADMIN_PLANNING_DRAFTS.DELETE_TITLE' | translate }}
+      </h2>
+      <p class="planning-drafts-modal__text">
+        {{
+          'ADMIN_PLANNING_DRAFTS.DELETE_CONFIRM'
+            | translate: { name: target.name }
+        }}
+      </p>
+      <div class="planning-drafts-modal__actions">
+        <button
+          type="button"
+          class="sf-ui-btn planning-drafts-modal__delete-btn"
+          [disabled]="deleteBusy()"
+          (click)="confirmDelete()"
+        >
+          {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
+        </button>
+        <button
+          type="button"
+          class="sf-ui-btn"
+          [disabled]="deleteBusy()"
+          (click)="closeDeleteConfirm()"
+        >
+          {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

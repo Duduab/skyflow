@@ -117,11 +117,8 @@
             </div>
 
             <div class="planning-sheets space-y-4">
-              @for (tab of pv.sheets; track tab.sheetName; let idx = $index) {
-                <details
-                  class="planning-sheet group overflow-hidden rounded-2xl"
-                  [attr.open]="idx === 0 ? '' : null"
-                >
+              @for (tab of pv.sheets; track tab.sheetName) {
+                <details class="planning-sheet group overflow-hidden rounded-2xl">
                   <summary
                     class="planning-sheet__summary flex cursor-pointer list-none flex-col gap-3 p-4 outline-none ring-sf-blue/25 transition sm:flex-row sm:items-center sm:justify-between [&::-webkit-details-marker]:hidden"
                   >
@@ -140,10 +137,24 @@
                         }
                       </span>
                     </div>
-                    <span
-                      class="planning-sheet__chev inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-lg text-slate-600 transition group-open:rotate-180"
-                      aria-hidden="true"
-                    >▼</span>
+                    <span class="planning-sheet__chev" aria-hidden="true">
+                      <svg
+                        class="planning-sheet__chev-icon"
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        focusable="false"
+                      >
+                        <path
+                          d="M15 6l-6 6 6 6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </span>
                   </summary>
                   <div class="planning-sheet__body px-3 pb-4 pt-2 sm:px-4">
                     @for (
@@ -183,53 +194,151 @@
                             }}</span>
                           </div>
                         </div>
-                        <div class="mt-4">
-                          <p class="planning-chip-section-label">
-                            {{ 'PLANNING.COMPONENT_PREVIEW' | translate }}
-                          </p>
-                          <ul class="planning-chip-list m-0 grid list-none gap-2 p-0 sm:grid-cols-2 xl:grid-cols-3">
-                            @for (line of row.componentLines; track clIdx; let clIdx = $index) {
-                              <li class="planning-chip">
-                                {{ line }}
-                              </li>
-                            }
-                          </ul>
-                        </div>
-                        @if (row.images && row.images.length > 0) {
-                          <div class="planning-row-images">
-                            <p class="planning-chip-section-label planning-row-images__title">
-                              {{ 'PLANNING.IMAGES_FOR_ROW' | translate }}
-                            </p>
-                            <div class="planning-sheet-images__grid planning-row-images__grid">
-                              @for (
-                                im of row.images;
-                                track im.url + '|' + im.anchorRow + '|' + im.anchorCol + '|' + imgIdx;
-                                let imgIdx = $index
-                              ) {
-                                <figure class="planning-import-fig planning-import-fig--in-row">
-                                  <img
-                                    [src]="im.url"
-                                    [alt]="row.displayLabel"
-                                    loading="lazy"
-                                    class="planning-import-fig__img"
-                                  />
-                                  <figcaption class="planning-import-fig__cap">
-                                    @if (im.pictureName) {
-                                      <span class="planning-import-fig__name">{{ im.pictureName }}</span>
-                                    }
-                                    <span class="planning-import-fig__loc" dir="ltr">{{
-                                      'PLANNING.IMAGE_ANCHOR'
-                                        | translate
-                                          : {
-                                              row: im.anchorRow + 1,
-                                              col: excelColLetter(im.anchorCol),
-                                            }
-                                    }}</span>
-                                  </figcaption>
-                                </figure>
-                              }
+                        @if (rowComponentCards(row); as cards) {
+                          @if (cards.length) {
+                            <div class="planning-comp-section mt-4">
+                              <p class="planning-chip-section-label">
+                                {{ 'PLANNING.COMPONENT_PREVIEW' | translate }}
+                              </p>
+                              <div class="planning-comp-grid">
+                                @for (
+                                  card of cards;
+                                  track card.label + '|' + (card.image?.url ?? '') + '|' + ci;
+                                  let ci = $index
+                                ) {
+                                  <article class="planning-comp-card">
+                                    <div class="planning-comp-card__media">
+                                      @if (card.image; as im) {
+                                        <img
+                                          [src]="im.url"
+                                          [alt]="card.label"
+                                          loading="lazy"
+                                          class="planning-comp-card__img"
+                                        />
+                                        <div class="planning-comp-card__badge" aria-hidden="true">
+                                          <span class="planning-comp-card__badge-dot"></span>
+                                          {{ 'PLANNING.COMP_CARD_SKETCH' | translate }}
+                                        </div>
+                                      } @else {
+                                        <div class="planning-comp-card__placeholder" aria-hidden="true">
+                                          <span class="planning-comp-card__placeholder-icon">◫</span>
+                                        </div>
+                                      }
+                                    </div>
+                                    <div class="planning-comp-card__body">
+                                      @let parsed = parseComponentLabel(card.label);
+                                      @if (parsed.isOverflow) {
+                                        <p class="planning-comp-card__overflow">{{ parsed.raw }}</p>
+                                      } @else {
+                                        <div class="planning-comp-card__copy">
+                                          @if (parsed.kindDisplay) {
+                                            <span class="planning-comp-card__kind">{{
+                                              parsed.kindDisplay
+                                            }}</span>
+                                          }
+                                          @if (parsed.title) {
+                                            <p class="planning-comp-card__title">{{ parsed.title }}</p>
+                                          }
+                                          @if (
+                                            parsed.width &&
+                                            parsed.height &&
+                                            parsed.unit
+                                          ) {
+                                            <div class="planning-comp-card__tags">
+                                              <span class="planning-comp-card__tag planning-comp-card__tag--w">
+                                                {{
+                                                  'PLANNING.COMP_DIM_WIDTH'
+                                                    | translate
+                                                      : {
+                                                          value: parsed.width,
+                                                          unit: parsed.unit,
+                                                        }
+                                                }}
+                                              </span>
+                                              <span class="planning-comp-card__tag planning-comp-card__tag--h">
+                                                {{
+                                                  'PLANNING.COMP_DIM_HEIGHT'
+                                                    | translate
+                                                      : {
+                                                          value: parsed.height,
+                                                          unit: parsed.unit,
+                                                        }
+                                                }}
+                                              </span>
+                                              @if (parsed.qty) {
+                                                <span class="planning-comp-card__tag planning-comp-card__tag--qty">
+                                                  {{
+                                                    'PLANNING.COMP_DIM_QTY'
+                                                      | translate: { value: parsed.qty }
+                                                  }}
+                                                </span>
+                                              }
+                                            </div>
+                                          } @else {
+                                            <div class="planning-comp-card__tags">
+                                              @if (parsed.spec) {
+                                                <span
+                                                  class="planning-comp-card__tag planning-comp-card__tag--spec"
+                                                  dir="ltr"
+                                                  >{{ parsed.spec }}</span
+                                                >
+                                              }
+                                              @if (parsed.qty) {
+                                                <span class="planning-comp-card__tag planning-comp-card__tag--qty">
+                                                  {{
+                                                    'PLANNING.COMP_DIM_QTY'
+                                                      | translate: { value: parsed.qty }
+                                                  }}
+                                                </span>
+                                              }
+                                            </div>
+                                          }
+                                        </div>
+                                      }
+                                    </div>
+                                  </article>
+                                }
+                              </div>
                             </div>
-                          </div>
+                          }
+                        }
+                        @if (rowExtraImages(row); as extras) {
+                          @if (extras && extras.length > 0) {
+                            <div class="planning-row-images">
+                              <p class="planning-chip-section-label planning-row-images__title">
+                                {{ 'PLANNING.IMAGES_EXTRA_ROW' | translate }}
+                              </p>
+                              <div class="planning-sheet-images__grid planning-row-images__grid">
+                                @for (
+                                  im of extras;
+                                  track im.url + '|' + im.anchorRow + '|' + im.anchorCol + '|' + imgIdx;
+                                  let imgIdx = $index
+                                ) {
+                                  <figure class="planning-import-fig planning-import-fig--in-row">
+                                    <img
+                                      [src]="im.url"
+                                      [alt]="row.displayLabel"
+                                      loading="lazy"
+                                      class="planning-import-fig__img"
+                                    />
+                                    <figcaption class="planning-import-fig__cap">
+                                      @if (im.pictureName) {
+                                        <span class="planning-import-fig__name">{{ im.pictureName }}</span>
+                                      }
+                                      <span class="planning-import-fig__loc" dir="ltr">{{
+                                        'PLANNING.IMAGE_ANCHOR'
+                                          | translate
+                                            : {
+                                                row: im.anchorRow + 1,
+                                                col: excelColLetter(im.anchorCol),
+                                              }
+                                      }}</span>
+                                    </figcaption>
+                                  </figure>
+                                }
+                              </div>
+                            </div>
+                          }
                         }
                       </article>
                     }

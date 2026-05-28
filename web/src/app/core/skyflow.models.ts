@@ -198,6 +198,12 @@ export interface PlanningPreviewImageDto {
   pictureName?: string;
 }
 
+/** כרטיס רכיב בתצוגה מקדימה — טקסט + תמונה משויכת */
+export interface PlanningPreviewComponentCardDto {
+  label: string;
+  image?: PlanningPreviewImageDto;
+}
+
 /** שורה בתצוגת פירוט תכנון (יחידה / חלון) */
 export interface PlanningPreviewLineDto {
   /** תווית ללא קידומת שם הגליון */
@@ -205,9 +211,11 @@ export interface PlanningPreviewLineDto {
   instructionKind: string;
   productType: ProductType;
   componentCount: number;
-  /** דגימת שורות רכיב לתצוגה */
-  componentLines: string[];
-  /** תמונות מהגליון ששויכו ליחידה/שורה זו */
+  /** כרטיסי רכיב (טקסט + תמונה) */
+  componentCards?: PlanningPreviewComponentCardDto[];
+  /** @deprecated — השתמשו ב־componentCards */
+  componentLines?: string[];
+  /** תמונות שלא שויכו לרכיב ספציפי */
   images?: PlanningPreviewImageDto[];
 }
 
@@ -239,6 +247,11 @@ export interface PlanningDraftListItemDto {
   name: string;
   flowStatus: ProjectFlowStatus;
   updatedAt: string;
+  createdAt: string;
+  requirements: string;
+  itemCount: number;
+  wizardStep: 2 | 3;
+  progressPct: number;
 }
 
 export type PlanningWizardPanelMode =

@@ -1,4 +1,4 @@
-<div class="planning-new">
+<div class="planning-new" [class.planning-new--modal-open]="successModalOpen()">
   <div class="planning-new__bg" aria-hidden="true"></div>
   <div class="planning-new__grain" aria-hidden="true"></div>
 
@@ -21,23 +21,11 @@
       </p>
     }
 
-    @if (approvedMovedToProduction()) {
-      <div class="planning-wizard__alert planning-wizard__alert--ok" role="status">
-        <p class="planning-wizard__alert-text">
-          {{ 'PLANNING_NEW.APPROVED_SAVED_HINT' | translate }}
-        </p>
-        <button type="button" class="planning-wizard__btn planning-wizard__btn--ghost" (click)="startNewWizard()">
-          {{ 'PLANNING_NEW.WIZARD_START_FRESH' | translate }}
-        </button>
-      </div>
-    }
-
     <nav
       class="planning-wizard__rail"
       [attr.aria-label]="'PLANNING_NEW.WIZARD_STEPS_ARIA' | translate"
     >
       <div class="planning-wizard__rail-inner">
-        <div class="planning-wizard__rail-line" aria-hidden="true"></div>
         <ol class="planning-wizard__steps">
           @for (s of [1, 2, 3]; track s) {
             <li
@@ -68,13 +56,24 @@
                 }
               </span>
             </li>
+            @if (s < 3) {
+              <li
+                class="planning-wizard__seg"
+                [class.planning-wizard__seg--done]="step() > s"
+                aria-hidden="true"
+              >
+                <span class="planning-wizard__seg-track">
+                  <span class="planning-wizard__seg-fill"></span>
+                </span>
+              </li>
+            }
           }
         </ol>
       </div>
     </nav>
 
     @if (step() === 1) {
-      <div class="planning-wizard__layout planning-wizard__layout--step1">
+      <div class="planning-wizard__layout planning-wizard__layout--step1 planning-wizard__step-enter">
         <section class="planning-wizard__card planning-wizard__card--main">
           <div class="planning-wizard__card-accent" aria-hidden="true"></div>
           <div class="planning-wizard__card-inner">
@@ -100,6 +99,22 @@
                 <p class="planning-wizard__field-err" role="alert">{{ ck | translate }}</p>
               }
             </div>
+            <div class="planning-wizard__field">
+              <label class="planning-wizard__field-label" for="wizard-project-details">
+                {{ 'PLANNING_NEW.WIZARD_DETAILS_LABEL' | translate }}
+                <span class="planning-wizard__field-optional">{{
+                  'PLANNING_NEW.WIZARD_DETAILS_OPTIONAL' | translate
+                }}</span>
+              </label>
+              <textarea
+                id="wizard-project-details"
+                class="planning-wizard__textarea"
+                rows="4"
+                [value]="newProjectDetails()"
+                (input)="onWizardDetailsInput($event)"
+                [placeholder]="'PLANNING_NEW.WIZARD_DETAILS_PLACEHOLDER' | translate"
+              ></textarea>
+            </div>
             <div class="planning-wizard__card-actions">
               <button
                 type="button"
@@ -112,34 +127,12 @@
             </div>
           </div>
         </section>
-
-        @if (!listError()) {
-          <aside class="planning-wizard__card planning-wizard__card--side">
-            <div class="planning-wizard__card-inner planning-wizard__card-inner--tight">
-              <p class="planning-wizard__side-title">{{ 'PLANNING_NEW.WIZARD_OPEN_RESUMES' | translate }}</p>
-              <p class="planning-wizard__side-desc">{{ 'PLANNING_NEW.WIZARD_RESUME_HINT' | translate }}</p>
-              @if (loading()) {
-                <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.LOADING' | translate }}</p>
-              } @else if (!drafts().length) {
-                <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_NO_DRAFTS' | translate }}</p>
-              } @else {
-                <div class="planning-wizard__resume-chips">
-                  @for (d of drafts(); track d.id) {
-                    <button type="button" class="planning-wizard__resume-chip" (click)="resumeDraft(d)">
-                      {{ d.name }}
-                    </button>
-                  }
-                </div>
-              }
-            </div>
-          </aside>
-        }
       </div>
     }
 
     @if (step() >= 2 && selectedProjectId(); as pid) {
       @if (step() === 2) {
-        <div class="planning-wizard__step-banner">
+        <div class="planning-wizard__step-banner planning-wizard__step-enter">
           <span class="planning-wizard__step-banner-kicker">{{ 'PLANNING_NEW.WIZARD_STEP2_SHORT' | translate }}</span>
           <span class="planning-wizard__step-banner-title">{{ 'PLANNING_NEW.WIZARD_STEP2_TITLE' | translate }}</span>
           <span class="planning-wizard__step-banner-desc">{{ 'PLANNING_NEW.WIZARD_STEP2_DESC' | translate }}</span>
@@ -147,7 +140,7 @@
       }
 
       @if (step() === 3) {
-        <section class="planning-wizard__card planning-wizard__card--assign">
+        <section class="planning-wizard__card planning-wizard__card--assign planning-wizard__step-enter">
           <div class="planning-wizard__card-accent" aria-hidden="true"></div>
           <div class="planning-wizard__card-inner">
             <div class="planning-wizard__card-head">
@@ -301,7 +294,7 @@
         </section>
       }
 
-      <div class="planning-new__panel-wrap">
+      <div class="planning-new__panel-wrap planning-wizard__step-enter">
         <skyflow-planning-panel
           class="block w-full"
           [projectId]="pid"
@@ -312,9 +305,71 @@
           [planningSawsManagerUserId]="selectedSawsManagerId()"
           [sawsWorkerUserIds]="selectedWorkerIds()"
           (planningChanged)="onPlanningChanged()"
+          (planningApproved)="onPlanningApproved()"
           (wizardContinue)="goStep3()"
         />
       </div>
     }
   </div>
+
+  @if (successModalOpen() && successSnapshot(); as snap) {
+    <div class="planning-success-modal" role="presentation">
+      <button
+        type="button"
+        class="planning-success-modal__scrim"
+        [attr.aria-label]="'PLANNING_NEW.SUCCESS_MODAL_CANCEL' | translate"
+        (click)="cancelSuccessModal()"
+      ></button>
+      <div
+        class="planning-success-modal__panel"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-labelledby]="'planning-success-modal-title'"
+      >
+        <div class="planning-success-modal__glow" aria-hidden="true"></div>
+        <div class="planning-success-modal__inner">
+          <div class="planning-success-modal__icon-wrap" aria-hidden="true">
+            <span class="planning-success-modal__icon">✓</span>
+          </div>
+          <h2 id="planning-success-modal-title" class="planning-success-modal__title">
+            {{ 'PLANNING_NEW.SUCCESS_MODAL_TITLE' | translate }}
+          </h2>
+          <dl class="planning-success-modal__summary">
+            <div class="planning-success-modal__row">
+              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_NAME' | translate }}</dt>
+              <dd>{{ snap.name }}</dd>
+            </div>
+            <div class="planning-success-modal__row">
+              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_NOTES' | translate }}</dt>
+              <dd class="planning-success-modal__notes">{{ snap.notes }}</dd>
+            </div>
+            <div class="planning-success-modal__row">
+              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_MANAGER' | translate }}</dt>
+              <dd>{{ snap.manager }}</dd>
+            </div>
+            <div class="planning-success-modal__row">
+              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_WORKERS' | translate }}</dt>
+              <dd>{{ snap.workers }}</dd>
+            </div>
+          </dl>
+          <div class="planning-success-modal__actions">
+            <button
+              type="button"
+              class="planning-wizard__btn planning-wizard__btn--ghost planning-success-modal__btn"
+              (click)="cancelSuccessModal()"
+            >
+              {{ 'PLANNING_NEW.SUCCESS_MODAL_CANCEL' | translate }}
+            </button>
+            <button
+              type="button"
+              class="planning-wizard__btn planning-wizard__btn--primary planning-success-modal__btn"
+              (click)="confirmSuccessModal()"
+            >
+              {{ 'PLANNING_NEW.SUCCESS_MODAL_CONFIRM' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>
