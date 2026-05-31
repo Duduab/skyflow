@@ -248,15 +248,57 @@
   }
 }
 
-/* Refined control panel skin — cleaner type, softer cards, lighter shadows. */
+/* Refined control panel skin — layout משותף; צבעים לפי theme */
 .admin-dash {
+  gap: 1.35rem;
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__hero-title {
+  color: #fff !important;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__hero-scope {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__hero-scope strong {
+  color: #fff;
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__hero-stat-val {
+  color: #fff;
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__hero-stat-lbl {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__project-field > span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__live-card {
+  background: rgba(8, 12, 22, 0.55);
+  border-color: rgba(85, 143, 195, 0.35);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__live-card strong {
+  color: #fff;
+}
+
+:host-context(html:not(.theme-light)) .admin-dash__live-progress {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+:host-context(html.theme-light) .admin-dash {
   --dash-panel-bg: #fff;
   --dash-panel-border: rgba(15, 23, 42, 0.1);
   --dash-panel-shadow: 0 10px 28px rgba(62, 93, 136, 0.1);
   --dash-muted: #64748b;
   --dash-strong: #0f172a;
   --dash-soft: rgba(15, 23, 42, 0.05);
-  gap: 1.35rem;
 }
 
 .admin-dash.mx-auto {
@@ -315,23 +357,29 @@
 
 .admin-dash__hero-title {
   margin: 0;
-  color: var(--dash-strong) !important;
   font-size: clamp(1.85rem, 4.2vw, 2.75rem) !important;
   font-weight: 900 !important;
   line-height: 1.02;
   letter-spacing: -0.03em;
+}
+
+:host-context(html.theme-light) .admin-dash__hero-title {
+  color: var(--dash-strong) !important;
   text-shadow: none;
 }
 
 .admin-dash__hero-scope {
   margin: 0.65rem 0 0;
-  color: var(--dash-muted) !important;
   font-size: clamp(0.95rem, 1.8vw, 1.05rem) !important;
   font-weight: 600 !important;
   line-height: 1.45;
 }
 
-.admin-dash__hero-scope strong {
+:host-context(html.theme-light) .admin-dash__hero-scope {
+  color: var(--dash-muted) !important;
+}
+
+:host-context(html.theme-light) .admin-dash__hero-scope strong {
   color: var(--dash-strong);
   font-weight: 900;
 }
@@ -357,8 +405,11 @@
   font-size: 1.35rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
-  color: var(--dash-strong);
   line-height: 1.1;
+}
+
+:host-context(html.theme-light) .admin-dash__hero-stat-val {
+  color: var(--dash-strong);
 }
 
 .admin-dash__hero-stat-lbl {
@@ -366,6 +417,9 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+:host-context(html.theme-light) .admin-dash__hero-stat-lbl {
   color: var(--dash-muted);
 }
 
@@ -397,9 +451,12 @@
 }
 
 .admin-dash__project-field > span {
-  color: var(--dash-muted);
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+:host-context(html.theme-light) .admin-dash__project-field > span {
+  color: var(--dash-muted);
 }
 
 .admin-dash__project-select {
@@ -426,7 +483,7 @@
   font-size: 0.9rem;
 }
 
-.admin-dash .sf-panel {
+:host-context(html.theme-light) .admin-dash .sf-panel {
   border-color: var(--dash-panel-border) !important;
   background-color: var(--dash-panel-bg) !important;
   background-image: none !important;
@@ -439,9 +496,12 @@
 }
 
 .admin-dash__kpi > p:first-child {
-  color: var(--dash-muted) !important;
   font-size: 0.78rem !important;
   font-weight: 800;
+}
+
+:host-context(html.theme-light) .admin-dash__kpi > p:first-child {
+  color: var(--dash-muted) !important;
 }
 
 .admin-dash__kpi > p:nth-child(2) {
@@ -457,6 +517,9 @@
   gap: 1rem;
   align-items: center;
   overflow: hidden;
+}
+
+:host-context(html.theme-light) .admin-dash__kpi--activity {
   background: var(--dash-panel-bg) !important;
 }
 
@@ -542,12 +605,15 @@
   padding: 1rem;
   color: #fff;
   text-decoration: none;
-  background: #fff;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
   transition:
     transform 0.16s ease,
     border-color 0.16s ease,
     box-shadow 0.16s ease;
+}
+
+:host-context(html.theme-light) .admin-dash__live-card {
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
 }
 
 .admin-dash__live-card:hover {
@@ -569,7 +635,6 @@
 .admin-dash__live-card strong {
   display: -webkit-box;
   overflow: hidden;
-  color: var(--dash-strong);
   font-size: 1.25rem;
   font-weight: 900;
   line-height: 1.15;
@@ -578,10 +643,17 @@
   line-clamp: 2;
 }
 
+:host-context(html.theme-light) .admin-dash__live-card strong {
+  color: var(--dash-strong);
+}
+
 .admin-dash__live-progress {
-  color: var(--dash-muted);
   font-size: 0.88rem;
   font-weight: 800;
+}
+
+:host-context(html.theme-light) .admin-dash__live-progress {
+  color: var(--dash-muted);
 }
 
 .admin-dash__live-link {
@@ -599,16 +671,22 @@
 
 .admin-dash h2 {
   margin-bottom: 0.8rem !important;
-  color: var(--dash-strong) !important;
   font-size: clamp(1.05rem, 2.2vw, 1.25rem) !important;
   letter-spacing: -0.02em;
+}
+
+:host-context(html.theme-light) .admin-dash h2 {
+  color: var(--dash-strong) !important;
   text-shadow: none;
 }
 
 .admin-dash h2 + p {
   margin-bottom: 1rem !important;
-  color: var(--dash-muted) !important;
   font-size: 0.86rem !important;
+}
+
+:host-context(html.theme-light) .admin-dash h2 + p {
+  color: var(--dash-muted) !important;
 }
 
 .admin-dash__chart-canvas {
@@ -629,8 +707,11 @@
 
 .admin-dash__projects-table th {
   padding-block: 0.9rem !important;
-  color: var(--dash-muted);
   font-size: 0.8rem;
+}
+
+:host-context(html.theme-light) .admin-dash__projects-table th {
+  color: var(--dash-muted);
 }
 
 .admin-dash__projects-table td {
@@ -645,7 +726,7 @@
   box-shadow: none;
 }
 
-.admin-dash > section:last-child {
+:host-context(html.theme-light) .admin-dash > section:last-child {
   background: var(--dash-panel-bg) !important;
 }
 
@@ -657,6 +738,9 @@
 .admin-dash__shipping {
   position: relative;
   overflow: hidden;
+}
+
+:host-context(html.theme-light) .admin-dash__shipping {
   background: #fff !important;
 }
 
@@ -701,6 +785,9 @@
   position: relative;
   overflow: hidden;
   min-height: 11rem;
+}
+
+:host-context(html.theme-light) .admin-dash__shipping-card {
   border-color: rgba(15, 23, 42, 0.08) !important;
   background: #fff !important;
   box-shadow:
@@ -763,7 +850,7 @@
   height: 1.55rem;
 }
 
-.admin-dash__shipping-name {
+:host-context(html.theme-light) .admin-dash__shipping-name {
   margin: 0;
   color: #0f172a !important;
   font-size: clamp(1.45rem, 3vw, 2rem) !important;
@@ -779,40 +866,43 @@
   margin-top: 1rem;
   border-radius: 0.95rem;
   padding: 0.75rem 0.85rem;
-  color: #475569;
-  background: #f8fafc;
   font-weight: 800;
 }
 
-.admin-dash__shipping-pack strong {
+:host-context(html.theme-light) .admin-dash__shipping-pack {
+  color: #475569;
+  background: #f8fafc;
+}
+
+:host-context(html.theme-light) .admin-dash__shipping-pack strong {
   color: #0f172a;
   font-size: 1.1rem;
   font-weight: 900;
 }
 
-.admin-dash__shipping-empty {
+:host-context(html.theme-light) .admin-dash__shipping-empty {
   border-radius: 1rem;
   padding: 1rem;
   color: #64748b !important;
   background: #f8fafc;
 }
 
-.admin-dash .text-white,
-.admin-dash .text-white\/90,
-.admin-dash .text-white\/85 {
+:host-context(html.theme-light) .admin-dash .text-white,
+:host-context(html.theme-light) .admin-dash .text-white\/90,
+:host-context(html.theme-light) .admin-dash .text-white\/85 {
   color: #0f172a !important;
 }
 
-.admin-dash .text-white\/80,
-.admin-dash .text-white\/75,
-.admin-dash .text-white\/70,
-.admin-dash .text-white\/65,
-.admin-dash .text-white\/60,
-.admin-dash .text-white\/55 {
+:host-context(html.theme-light) .admin-dash .text-white\/80,
+:host-context(html.theme-light) .admin-dash .text-white\/75,
+:host-context(html.theme-light) .admin-dash .text-white\/70,
+:host-context(html.theme-light) .admin-dash .text-white\/65,
+:host-context(html.theme-light) .admin-dash .text-white\/60,
+:host-context(html.theme-light) .admin-dash .text-white\/55 {
   color: #64748b !important;
 }
 
-.admin-dash__project-select {
+:host-context(html.theme-light) .admin-dash__project-select {
   color: #0f172a;
   --admin-dash-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b689d' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   --admin-dash-select-fill: linear-gradient(180deg, #fff, #f8fafc);

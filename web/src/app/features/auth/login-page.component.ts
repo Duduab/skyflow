@@ -4,13 +4,21 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import { UiButtonComponent } from '../../shared/ui-button.component';
 import { SkyflowLogoLoaderComponent } from '../../shared/skyflow-logo-loader/skyflow-logo-loader.component';
 import { ApiService } from '../../core/api.service';
 import { CurrentUserService } from '../../core/current-user.service';
 @Component({
   selector: 'skyflow-login-page',
-  imports: [FormsModule, RouterLink, TranslateModule, UiButtonComponent, SkyflowLogoLoaderComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    TranslateModule,
+    MatIconComponent,
+    UiButtonComponent,
+    SkyflowLogoLoaderComponent,
+  ],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
 })

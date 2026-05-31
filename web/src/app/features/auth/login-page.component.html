@@ -61,7 +61,15 @@
         [block]="true"
         btnClass="login-page__submit"
       >
-        {{ 'LOGIN.SUBMIT' | translate }}
+        <span class="login-page__submit-inner">
+          <skyflow-mat-icon
+            class="login-page__submit-icon"
+            icon="west"
+            [size]="22"
+            [weight]="300"
+          />
+          <span class="login-page__submit-label">{{ 'LOGIN.SUBMIT' | translate }}</span>
+        </span>
       </skyflow-ui-button>
     </form>
   </div>

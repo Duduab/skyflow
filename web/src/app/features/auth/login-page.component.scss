@@ -144,7 +144,9 @@
   border-radius: 1rem;
   padding: 0.8rem 1rem;
   color: #0f172a;
+  font-family: var(--sf-font);
   font-size: 1.05rem;
+  font-weight: 400;
   text-align: center;
   background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
   box-shadow:
@@ -154,6 +156,11 @@
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease;
+}
+
+.login-page__input::placeholder {
+  font-weight: 400;
+  color: #94a3b8;
 }
 
 .login-page__input:focus {
@@ -176,11 +183,24 @@
   background: #fef2f2;
 }
 
+.login-page__submit-inner {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  direction: ltr;
+}
+
+.login-page__submit-label {
+  unicode-bidi: plaintext;
+}
+
 .login-page__submit {
   position: relative;
+  width: 100%;
   min-height: 4.35rem;
   margin-top: 1rem;
-  width: 100%;
   justify-content: center;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.26);
@@ -225,6 +245,10 @@
 .login-page__submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.login-page__submit-icon {
+  opacity: 0.82;
 }
 
 :host-context(html.theme-light) .login-page::before {
