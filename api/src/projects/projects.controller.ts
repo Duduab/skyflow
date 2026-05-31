@@ -10,6 +10,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage, memoryStorage } from 'multer';
@@ -44,10 +45,14 @@ export class ProjectsController {
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post()
-  createDraft(@Body() dto: CreatePlanningDraftDto) {
+  createDraft(
+    @Body() dto: CreatePlanningDraftDto,
+    @Req() req: { user?: { userId?: string } },
+  ) {
     return this.projectsService.createPlanningDraft(
       dto.name,
       dto.requirements,
+      req.user?.userId ?? null,
     );
   }
 

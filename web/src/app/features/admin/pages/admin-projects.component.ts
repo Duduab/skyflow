@@ -18,6 +18,7 @@ import {
   AdminDashboard,
   AdminProjectRow,
   ProjectActivityResponse,
+  ProjectOpenedByUser,
 } from '../../../core/skyflow.models';
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
@@ -66,6 +67,7 @@ export class AdminProjectsComponent implements OnInit {
   readonly detailError = signal<string | null>(null);
   readonly detailData = signal<ProjectActivityResponse | null>(null);
   readonly selectedCard = signal<AdminProjectRow | null>(null);
+  readonly openedByPhotoFailedIds = signal<Set<string>>(new Set());
 
   readonly scrapCmTotal = computed(() => {
     const rows = this.detailData()?.scrapRows;
@@ -107,6 +109,26 @@ export class AdminProjectsComponent implements OnInit {
 
   setSearch(value: string): void {
     this.searchQuery.set(value);
+  }
+
+  openedByName(u: ProjectOpenedByUser): string {
+    return `${u.firstName} ${u.lastName}`.trim();
+  }
+
+  openedByInitials(u: ProjectOpenedByUser): string {
+    const a = u.firstName?.trim().charAt(0) ?? '';
+    const b = u.lastName?.trim().charAt(0) ?? '';
+    return (a + b).toUpperCase() || '?';
+  }
+
+  openedByPhotoVisible(u: ProjectOpenedByUser): boolean {
+    const url = u.photoUrl?.trim();
+    if (!url) return false;
+    return !this.openedByPhotoFailedIds().has(u.id);
+  }
+
+  onOpenedByPhotoError(userId: string): void {
+    this.openedByPhotoFailedIds.update((s) => new Set(s).add(userId));
   }
 
   setStatusFilter(value: string): void {

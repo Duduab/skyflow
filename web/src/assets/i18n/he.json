@@ -91,7 +91,10 @@
     "PROJECTS_NEXT": "הבא",
     "LIVE_PROJECTS_TITLE": "תצוגה חיה",
     "LIVE_PROJECTS_SUB": "פרויקטים פעילים שאפשר לפתוח ישירות למפת התחנות.",
-    "OPEN_LIVE_VIEW": "פתיחת תצוגה חיה"
+    "OPEN_LIVE_VIEW": "פתיחת תצוגה חיה",
+    "LIVE_CAROUSEL_LABEL": "קרוסלת פרויקטים חיים",
+    "LIVE_CAROUSEL_PREV": "הצג פרויקטים קודמים",
+    "LIVE_CAROUSEL_NEXT": "הצג פרויקטים הבאים"
   },
   "PLANNING": {
     "TITLE": "העלאת תכנון (תפ״י)",
@@ -240,8 +243,8 @@
     "PROGRESS_LABEL": "התקדמות ביצירה",
     "STAT_ITEMS": "פריטים בקובץ",
     "STAT_UPDATED": "עודכן",
-    "CONTINUE": "המשך עריכה",
-    "EDIT": "עריכת שם",
+    "CONTINUE": "עריכה",
+    "EDIT": "שם",
     "EDIT_NAME": "שם הפרויקט",
     "SAVE": "שמירה",
     "CANCEL": "ביטול",
@@ -269,6 +272,7 @@
     "SEARCH_EMPTY": "לא נמצאו פרויקטים התואמים לחיפוש",
     "CARD_WORK_ORDERS": "פקודות עבודה",
     "CARD_PURCHASE_ORDERS": "הזמנות רכש",
+    "OPENED_BY": "נפתח על ידי",
     "CARD_HINT": "לחץ לפתיחת פירוט מלא",
     "CARD_OPEN_DETAIL": "פתיחת פרטי פרויקט",
     "QUICK_STATIONS": "מעבר מהיר לתחנות",

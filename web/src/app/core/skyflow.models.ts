@@ -172,6 +172,13 @@ export interface SendProjectDocumentEmailResponse {
   mailto?: string;
 }
 
+export interface ProjectOpenedByUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  photoUrl: string | null;
+}
+
 export interface AdminProjectRow {
   id: string;
   name: string;
@@ -184,6 +191,8 @@ export interface AdminProjectRow {
   purchaseOrders: ProjectDocumentDto[];
   /** תצוגה חיה — פרויקט בביצוע עם דיווח בתחנה 1 */
   liveViewAvailable?: boolean;
+  /** משתמש שיצר/פתח את הפרויקט */
+  openedBy?: ProjectOpenedByUser | null;
 }
 
 export type ProductType = 'UNIT' | 'WINDOW';

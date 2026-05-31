@@ -58,6 +58,30 @@
             <span class="admin-proj-card__badge">{{ ('ORDER_STATUS.' + p.status) | translate }}</span>
           </div>
 
+          @if (p.openedBy; as opener) {
+            <div class="admin-proj-card__opener">
+              <span class="admin-proj-card__opener-label">
+                {{ 'ADMIN_PROJECTS.OPENED_BY' | translate }}
+              </span>
+              <span class="admin-proj-card__opener-user">
+                <span class="admin-proj-card__opener-avatar" aria-hidden="true">
+                  @if (openedByPhotoVisible(opener)) {
+                    <img
+                      [src]="opener.photoUrl!"
+                      alt=""
+                      (error)="onOpenedByPhotoError(opener.id)"
+                    />
+                  } @else {
+                    <span class="admin-proj-card__opener-initials">{{
+                      openedByInitials(opener)
+                    }}</span>
+                  }
+                </span>
+                <span class="admin-proj-card__opener-name">{{ openedByName(opener) }}</span>
+              </span>
+            </div>
+          }
+
           <dl class="admin-proj-card__stats">
             <div>
               <dt>{{ 'ADMIN_PAGE.PROGRESS' | translate }}</dt>

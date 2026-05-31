@@ -34,6 +34,36 @@ function pickMaxDate(a: Date | null, b: Date | null): Date | null {
   return a > b ? a : b;
 }
 
+type OpenedByRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  photoUrl: string | null;
+};
+
+function mapOpenedBy(
+  ...candidates: (OpenedByRow | null | undefined)[]
+): OpenedByRow | null {
+  for (const u of candidates) {
+    if (u) {
+      return {
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        photoUrl: u.photoUrl,
+      };
+    }
+  }
+  return null;
+}
+
+const openedByUserSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  photoUrl: true,
+} as const;
+
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
@@ -123,6 +153,9 @@ export class AdminService {
         take: 200,
         include: {
           documents: { orderBy: { sortOrder: 'asc' } },
+          createdBy: { select: openedByUserSelect },
+          planningSawsManager: { select: openedByUserSelect },
+          planningAssignee: { select: openedByUserSelect },
         },
       }),
       this.prisma.stationLog.findMany({
@@ -305,6 +338,11 @@ export class AdminService {
           workOrders,
           purchaseOrders,
           liveViewAvailable,
+          openedBy: mapOpenedBy(
+            o.createdBy,
+            o.planningSawsManager,
+            o.planningAssignee,
+          ),
         };
       }),
       bottlenecks,

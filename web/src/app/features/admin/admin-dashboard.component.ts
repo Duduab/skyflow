@@ -2,9 +2,11 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   OnInit,
   signal,
+  viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
@@ -27,11 +29,14 @@ import { OrderPickerModalComponent } from '../../shared/order-picker-modal/order
 import { OrderPickerPreview } from '../../shared/order-picker-modal/order-picker.types';
 import { LanguageService } from '../../core/language.service';
 import { ThemeService } from '../../core/theme.service';
+import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import {
   enhanceAdminBarDataset,
   enhanceAdminDoughnutDataset,
   enhanceAdminLineDataset,
 } from './admin-chart-style.util';
+
+const LIVE_CAROUSEL_PAGE_SIZE = 3;
 
 @Component({
   selector: 'skyflow-admin-dashboard',
@@ -41,6 +46,7 @@ import {
     DatePipe,
     RouterLink,
     OrderPickerModalComponent,
+    MatIconComponent,
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
@@ -65,6 +71,9 @@ export class AdminDashboardComponent implements OnInit {
   /** טבלת פרויקטים בדשבורד — עימוד */
   readonly projectsPageSize = 10;
   readonly projectsPageIndex = signal(0);
+  readonly liveCarouselIndex = signal(0);
+  readonly liveCarouselPageSize = LIVE_CAROUSEL_PAGE_SIZE;
+  readonly liveCarouselSliding = signal(false);
 
   readonly adminOrdersModalOpen = signal(false);
   readonly adminOrderPreviews = signal<Map<string, OrderPickerPreview>>(
@@ -137,12 +146,29 @@ export class AdminDashboardComponent implements OnInit {
     datasets: [],
   });
 
-  readonly chartOptions = computed<ChartConfiguration['options']>(() =>
-    this.lineBarOptions(this.theme.mode() === 'light'),
-  );
+  private readonly chartRefs = viewChildren(BaseChartDirective);
+
+  readonly chartOptions = computed<ChartConfiguration['options']>(() => {
+    const light = this.theme.mode() === 'light';
+    const lineMax = maxDatasetValue(this.lineChartData());
+    const barMax = maxDatasetValue(this.barChartData());
+    const suggestedMax = Math.max(lineMax, barMax) === 0 ? 8 : undefined;
+    return this.lineBarOptions(light, suggestedMax);
+  });
   readonly doughnutOptions = computed<
     ChartConfiguration<'doughnut'>['options']
   >(() => this.doughnutChartOptions(this.theme.mode() === 'light'));
+
+  constructor() {
+    effect(() => {
+      const d = this.data();
+      this.lang.current();
+      this.theme.mode();
+      if (!d?.charts) return;
+      this.syncChartsFromDashboard(d);
+      queueMicrotask(() => this.refreshCharts());
+    });
+  }
 
   ngOnInit(): void {
     this.reload$
@@ -204,6 +230,33 @@ export class AdminDashboardComponent implements OnInit {
     return d.projects.filter((p) => p.liveViewAvailable);
   }
 
+  liveCarouselCanPrev(): boolean {
+    return this.liveCarouselIndex() > 0;
+  }
+
+  liveCarouselCanNext(d: AdminDashboard): boolean {
+    const total = this.liveProjects(d).length;
+    return this.liveCarouselIndex() + LIVE_CAROUSEL_PAGE_SIZE < total;
+  }
+
+  liveCarouselPrev(): void {
+    if (!this.liveCarouselCanPrev()) return;
+    this.liveCarouselSliding.set(true);
+    this.liveCarouselIndex.update((i) => Math.max(0, i - 1));
+  }
+
+  liveCarouselNext(d: AdminDashboard): void {
+    if (!this.liveCarouselCanNext(d)) return;
+    const maxStart = Math.max(0, this.liveProjects(d).length - LIVE_CAROUSEL_PAGE_SIZE);
+    this.liveCarouselSliding.set(true);
+    this.liveCarouselIndex.update((i) => Math.min(maxStart, i + 1));
+  }
+
+  private resetLiveCarousel(): void {
+    this.liveCarouselIndex.set(0);
+    this.liveCarouselSliding.set(false);
+  }
+
   private refreshAdminOrderPreviews(): void {
     const orders = this.projectsAsOrders();
     if (!orders.length) {
@@ -232,6 +285,7 @@ export class AdminDashboardComponent implements OnInit {
   onProjectFilterChange(value: string): void {
     this.selectedProjectId.set(value || null);
     this.projectsPageIndex.set(0);
+    this.resetLiveCarousel();
     this.reload$.next();
   }
 
@@ -274,10 +328,17 @@ export class AdminDashboardComponent implements OnInit {
 
   private applyDashboard(d: AdminDashboard): void {
     this.data.set(d);
+    const liveTotal = d.projects.filter((p) => p.liveViewAvailable).length;
+    const liveMaxStart = Math.max(0, liveTotal - LIVE_CAROUSEL_PAGE_SIZE);
+    if (this.liveCarouselIndex() > liveMaxStart) {
+      this.liveCarouselIndex.set(liveMaxStart);
+    }
     const pages = Math.max(1, Math.ceil(d.projects.length / this.projectsPageSize));
     if (this.projectsPageIndex() >= pages) {
       this.projectsPageIndex.set(Math.max(0, pages - 1));
     }
+    this.syncChartsFromDashboard(d);
+
     if (
       this.firstDashboardLoad &&
       d.projects.length &&
@@ -290,6 +351,10 @@ export class AdminDashboardComponent implements OnInit {
     }
     this.firstDashboardLoad = false;
 
+    queueMicrotask(() => this.refreshCharts());
+  }
+
+  private syncChartsFromDashboard(d: AdminDashboard): void {
     const loc = this.dateLocale();
     const dayLabels = d.charts.dailyProgress.labels.map((iso) => {
       const dt = new Date(`${iso}T12:00:00Z`);
@@ -332,7 +397,16 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  private lineBarOptions(themeLight: boolean): ChartConfiguration['options'] {
+  private refreshCharts(): void {
+    for (const chart of this.chartRefs()) {
+      chart.update();
+    }
+  }
+
+  private lineBarOptions(
+    themeLight: boolean,
+    suggestedMax?: number,
+  ): ChartConfiguration['options'] {
     const axisColor = themeLight ? '#334155' : '#e8eef7';
     const grid = themeLight
       ? 'rgba(15, 23, 42, 0.08)'
@@ -391,6 +465,7 @@ export class AdminDashboardComponent implements OnInit {
         },
         y: {
           beginAtZero: true,
+          ...(suggestedMax != null ? { suggestedMax } : {}),
           ticks: { color: axisColor, font: { size: 13 } },
           grid: { color: grid },
           border: {
@@ -465,4 +540,16 @@ export class AdminDashboardComponent implements OnInit {
       },
     };
   }
+}
+
+function maxDatasetValue(chart: ChartData): number {
+  let max = 0;
+  for (const ds of chart.datasets ?? []) {
+    const data = ds.data as number[] | undefined;
+    if (!data?.length) continue;
+    for (const v of data) {
+      if (typeof v === 'number' && v > max) max = v;
+    }
+  }
+  return max;
 }

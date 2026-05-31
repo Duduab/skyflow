@@ -74,8 +74,16 @@ export class ProjectsService {
     private readonly mail: MailService,
   ) {}
 
-  async createPlanningDraft(name: string, requirements?: string) {
+  async createPlanningDraft(
+    name: string,
+    requirements?: string,
+    createdByUserId?: string | null,
+  ) {
     const details = requirements?.trim() ?? '';
+    const creatorId =
+      createdByUserId && String(createdByUserId).trim().length
+        ? String(createdByUserId).trim()
+        : null;
     return this.prisma.projectOrder.create({
       data: {
         name: name.trim(),
@@ -84,6 +92,7 @@ export class ProjectsService {
         status: OrderStatus.PENDING,
         flowStatus: ProjectFlowStatus.PENDING_PLANNING,
         originalLength: new Prisma.Decimal(0),
+        createdByUserId: creatorId,
       },
     });
   }

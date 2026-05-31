@@ -65,7 +65,7 @@
 
 .planning-new__hero-card {
   position: relative;
-  border-radius: 1.5rem;
+  border-radius: var(--sf-radius);
   padding: 1px;
   background: linear-gradient(
     135deg,
@@ -73,21 +73,17 @@
     rgba(99, 102, 241, 0.25),
     rgba(34, 197, 94, 0.2)
   );
-  box-shadow:
-    0 4px 6px -1px rgba(15, 23, 42, 0.06),
-    0 24px 48px -12px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--sf-shadow);
 }
 
 :host-context(html:not(.theme-light)) .planning-new__hero-card {
-  box-shadow:
-    0 0 0 1px rgba(148, 163, 184, 0.08),
-    0 28px 56px -16px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(148, 163, 184, 0.08);
 }
 
 .planning-new__hero-glow {
   position: absolute;
   inset: -35% -15%;
-  border-radius: inherit;
+  border-radius: var(--sf-radius);
   background: conic-gradient(
     from 200deg at 50% 50%,
     rgba(14, 165, 233, 0.35),
@@ -116,7 +112,7 @@
 .planning-new__hero-shine {
   position: absolute;
   inset: 0;
-  border-radius: calc(1.5rem - 1px);
+  border-radius: var(--sf-radius);
   background: linear-gradient(
     125deg,
     rgba(255, 255, 255, 0.55) 0%,
@@ -142,7 +138,7 @@
   z-index: 1;
   text-align: center;
   padding: 2rem 1.5rem 2.25rem;
-  border-radius: calc(1.5rem - 1px);
+  border-radius: var(--sf-radius);
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -170,13 +166,13 @@
   text-transform: uppercase;
   color: #fff;
   background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 40%, #0284c7 100%);
-  box-shadow: 0 4px 14px rgba(3, 105, 161, 0.35);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-new__title {
   margin: 1.1rem 0 0;
   font-size: clamp(1.85rem, 4.5vw, 2.75rem);
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.035em;
   line-height: 1.08;
   color: #0f172a;
@@ -206,7 +202,7 @@
   flex-direction: column;
   gap: 0.85rem;
   padding: 1rem 1.25rem;
-  border-radius: 1rem;
+  border-radius: var(--sf-radius);
   align-items: flex-start;
 }
 
@@ -270,12 +266,10 @@
 .planning-wizard__rail {
   margin-top: 1.75rem;
   padding: 1.35rem 1rem 1.5rem;
-  border-radius: 1.25rem;
+  border-radius: var(--sf-radius);
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 12px 40px -12px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--sf-shadow);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -283,9 +277,7 @@
 :host-context(html:not(.theme-light)) .planning-wizard__rail {
   background: rgba(15, 23, 42, 0.55);
   border-color: rgba(51, 65, 85, 0.5);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 16px 48px -12px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__rail-inner {
@@ -356,7 +348,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: inherit;
+  border-radius: var(--sf-radius);
   background: linear-gradient(
     90deg,
     var(--sf-blue, #558fc3),
@@ -387,7 +379,7 @@
   border: 2px solid rgb(226 232 240);
   background: #fff;
   color: #64748b;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--sf-shadow);
   transition:
     transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 0.2s ease,
@@ -400,7 +392,7 @@
   background: rgba(30, 41, 59, 0.95);
   border-color: rgba(71, 85, 105, 0.75);
   color: rgba(226, 232, 240, 0.9);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__dot-num {
@@ -434,9 +426,7 @@
   border-color: #0ea5e9;
   background: linear-gradient(160deg, #e0f2fe 0%, #fff 100%);
   color: #0369a1;
-  box-shadow:
-    0 0 0 4px rgba(14, 165, 233, 0.2),
-    0 8px 20px rgba(14, 165, 233, 0.2);
+  box-shadow: var(--sf-shadow), 0 0 0 4px rgba(14, 165, 233, 0.2);
   animation: planning-wizard-dot-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -471,9 +461,7 @@
   background: linear-gradient(160deg, rgba(12, 74, 110, 0.95), rgba(15, 23, 42, 0.98));
   color: #bae6fd;
   border-color: #38bdf8;
-  box-shadow:
-    0 0 0 4px rgba(56, 189, 248, 0.18),
-    0 10px 28px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--sf-shadow), 0 0 0 4px rgba(56, 189, 248, 0.18);
 }
 
 .planning-wizard__step-text {
@@ -520,13 +508,11 @@
 
 .planning-wizard__card {
   position: relative;
-  border-radius: 1.25rem;
+  border-radius: var(--sf-radius);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.85);
   background: rgba(255, 255, 255, 0.65);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 20px 50px -18px rgba(15, 23, 42, 0.14);
+  box-shadow: var(--sf-shadow);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
@@ -534,9 +520,7 @@
 :host-context(html:not(.theme-light)) .planning-wizard__card {
   border-color: rgba(51, 65, 85, 0.55);
   background: rgba(15, 23, 42, 0.62);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 24px 56px -16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__card-accent {
@@ -635,7 +619,7 @@
 .planning-wizard__input {
   width: 100%;
   min-height: 3.35rem;
-  border-radius: 0.9rem;
+  border-radius: var(--sf-radius);
   border: 1px solid rgb(226 232 240);
   background: #fff;
   padding: 0.7rem 1.1rem;
@@ -690,7 +674,7 @@
   width: 100%;
   min-height: 6.5rem;
   resize: vertical;
-  border-radius: 0.9rem;
+  border-radius: var(--sf-radius);
   border: 1px solid rgb(226 232 240);
   background: #fff;
   padding: 0.75rem 1.1rem;
@@ -756,7 +740,7 @@
   gap: 0.4rem;
   min-height: 2.85rem;
   padding: 0.55rem 1.35rem;
-  border-radius: 0.9rem;
+  border-radius: var(--sf-radius);
   border: none;
   cursor: pointer;
   font-size: 0.95rem;
@@ -783,9 +767,7 @@
   font-size: 1rem;
   background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%);
   color: #fff;
-  box-shadow:
-    0 2px 0 rgba(255, 255, 255, 0.15) inset,
-    0 12px 32px rgba(3, 105, 161, 0.35);
+  box-shadow: var(--sf-shadow);
 }
 
 @media (min-width: 640px) {
@@ -797,9 +779,7 @@
 
 .planning-wizard__btn--primary:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow:
-    0 2px 0 rgba(255, 255, 255, 0.18) inset,
-    0 16px 40px rgba(3, 105, 161, 0.42);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__btn--ghost {
@@ -900,7 +880,7 @@
 
 .planning-wizard__resume-chip:hover {
   border-color: #0ea5e9;
-  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.18);
+  box-shadow: var(--sf-shadow);
   transform: translateY(-1px);
 }
 
@@ -919,16 +899,16 @@
   text-align: center;
   gap: 0.25rem;
   padding: 1.1rem 1.25rem;
-  border-radius: 1rem;
+  border-radius: var(--sf-radius);
   border: 1px solid rgba(14, 165, 233, 0.22);
   background: linear-gradient(180deg, rgba(224, 242, 254, 0.65) 0%, rgba(255, 255, 255, 0.5) 100%);
-  box-shadow: 0 8px 28px -12px rgba(14, 165, 233, 0.25);
+  box-shadow: var(--sf-shadow);
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__step-banner {
   border-color: rgba(56, 189, 248, 0.25);
   background: linear-gradient(180deg, rgba(12, 74, 110, 0.45) 0%, rgba(15, 23, 42, 0.55) 100%);
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__step-banner-kicker {
@@ -998,7 +978,7 @@
   gap: 0.75rem;
   align-items: flex-start;
   padding: 1rem 1.1rem;
-  border-radius: 0.95rem;
+  border-radius: var(--sf-radius);
   border: 1px solid rgb(241 245 249);
   background: linear-gradient(165deg, #fff 0%, #f8fafc 100%);
 }
@@ -1036,12 +1016,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
+  border-radius: var(--sf-radius);
   background: linear-gradient(145deg, #0ea5e9, #0284c7);
   color: #fff;
   font-size: 0.82rem;
   font-weight: 900;
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__assign-heading {
@@ -1107,7 +1087,7 @@
   gap: 0.4rem;
   text-align: start;
   padding: 1.05rem 1.15rem;
-  border-radius: 0.95rem;
+  border-radius: var(--sf-radius);
   border: 2px solid rgb(241 245 249);
   background: #fff;
   cursor: pointer;
@@ -1143,12 +1123,12 @@
   display: block;
   border-radius: 50%;
   border: 2px solid rgba(15, 23, 42, 0.14);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  box-shadow: var(--sf-shadow);
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__profile-img {
   border-color: rgba(255, 255, 255, 0.32);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__profile-fallback {
@@ -1160,13 +1140,13 @@
   border-radius: 50%;
   border: 2px solid rgba(15, 23, 42, 0.12);
   background: linear-gradient(155deg, rgba(14, 165, 233, 0.2) 0%, rgba(99, 102, 241, 0.18) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 .planning-wizard__profile-fallback--empty {
   background: rgba(241, 245, 249, 0.95);
   border-color: rgba(148, 163, 184, 0.55);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 .planning-wizard__profile-fallback--empty svg {
@@ -1178,7 +1158,7 @@
 :host-context(html:not(.theme-light)) .planning-wizard__profile-fallback {
   border-color: rgba(255, 255, 255, 0.22);
   background: rgba(0, 0, 0, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__profile-fallback--empty {
@@ -1225,7 +1205,7 @@
 .planning-wizard__assignee-card:hover {
   border-color: rgba(14, 165, 233, 0.45);
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px -8px rgba(14, 165, 233, 0.2);
+  box-shadow: var(--sf-shadow);
 }
 
 .planning-wizard__assignee-card--selected {
@@ -1236,18 +1216,14 @@
     var(--sf-indigo, #4b689d) 52%,
     var(--sf-navy, #3e5d88) 100%
   );
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
-    0 14px 34px rgba(62, 93, 136, 0.38);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
   color: #fff;
 }
 
 .planning-wizard__assignee-card--selected:hover {
   border-color: color-mix(in srgb, var(--sf-indigo, #4b689d) 80%, #fff);
   transform: translateY(-2px);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.16) inset,
-    0 18px 40px rgba(62, 93, 136, 0.44);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.16) inset;
 }
 
 .planning-wizard__assignee-card--selected .planning-wizard__assignee-name,
@@ -1268,9 +1244,7 @@
 .planning-wizard__assignee-card--selected .planning-wizard__profile-img,
 .planning-wizard__assignee-card--selected .planning-wizard__profile-fallback {
   border-color: rgba(255, 255, 255, 0.85);
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.25),
-    0 4px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--sf-shadow), 0 0 0 2px rgba(255, 255, 255, 0.25);
 }
 
 .planning-wizard__assignee-card--selected .planning-wizard__profile-initials {
@@ -1319,9 +1293,7 @@
 
 :host-context(html:not(.theme-light)) .planning-wizard__assignee-card--selected {
   border-color: color-mix(in srgb, var(--sf-blue, #558fc3) 55%, transparent);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-    0 14px 36px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 :host-context(html:not(.theme-light))
@@ -1396,7 +1368,7 @@
   z-index: 1;
   width: 100%;
   max-width: 26rem;
-  border-radius: 1.35rem;
+  border-radius: var(--sf-radius);
   padding: 1px;
   background: linear-gradient(
     135deg,
@@ -1404,9 +1376,7 @@
     rgba(75, 104, 157, 0.45),
     rgba(62, 93, 136, 0.5)
   );
-  box-shadow:
-    0 24px 56px -12px rgba(62, 93, 136, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
   animation: planning-success-modal-in 0.42s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
@@ -1424,7 +1394,7 @@
 .planning-success-modal__glow {
   position: absolute;
   inset: -30%;
-  border-radius: inherit;
+  border-radius: var(--sf-radius);
   background: radial-gradient(
     circle at 50% 0%,
     rgba(85, 143, 195, 0.35),
@@ -1436,7 +1406,7 @@
 
 .planning-success-modal__inner {
   position: relative;
-  border-radius: calc(1.35rem - 1px);
+  border-radius: var(--sf-radius);
   padding: 1.5rem 1.35rem 1.35rem;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(16px);
@@ -1469,16 +1439,14 @@
     var(--sf-indigo, #4b689d) 55%,
     var(--sf-navy, #3e5d88)
   );
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--sf-blue, #558fc3) 18%, transparent),
-    0 12px 28px rgba(62, 93, 136, 0.32);
+  box-shadow: var(--sf-shadow), 0 0 0 4px color-mix(in srgb, var(--sf-blue, #558fc3) 18%, transparent);
 }
 
 .planning-success-modal__title {
   margin: 0 0 1.15rem;
   text-align: center;
   font-size: 1.28rem;
-  font-weight: 900;
+  font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.3;
   color: var(--sf-navy, #3e5d88);
@@ -1501,7 +1469,7 @@
   gap: 0.5rem 0.75rem;
   align-items: start;
   padding: 0.55rem 0.65rem;
-  border-radius: 0.75rem;
+  border-radius: var(--sf-radius);
   background: color-mix(in srgb, var(--sf-blue, #558fc3) 7%, #f8fafc);
   border: 1px solid color-mix(in srgb, var(--sf-blue, #558fc3) 14%, #e2e8f0);
 }

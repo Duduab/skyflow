@@ -59,6 +59,7 @@ model User {
 
   planningAssignedProjects ProjectOrder[] @relation("PlanningAssignee")
   planningSawsManagerOfProjects ProjectOrder[] @relation("PlanningSawsManager")
+  createdProjects          ProjectOrder[] @relation("ProjectCreator")
   projectSawsPlanningWorkers    ProjectPlanningSawsWorker[]
 
   @@index([role])
@@ -88,6 +89,9 @@ model ProjectOrder {
   /// מנהל עמדת מסורים (1) משובץ מתכנון — נפרד מעובדים
   planningSawsManagerUserId String?
   planningSawsManager       User?   @relation("PlanningSawsManager", fields: [planningSawsManagerUserId], references: [id], onDelete: SetNull)
+  /// משתמש שיצר/פתח את הפרויקט (טיוטת תכנון)
+  createdByUserId        String?
+  createdBy              User?   @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -101,6 +105,7 @@ model ProjectOrder {
 
   @@index([planningAssigneeUserId])
   @@index([planningSawsManagerUserId])
+  @@index([createdByUserId])
 }
 
 /// עובדים משובצים לתחנת מסורים (1) מתכנון

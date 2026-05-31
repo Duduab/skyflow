@@ -180,6 +180,12 @@ async function main() {
     });
   }
 
+  const planningCreator = await prisma.user.findUnique({
+    where: { email: 'planning@skyflow.local' },
+    select: { id: true },
+  });
+  const demoCreatorId = planningCreator?.id ?? null;
+
   const older = new Date('2025-01-01T00:00:00.000Z');
   const now = new Date();
 
@@ -195,6 +201,7 @@ async function main() {
         status: p.status,
         flowStatus: ProjectFlowStatus.IN_PRODUCTION,
         originalLength: p.originalLength,
+        createdByUserId: demoCreatorId,
         updatedAt,
         documents: {
           create: [

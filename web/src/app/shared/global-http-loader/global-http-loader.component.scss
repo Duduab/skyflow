@@ -19,9 +19,7 @@
   justify-content: center;
   padding: 0.35rem;
   border-radius: 999px;
-  box-shadow:
-    0 28px 64px rgba(0, 0, 0, 0.45),
-    0 0 48px rgba(14, 165, 233, 0.12);
+  box-shadow: var(--sf-shadow);
 }
 
 @keyframes http-loader-fade-in {

@@ -19,7 +19,7 @@ html.theme-light .sf-shell {
 html.theme-light .sf-header {
   background: rgba(255, 255, 255, 0.9);
   border-bottom-color: rgba(15, 23, 42, 0.1);
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--sf-shadow);
 }
 
 html.theme-light .sf-brand-text .text-hero,
@@ -31,7 +31,7 @@ html.theme-light .sf-brand-text .text-touch {
 html.theme-light .sf-lang-bar {
   background: rgba(241, 245, 249, 0.95);
   border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: inset 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light .sf-lang-btn {
@@ -64,9 +64,7 @@ html.theme-light .sf-lang-btn.is-active:focus-visible {
 }
 
 html.theme-light .sf-theme-toggle:focus-visible {
-  box-shadow:
-    inset 0 2px 8px rgba(15, 23, 42, 0.06),
-    0 0 0 4px rgba(62, 93, 136, 0.22);
+  box-shadow: var(--sf-shadow-inset), 0 0 0 4px rgba(62, 93, 136, 0.22);
 }
 
 html.theme-light .sf-theme-toggle--icon {
@@ -101,34 +99,30 @@ html.theme-light .sf-ui-btn--primary:focus-visible {
 html.theme-light .sf-panel {
   border-color: rgba(15, 23, 42, 0.12);
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 14px 36px rgba(62, 93, 136, 0.12);
+  box-shadow: var(--sf-shadow);
 }
 
 html.theme-light .sf-card-home {
   color: #0f172a;
   border-color: rgba(15, 23, 42, 0.12);
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--sf-shadow);
 }
 
 html.theme-light .sf-card-home:hover {
   border-color: rgba(15, 23, 42, 0.18);
   background: #fff;
-  box-shadow: 0 10px 28px rgba(62, 93, 136, 0.14);
+  box-shadow: var(--sf-shadow);
 }
 
 html.theme-light .sf-card-home:focus-visible {
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.06),
-    0 0 0 4px rgba(85, 143, 195, 0.28);
+  box-shadow: var(--sf-shadow), 0 0 0 4px rgba(85, 143, 195, 0.28);
 }
 
 html.theme-light .sf-card-home__icon-ring {
   border-color: rgba(15, 23, 42, 0.12);
   background: rgba(248, 250, 252, 0.98);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 2px 8px rgba(62, 93, 136, 0.08);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light .sf-card-home--worker .sf-card-home__icon-ring {
@@ -275,16 +269,14 @@ html.theme-light skyflow-worker-hub .worker-hub__overall-pct {
 
 html.theme-light skyflow-worker-hub .worker-hub__overall-track {
   background: rgba(15, 23, 42, 0.12);
-  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 /* מודאל בחירת הזמנות — משותף ל hub ולמנהל */
 html.theme-light skyflow-order-picker-modal .order-picker-modal__panel.sf-panel {
   border-color: rgba(15, 23, 42, 0.14);
   background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.06),
-    0 24px 48px -12px rgba(15, 23, 42, 0.14);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(15, 23, 42, 0.06);
 }
 
 html.theme-light skyflow-order-picker-modal .order-picker-modal__title {
@@ -393,17 +385,11 @@ html.theme-light skyflow-worker-hub .station-card__index {
   color: #0f172a;
   background: #fff;
   border-color: var(--accent, #558fc3);
-  box-shadow:
-    0 2px 10px rgba(15, 23, 42, 0.1),
-    0 0 12px color-mix(in srgb, var(--accent, #558fc3) 22%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-hub .station-card__index--done {
-  box-shadow:
-    0 0 18px color-mix(in srgb, var(--accent, #558fc3) 35%, transparent),
-    0 2px 8px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn {
@@ -414,18 +400,12 @@ html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn {
     rgba(52, 211, 153, 0.95) 100%
   );
   border-color: rgba(5, 150, 105, 0.45);
-  box-shadow:
-    0 0 16px rgba(52, 211, 153, 0.35),
-    0 2px 8px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn:hover {
   filter: brightness(0.97);
-  box-shadow:
-    0 0 20px rgba(52, 211, 153, 0.42),
-    0 3px 10px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-admin-dashboard .admin-dash__orders-open.sf-ui-btn {
@@ -436,26 +416,18 @@ html.theme-light skyflow-admin-dashboard .admin-dash__orders-open.sf-ui-btn {
     rgba(52, 211, 153, 0.95) 100%
   );
   border-color: rgba(5, 150, 105, 0.45);
-  box-shadow:
-    0 0 16px rgba(52, 211, 153, 0.35),
-    0 2px 8px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-admin-dashboard .admin-dash__orders-open.sf-ui-btn:hover {
   filter: brightness(0.97);
-  box-shadow:
-    0 0 20px rgba(52, 211, 153, 0.42),
-    0 3px 10px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light .sf-bottom-nav__bar {
   border-color: rgba(15, 23, 42, 0.12);
   background: rgba(255, 255, 255, 0.92);
-  box-shadow:
-    0 8px 32px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light .sf-bottom-nav__item {
@@ -474,7 +446,7 @@ html.theme-light .sf-bottom-nav__item.is-active {
     rgba(85, 143, 195, 0.22),
     rgba(75, 104, 157, 0.18)
   );
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light .sf-bottom-nav__icon {
@@ -484,9 +456,7 @@ html.theme-light .sf-bottom-nav__icon {
 html.theme-light .sf-bottom-nav__flyout {
   border-color: rgba(15, 23, 42, 0.12);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow:
-    0 -4px 24px rgba(15, 23, 42, 0.08),
-    0 12px 40px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--sf-shadow);
 }
 
 html.theme-light .sf-bottom-nav__flyout-item {
@@ -499,7 +469,7 @@ html.theme-light .sf-bottom-nav__flyout-item:hover {
 }
 
 html.theme-light .sf-bottom-nav__flyout-item.is-current {
-  box-shadow: inset 0 0 0 2px rgba(85, 143, 195, 0.55);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light .sf-bottom-nav__flyout-icon {
@@ -717,16 +687,12 @@ html.theme-light skyflow-admin-dashboard .admin-dash__export:hover {
 html.theme-light skyflow-admin-dashboard .admin-dash .sf-panel.shadow-sf,
 html.theme-light skyflow-admin-dashboard .admin-dash .sf-panel.shadow-sf-lg {
   border-color: rgba(15, 23, 42, 0.1) !important;
-  box-shadow:
-    0 3px 14px rgba(15, 23, 42, 0.06),
-    0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  box-shadow: var(--sf-shadow);
 }
 
 html.theme-light skyflow-admin-dashboard .admin-dash__kpi:hover {
   border-color: rgba(15, 23, 42, 0.14) !important;
-  box-shadow:
-    0 5px 18px rgba(15, 23, 42, 0.07),
-    0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  box-shadow: var(--sf-shadow);
 }
 
 /* סקשן משלוחים — רקע בהיר במקום גרדיאנט כהה אחרי הפיכת הטקסט לכהה */
@@ -748,9 +714,7 @@ html.theme-light skyflow-worker-terminal .sf-panel {
     rgba(224, 242, 254, 0.55) 42%,
     rgba(224, 231, 255, 0.75) 100%
   );
-  box-shadow:
-    0 0 0 1px rgba(85, 143, 195, 0.12),
-    0 14px 40px rgba(62, 93, 136, 0.14);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(85, 143, 195, 0.12);
 }
 
 html.theme-light skyflow-worker-terminal .station-back-cta {
@@ -758,9 +722,7 @@ html.theme-light skyflow-worker-terminal .station-back-cta {
   border-color: rgba(62, 93, 136, 0.22);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(224, 242, 254, 0.65));
-  box-shadow:
-    0 4px 14px rgba(62, 93, 136, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-terminal .station-back-cta:hover {
@@ -784,9 +746,7 @@ html.theme-light skyflow-worker-terminal .station-brief__lead {
     rgba(255, 255, 255, 0.96) 0%,
     rgba(224, 242, 254, 0.55) 100%
   );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 6px 20px rgba(62, 93, 136, 0.08);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__lead-role {
@@ -864,7 +824,7 @@ html.theme-light skyflow-worker-terminal .saw-type-tile {
     rgba(224, 242, 254, 0.62) 45%,
     rgba(199, 210, 254, 0.48) 100%
   );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-terminal .saw-type-tile:hover {
@@ -875,9 +835,7 @@ html.theme-light skyflow-worker-terminal .saw-type-tile:hover {
     rgba(186, 230, 253, 0.75) 52%,
     rgba(165, 180, 252, 0.5) 100%
   );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 8px 24px rgba(62, 93, 136, 0.12);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-terminal .saw-type-tile:focus-visible {
@@ -892,9 +850,7 @@ html.theme-light skyflow-worker-terminal .saw-type-tile--complete {
     rgba(167, 243, 208, 0.72) 52%,
     rgba(134, 239, 172, 0.58) 100%
   ) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 0 0 1px rgba(16, 185, 129, 0.2);
+  box-shadow: var(--sf-shadow-inset), 0 0 0 1px rgba(16, 185, 129, 0.2);
 }
 
 html.theme-light skyflow-worker-terminal .saw-type-tile--complete:hover:not(:disabled) {
@@ -927,7 +883,7 @@ html.theme-light skyflow-worker-terminal .station-progress__stat {
     rgba(224, 242, 254, 0.88) 0%,
     rgba(199, 210, 254, 0.55) 100%
   ) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  box-shadow: var(--sf-shadow-inset);
 }
 
 /* מודאל סוגי ניסור — כותרת TYPE כהה; ב־LTR בלוק הטקסט בצד ימין */

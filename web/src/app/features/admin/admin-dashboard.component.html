@@ -31,16 +31,6 @@
             {{ 'ADMIN_PAGE.SCOPE_PROJECT_HINT' | translate }}:
             <strong>{{ adminFilterSummary(d) }}</strong>
           </p>
-          <div class="admin-dash__hero-stats" aria-hidden="true">
-            <span class="admin-dash__hero-stat">
-              <span class="admin-dash__hero-stat-val">{{ d.summary.activeOrders }}</span>
-              <span class="admin-dash__hero-stat-lbl">{{ 'ADMIN_PAGE.ACTIVE_PROJECTS' | translate }}</span>
-            </span>
-            <span class="admin-dash__hero-stat">
-              <span class="admin-dash__hero-stat-val">{{ d.summary.totalOrders }}</span>
-              <span class="admin-dash__hero-stat-lbl">{{ 'ADMIN_PAGE.TOTAL_ORDERS' | translate }}</span>
-            </span>
-          </div>
         </div>
         <div class="admin-dash__hero-controls">
           <label class="admin-dash__project-field">
@@ -161,28 +151,84 @@
             <p>{{ 'ADMIN_PAGE.LIVE_PROJECTS_SUB' | translate }}</p>
           </div>
         </div>
-        <div class="admin-dash__live-rail" aria-label="live projects carousel">
-          @for (p of liveProjects(d); track p.id) {
-            <a class="admin-dash__live-card" [routerLink]="['/admin/projects', p.id, 'live']">
-              <span class="admin-dash__live-badge">{{ 'ADMIN_PROJECTS.LIVE_BADGE' | translate }}</span>
-              <strong>{{ p.name }}</strong>
-              <span class="admin-dash__live-progress">
-                {{ 'ADMIN_PAGE.PROGRESS' | translate }} {{ p.progressPct }}%
-              </span>
-              <span class="admin-dash__live-link">
-                {{ 'ADMIN_PAGE.OPEN_LIVE_VIEW' | translate }}
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M11 5l-7 7 7 7M4 12h16"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2.3"
-                  />
-                </svg>
-              </span>
-            </a>
+        <div
+          class="admin-dash__live-carousel"
+          [class.admin-dash__live-carousel--no-nav]="
+            liveProjects(d).length <= liveCarouselPageSize
+          "
+          role="region"
+          [attr.aria-label]="'ADMIN_PAGE.LIVE_CAROUSEL_LABEL' | translate"
+        >
+          @if (liveProjects(d).length > liveCarouselPageSize) {
+            <button
+              type="button"
+              class="admin-dash__live-nav admin-dash__live-nav--prev"
+              [disabled]="!liveCarouselCanPrev()"
+              (click)="liveCarouselPrev()"
+              [attr.aria-label]="'ADMIN_PAGE.LIVE_CAROUSEL_PREV' | translate"
+            >
+              <skyflow-mat-icon icon="chevron_right" [size]="32" [weight]="400" />
+            </button>
+          }
+          <div
+            class="admin-dash__live-viewport"
+            [class.admin-dash__live-viewport--sliding]="liveCarouselSliding()"
+            [style.--live-index]="liveCarouselIndex()"
+          >
+            <div class="admin-dash__live-track">
+              @for (p of liveProjects(d); track p.id) {
+                <a
+                  class="admin-dash__live-card"
+                  [routerLink]="['/admin/projects', p.id, 'live']"
+                >
+                  <span class="admin-dash__live-card-grid" aria-hidden="true"></span>
+                  <span class="admin-dash__live-card-glow" aria-hidden="true"></span>
+                  <div class="admin-dash__live-card-head">
+                    <span class="admin-dash__live-badge">
+                      <span class="admin-dash__live-pulse" aria-hidden="true"></span>
+                      {{ 'ADMIN_PROJECTS.LIVE_BADGE' | translate }}
+                    </span>
+                    <span class="admin-dash__live-signal" aria-hidden="true">
+                      <skyflow-mat-icon icon="sensors" [size]="26" [weight]="400" />
+                    </span>
+                  </div>
+                  <strong class="admin-dash__live-name">{{ p.name }}</strong>
+                  <div class="admin-dash__live-meter">
+                    <div class="admin-dash__live-meter-labels">
+                      <span>{{ 'ADMIN_PAGE.PROGRESS' | translate }}</span>
+                      <span class="admin-dash__live-meter-val">{{ p.progressPct }}%</span>
+                    </div>
+                    <div
+                      class="admin-dash__live-meter-track"
+                      role="progressbar"
+                      [attr.aria-valuenow]="p.progressPct"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    >
+                      <span
+                        class="admin-dash__live-meter-fill"
+                        [style.width.%]="p.progressPct"
+                      ></span>
+                    </div>
+                  </div>
+                  <span class="admin-dash__live-link">
+                    {{ 'ADMIN_PAGE.OPEN_LIVE_VIEW' | translate }}
+                    <skyflow-mat-icon icon="arrow_back" [size]="20" [weight]="500" />
+                  </span>
+                </a>
+              }
+            </div>
+          </div>
+          @if (liveProjects(d).length > liveCarouselPageSize) {
+            <button
+              type="button"
+              class="admin-dash__live-nav admin-dash__live-nav--next"
+              [disabled]="!liveCarouselCanNext(d)"
+              (click)="liveCarouselNext(d)"
+              [attr.aria-label]="'ADMIN_PAGE.LIVE_CAROUSEL_NEXT' | translate"
+            >
+              <skyflow-mat-icon icon="chevron_left" [size]="32" [weight]="400" />
+            </button>
           }
         </div>
       </section>
@@ -190,42 +236,46 @@
 
     <section class="grid gap-8 xl:grid-cols-2">
       <div class="sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
-        <h2 class="mb-4 text-lg font-black text-white md:mb-6 md:text-xl">
+        <h2 class="mb-4 text-lg text-white md:mb-6 md:text-xl">
           {{ 'ADMIN_PAGE.DAILY_PROGRESS' | translate }}
         </h2>
         <p class="mb-4 text-sm font-medium text-white/60">
           {{ 'ADMIN_PAGE.DAILY_PROGRESS_HINT' | translate }}
         </p>
         <div class="admin-dash__chart-canvas relative h-72 w-full md:h-80">
-          <canvas
-            baseChart
-            [type]="lineType()"
-            [data]="lineChartData()"
-            [options]="chartOptions()"
-          ></canvas>
+          @if (lineChartData().datasets.length) {
+            <canvas
+              baseChart
+              [type]="lineType()"
+              [data]="lineChartData()"
+              [options]="chartOptions()"
+            ></canvas>
+          }
         </div>
       </div>
       <div class="sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
-        <h2 class="mb-4 text-lg font-black text-white md:mb-6 md:text-xl">
+        <h2 class="mb-4 text-lg text-white md:mb-6 md:text-xl">
           {{ 'ADMIN_PAGE.STATION_LOAD' | translate }}
         </h2>
         <p class="mb-4 text-sm font-medium text-white/60">
           {{ 'ADMIN_PAGE.STATION_LOAD_HINT' | translate }}
         </p>
         <div class="admin-dash__chart-canvas relative h-72 w-full md:h-80">
-          <canvas
-            baseChart
-            [type]="barType()"
-            [data]="barChartData()"
-            [options]="chartOptions()"
-          ></canvas>
+          @if (barChartData().datasets.length) {
+            <canvas
+              baseChart
+              [type]="barType()"
+              [data]="barChartData()"
+              [options]="chartOptions()"
+            ></canvas>
+          }
         </div>
       </div>
     </section>
 
     @if (statusChartData().labels?.length) {
       <section class="sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
-        <h2 class="mb-4 text-lg font-black text-white md:mb-6 md:text-xl">
+        <h2 class="mb-4 text-lg text-white md:mb-6 md:text-xl">
           {{ 'ADMIN_PAGE.STATUS_MIX' | translate }}
         </h2>
         <div class="admin-dash__chart-canvas relative mx-auto h-72 max-w-md md:h-80">
@@ -240,7 +290,7 @@
     }
 
     <section class="sf-panel border-white/15 bg-black/40 p-6 shadow-sf-lg md:p-8">
-      <h2 class="mb-6 text-lg font-black text-white md:mb-8 md:text-xl">
+      <h2 class="mb-6 text-lg text-white md:mb-8 md:text-xl">
         {{ 'ADMIN_PAGE.PROJECTS' | translate }}
       </h2>
       <div class="overflow-x-auto rounded-xl border border-white/10">
@@ -398,7 +448,7 @@
               <circle cx="17" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.9" />
             </svg>
           </span>
-          <h2 class="text-hero font-black text-white drop-shadow-md">
+          <h2 class="text-hero text-white drop-shadow-md">
             {{ 'ADMIN_PAGE.SHIPPING_TITLE' | translate }}
           </h2>
           <p class="mt-3 text-touch font-medium text-white/90">
@@ -420,11 +470,12 @@
                   {{ 'ADMIN_PAGE.SHIPPING_READY_BADGE' | translate }}
                 </span>
                 <span class="admin-dash__shipping-truck" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M3 7h11v9H3zM14 10h3.5l2.5 3v3h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-                    <circle cx="7" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.8" />
-                    <circle cx="17" cy="18" r="1.6" fill="none" stroke="currentColor" stroke-width="1.8" />
-                  </svg>
+                  <skyflow-mat-icon
+                    icon="local_shipping"
+                    [size]="30"
+                    [filled]="true"
+                    [weight]="500"
+                  />
                 </span>
               </div>
               <p class="admin-dash__shipping-name text-4xl font-thin leading-tight text-white">{{ r.name }}</p>

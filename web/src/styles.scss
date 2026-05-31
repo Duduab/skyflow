@@ -29,12 +29,14 @@
   --sf-navy: #3e5d88;
   --sf-blue: #558fc3;
   --sf-indigo: #4b689d;
-  --sf-shadow: 0 14px 36px rgba(62, 93, 136, 0.45);
-  --sf-shadow-hover: 0 20px 48px rgba(62, 93, 136, 0.55);
+  --sf-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
+  --sf-shadow-hover: rgba(0, 0, 0, 0.1) 0px 4px 12px;
+  --sf-shadow-inset: inset rgba(0, 0, 0, 0.1) 0px 4px 12px;
+  --sf-radius: 1rem;
   --sf-font: 'Assistant', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* כפתורי UI — פלטת SkyFlow */
-  --sf-ui-btn-radius: 0.5rem;
+  --sf-ui-btn-radius: var(--sf-radius);
   --sf-ui-primary-from: var(--sf-blue);
   --sf-ui-primary-to: var(--sf-indigo);
   --sf-ui-ring-primary: rgba(85, 143, 195, 0.45);
@@ -48,6 +50,15 @@
 @layer base {
   html {
     @apply antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 500;
   }
 
   body {
@@ -88,7 +99,7 @@
     border-bottom: 2px solid rgba(255, 255, 255, 0.12);
     background: rgba(10, 15, 24, 0.82);
     backdrop-filter: blur(12px);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--sf-shadow);
   }
 
   .sf-brand-link {
@@ -145,7 +156,7 @@
       background 0.15s ease,
       color 0.15s ease,
       opacity 0.15s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--sf-shadow);
   }
 
   .sf-ui-btn:focus-visible {
@@ -184,9 +195,7 @@
     color: var(--sf-ui-secondary-text);
     background: var(--sf-ui-secondary-bg);
     border-color: var(--sf-ui-secondary-border);
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.06),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    box-shadow: var(--sf-shadow-inset);
   }
 
   .sf-ui-btn--secondary:hover:not(:disabled) {
@@ -195,15 +204,13 @@
   }
 
   .sf-ui-btn--secondary:focus-visible {
-    box-shadow:
-      0 0 0 4px var(--sf-ui-ring-secondary),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    box-shadow: var(--sf-shadow-inset), 0 0 0 4px var(--sf-ui-ring-secondary);
   }
 
   .sf-ui-btn--lg {
     min-height: 3.5rem;
     padding: 0.85rem 1.5rem;
-    border-radius: 1.15rem;
+    border-radius: var(--sf-radius);
     font-size: 1.2rem;
     letter-spacing: 0.02em;
   }
@@ -216,7 +223,7 @@
   .sf-ui-btn--touch {
     width: 100%;
     min-height: 5rem;
-    border-radius: 1.25rem;
+    border-radius: var(--sf-radius);
     padding: 1rem 1.35rem;
     font-size: 1.75rem;
     font-weight: 700;
@@ -289,21 +296,15 @@
   }
 
   .sf-theme-toggle:focus-visible {
-    box-shadow:
-      inset 0 2px 8px rgba(0, 0, 0, 0.2),
-      0 0 0 4px var(--sf-ui-ring-secondary);
+    box-shadow: var(--sf-shadow-inset), 0 0 0 4px var(--sf-ui-ring-secondary);
   }
 
   .admin-proj-card__live:focus-visible {
-    box-shadow:
-      0 6px 20px rgba(34, 197, 94, 0.28),
-      0 0 0 4px rgba(34, 197, 94, 0.35);
+    box-shadow: var(--sf-shadow), 0 0 0 4px rgba(34, 197, 94, 0.35);
   }
 
   .admin-proj-card__quick:focus-visible {
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.06),
-      0 0 0 4px rgba(85, 143, 195, 0.35);
+    box-shadow: var(--sf-shadow), 0 0 0 4px rgba(85, 143, 195, 0.35);
   }
 
   .sf-lang-bar {
@@ -313,9 +314,9 @@
     gap: 0.45rem;
     max-width: 100%;
     padding: 0.45rem 0.5rem;
-    border-radius: 1.25rem;
+    border-radius: var(--sf-radius);
     background: rgba(0, 0, 0, 0.35);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--sf-shadow-inset);
     border: 2px solid rgba(255, 255, 255, 0.12);
     overflow-x: auto;
     overscroll-behavior-x: contain;
@@ -327,7 +328,7 @@
     min-height: 3.25rem;
     min-width: 5rem;
     padding: 0 0.85rem;
-    border-radius: 1rem;
+    border-radius: var(--sf-radius);
     font-weight: 600;
     font-size: 1.15rem;
     border: 2px solid transparent;
@@ -411,13 +412,11 @@
     display: flex;
     gap: 0.6rem;
     padding: 0.75rem;
-    border-radius: 1.5rem;
+    border-radius: var(--sf-radius);
     border: 2px solid rgba(255, 255, 255, 0.14);
     background: rgba(12, 18, 30, 0.92);
     backdrop-filter: blur(16px);
-    box-shadow:
-      0 -4px 24px rgba(0, 0, 0, 0.35),
-      0 12px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--sf-shadow);
     animation: sf-nav-pop 0.22s ease-out;
   }
 
@@ -434,7 +433,7 @@
   }
 
   .sf-bottom-nav__flyout-item.is-current {
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.32);
+    box-shadow: var(--sf-shadow-inset);
   }
 
   @keyframes sf-nav-pop {
@@ -457,7 +456,7 @@
     min-height: 4.75rem;
     padding: 0.55rem 0.4rem;
     border: none;
-    border-radius: 1.1rem;
+    border-radius: var(--sf-radius);
     cursor: pointer;
     color: rgba(255, 255, 255, 0.88);
     background: rgba(255, 255, 255, 0.06);
@@ -503,13 +502,11 @@
     align-items: stretch;
     gap: 0.3rem;
     padding: 0.55rem 0.45rem;
-    border-radius: 2.25rem;
+    border-radius: var(--sf-radius);
     border: 2px solid rgba(255, 255, 255, 0.14);
     background: rgba(12, 18, 30, 0.88);
     backdrop-filter: blur(18px);
-    box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.42),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: var(--sf-shadow-inset);
   }
 
   .sf-bottom-nav__item {
@@ -523,7 +520,7 @@
     gap: 0.3rem;
     padding: 0.45rem 0.28rem;
     border: none;
-    border-radius: 1.65rem;
+    border-radius: var(--sf-radius);
     text-decoration: none;
     color: rgba(255, 255, 255, 0.62);
     background: transparent;
@@ -551,7 +548,7 @@
       rgba(85, 143, 195, 0.45),
       rgba(75, 104, 157, 0.35)
     );
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    box-shadow: var(--sf-shadow-inset);
   }
 
   .sf-bottom-nav__icon {
@@ -574,7 +571,7 @@
     overflow: hidden;
     border-radius: 999px;
     border: 2px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--sf-shadow);
   }
 
   .sf-bottom-nav__avatar {
@@ -596,7 +593,7 @@
     font-size: 0.72rem;
     font-weight: 700;
     color: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--sf-shadow);
   }
 
   .sf-bottom-nav__label {
@@ -659,7 +656,7 @@
     align-items: center;
     justify-content: center;
     padding: 1.75rem 1.25rem;
-    border-radius: 1.75rem;
+    border-radius: var(--sf-radius);
     text-align: center;
     text-decoration: none;
     color: #fff;
@@ -697,10 +694,10 @@
     min-height: 22rem;
     width: 100%;
     padding: 2.5rem 2rem;
-    border-radius: var(--sf-home-card-radius, 0.5rem);
+    border-radius: var(--sf-radius);
     border: 1px solid rgba(255, 255, 255, 0.14);
     background: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--sf-shadow);
     text-decoration: none;
     color: rgba(248, 250, 252, 0.96);
     transition:
@@ -714,14 +711,12 @@
     transform: translateY(-3px);
     border-color: rgba(255, 255, 255, 0.22);
     background: rgba(255, 255, 255, 0.09);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    box-shadow: var(--sf-shadow);
   }
 
   .sf-card-home:focus-visible {
     outline: none;
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.12),
-      0 0 0 4px rgba(85, 143, 195, 0.38);
+    box-shadow: var(--sf-shadow), 0 0 0 4px rgba(85, 143, 195, 0.38);
   }
 
   .sf-card-home__icon-ring {
@@ -734,9 +729,7 @@
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.22);
     background: rgba(255, 255, 255, 0.07);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 4px 14px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--sf-shadow-inset);
   }
 
   .sf-card-home--worker .sf-card-home__icon-ring {
@@ -764,9 +757,7 @@
       rgba(85, 143, 195, 0.42),
       rgba(75, 104, 157, 0.34)
     );
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      0 6px 20px rgba(62, 93, 136, 0.35);
+    box-shadow: var(--sf-shadow-inset);
   }
 
   .sf-card-home--planning .sf-card-home__icon {
@@ -796,7 +787,7 @@
     max-width: 20rem;
     font-size: 1.5rem;
     line-height: 1.3;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: -0.025em;
     color: inherit;
   }
@@ -839,7 +830,7 @@
   .sf-input {
     width: 100%;
     min-height: 4rem;
-    border-radius: 1rem;
+    border-radius: var(--sf-radius);
     border: 2px solid var(--sf-navy);
     padding: 0.75rem 1rem;
     font-size: 1.75rem;
@@ -859,7 +850,7 @@
   .sf-textarea {
     width: 100%;
     min-height: 7rem;
-    border-radius: 1rem;
+    border-radius: var(--sf-radius);
     border: 2px solid var(--sf-navy);
     padding: 1rem 1.15rem;
     font-size: 1.35rem;
@@ -872,7 +863,7 @@
   .sf-select {
     width: 100%;
     min-height: 4.45rem;
-    border-radius: 1rem;
+    border-radius: var(--sf-radius);
     border: 2px solid var(--sf-navy);
     padding: 0.75rem 1rem;
     padding-inline-end: 3.25rem;
@@ -903,14 +894,14 @@
   .sf-check {
     height: 3rem;
     width: 3rem;
-    border-radius: 0.65rem;
+    border-radius: var(--sf-radius);
     border: 2px solid var(--sf-navy);
     accent-color: var(--sf-blue);
     cursor: pointer;
   }
 
   .sf-panel {
-    border-radius: 1.75rem;
+    border-radius: var(--sf-radius);
     border: 3px solid rgba(255, 255, 255, 0.2);
     background: rgba(0, 0, 0, 0.35);
     padding: 1.75rem 1.5rem;
@@ -918,7 +909,7 @@
   }
 
   .sf-alert-scrap {
-    border-radius: 1.25rem;
+    border-radius: var(--sf-radius);
     border: 3px solid rgba(255, 255, 255, 0.28);
     background: rgba(62, 93, 136, 0.45);
     padding: 1.25rem 1.5rem;
@@ -929,7 +920,7 @@
   }
 
   .sf-success-banner {
-    border-radius: 1.75rem;
+    border-radius: var(--sf-radius);
     border: 2px solid rgba(255, 255, 255, 0.35);
     background: linear-gradient(165deg, rgba(85, 143, 195, 0.55), rgba(62, 93, 136, 0.65));
     padding: 2.5rem 1.5rem;
@@ -940,7 +931,7 @@
   .sf-theme-toggle {
     min-height: 3.25rem;
     padding: 0 1.15rem;
-    border-radius: 1rem;
+    border-radius: var(--sf-radius);
     font-weight: 600;
     font-size: 1.1rem;
     letter-spacing: 0.02em;
@@ -948,7 +939,7 @@
     cursor: pointer;
     color: rgba(255, 255, 255, 0.92);
     background: rgba(0, 0, 0, 0.38);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--sf-shadow-inset);
     transition:
       background 0.15s ease,
       transform 0.15s ease,
@@ -975,7 +966,7 @@
     height: 2.75rem;
     min-height: 0;
     padding: 0;
-    border-radius: 0.85rem;
+    border-radius: var(--sf-radius);
   }
 
   .sf-theme-toggle--icon svg {
@@ -986,3 +977,25 @@
 
 @import 'app/features/worker/worker-terminal-partials';
 @import './theme-light.scss';
+
+/* כותרות — משקל אחיד; דורס Tailwind font-black/font-bold על כותרות */
+h1.font-black,
+h2.font-black,
+h3.font-black,
+h4.font-black,
+h5.font-black,
+h6.font-black,
+h1.font-bold,
+h2.font-bold,
+h3.font-bold,
+h4.font-bold,
+h5.font-bold,
+h6.font-bold,
+h1.font-extrabold,
+h2.font-extrabold,
+h3.font-extrabold,
+h4.font-extrabold,
+h5.font-extrabold,
+h6.font-extrabold {
+  font-weight: 500 !important;
+}

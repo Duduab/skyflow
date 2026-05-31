@@ -48,7 +48,7 @@
   height: 2.75rem;
   padding: 0;
   border: 1px solid var(--admin-border);
-  border-radius: 0.85rem;
+  border-radius: var(--sf-radius);
   background: var(--admin-active-bg);
   color: var(--admin-fg);
   cursor: pointer;
@@ -97,7 +97,7 @@
   padding: 1.5rem 1.1rem;
   background: var(--admin-sidebar);
   border-inline-start: 1px solid var(--admin-border);
-  box-shadow: -4px 0 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--sf-shadow);
 }
 
 .admin-shell__brand {
@@ -149,7 +149,7 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.65rem 0.75rem;
-  border-radius: 0.85rem;
+  border-radius: var(--sf-radius);
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--admin-muted);
@@ -204,7 +204,7 @@
   width: 100%;
   margin-top: 0.35rem;
   padding: 0.45rem 0.75rem;
-  border-radius: 0.65rem;
+  border-radius: var(--sf-radius);
   border: 1px solid var(--admin-border, rgba(148, 163, 184, 0.35));
   background: transparent;
   font-size: 0.85rem;
@@ -299,7 +299,7 @@
     border-inline-start: none;
     border-inline-end: 1px solid var(--admin-border);
     border-bottom: none;
-    box-shadow: -8px 0 32px rgba(15, 23, 42, 0.18);
+    box-shadow: var(--sf-shadow);
     transform: translateX(100%);
     visibility: hidden;
     pointer-events: none;
@@ -338,7 +338,7 @@
 /* פרויקט חדש (תפ״י) — קישור מודגש בסרגל */
 .admin-shell__link--planning-new {
   margin-top: 0.25rem;
-  border-radius: 0.95rem;
+  border-radius: var(--sf-radius);
   border: 1px solid color-mix(in srgb, var(--sf-blue, #558fc3) 42%, transparent);
   background: linear-gradient(
     135deg,
@@ -368,10 +368,10 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 0.65rem;
+  border-radius: var(--sf-radius);
   background: linear-gradient(145deg, var(--sf-blue, #558fc3), var(--sf-indigo, #4b689d));
   color: #fff;
-  box-shadow: var(--sf-shadow, 0 8px 24px rgba(62, 93, 136, 0.35));
+  box-shadow: var(--sf-shadow);
 }
 
 .admin-shell__ico--plus svg {

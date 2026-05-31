@@ -91,7 +91,10 @@
     "PROJECTS_NEXT": "التالي",
     "LIVE_PROJECTS_TITLE": "عرض مباشر",
     "LIVE_PROJECTS_SUB": "مشاريع نشطة يمكن فتحها مباشرة في خريطة المحطات الحية.",
-    "OPEN_LIVE_VIEW": "فتح العرض المباشر"
+    "OPEN_LIVE_VIEW": "فتح العرض المباشر",
+    "LIVE_CAROUSEL_LABEL": "عرض المشاريع المباشرة",
+    "LIVE_CAROUSEL_PREV": "المشاريع السابقة",
+    "LIVE_CAROUSEL_NEXT": "المشاريع التالية"
   },
   "PLANNING": {
     "TITLE": "رفع التخطيط (תפ״י)",
@@ -240,8 +243,8 @@
     "PROGRESS_LABEL": "تقدم الإنشاء",
     "STAT_ITEMS": "عناصر في الملف",
     "STAT_UPDATED": "آخر تحديث",
-    "CONTINUE": "متابعة التحرير",
-    "EDIT": "تعديل الاسم",
+    "CONTINUE": "تعديل",
+    "EDIT": "الاسم",
     "EDIT_NAME": "اسم المشروع",
     "SAVE": "حفظ",
     "CANCEL": "إلغاء",
@@ -269,6 +272,7 @@
     "SEARCH_EMPTY": "لا توجد مشاريع مطابقة",
     "CARD_WORK_ORDERS": "أوامر العمل",
     "CARD_PURCHASE_ORDERS": "أوامر الشراء",
+    "OPENED_BY": "فُتح بواسطة",
     "CARD_HINT": "انقر للتفاصيل الكاملة",
     "CARD_OPEN_DETAIL": "فتح تفاصيل المشروع",
     "QUICK_STATIONS": "انتقال سريع — المحطات",

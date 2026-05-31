@@ -1,15 +1,15 @@
 .admin-table-wrap {
   overflow-x: auto;
-  border-radius: 1rem;
+  border-radius: var(--sf-radius);
   border: 1px solid var(--admin-border, rgba(15, 23, 42, 0.08));
   background: #fff;
-  box-shadow: 0 10px 28px rgba(62, 93, 136, 0.08);
+  box-shadow: var(--sf-shadow);
 }
 
 :host-context(html:not(.theme-light)) .admin-table-wrap {
   background: #1e293b;
   border-color: rgba(248, 250, 252, 0.08);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--sf-shadow);
 }
 
 .admin-table {
@@ -58,7 +58,7 @@
 .admin-page__title {
   margin: 0;
   font-size: clamp(1.5rem, 3vw, 1.85rem);
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--admin-fg, #0f172a);
 }
@@ -127,12 +127,12 @@
 .admin-scrap__sim-link.sf-ui-btn--primary {
   min-height: 0;
   padding: 0.6rem 1rem;
-  border-radius: 0.7rem;
+  border-radius: var(--sf-radius);
   font-size: 0.88rem;
   font-weight: 700;
   white-space: nowrap;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(62, 93, 136, 0.28);
+  box-shadow: var(--sf-shadow);
 }
 
 .admin-scrap__export.sf-ui-btn--secondary {
@@ -142,7 +142,7 @@
   flex-shrink: 0;
   min-height: 0;
   padding: 0.6rem 0.75rem;
-  border-radius: 0.7rem;
+  border-radius: var(--sf-radius);
   font-size: 0.85rem;
   font-weight: 700;
   white-space: nowrap;
@@ -170,7 +170,7 @@
 .admin-scrap__filter-select {
   width: 100%;
   padding: 0.6rem 0.8rem;
-  border-radius: 0.7rem;
+  border-radius: var(--sf-radius);
   border: 1px solid rgba(15, 23, 42, 0.12);
   font-size: 0.9rem;
   font-weight: 600;
@@ -197,7 +197,7 @@
   align-items: center;
   gap: 1rem;
   padding: 3rem 1.5rem;
-  border-radius: 1.25rem;
+  border-radius: var(--sf-radius);
   border: 1px dashed var(--admin-border, rgba(15, 23, 42, 0.14));
   background: #fff;
   text-align: center;
@@ -219,10 +219,10 @@
   align-items: flex-start;
   padding: 1.1rem 1.25rem;
   margin-bottom: 1.25rem;
-  border-radius: 1.1rem;
+  border-radius: var(--sf-radius);
   border: 1px solid rgba(37, 99, 235, 0.18);
   background: linear-gradient(135deg, rgba(239, 246, 255, 0.95), #fff);
-  box-shadow: 0 8px 24px rgba(62, 93, 136, 0.08);
+  box-shadow: var(--sf-shadow);
 }
 
 :host-context(html:not(.theme-light)) .admin-scrap__insight {
@@ -246,7 +246,7 @@
   height: 2.5rem;
   display: grid;
   place-items: center;
-  border-radius: 0.75rem;
+  border-radius: var(--sf-radius);
   background: rgba(37, 99, 235, 0.12);
   color: #2563eb;
 }
@@ -259,7 +259,7 @@
 .admin-scrap__insight-title {
   margin: 0 0 0.35rem;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--admin-fg, #0f172a);
 }
 
@@ -283,10 +283,10 @@
   flex-direction: column;
   gap: 0.2rem;
   padding: 1rem 1.05rem;
-  border-radius: 1rem;
+  border-radius: var(--sf-radius);
   border: 1px solid var(--admin-border, rgba(15, 23, 42, 0.08));
   background: #fff;
-  box-shadow: 0 8px 22px rgba(62, 93, 136, 0.07);
+  box-shadow: var(--sf-shadow);
 }
 
 :host-context(html:not(.theme-light)) .admin-scrap__kpi {
@@ -346,10 +346,10 @@
   display: flex;
   flex-direction: column;
   padding: 1rem 1.1rem 1.1rem;
-  border-radius: 1.1rem;
+  border-radius: var(--sf-radius);
   border: 1px solid var(--admin-border, rgba(15, 23, 42, 0.08));
   background: #fff;
-  box-shadow: 0 10px 28px rgba(62, 93, 136, 0.08);
+  box-shadow: var(--sf-shadow);
 }
 
 :host-context(html:not(.theme-light)) .admin-scrap__chart-card {
@@ -363,7 +363,7 @@
 .admin-scrap__chart-head h2 {
   margin: 0;
   font-size: 0.98rem;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--admin-fg, #0f172a);
 }
 
@@ -390,7 +390,7 @@
 .admin-scrap__section-head h2 {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--admin-fg, #0f172a);
 }
 
@@ -413,10 +413,10 @@
   align-items: stretch;
   gap: 0.25rem;
   padding: 0.95rem 1rem;
-  border-radius: 1rem;
+  border-radius: var(--sf-radius);
   border: 1px solid var(--admin-border, rgba(15, 23, 42, 0.08));
   background: #fff;
-  box-shadow: 0 6px 18px rgba(62, 93, 136, 0.07);
+  box-shadow: var(--sf-shadow);
   cursor: pointer;
   text-align: start;
   transition:
@@ -431,7 +431,7 @@
 
 .admin-scrap__project-card:hover {
   border-color: rgba(37, 99, 235, 0.35);
-  box-shadow: 0 10px 24px rgba(62, 93, 136, 0.12);
+  box-shadow: var(--sf-shadow);
   transform: translateY(-1px);
 }
 
@@ -467,7 +467,7 @@
 .admin-scrap__project-bar-fill {
   display: block;
   height: 100%;
-  border-radius: inherit;
+  border-radius: var(--sf-radius);
   background: linear-gradient(90deg, #2563eb, #38bdf8);
 }
 
@@ -492,7 +492,7 @@
   align-items: center;
   gap: 0.5rem 1rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.85rem;
+  border-radius: var(--sf-radius);
   border: 1px solid var(--admin-border, rgba(15, 23, 42, 0.08));
   background: #fff;
 }
@@ -530,7 +530,7 @@
   gap: 1rem;
   padding: 1.15rem 1.25rem;
   margin-bottom: 2rem;
-  border-radius: 1rem;
+  border-radius: var(--sf-radius);
   border: 1px solid rgba(37, 99, 235, 0.2);
   background: rgba(239, 246, 255, 0.6);
 }

@@ -91,7 +91,10 @@
     "PROJECTS_NEXT": "Next",
     "LIVE_PROJECTS_TITLE": "Live view",
     "LIVE_PROJECTS_SUB": "Active projects that can open directly into the station live map.",
-    "OPEN_LIVE_VIEW": "Open live view"
+    "OPEN_LIVE_VIEW": "Open live view",
+    "LIVE_CAROUSEL_LABEL": "Live projects carousel",
+    "LIVE_CAROUSEL_PREV": "Show previous projects",
+    "LIVE_CAROUSEL_NEXT": "Show next projects"
   },
   "PLANNING": {
     "TITLE": "Planning upload (תפ״י)",
@@ -240,8 +243,8 @@
     "PROGRESS_LABEL": "Creation progress",
     "STAT_ITEMS": "Items in file",
     "STAT_UPDATED": "Updated",
-    "CONTINUE": "Continue editing",
-    "EDIT": "Rename",
+    "CONTINUE": "Edit",
+    "EDIT": "Name",
     "EDIT_NAME": "Project name",
     "SAVE": "Save",
     "CANCEL": "Cancel",
@@ -269,6 +272,7 @@
     "SEARCH_EMPTY": "No projects match your search",
     "CARD_WORK_ORDERS": "Work orders",
     "CARD_PURCHASE_ORDERS": "Purchase orders",
+    "OPENED_BY": "Opened by",
     "CARD_HINT": "Click to open full details",
     "CARD_OPEN_DETAIL": "Open project details",
     "QUICK_STATIONS": "Quick view — stations",
