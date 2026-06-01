@@ -28,6 +28,7 @@ import {
 } from './stations.service';
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
+import { SetAssemblyWindowQtyDto } from './dto/set-assembly-window-qty.dto.js';
 
 @Controller('stations')
 @UseGuards(RolesGuard)
@@ -61,6 +62,19 @@ export class StationsController {
     return this.stationsService.createStationLog(
       stationId,
       dto,
+      req.user?.userId ?? null,
+    );
+  }
+
+  @Post('3/assembly-window-qty')
+  async setAssemblyWindowQty(
+    @Req() req: { user?: { userId?: string } },
+    @Body() dto: SetAssemblyWindowQtyDto,
+  ) {
+    return this.stationsService.setAssemblyWindowQty(
+      dto.projectId.trim(),
+      dto.productItemId.trim(),
+      dto.assembledQty,
       req.user?.userId ?? null,
     );
   }

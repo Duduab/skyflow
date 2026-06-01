@@ -38,9 +38,9 @@
           <span>{{ 'PROFILE.LAST_NAME' | translate }}</span>
           <input class="profile-input" name="lastName" [(ngModel)]="draftLast" />
         </label>
-        <button type="submit" class="profile-save-btn">
+        <skyflow-ui-button type="submit" variant="primary" [block]="true">
           {{ 'PROFILE.SAVE' | translate }}
-        </button>
+        </skyflow-ui-button>
         @if (saved()) {
           <p class="profile-saved" role="status">{{ 'PROFILE.SAVED' | translate }}</p>
         }

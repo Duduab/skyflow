@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateScrapReportDto {
@@ -6,7 +13,7 @@ export class CreateScrapReportDto {
   @IsNotEmpty()
   projectId!: string;
 
-  /** Total length per scrap piece, centimeters */
+  /** Total length per scrap piece, millimeters */
   @IsNumber()
   @Min(0)
   @Type(() => Number)
@@ -16,4 +23,12 @@ export class CreateScrapReportDto {
   @Min(0)
   @Type(() => Number)
   scrapQty!: number;
+
+  @IsOptional()
+  @IsIn(['CATALOG', 'DRAWN'])
+  profileKind?: 'CATALOG' | 'DRAWN';
+
+  @IsOptional()
+  @IsString()
+  profileCode?: string;
 }

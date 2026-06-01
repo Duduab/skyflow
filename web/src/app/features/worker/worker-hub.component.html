@@ -41,13 +41,13 @@
         </div>
       </div>
       @if (orders().length) {
-        <button
-          type="button"
-          class="sf-ui-btn sf-ui-btn--primary worker-hub__orders-open"
+        <skyflow-ui-button
+          variant="primary"
+          btnClass="worker-hub__orders-open"
           (click)="openOrdersModal()"
         >
           {{ 'WORKER_HUB.ORDERS_BUTTON' | translate }}
-        </button>
+        </skyflow-ui-button>
       }
     </div>
   </header>
@@ -58,9 +58,13 @@
         @for (s of row; track s.id) {
           @let prog = hubProgress(s.id);
           @let unlocked = stationUnlocked(s.id);
+          @let order = selectedOrder();
           <a
             [routerLink]="stationRouterLink(s.id)"
             [class]="'station-card station-card--' + s.id"
+            [class.station-visual--steelworkshop]="stationVisualModifier(s.id) === 'station-visual--steelworkshop'"
+            [class.station-visual--aluranger]="stationVisualModifier(s.id) === 'station-visual--aluranger'"
+            [ngStyle]="stationCardStyle(s.id)"
             [class.station-card--locked]="!unlocked"
             [attr.tabindex]="unlocked ? 0 : -1"
             [attr.aria-disabled]="!unlocked ? true : null"
@@ -121,7 +125,7 @@
 
             <div class="station-card__panel">
               <h2 class="station-card__headline">
-                {{ 'STATIONS.' + s.id | translate }}
+                {{ s.id | stationLabel: order | translate }}
               </h2>
               @if (stationManagers()[s.id]; as mgr) {
                 <p class="station-card__mgr">
@@ -130,7 +134,7 @@
                 </p>
               }
               <p class="station-card__desc">
-                {{ 'WORKER_HUB.STATION_DESC_' + s.id | translate }}
+                {{ stationDescKeyFor(s.id) | translate }}
               </p>
 
               <div class="station-card__footer">

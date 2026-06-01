@@ -362,14 +362,29 @@
   margin-top: auto;
 }
 
+.planning-drafts-card__actions > skyflow-ui-button {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-self: stretch;
+}
+
+.planning-drafts-card__actions > skyflow-ui-button .sf-ui-btn,
 .planning-drafts-card__actions > .sf-ui-btn,
 .planning-drafts-card__actions > .planning-drafts-card__cta {
   flex: 1 1 0;
   min-width: 0;
+  width: 100%;
+  min-height: 2.75rem;
+  height: 100%;
+  display: inline-flex;
   justify-content: center;
+  align-items: center;
   padding: 0.55rem 0.5rem;
   font-size: 0.82rem;
+  line-height: 1.15;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .planning-drafts-card__cta {
@@ -495,13 +510,28 @@
   gap: 0.4rem;
 }
 
-.planning-drafts-table__actions .sf-ui-btn {
+.planning-drafts-table__actions > skyflow-ui-button {
   flex: 1 1 0;
   min-width: 0;
+  display: flex;
+  align-self: stretch;
+}
+
+.planning-drafts-table__actions > skyflow-ui-button .sf-ui-btn,
+.planning-drafts-table__actions > .sf-ui-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  min-height: 2.75rem;
+  height: 100%;
+  display: inline-flex;
   justify-content: center;
+  align-items: center;
   padding: 0.45rem 0.5rem;
   font-size: 0.82rem;
+  line-height: 1.15;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .planning-drafts-modal {

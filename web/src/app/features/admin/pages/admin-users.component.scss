@@ -53,13 +53,12 @@
 }
 
 .admin-users__export-roster.sf-ui-btn--secondary,
-.admin-users-detail__tool.secondary {
+.admin-users-detail__tool.sf-ui-btn--secondary {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   min-height: 0;
   padding: 0.55rem 0.8rem;
-  border-radius: var(--sf-radius);
   font-size: 0.85rem;
   font-weight: 700;
   white-space: nowrap;
@@ -74,7 +73,6 @@
 .admin-users__add.sf-ui-btn--primary {
   min-height: 0;
   padding: 0.6rem 1rem;
-  border-radius: var(--sf-radius);
   font-size: 0.88rem;
   font-weight: 700;
   box-shadow: var(--sf-shadow);
@@ -90,7 +88,6 @@
 
 .admin-users__filter-chip {
   padding: 0.4rem 0.75rem;
-  border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: #fff;
   font-size: 0.78rem;
@@ -496,7 +493,6 @@
 .admin-users-modal__btn {
   min-height: 0;
   padding: 0.55rem 0.9rem;
-  border-radius: var(--sf-radius);
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -511,6 +507,13 @@
 
 .admin-users-overlay__panel[data-surface='dark'] .admin-users-modal__btn.secondary {
   border-color: rgba(248, 250, 252, 0.2);
+}
+
+.admin-users-detail__header-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
 }
 
 .admin-users-detail__identity {

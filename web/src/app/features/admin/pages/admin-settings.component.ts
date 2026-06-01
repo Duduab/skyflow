@@ -9,12 +9,13 @@ import { CurrentUserService } from '../../../core/current-user.service';
 import { LanguageService, SkyflowLang } from '../../../core/language.service';
 import { ThemeService, SkyflowTheme } from '../../../core/theme.service';
 import { SkyflowRole } from '../../../core/skyflow.models';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
 
 const SIM_STORAGE_KEY = 'skyflow-order-simulations-v1';
 
 @Component({
   selector: 'skyflow-admin-settings',
-  imports: [TranslateModule, FormsModule],
+  imports: [TranslateModule, FormsModule, UiButtonComponent],
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss',
 })

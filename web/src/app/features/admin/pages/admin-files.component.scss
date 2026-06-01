@@ -36,7 +36,6 @@
 .admin-files__upload.sf-ui-btn--primary {
   min-height: 0;
   padding: 0.6rem 1rem;
-  border-radius: var(--sf-radius);
   font-size: 0.88rem;
   font-weight: 700;
   box-shadow: var(--sf-shadow);
@@ -147,7 +146,6 @@
 
 .admin-files__chip {
   padding: 0.4rem 0.75rem;
-  border-radius: 999px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: #fff;
   font-size: 0.78rem;
@@ -661,7 +659,6 @@
 .admin-files-modal__btn {
   min-height: 2.5rem;
   padding: 0.45rem 1rem;
-  border-radius: var(--sf-radius);
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;

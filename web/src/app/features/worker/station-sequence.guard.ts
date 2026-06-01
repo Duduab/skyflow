@@ -6,11 +6,11 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '../../core/api.service';
 import { WorkerContext } from '../../core/skyflow.models';
 import { WorkerProjectSelectionService } from './worker-project-selection.service';
-import { computeStationProgress } from './station-progress';
+import { isStationUnlockedInChain } from './station-progress';
 
 /**
- * Blocks deep links to a station until all previous stations reached 100%
- * (same rules as the worker hub). Station 1 requires approved planning.
+ * Blocks deep links until previous stations satisfy the same unlock rules as the hub
+ * (CNC opens after first saw report, not 100% on saws).
  */
 export const stationSequenceGuard: CanActivateFn = (route) => {
   const api = inject(ApiService);
@@ -65,15 +65,13 @@ export const stationSequenceGuard: CanActivateFn = (route) => {
         ),
       ).pipe(
         map((ctxs) => {
-          for (let i = 0; i < ctxs.length; i++) {
+          const map: Partial<Record<number, WorkerContext>> = {};
+          prevIds.forEach((id, i) => {
             const ctx = ctxs[i];
-            const prevSid = prevIds[i];
-            if (!ctx) {
-              return router.parseUrl('/worker');
-            }
-            if (computeStationProgress(prevSid, ctx).percent < 100) {
-              return router.parseUrl('/worker');
-            }
+            if (ctx) map[id] = ctx;
+          });
+          if (!isStationUnlockedInChain(stationId, map)) {
+            return router.parseUrl('/worker');
           }
           return true;
         }),

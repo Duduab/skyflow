@@ -5,6 +5,9 @@ export type ProjectFlowStatus =
 
 export type OrderStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD';
 
+export type ProjectLineMaterial = 'ALUMINUM' | 'STEEL';
+export type ProjectMachiningRoute = 'GLASS' | 'ALU_RANGER';
+
 export interface ProjectOrder {
   id: string;
   name: string;
@@ -13,6 +16,10 @@ export interface ProjectOrder {
   status: OrderStatus;
   flowStatus: ProjectFlowStatus;
   originalLength: string | number;
+  /** אלומיניום → מסורים; פלדה → מסגריה (תחנה 1) */
+  lineMaterial?: ProjectLineMaterial;
+  /** זכוכית → CNC; Alu Ranger → תחנה 2 וריאנט */
+  machiningRoute?: ProjectMachiningRoute;
   /** משווה מתכנון (עמדת מסורים) — תאימות לאחור */
   planningAssigneeUserId?: string | null;
   /** מנהל מסורים משובץ מתכנון (עמדה 1) */
@@ -58,8 +65,10 @@ export interface SawWorkLineDto {
   instructionKind?: string;
   /** נתיבים ציבוריים לתמונות (אחרי אישור תפ״י) */
   imagePaths?: string[];
-  /** אורך חיתוך מהתכנון (ס״מ) — מתא Excel; מקור למטרים לניסור */
-  planningCutLengthCm?: number | null;
+  /** אורך חיתוך מהתכנון (מ״מ) — מתא Excel; מקור למטרים לניסור */
+  planningCutLengthMm?: number | null;
+  /** MPS-X | MPS-Y | MPB-X | MPB-Y */
+  sawsProfileCode?: string | null;
 }
 
 export interface WorkerStationManagerDisplayDto {
@@ -112,6 +121,9 @@ export interface WorkerContext {
    * Station 1 — מטרים לניסור לכל שורת מסור (מדיווחי מודאל TYPE).
    * Stations 2–4 — לתצוגת פחת משוער.
    */
+  /** אורך ניסור אחרון לשורה (מ״מ) */
+  sawWorkMmByLineId?: Record<string, number>;
+  /** @deprecated נשמר במטרים בדיווחים ישנים — API ממיר ל־mm */
   sawWorkMetersByLineId?: Record<string, number>;
   /**
    * Stations 2–4 — כמה דווחו לפי מזהה שורת תכנון (מודאל TYPE, ללא מטרים).
@@ -123,6 +135,55 @@ export interface WorkerContext {
   siteAssembly?: SiteAssemblyContext | null;
   /** Station 6 — תמונות סידור ואריזה */
   packReport?: PackReportContext | null;
+  /** Station 3 — הרכבה: קו ייצור + הוראות חלונות */
+  assemblyStation?: AssemblyStationContextDto | null;
+}
+
+export type AssemblyPipelineStatus = 'locked' | 'saw_only' | 'ready';
+
+export interface AssemblyPipelineLineDto {
+  id: string;
+  instructionKind: string;
+  description: string;
+  quantity: number;
+  sortOrder: number;
+  imagePaths: string[];
+  sawsProfileCode: string | null;
+  planningCutLengthMm: number | null;
+  sawnQty: number;
+  cncDoneQty: number;
+  status: AssemblyPipelineStatus;
+}
+
+export interface AssemblyWindowSpecDto {
+  label: string;
+  value: string;
+}
+
+export interface AssemblyWindowComponentDto {
+  kind: string;
+  line: string;
+}
+
+export interface AssemblyWindowUnitDto {
+  id: string;
+  displayLabel: string;
+  quantity: number;
+  assembledQty: number;
+  imagePaths: string[];
+  specs: AssemblyWindowSpecDto[];
+  components: AssemblyWindowComponentDto[];
+  assembled: boolean;
+}
+
+export interface AssemblyStationContextDto {
+  pipeline: AssemblyPipelineLineDto[];
+  windows: AssemblyWindowUnitDto[];
+  pipelineReadyCount: number;
+  pipelineTotalCount: number;
+  windowsUnitCount: number;
+  windowsTotalQty: number;
+  windowsAssembledQty: number;
 }
 
 export interface PackReportContext {
@@ -184,6 +245,8 @@ export interface AdminProjectRow {
   name: string;
   status: OrderStatus;
   flowStatus: ProjectFlowStatus;
+  lineMaterial?: ProjectLineMaterial;
+  machiningRoute?: ProjectMachiningRoute;
   totalItems: number;
   packed: number;
   progressPct: number;
@@ -258,6 +321,8 @@ export interface PlanningDraftListItemDto {
   updatedAt: string;
   createdAt: string;
   requirements: string;
+  lineMaterial: ProjectLineMaterial;
+  machiningRoute: ProjectMachiningRoute;
   itemCount: number;
   wizardStep: 2 | 3;
   progressPct: number;
@@ -393,8 +458,10 @@ export interface ScrapOverviewRow {
   projectName: string;
   stationId: number;
   stationName: string;
-  itemLengthCm: number;
+  itemLengthMm: number;
   scrapQty: number;
+  profileKind: string;
+  profileCode: string;
   createdAt: string;
 }
 
@@ -402,36 +469,50 @@ export interface ScrapOverviewResponse {
   rows: ScrapOverviewRow[];
 }
 
+export interface ProfileInventoryRow {
+  profileKind: 'CATALOG' | 'DRAWN';
+  profileCode: string;
+  lengthMm: number;
+  qty: number;
+  totalMm: number;
+}
+
 export interface SimulationProjectRow {
   projectId: string;
   name: string;
-  needCm: number;
-  scrapCm: number;
-  gapCm: number;
+  needMm: number;
+  scrapMm: number;
+  gapMm: number;
   /** אורך ייחוס מההזמנה (BOM) — לברירת מחדל בסימולציה */
-  originalLengthCm: number;
+  originalLengthMm: number;
   totalItems: number;
+  profileInventory: ProfileInventoryRow[];
 }
 
 export interface SimulationSnapshotResponse {
+  catalogProfileCodes: string[];
   projects: SimulationProjectRow[];
 }
 
-/** סימולציית הזמנה שמורה מקומית (רשימה בעמוד הסימולציה) */
+export interface SimProfileNeedLine {
+  profileKind: 'CATALOG' | 'DRAWN';
+  profileCode: string;
+  qty: number;
+  lengthMm: number;
+}
+
+/** סימולציית הזמנה — לפי פרופילים ופחת מפרויקט מקור */
 export interface OrderSimulationRecord {
   id: string;
   title: string;
   createdAt: string;
-  projectId: string;
-  projectName: string;
-  beamsQty: number;
-  glazingQty: number;
-  unitizedQty: number;
-  cmPerBeam: number;
-  cmPerGlazing: number;
-  cmPerUnitized: number;
-  baseNeedCm: number;
-  scrapCmAtSave: number;
+  scrapSourceProjectId: string;
+  scrapSourceProjectName: string;
+  needLines: SimProfileNeedLine[];
+  inventoryAtSave: ProfileInventoryRow[];
+  totalNeedMm: number;
+  totalCoveredMm: number;
+  totalGapMm: number;
 }
 
 export interface ProjectActivityStation {
@@ -459,7 +540,7 @@ export interface ProjectActivityScrapRow {
   stationId: number;
   stationName: string;
   scrapQty: number;
-  itemLengthCm: number;
+  itemLengthMm: number;
   createdAt: string;
 }
 

@@ -3,6 +3,10 @@
 
 נתיב בדפדפן: /assets/stations/N.png
 
+וריאנטי פרויקט (תחנות 1–2):
+- 1-steelworkshop.png — מסגריה (פלדה)
+- 2-aluranger.png — Alu Ranger
+
 שכבות ב-.station-card__hero-bg (מלמעלה למטה):
   1) גרדיאנט overlay בצבע העמדה (--accent)
   2) התמונה

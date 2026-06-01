@@ -58,6 +58,12 @@
   --brief-glow: rgba(245, 158, 11, 0.4);
 }
 
+/* וריאנטי פרויקט — ערכים מוגדרים גם ב-[style] מ-stationVisualStyle */
+.station-brief--1.station-visual--steelworkshop,
+.station-brief--2.station-visual--aluranger {
+  /* accent / hero מגיעים מ-inline style */
+}
+
 .station-brief__hero {
   position: relative;
   min-height: var(--brief-hero-h);
@@ -297,20 +303,35 @@
 }
 
 .station-brief__stats {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
-  align-content: start;
+  min-height: 0;
+}
+
+@media (min-width: 768px) {
+  .station-brief__stats {
+    height: 100%;
+  }
 }
 
 .station-brief__stat {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.85rem 1rem;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem;
   border-radius: var(--sf-radius);
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.24);
   box-shadow: var(--sf-shadow-inset);
+}
+
+@media (min-width: 768px) {
+  .station-brief__stat {
+    flex: 1;
+    min-height: 0;
+  }
 }
 
 .station-brief__stat-label {

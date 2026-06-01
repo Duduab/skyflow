@@ -10,12 +10,13 @@ import {
 import { TranslateModule } from '@ngx-translate/core';
 
 import { ProjectOrder } from '../../core/skyflow.models';
+import { UiPopupComponent } from '../ui-popup/ui-popup.component';
 import { OrderPickerPreview } from './order-picker.types';
 
 @Component({
   selector: 'skyflow-order-picker-modal',
   standalone: true,
-  imports: [TranslateModule],
+  imports: [TranslateModule, UiPopupComponent],
   templateUrl: './order-picker-modal.component.html',
   styleUrl: './order-picker-modal.component.scss',
 })

@@ -21,6 +21,8 @@ import {
 } from '../../../core/skyflow.models';
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 
 export type FilesKindFilter = '' | ProjectDocumentKind;
 
@@ -37,7 +39,7 @@ export interface AdminFileListItem {
 
 @Component({
   selector: 'skyflow-admin-files',
-  imports: [TranslateModule, DatePipe],
+  imports: [TranslateModule, DatePipe, UiButtonComponent, UiPopupComponent],
   templateUrl: './admin-files.component.html',
   styleUrl: './admin-files.component.scss',
 })
@@ -418,7 +420,11 @@ export class AdminFilesComponent implements OnInit {
         return;
       }
       this.api
-        .postPlanningDraft(name)
+        .postPlanningDraft({
+          name,
+          lineMaterial: 'ALUMINUM',
+          machiningRoute: 'GLASS',
+        })
         .pipe(
           switchMap((proj) =>
             this.api

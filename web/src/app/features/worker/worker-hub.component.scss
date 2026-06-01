@@ -105,7 +105,6 @@
   font-variant-numeric: tabular-nums;
   color: #ecfdf5;
   text-shadow: none;
-  border-radius: 9999px;
   margin-top: 0;
   background: linear-gradient(
     165deg,
@@ -337,7 +336,8 @@ html[dir='ltr'] .worker-hub__row {
 .station-card__hero {
   position: relative;
   height: var(--station-hero-h);
-  border-radius: var(--sf-radius);
+  border-top-left-radius: var(--sf-radius);
+  border-top-right-radius: var(--sf-radius);
   overflow: hidden;
 }
 
@@ -615,7 +615,6 @@ html[dir='ltr'] .worker-hub__row {
   width: 100%;
   margin-top: 1.15rem;
   padding: 0.88rem 1.35rem;
-  border-radius: 9999px;
   font-size: 1.08rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -761,6 +760,11 @@ html[dir='ltr'] .worker-hub__row {
   --hero-glow: rgba(110, 231, 183, 0.45);
   --panel-bg: rgba(10, 14, 24, 0.94);
   --card-glow: rgba(110, 231, 183, 0.25);
+}
+
+.station-card--1.station-visual--steelworkshop,
+.station-card--2.station-visual--aluranger {
+  /* accent / hero מגיעים מ-inline style */
 }
 
 .station-card--7 {

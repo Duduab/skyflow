@@ -9,18 +9,15 @@
     </div>
     <div class="worker-hub__intro-aside">
       <div class="flex flex-col items-stretch gap-3 sm:items-end">
-        <button
-          type="button"
-          class="sf-ui-btn sf-ui-btn--primary shrink-0 px-4 py-2"
+        <skyflow-ui-button
+          variant="primary"
+          btnClass="shrink-0 px-4 py-2"
           [disabled]="!canCompleteProject() || completingProject()"
+          [loading]="completingProject()"
           (click)="completeProject()"
         >
-          @if (completingProject()) {
-            {{ 'ADMIN_PROJECTS.COMPLETING' | translate }}
-          } @else {
-            {{ 'ADMIN_PROJECTS.COMPLETE_PROJECT' | translate }}
-          }
-        </button>
+          {{ 'ADMIN_PROJECTS.COMPLETE_PROJECT' | translate }}
+        </skyflow-ui-button>
         @if (completeError(); as ce) {
           <p class="max-w-xs text-right text-sm font-semibold text-rose-200">{{ ce }}</p>
         }
@@ -66,9 +63,13 @@
           @for (s of row; track s.id) {
             @let prog = hubProgress(s.id);
             @let unlocked = stationUnlocked(s.id);
+            @let order = selectedOrder();
             <a
               [routerLink]="stationRouterLink(s.id)"
               [class]="'station-card station-card--' + s.id"
+              [class.station-visual--steelworkshop]="stationVisualModifier(s.id) === 'station-visual--steelworkshop'"
+              [class.station-visual--aluranger]="stationVisualModifier(s.id) === 'station-visual--aluranger'"
+              [ngStyle]="stationCardStyle(s.id)"
               [class.station-card--locked]="!unlocked"
               [attr.tabindex]="unlocked ? 0 : -1"
               [attr.aria-disabled]="!unlocked ? true : null"
@@ -129,7 +130,7 @@
 
               <div class="station-card__panel">
                 <h2 class="station-card__headline">
-                  {{ 'STATIONS.' + s.id | translate }}
+                  {{ s.id | stationLabel: order | translate }}
                 </h2>
                 @if (stationManagers()[s.id]; as mgr) {
                   <p class="station-card__mgr">
@@ -138,7 +139,7 @@
                   </p>
                 }
                 <p class="station-card__desc">
-                  {{ 'WORKER_HUB.STATION_DESC_' + s.id | translate }}
+                  {{ stationDescKeyFor(s.id) | translate }}
                 </p>
 
                 <div class="station-card__footer">

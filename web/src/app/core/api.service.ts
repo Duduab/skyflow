@@ -9,6 +9,8 @@ import {
   ProjectDocumentDto,
   ProjectDocumentKind,
   SendProjectDocumentEmailResponse,
+  ProjectLineMaterial,
+  ProjectMachiningRoute,
   ProjectOrder,
   ShippingResponse,
   WorkerContext,
@@ -45,6 +47,26 @@ export class ApiService {
 
   postScrap(stationId: number, body: Record<string, unknown>) {
     return this.http.post(`${this.base}/stations/${stationId}/scrap`, body);
+  }
+
+  /** Station 3 — כמה חלונות הורכבו לסוג יחידה (GL-2 ×26 וכו׳) */
+  setAssemblyWindowQty(
+    projectId: string,
+    productItemId: string,
+    assembledQty: number,
+  ) {
+    return this.http.post<{
+      ok: boolean;
+      productItemId: string;
+      assembledQty: number;
+      quantity: number;
+      windowsAssembledQty: number;
+      windowsTotalQty: number;
+    }>(`${this.base}/stations/3/assembly-window-qty`, {
+      projectId,
+      productItemId,
+      assembledQty,
+    });
   }
 
   /** Station 7 — upload תעודת משלוח (multipart). */
@@ -182,14 +204,20 @@ export class ApiService {
     );
   }
 
-  postPlanningDraft(
-    name: string,
-    requirements?: string,
-  ): Observable<ProjectOrder> {
-    const body: { name: string; requirements?: string } = { name };
-    const details = requirements?.trim();
-    if (details) body.requirements = details;
-    return this.http.post<ProjectOrder>(`${this.base}/projects`, body);
+  postPlanningDraft(body: {
+    name: string;
+    requirements?: string;
+    lineMaterial: ProjectLineMaterial;
+    machiningRoute: ProjectMachiningRoute;
+  }): Observable<ProjectOrder> {
+    const payload: Record<string, string> = {
+      name: body.name,
+      lineMaterial: body.lineMaterial,
+      machiningRoute: body.machiningRoute,
+    };
+    const details = body.requirements?.trim();
+    if (details) payload['requirements'] = details;
+    return this.http.post<ProjectOrder>(`${this.base}/projects`, payload);
   }
 
   sendProjectDocumentEmail(
@@ -238,11 +266,16 @@ export class ApiService {
 
   patchPlanningDraft(
     projectId: string,
-    name: string,
+    body: {
+      name?: string;
+      requirements?: string;
+      lineMaterial?: import('./skyflow.models').ProjectLineMaterial;
+      machiningRoute?: import('./skyflow.models').ProjectMachiningRoute;
+    },
   ): Observable<PlanningDraftListItemDto> {
     return this.http.patch<PlanningDraftListItemDto>(
       `${this.base}/projects/planning/${encodeURIComponent(projectId)}`,
-      { name },
+      body,
     );
   }
 

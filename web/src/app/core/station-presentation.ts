@@ -1,0 +1,156 @@
+export type ProjectLineMaterial = 'ALUMINUM' | 'STEEL';
+export type ProjectMachiningRoute = 'GLASS' | 'ALU_RANGER';
+
+export type StationVariantOrder = {
+  lineMaterial?: ProjectLineMaterial | null;
+  machiningRoute?: ProjectMachiningRoute | null;
+};
+
+export type StationVisualVariant = 'default' | 'steelworkshop' | 'aluranger';
+
+export interface StationVisualTokens {
+  accent: string;
+  glow: string;
+  heroImage: string;
+}
+
+const DEFAULT_TOKENS: Record<number, StationVisualTokens> = {
+  1: {
+    accent: '#fbbf24',
+    glow: 'rgba(251, 191, 36, 0.42)',
+    heroImage: '/assets/stations/1.png',
+  },
+  2: {
+    accent: '#22d3ee',
+    glow: 'rgba(34, 211, 238, 0.38)',
+    heroImage: '/assets/stations/2.png',
+  },
+};
+
+const VARIANT_TOKENS: Record<StationVisualVariant, Partial<Record<number, StationVisualTokens>>> = {
+  default: {},
+  steelworkshop: {
+    1: {
+      accent: '#f97316',
+      glow: 'rgba(249, 115, 22, 0.42)',
+      heroImage: '/assets/stations/1-steelworkshop.png',
+    },
+  },
+  aluranger: {
+    2: {
+      accent: '#94a3b8',
+      glow: 'rgba(56, 189, 248, 0.38)',
+      heroImage: '/assets/stations/2-aluranger.png',
+    },
+  },
+};
+
+export function stationLabelKey(
+  order: StationVariantOrder | null | undefined,
+  stationId: number,
+): string {
+  if (stationId === 1 && order?.lineMaterial === 'STEEL') {
+    return 'STATIONS.1_STEELWORKSHOP';
+  }
+  if (stationId === 2 && order?.machiningRoute === 'ALU_RANGER') {
+    return 'STATIONS.2_ALU_RANGER';
+  }
+  return `STATIONS.${stationId}`;
+}
+
+export function stationDescKey(
+  order: StationVariantOrder | null | undefined,
+  stationId: number,
+): string {
+  if (stationId === 1 && order?.lineMaterial === 'STEEL') {
+    return 'WORKER_HUB.STATION_DESC_1_STEELWORKSHOP';
+  }
+  if (stationId === 2 && order?.machiningRoute === 'ALU_RANGER') {
+    return 'WORKER_HUB.STATION_DESC_2_ALU_RANGER';
+  }
+  return `WORKER_HUB.STATION_DESC_${stationId}`;
+}
+
+export function stationVisualVariant(
+  order: StationVariantOrder | null | undefined,
+  stationId: number,
+): StationVisualVariant {
+  if (stationId === 1 && order?.lineMaterial === 'STEEL') {
+    return 'steelworkshop';
+  }
+  if (stationId === 2 && order?.machiningRoute === 'ALU_RANGER') {
+    return 'aluranger';
+  }
+  return 'default';
+}
+
+export function stationVisualModifierClass(
+  order: StationVariantOrder | null | undefined,
+  stationId: number,
+): string | null {
+  const v = stationVisualVariant(order, stationId);
+  if (v === 'steelworkshop') return 'station-visual--steelworkshop';
+  if (v === 'aluranger') return 'station-visual--aluranger';
+  return null;
+}
+
+export function stationHeroImagePath(
+  order: StationVariantOrder | null | undefined,
+  stationId: number,
+): string {
+  return stationVisualTokens(order, stationId).heroImage;
+}
+
+export function stationVisualTokens(
+  order: StationVariantOrder | null | undefined,
+  stationId: number,
+): StationVisualTokens {
+  const variant = stationVisualVariant(order, stationId);
+  const override = VARIANT_TOKENS[variant][stationId];
+  const base = DEFAULT_TOKENS[stationId];
+  if (override && base) {
+    return { ...base, ...override };
+  }
+  if (override) return override;
+  if (base) return base;
+  return {
+    accent: '#558fc3',
+    glow: 'rgba(85, 143, 195, 0.35)',
+    heroImage: `/assets/stations/${stationId}.png`,
+  };
+}
+
+/** Inline CSS variables for hub card / station brief */
+export function stationVisualStyle(
+  order: StationVariantOrder | null | undefined,
+  stationId: number,
+): Record<string, string> {
+  const t = stationVisualTokens(order, stationId);
+  return {
+    '--accent': t.accent,
+    '--brief-accent': t.accent,
+    '--hero-image': `url('${t.heroImage}')`,
+    '--brief-hero-image': `url('${t.heroImage}')`,
+    '--hero-glow': t.glow,
+    '--brief-glow': t.glow,
+    '--card-glow': t.glow,
+  };
+}
+
+/** מפתח i18n לכותרת מנהל תחנה 1 במסך תכנון */
+export function planningStation1ManagerSectionKey(
+  order: StationVariantOrder | null | undefined,
+): string {
+  return order?.lineMaterial === 'STEEL'
+    ? 'PLANNING_NEW.WIZARD_SECTION_STEELWORKSHOP_MANAGER'
+    : 'PLANNING_NEW.WIZARD_SECTION_SAWS_MANAGER';
+}
+
+/** מפתח CTA אישור תכנון — תחנת יעד ראשונה */
+export function planningApproveCtaKey(
+  order: StationVariantOrder | null | undefined,
+): string {
+  return order?.lineMaterial === 'STEEL'
+    ? 'PLANNING.APPROVE_CTA_STEELWORKSHOP'
+    : 'PLANNING.APPROVE_CTA';
+}

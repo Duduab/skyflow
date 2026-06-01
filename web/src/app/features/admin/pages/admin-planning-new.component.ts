@@ -8,8 +8,16 @@ import {
   PlanningAssigneeOptionDto,
   PlanningDraftListItemDto,
   ProjectFlowStatus,
+  ProjectLineMaterial,
+  ProjectMachiningRoute,
 } from '../../../core/skyflow.models';
+import {
+  planningStation1ManagerSectionKey,
+  stationLabelKey,
+} from '../../../core/station-presentation';
 import { PlanningPanelComponent } from '../planning/planning-panel.component';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 
 type WizardStep = 1 | 2 | 3;
 
@@ -23,7 +31,12 @@ export interface PlanningSuccessSnapshot {
 @Component({
   selector: 'skyflow-admin-planning-new',
   standalone: true,
-  imports: [TranslateModule, PlanningPanelComponent],
+  imports: [
+    TranslateModule,
+    PlanningPanelComponent,
+    UiButtonComponent,
+    UiPopupComponent,
+  ],
   templateUrl: './admin-planning-new.component.html',
   styleUrl: './admin-planning-new.component.scss',
 })
@@ -40,6 +53,8 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly step = signal<WizardStep>(1);
   readonly newProjectName = signal('');
   readonly newProjectDetails = signal('');
+  readonly lineMaterial = signal<ProjectLineMaterial>('ALUMINUM');
+  readonly machiningRoute = signal<ProjectMachiningRoute>('GLASS');
   readonly creating = signal(false);
   readonly createErrorKey = signal<string | null>(null);
 
@@ -116,6 +131,47 @@ export class AdminPlanningNewComponent implements OnInit {
     this.newProjectDetails.set((ev.target as HTMLTextAreaElement).value);
   }
 
+  onLineMaterialChange(ev: Event): void {
+    this.lineMaterial.set(
+      (ev.target as HTMLSelectElement).value as ProjectLineMaterial,
+    );
+  }
+
+  onMachiningRouteChange(ev: Event): void {
+    this.machiningRoute.set(
+      (ev.target as HTMLSelectElement).value as ProjectMachiningRoute,
+    );
+  }
+
+  /** וריאנט הפרויקט הנבחר (טיוטה / אחרי יצירה) */
+  selectedVariantOrder(): {
+    lineMaterial: ProjectLineMaterial;
+    machiningRoute: ProjectMachiningRoute;
+  } {
+    const pid = this.selectedProjectId();
+    if (pid) {
+      const d = this.drafts().find((x) => x.id === pid);
+      if (d) {
+        return {
+          lineMaterial: d.lineMaterial,
+          machiningRoute: d.machiningRoute,
+        };
+      }
+    }
+    return {
+      lineMaterial: this.lineMaterial(),
+      machiningRoute: this.machiningRoute(),
+    };
+  }
+
+  station1FlowLabelKey(): string {
+    return stationLabelKey(this.selectedVariantOrder(), 1);
+  }
+
+  station1ManagerSectionKey(): string {
+    return planningStation1ManagerSectionKey(this.selectedVariantOrder());
+  }
+
   createProjectAndGoStep2(): void {
     const name = this.newProjectName().trim();
     if (name.length < 2) {
@@ -126,7 +182,12 @@ export class AdminPlanningNewComponent implements OnInit {
     this.createErrorKey.set(null);
     const details = this.newProjectDetails().trim();
     this.api
-      .postPlanningDraft(name, details || undefined)
+      .postPlanningDraft({
+        name,
+        requirements: details || undefined,
+        lineMaterial: this.lineMaterial(),
+        machiningRoute: this.machiningRoute(),
+      })
       .pipe(
         take(1),
         finalize(() => this.creating.set(false)),
@@ -234,6 +295,8 @@ export class AdminPlanningNewComponent implements OnInit {
     this.applyPick(d);
     this.newProjectName.set(d.name);
     this.newProjectDetails.set(d.requirements?.trim() ?? '');
+    this.lineMaterial.set(d.lineMaterial);
+    this.machiningRoute.set(d.machiningRoute);
     this.api
       .getPlanningPreview(d.id)
       .pipe(take(1))
@@ -310,6 +373,8 @@ export class AdminPlanningNewComponent implements OnInit {
     this.selectedWorkerIds.set([]);
     this.newProjectName.set('');
     this.newProjectDetails.set('');
+    this.lineMaterial.set('ALUMINUM');
+    this.machiningRoute.set('GLASS');
     this.createErrorKey.set(null);
     this.assigneesLoadError.set(null);
     this.successModalOpen.set(false);

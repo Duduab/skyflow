@@ -7,7 +7,9 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, take } from 'rxjs/operators';
@@ -25,18 +27,33 @@ import {
   PROGRESS_RING_C,
   StationProgressVm,
 } from './station-progress';
+import { UiButtonComponent } from '../../shared/ui-button.component';
+import { StationLabelPipe } from '../../shared/station-label.pipe';
+import {
+  stationDescKey,
+  stationVisualModifierClass,
+  stationVisualStyle,
+} from '../../core/station-presentation';
 
 /** @deprecated השתמשו ב-OrderPickerPreview; נשאר לתאימות */
 export type OrderHubPreview = OrderPickerPreview;
 
 @Component({
   selector: 'skyflow-worker-hub',
-  imports: [RouterLink, TranslateModule, OrderPickerModalComponent],
+  imports: [
+    RouterLink,
+    TranslateModule,
+    NgStyle,
+    OrderPickerModalComponent,
+    UiButtonComponent,
+    StationLabelPipe,
+  ],
   templateUrl: './worker-hub.component.html',
   styleUrl: './worker-hub.component.scss',
 })
 export class WorkerHubComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   readonly projectSelection = inject(WorkerProjectSelectionService);
 
@@ -83,15 +100,44 @@ export class WorkerHubComponent implements OnInit {
   });
 
   /** שם ההזמנה הנבחרת — ברירת מחדל הראשונה ברשימה כשאין בחירה תקפה */
-  readonly selectedOrderDisplayName = computed(() => {
+  readonly selectedOrder = computed((): ProjectOrder | null => {
     const list = this.orders();
-    if (!list.length) return '';
+    if (!list.length) return null;
     const id = this.projectSelection.selectedProjectId();
-    const hit = id ? list.find((o) => o.id === id) : undefined;
-    return hit?.name ?? list[0].name;
+    return (id ? list.find((o) => o.id === id) : undefined) ?? list[0];
   });
 
+  readonly selectedOrderDisplayName = computed(() => {
+    return this.selectedOrder()?.name ?? '';
+  });
+
+  stationDescKeyFor(stationId: number): string {
+    return stationDescKey(this.selectedOrder(), stationId);
+  }
+
+  stationVisualModifier(stationId: number): string | null {
+    return stationVisualModifierClass(this.selectedOrder(), stationId);
+  }
+
+  stationCardStyle(stationId: number): Record<string, string> {
+    return stationVisualStyle(this.selectedOrder(), stationId);
+  }
+
   ngOnInit(): void {
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        filter(() => {
+          const u = this.router.url.split('?')[0];
+          return u === '/worker';
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        const pid = this.projectSelection.selectedProjectId();
+        if (pid) this.loadAllContexts(pid);
+      });
+
     this.api
       .getStationManagers()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -189,7 +235,7 @@ export class WorkerHubComponent implements OnInit {
     return computeStationProgress(stationId, ctx);
   }
 
-  /** תחנה 1 אחרי אישור תכנון; תחנה k>1 רק אם כל התחנות 1..k-1 ב־100%. */
+  /** תחנה 1 אחרי אישור תכנון; CNC אחרי דיווח מסורים אחד; תחנות 3+ אחרי 100% בתחנה הקודמת. */
   stationUnlocked(stationId: number): boolean {
     return isStationUnlockedInChain(stationId, this.contextByStation());
   }

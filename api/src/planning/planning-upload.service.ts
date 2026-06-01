@@ -97,7 +97,7 @@ export class PlanningUploadService {
       const refLen =
         Number.isFinite(lenNum) && lenNum > 0
           ? order.originalLength
-          : new Prisma.Decimal(600);
+          : new Prisma.Decimal(6000);
 
       await tx.projectOrder.update({
         where: { id: projectId },

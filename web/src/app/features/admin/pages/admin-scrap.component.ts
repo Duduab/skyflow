@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartDataset, ChartType } from 'chart.js';
@@ -33,7 +34,7 @@ import {
 export interface ScrapProjectTotalVm {
   projectId: string;
   projectName: string;
-  totalScrapCm: number;
+  totalScrapMm: number;
   totalPieces: number;
   rowCount: number;
   sharePct: number;
@@ -42,19 +43,19 @@ export interface ScrapProjectTotalVm {
 export interface ScrapStationTotalVm {
   stationId: number;
   stationName: string;
-  totalScrapCm: number;
+  totalScrapMm: number;
   totalPieces: number;
 }
 
 export interface ScrapDayBucketVm {
   dateKey: string;
   label: string;
-  totalScrapCm: number;
+  totalScrapMm: number;
   totalPieces: number;
 }
 
-function rowScrapCm(r: ScrapOverviewRow): number {
-  return r.itemLengthCm * r.scrapQty;
+function rowScrapMm(r: ScrapOverviewRow): number {
+  return r.itemLengthMm * r.scrapQty;
 }
 
 function localDateKey(iso: string): string {
@@ -78,30 +79,30 @@ function aggregateScrapByProject(
   const map = new Map<string, ScrapProjectTotalVm>();
   let grand = 0;
   for (const r of rows) {
-    const cm = rowScrapCm(r);
+    const cm = rowScrapMm(r);
     grand += cm;
     const cur = map.get(r.projectId);
     if (!cur) {
       map.set(r.projectId, {
         projectId: r.projectId,
         projectName: r.projectName,
-        totalScrapCm: cm,
+        totalScrapMm: cm,
         totalPieces: r.scrapQty,
         rowCount: 1,
         sharePct: 0,
       });
     } else {
-      cur.totalScrapCm += cm;
+      cur.totalScrapMm += cm;
       cur.totalPieces += r.scrapQty;
       cur.rowCount += 1;
     }
   }
   const list = Array.from(map.values()).sort(
-    (a, b) => b.totalScrapCm - a.totalScrapCm,
+    (a, b) => b.totalScrapMm - a.totalScrapMm,
   );
   if (grand > 0) {
     for (const p of list) {
-      p.sharePct = Math.round((p.totalScrapCm / grand) * 1000) / 10;
+      p.sharePct = Math.round((p.totalScrapMm / grand) * 1000) / 10;
     }
   }
   return list;
@@ -112,21 +113,21 @@ function aggregateScrapByStation(
 ): ScrapStationTotalVm[] {
   const map = new Map<number, ScrapStationTotalVm>();
   for (const r of rows) {
-    const cm = rowScrapCm(r);
+    const cm = rowScrapMm(r);
     const cur = map.get(r.stationId);
     if (!cur) {
       map.set(r.stationId, {
         stationId: r.stationId,
         stationName: r.stationName,
-        totalScrapCm: cm,
+        totalScrapMm: cm,
         totalPieces: r.scrapQty,
       });
     } else {
-      cur.totalScrapCm += cm;
+      cur.totalScrapMm += cm;
       cur.totalPieces += r.scrapQty;
     }
   }
-  return Array.from(map.values()).sort((a, b) => b.totalScrapCm - a.totalScrapCm);
+  return Array.from(map.values()).sort((a, b) => b.totalScrapMm - a.totalScrapMm);
 }
 
 function aggregateScrapByDay(
@@ -137,7 +138,7 @@ function aggregateScrapByDay(
   const map = new Map<string, ScrapDayBucketVm>();
   for (const r of rows) {
     const key = localDateKey(r.createdAt);
-    const cm = rowScrapCm(r);
+    const cm = rowScrapMm(r);
     const cur = map.get(key);
     if (!cur) {
       const dt = new Date(`${key}T12:00:00`);
@@ -148,11 +149,11 @@ function aggregateScrapByDay(
           day: 'numeric',
           month: 'short',
         }),
-        totalScrapCm: cm,
+        totalScrapMm: cm,
         totalPieces: r.scrapQty,
       });
     } else {
-      cur.totalScrapCm += cm;
+      cur.totalScrapMm += cm;
       cur.totalPieces += r.scrapQty;
     }
   }
@@ -169,6 +170,7 @@ function aggregateScrapByDay(
     DatePipe,
     RouterLink,
     BaseChartDirective,
+    UiButtonComponent,
   ],
   templateUrl: './admin-scrap.component.html',
   styleUrl: './admin-scrap.component.scss',
@@ -226,32 +228,32 @@ export class AdminScrapComponent implements OnInit {
     const todayKey = calendarDayKey(0);
     const yesterdayKey = calendarDayKey(-1);
 
-    let totalCm = 0;
+    let totalMm = 0;
     let totalPieces = 0;
-    let todayCm = 0;
+    let todayMm = 0;
     let todayPieces = 0;
-    let yesterdayCm = 0;
+    let yesterdayMm = 0;
     let yesterdayPieces = 0;
 
     for (const r of rows) {
-      const cm = rowScrapCm(r);
-      totalCm += cm;
+      const cm = rowScrapMm(r);
+      totalMm += cm;
       totalPieces += r.scrapQty;
       const dk = localDateKey(r.createdAt);
       if (dk === todayKey) {
-        todayCm += cm;
+        todayMm += cm;
         todayPieces += r.scrapQty;
       } else if (dk === yesterdayKey) {
-        yesterdayCm += cm;
+        yesterdayMm += cm;
         yesterdayPieces += r.scrapQty;
       }
     }
 
-    const deltaCm = todayCm - yesterdayCm;
+    const deltaMm = todayMm - yesterdayMm;
     let deltaPct: number | null = null;
-    if (yesterdayCm > 0) {
-      deltaPct = Math.round((deltaCm / yesterdayCm) * 1000) / 10;
-    } else if (todayCm > 0) {
+    if (yesterdayMm > 0) {
+      deltaPct = Math.round((deltaMm / yesterdayMm) * 1000) / 10;
+    } else if (todayMm > 0) {
       deltaPct = null;
     } else {
       deltaPct = 0;
@@ -262,18 +264,18 @@ export class AdminScrapComponent implements OnInit {
     const scrapRate = dash?.summary.scrapRatePct ?? null;
     const recoverableHint =
       scrapRate != null && processed > 0
-        ? Math.round((totalCm * (100 - scrapRate)) / 100)
+        ? Math.round((totalMm * (100 - scrapRate)) / 100)
         : null;
 
     return {
-      totalCm,
+      totalMm,
       totalPieces,
       entryCount: rows.length,
-      todayCm,
+      todayMm,
       todayPieces,
-      yesterdayCm,
+      yesterdayMm,
       yesterdayPieces,
-      deltaCm,
+      deltaMm,
       deltaPct,
       scrapRate,
       processedVolume: processed,
@@ -284,9 +286,9 @@ export class AdminScrapComponent implements OnInit {
   });
 
   readonly trendDirection = computed<'better' | 'worse' | 'flat'>(() => {
-    const { deltaCm } = this.metrics();
-    if (deltaCm < -0.5) return 'better';
-    if (deltaCm > 0.5) return 'worse';
+    const { deltaMm } = this.metrics();
+    if (deltaMm < -0.5) return 'better';
+    if (deltaMm > 0.5) return 'worse';
     return 'flat';
   });
 
@@ -339,8 +341,8 @@ export class AdminScrapComponent implements OnInit {
     return 'he-IL';
   }
 
-  rowCm(r: ScrapOverviewRow): number {
-    return rowScrapCm(r);
+  rowMm(r: ScrapOverviewRow): number {
+    return rowScrapMm(r);
   }
 
   formatDayLabel(dateKey: string): string {
@@ -409,14 +411,14 @@ export class AdminScrapComponent implements OnInit {
       const summaryAoa: (string | number)[][] = [
         [
           tr('ADMIN_PAGE.PROJECTS'),
-          tr('ADMIN_SCRAP_PAGE.COL_TOTAL_SCRAP_CM'),
+          tr('ADMIN_SCRAP_PAGE.COL_TOTAL_SCRAP_MM'),
           tr('ADMIN_SCRAP_PAGE.COL_TOTAL_PIECES'),
           tr('ADMIN_SCRAP_PAGE.COL_ENTRIES'),
           tr('ADMIN_SCRAP_PAGE.COL_SHARE'),
         ],
         ...totals.map((t) => [
           t.projectName,
-          Math.round(t.totalScrapCm * 100) / 100,
+          Math.round(t.totalScrapMm * 100) / 100,
           t.totalPieces,
           t.rowCount,
           t.sharePct,
@@ -436,15 +438,15 @@ export class AdminScrapComponent implements OnInit {
         tr('ADMIN_PROJECTS.COL_STATION'),
         tr('WORKER.SCRAP_LENGTH'),
         tr('ADMIN_PROJECTS.COL_SCRAP_QTY'),
-        tr('ADMIN_SCRAP_PAGE.COL_LINE_CM'),
+        tr('ADMIN_SCRAP_PAGE.COL_LINE_MM'),
         tr('ADMIN_PROJECTS.COL_TIME'),
       ],
       ...rows.map((r) => [
         r.projectName,
         r.stationName,
-        r.itemLengthCm,
+        r.itemLengthMm,
         r.scrapQty,
-        rowScrapCm(r),
+        rowScrapMm(r),
         r.createdAt,
       ]),
     ];
@@ -476,8 +478,8 @@ export class AdminScrapComponent implements OnInit {
       labels: daily.map((d) => d.label),
       datasets: [
         enhanceAdminLineDataset({
-          label: this.translate.instant('ADMIN_SCRAP_PAGE.CHART_DAILY_CM'),
-          data: daily.map((d) => Math.round(d.totalScrapCm)),
+          label: this.translate.instant('ADMIN_SCRAP_PAGE.CHART_DAILY_MM'),
+          data: daily.map((d) => Math.round(d.totalScrapMm)),
           borderColor: 'rgba(37, 99, 235, 1)',
           backgroundColor: 'rgba(37, 99, 235, 0.15)',
         } as ChartDataset<'line', number[]>),
@@ -491,10 +493,10 @@ export class AdminScrapComponent implements OnInit {
       ],
       datasets: [
         enhanceAdminBarDataset({
-          label: this.translate.instant('ADMIN_SCRAP_PAGE.KPI_SCRAP_CM'),
+          label: this.translate.instant('ADMIN_SCRAP_PAGE.KPI_SCRAP_MM'),
           data: [
-            Math.round(m.yesterdayCm),
-            Math.round(m.todayCm),
+            Math.round(m.yesterdayMm),
+            Math.round(m.todayMm),
           ],
           backgroundColor: [
             'rgba(100, 116, 139, 0.82)',
@@ -525,8 +527,8 @@ export class AdminScrapComponent implements OnInit {
       labels: splitLabels,
       datasets: [
         enhanceAdminBarDataset({
-          label: this.translate.instant('ADMIN_SCRAP_PAGE.KPI_SCRAP_CM'),
-          data: top.map((x) => Math.round(x.totalScrapCm)),
+          label: this.translate.instant('ADMIN_SCRAP_PAGE.KPI_SCRAP_MM'),
+          data: top.map((x) => Math.round(x.totalScrapMm)),
           backgroundColor: barColors.slice(0, top.length),
         } as ChartDataset<'bar', number[]>),
       ],

@@ -10,13 +10,9 @@
       <p class="admin-page__sub">{{ 'ADMIN_FILES_PAGE.SUB' | translate }}</p>
     </div>
     <div class="admin-files__hero-actions">
-      <button
-        type="button"
-        class="admin-files__upload sf-ui-btn sf-ui-btn--primary"
-        (click)="openUploadModal()"
-      >
+      <skyflow-ui-button variant="primary" btnClass="admin-files__upload" (click)="openUploadModal()">
         {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
-      </button>
+      </skyflow-ui-button>
     </div>
   </header>
 
@@ -72,9 +68,9 @@
   @if (s.total === 0) {
     <section class="admin-files__empty">
       <p>{{ 'ADMIN_FILES_PAGE.LIST_EMPTY' | translate }}</p>
-      <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="openUploadModal()">
+      <skyflow-ui-button variant="primary" (click)="openUploadModal()">
         {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
-      </button>
+      </skyflow-ui-button>
     </section>
   } @else if (filterEmpty()) {
     <section class="admin-files__empty admin-files__empty--filter">
@@ -117,104 +113,59 @@
 }
 
 @if (previewFile(); as f) {
-  <div class="admin-files-overlay" (click)="closePreview()" role="presentation">
-    <div
-      class="admin-files-overlay__panel admin-files-overlay__panel--preview"
-      [attr.data-surface]="theme.mode()"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="admin-files-preview-title"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="admin-files-modal__head">
-        <div class="admin-files-preview__head-text">
-          <h2 id="admin-files-preview-title" class="admin-files-modal__title">{{ f.title }}</h2>
-          <p class="admin-files-preview__sub">
-            <span>{{ f.projectName }}</span>
-            <span class="admin-files-doc__dot" aria-hidden="true">·</span>
-            <span>{{ kindLabelKey(f.kind) | translate }}</span>
-            @if (f.reference) {
-              <span class="admin-files-doc__dot" aria-hidden="true">·</span>
-              <span class="admin-files-preview__ref" dir="ltr">{{ f.reference }}</span>
-            }
-          </p>
-        </div>
-        <button
-          type="button"
-          class="admin-files-modal__close"
-          (click)="closePreview()"
-          [attr.aria-label]="'ADMIN_FILES_PAGE.MODAL_CLOSE' | translate"
-        >
-          ×
-        </button>
-      </div>
+  <skyflow-ui-popup
+    [open]="true"
+    size="wide"
+    [hideIcon]="true"
+    (closed)="closePreview()"
+    [title]="f.title"
+    titleId="admin-files-preview-title"
+    [zIndex]="85"
+  >
+    <p popup-header-extra class="admin-files-preview__sub">
+      <span>{{ f.projectName }}</span>
+      <span class="admin-files-doc__dot" aria-hidden="true">·</span>
+      <span>{{ kindLabelKey(f.kind) | translate }}</span>
+      @if (f.reference) {
+        <span class="admin-files-doc__dot" aria-hidden="true">·</span>
+        <span class="admin-files-preview__ref" dir="ltr">{{ f.reference }}</span>
+      }
+    </p>
 
-      <div class="admin-files-preview__frame">
-        <embed
-          class="admin-files-preview__embed"
-          [src]="previewPdfSrc(f.pdfUrl)"
-          type="application/pdf"
-          [title]="f.title"
-        />
-      </div>
-
-      <footer class="admin-files-preview__actions">
-        <button
-          type="button"
-          class="admin-files-modal__btn secondary"
-          (click)="openSendModal()"
-        >
-          {{ 'ADMIN_FILES_PAGE.SEND' | translate }}
-        </button>
-        <button
-          type="button"
-          class="admin-files-modal__btn secondary"
-          (click)="openPreviewInNewTab()"
-        >
-          {{ 'ADMIN_FILES_PAGE.OPEN_NEW_TAB' | translate }}
-        </button>
-        <button
-          type="button"
-          class="admin-files-modal__btn primary sf-ui-btn sf-ui-btn--primary"
-          (click)="downloadPreview()"
-        >
-          {{ 'ADMIN_FILES_PAGE.DOWNLOAD' | translate }}
-        </button>
-      </footer>
+    <div class="admin-files-preview__frame">
+      <embed
+        class="admin-files-preview__embed"
+        [src]="previewPdfSrc(f.pdfUrl)"
+        type="application/pdf"
+        [title]="f.title"
+      />
     </div>
-  </div>
+
+    <div popup-actions>
+      <skyflow-ui-button variant="secondary" btnClass="admin-files-modal__btn" (click)="openSendModal()">
+        {{ 'ADMIN_FILES_PAGE.SEND' | translate }}
+      </skyflow-ui-button>
+      <skyflow-ui-button variant="secondary" btnClass="admin-files-modal__btn" (click)="openPreviewInNewTab()">
+        {{ 'ADMIN_FILES_PAGE.OPEN_NEW_TAB' | translate }}
+      </skyflow-ui-button>
+      <skyflow-ui-button variant="primary" btnClass="admin-files-modal__btn" (click)="downloadPreview()">
+        {{ 'ADMIN_FILES_PAGE.DOWNLOAD' | translate }}
+      </skyflow-ui-button>
+    </div>
+  </skyflow-ui-popup>
 }
 
 @if (sendModalOpen() && previewFile(); as f) {
-  <div
-    class="admin-files-overlay admin-files-overlay--send"
-    (click)="closeSendModal()"
-    role="presentation"
+  <skyflow-ui-popup
+    [open]="true"
+    (closed)="closeSendModal()"
+    [title]="'ADMIN_FILES_PAGE.SEND_TITLE' | translate"
+    [subtitle]="'ADMIN_FILES_PAGE.SEND_SUB' | translate"
+    titleId="admin-files-send-title"
+    [zIndex]="90"
+    [closeOnScrim]="!sendBusy()"
   >
-    <div
-      class="admin-files-overlay__panel admin-files-overlay__panel--send"
-      [attr.data-surface]="theme.mode()"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="admin-files-send-title"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="admin-files-modal__head">
-        <h2 id="admin-files-send-title" class="admin-files-modal__title">
-          {{ 'ADMIN_FILES_PAGE.SEND_TITLE' | translate }}
-        </h2>
-        <button
-          type="button"
-          class="admin-files-modal__close"
-          (click)="closeSendModal()"
-          [disabled]="sendBusy()"
-          [attr.aria-label]="'ADMIN_FILES_PAGE.MODAL_CLOSE' | translate"
-        >
-          ×
-        </button>
-      </div>
-      <p class="admin-files-modal__sub">{{ 'ADMIN_FILES_PAGE.SEND_SUB' | translate }}</p>
-      <p class="admin-files-send__doc">{{ f.title }}</p>
+    <p class="admin-files-send__doc">{{ f.title }}</p>
 
       @if (companyUsers().length) {
         <div class="admin-files-send__section">
@@ -299,83 +250,62 @@
         </p>
       }
 
-      <div class="admin-files-modal__actions">
-        <button
-          type="button"
-          class="admin-files-modal__btn secondary"
-          (click)="closeSendModal()"
-          [disabled]="sendBusy()"
-        >
-          {{ 'ADMIN_FILES_PAGE.MODAL_CANCEL' | translate }}
-        </button>
-        <button
-          type="button"
-          class="admin-files-modal__btn primary sf-ui-btn sf-ui-btn--primary"
-          [disabled]="sendBusy() || !sendRecipients().length"
-          (click)="submitSend()"
-        >
-          @if (sendBusy()) {
-            {{ 'ADMIN_FILES_PAGE.SEND_BUSY' | translate }}
-          } @else {
-            {{ 'ADMIN_FILES_PAGE.SEND' | translate }}
-          }
-        </button>
-      </div>
+    <div popup-actions>
+      <skyflow-ui-button
+        variant="secondary"
+        btnClass="admin-files-modal__btn"
+        (click)="closeSendModal()"
+        [disabled]="sendBusy()"
+      >
+        {{ 'ADMIN_FILES_PAGE.MODAL_CANCEL' | translate }}
+      </skyflow-ui-button>
+      <skyflow-ui-button
+        variant="primary"
+        btnClass="admin-files-modal__btn"
+        [disabled]="sendBusy() || !sendRecipients().length"
+        [loading]="sendBusy()"
+        (click)="submitSend()"
+      >
+        {{ 'ADMIN_FILES_PAGE.SEND' | translate }}
+      </skyflow-ui-button>
     </div>
-  </div>
+  </skyflow-ui-popup>
 }
 
 @if (uploadModalOpen()) {
-  <div class="admin-files-overlay" (click)="closeUploadModal()" role="presentation">
-    <div
-      class="admin-files-overlay__panel"
-      [attr.data-surface]="theme.mode()"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="admin-files-modal-title"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="admin-files-modal__head">
-        <h2 id="admin-files-modal-title" class="admin-files-modal__title">
-          {{ 'ADMIN_FILES_PAGE.UPLOAD_TITLE' | translate }}
-        </h2>
-        <button
-          type="button"
-          class="admin-files-modal__close"
-          (click)="closeUploadModal()"
-          [disabled]="uploading()"
-          [attr.aria-label]="'ADMIN_FILES_PAGE.MODAL_CLOSE' | translate"
-        >
-          ×
-        </button>
-      </div>
-      <p class="admin-files-modal__sub">{{ 'ADMIN_FILES_PAGE.UPLOAD_HINT' | translate }}</p>
+  <skyflow-ui-popup
+    [open]="true"
+    (closed)="closeUploadModal()"
+    [title]="'ADMIN_FILES_PAGE.UPLOAD_TITLE' | translate"
+    [subtitle]="'ADMIN_FILES_PAGE.UPLOAD_HINT' | translate"
+    titleId="admin-files-modal-title"
+    [closeOnScrim]="!uploading()"
+  >
+    <fieldset class="admin-files-modal__modes">
+      <legend class="sr-only">{{ 'ADMIN_FILES_PAGE.UPLOAD_MODE_LEGEND' | translate }}</legend>
+      <label class="admin-files-modal__mode">
+        <input
+          type="radio"
+          name="filesUploadMode"
+          value="existing"
+          [checked]="uploadMode() === 'existing'"
+          (change)="setUploadMode('existing')"
+        />
+        <span>{{ 'ADMIN_FILES_PAGE.MODE_EXISTING' | translate }}</span>
+      </label>
+      <label class="admin-files-modal__mode">
+        <input
+          type="radio"
+          name="filesUploadMode"
+          value="new"
+          [checked]="uploadMode() === 'new'"
+          (change)="setUploadMode('new')"
+        />
+        <span>{{ 'ADMIN_FILES_PAGE.MODE_NEW' | translate }}</span>
+      </label>
+    </fieldset>
 
-      <fieldset class="admin-files-modal__modes">
-        <legend class="sr-only">{{ 'ADMIN_FILES_PAGE.UPLOAD_MODE_LEGEND' | translate }}</legend>
-        <label class="admin-files-modal__mode">
-          <input
-            type="radio"
-            name="filesUploadMode"
-            value="existing"
-            [checked]="uploadMode() === 'existing'"
-            (change)="setUploadMode('existing')"
-          />
-          <span>{{ 'ADMIN_FILES_PAGE.MODE_EXISTING' | translate }}</span>
-        </label>
-        <label class="admin-files-modal__mode">
-          <input
-            type="radio"
-            name="filesUploadMode"
-            value="new"
-            [checked]="uploadMode() === 'new'"
-            (change)="setUploadMode('new')"
-          />
-          <span>{{ 'ADMIN_FILES_PAGE.MODE_NEW' | translate }}</span>
-        </label>
-      </fieldset>
-
-      <div class="admin-files-modal__form">
+    <div class="admin-files-modal__form">
         @if (uploadMode() === 'existing') {
           <label class="admin-files-modal__field">
             <span>{{ 'ADMIN_FILES_PAGE.SELECT_PROJECT' | translate }}</span>
@@ -465,30 +395,26 @@
             {{ 'ADMIN_FILES_PAGE.UPLOAD_OK' | translate }}
           </p>
         }
-
-        <div class="admin-files-modal__actions">
-          <button
-            type="button"
-            class="admin-files-modal__btn secondary"
-            (click)="closeUploadModal()"
-            [disabled]="uploading()"
-          >
-            {{ 'ADMIN_FILES_PAGE.MODAL_CANCEL' | translate }}
-          </button>
-          <button
-            type="button"
-            class="admin-files-modal__btn primary sf-ui-btn sf-ui-btn--primary"
-            [disabled]="uploading()"
-            (click)="submitUpload()"
-          >
-            @if (uploading()) {
-              {{ 'ADMIN_FILES_PAGE.UPLOADING' | translate }}
-            } @else {
-              {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
-            }
-          </button>
-        </div>
-      </div>
     </div>
-  </div>
+
+    <div popup-actions>
+      <skyflow-ui-button
+        variant="secondary"
+        btnClass="admin-files-modal__btn"
+        (click)="closeUploadModal()"
+        [disabled]="uploading()"
+      >
+        {{ 'ADMIN_FILES_PAGE.MODAL_CANCEL' | translate }}
+      </skyflow-ui-button>
+      <skyflow-ui-button
+        variant="primary"
+        btnClass="admin-files-modal__btn"
+        [disabled]="uploading()"
+        [loading]="uploading()"
+        (click)="submitUpload()"
+      >
+        {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
+      </skyflow-ui-button>
+    </div>
+  </skyflow-ui-popup>
 }

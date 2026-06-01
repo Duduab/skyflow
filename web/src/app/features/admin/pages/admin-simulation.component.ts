@@ -10,6 +10,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { ApiService } from '../../../core/api.service';
@@ -17,26 +20,31 @@ import {
   SimulationSnapshotResponse,
   OrderSimulationRecord,
   SimulationProjectRow,
+  SimProfileNeedLine,
+  ProfileInventoryRow,
 } from '../../../core/skyflow.models';
+import {
+  CATALOG_PROFILE_CODES,
+  evaluateProfileSimulation,
+  ProfileKind,
+  SimProfileNeedResult,
+  isCatalogProfileCode,
+  normalizeProfileCode,
+} from '../../../core/profile-inventory.util';
 import { ThemeService } from '../../../core/theme.service';
 
-type Scenario = 'full' | 'half' | 'extra' | 'custom';
-type LineKey = 'beams' | 'glazing' | 'unitized';
+const STORAGE_KEY = 'skyflow-order-simulations-v3';
+const LEGACY_STORAGE_KEYS = [
+  'skyflow-order-simulations-v2',
+  'skyflow-order-simulations-v1',
+];
 
-export interface SimLineVm {
-  key: LineKey;
-  labelKey: string;
+interface DraftNeedRow {
+  profileKind: ProfileKind;
+  profileCode: string;
   qty: number;
-  cmPerUnit: number;
-  needCm: number;
-  sharePct: number;
-  enabled: boolean;
-  coveredCm: number;
-  gapCm: number;
-  coveredPct: number;
+  lengthMm: number;
 }
-
-const STORAGE_KEY = 'skyflow-order-simulations-v1';
 
 @Component({
   selector: 'skyflow-admin-simulation',
@@ -46,6 +54,8 @@ const STORAGE_KEY = 'skyflow-order-simulations-v1';
     DecimalPipe,
     DatePipe,
     RouterLink,
+    UiButtonComponent,
+    UiPopupComponent,
   ],
   templateUrl: './admin-simulation.component.html',
   styleUrl: './admin-simulation.component.scss',
@@ -55,6 +65,8 @@ export class AdminSimulationComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   readonly theme = inject(ThemeService);
 
+  readonly catalogCodes = CATALOG_PROFILE_CODES;
+
   readonly loading = signal(true);
   readonly snap = signal<SimulationSnapshotResponse | null>(null);
 
@@ -62,39 +74,15 @@ export class AdminSimulationComponent implements OnInit {
   readonly selectedSimId = signal<string | null>(null);
 
   readonly modalOpen = signal(false);
+  readonly searchModalOpen = signal(false);
+  readonly searchRefreshing = signal(false);
   readonly modalError = signal<string | null>(null);
 
-  readonly scenario = signal<Scenario>('full');
-  readonly customMult = signal(1.0);
-
-  readonly useBeams = signal(true);
-  readonly useGlazing = signal(true);
-  readonly useUnitized = signal(true);
-  readonly allocateBeamsFirst = signal(true);
-
   draftTitle = '';
-  draftProjectId = '';
-  draftBeams = 0;
-  draftGlazing = 0;
-  draftUnitized = 0;
-  draftCmBeam = 600;
-  draftCmGlazing = 600;
-  draftCmUnitized = 600;
+  draftScrapProjectId = '';
+  draftNeedRows: DraftNeedRow[] = [this.emptyNeedRow()];
 
   readonly projectList = computed(() => this.snap()?.projects ?? []);
-
-  readonly plantTotals = computed(() => {
-    const projects = this.projectList();
-    let scrapCm = 0;
-    let bomNeedCm = 0;
-    for (const p of projects) {
-      scrapCm += p.scrapCm;
-      bomNeedCm += p.needCm;
-    }
-    const coveragePct =
-      bomNeedCm > 0 ? Math.round((scrapCm / bomNeedCm) * 1000) / 10 : 0;
-    return { scrapCm, bomNeedCm, projectCount: projects.length, coveragePct };
-  });
 
   readonly selectedSim = computed((): OrderSimulationRecord | null => {
     const id = this.selectedSimId();
@@ -102,175 +90,101 @@ export class AdminSimulationComponent implements OnInit {
     return this.simulations().find((s) => s.id === id) ?? null;
   });
 
-  readonly liveProject = computed((): SimulationProjectRow | null => {
-    const sel = this.selectedSim();
-    if (!sel) return null;
-    return (
-      this.snap()?.projects.find((p) => p.projectId === sel.projectId) ?? null
-    );
-  });
-
-  readonly needMult = computed(() => {
-    const s = this.scenario();
-    if (s === 'full') return 1;
-    if (s === 'half') return 0.5;
-    if (s === 'extra') return 1.15;
-    return Math.max(0.01, this.customMult());
-  });
-
-  readonly adjustedNeed = computed(() => {
-    const sel = this.selectedSim();
-    if (!sel) return 0;
-    const mult = this.needMult();
-    let sum = 0;
-    if (this.useBeams()) sum += sel.beamsQty * sel.cmPerBeam;
-    if (this.useGlazing()) sum += sel.glazingQty * sel.cmPerGlazing;
-    if (this.useUnitized()) sum += sel.unitizedQty * sel.cmPerUnitized;
-    return Math.round(sum * mult);
-  });
-
-  readonly activeScrapPool = computed(() => {
-    const live = this.liveProject()?.scrapCm;
-    const frozen = this.selectedSim()?.scrapCmAtSave;
-    return live ?? frozen ?? 0;
-  });
-
-  readonly lineBreakdown = computed((): SimLineVm[] => {
+  readonly liveInventory = computed((): ProfileInventoryRow[] => {
     const sel = this.selectedSim();
     if (!sel) return [];
-    const mult = this.needMult();
-    const lines: {
-      key: LineKey;
-      labelKey: string;
-      qty: number;
-      cm: number;
-      enabled: boolean;
-    }[] = [
-      {
-        key: 'beams',
-        labelKey: 'ADMIN_SIM_PAGE.BEAMS_QTY',
-        qty: sel.beamsQty,
-        cm: sel.cmPerBeam,
-        enabled: this.useBeams(),
-      },
-      {
-        key: 'glazing',
-        labelKey: 'ADMIN_SIM_PAGE.GLAZING_QTY',
-        qty: sel.glazingQty,
-        cm: sel.cmPerGlazing,
-        enabled: this.useGlazing(),
-      },
-      {
-        key: 'unitized',
-        labelKey: 'ADMIN_SIM_PAGE.UNITIZED_QTY',
-        qty: sel.unitizedQty,
-        cm: sel.cmPerUnitized,
-        enabled: this.useUnitized(),
-      },
-    ];
-    const active = lines.filter((l) => l.enabled && l.qty > 0);
-    const totalNeed = active.reduce((s, l) => s + l.qty * l.cm * mult, 0);
-    let scrapLeft = this.activeScrapPool();
-    const order = this.allocateBeamsFirst()
-      ? active
-      : [...active].sort((a, b) => b.qty * b.cm - a.qty * a.cm);
-
-    return order.map((l) => {
-      const needCm = Math.round(l.qty * l.cm * mult);
-      const coveredCm = Math.round(Math.min(needCm, scrapLeft));
-      scrapLeft = Math.max(0, scrapLeft - coveredCm);
-      const gapCm = Math.max(0, needCm - coveredCm);
-      const sharePct =
-        totalNeed > 0 ? Math.round((needCm / totalNeed) * 1000) / 10 : 0;
-      const coveredPct =
-        needCm > 0 ? Math.round((coveredCm / needCm) * 1000) / 10 : 0;
-      return {
-        key: l.key,
-        labelKey: l.labelKey,
-        qty: l.qty,
-        cmPerUnit: l.cm,
-        needCm,
-        sharePct,
-        enabled: true,
-        coveredCm,
-        gapCm,
-        coveredPct,
-      };
-    });
-  });
-
-  readonly coveredTotalCm = computed(() =>
-    this.lineBreakdown().reduce((s, l) => s + l.coveredCm, 0),
-  );
-
-  readonly adjustedGap = computed(() =>
-    Math.max(0, this.adjustedNeed() - this.coveredTotalCm()),
-  );
-
-  readonly coveragePct = computed(() => {
-    const need = this.adjustedNeed();
-    if (need <= 0) return 0;
-    return Math.min(
-      100,
-      Math.round((this.coveredTotalCm() / need) * 1000) / 10,
+    return (
+      this.snap()?.projects.find(
+        (p) => p.projectId === sel.scrapSourceProjectId,
+      )?.profileInventory ?? sel.inventoryAtSave
     );
   });
 
-  readonly savingsCm = computed(() => this.coveredTotalCm());
-
-  readonly savingsPctOfNeed = computed(() => this.coveragePct());
-
-  readonly canFullyCover = computed(
-    () => this.adjustedGap() <= 0 && this.adjustedNeed() > 0,
-  );
-
-  readonly scrapDrift = computed(() => {
+  readonly evaluation = computed(() => {
     const sel = this.selectedSim();
-    const live = this.liveProject()?.scrapCm;
-    if (!sel || live == null) return null;
-    return Math.round((live - sel.scrapCmAtSave) * 10) / 10;
+    if (!sel) return null;
+    return evaluateProfileSimulation(this.liveInventory(), sel.needLines);
   });
 
-  readonly draftPreview = computed(() => {
-    const p = this.snap()?.projects.find(
-      (x) => x.projectId === this.draftProjectId,
+  readonly canFullyCover = computed(() => this.evaluation()?.enough ?? false);
+
+  readonly plantTotals = computed(() => {
+    const projects = this.projectList();
+    const scrapMm = projects.reduce((s, p) => s + p.scrapMm, 0);
+    const profilePieces = projects.reduce(
+      (s, p) => s + p.profileInventory.reduce((a, r) => a + r.qty, 0),
+      0,
     );
-    const need =
-      this.draftBeams * this.draftCmBeam +
-      this.draftGlazing * this.draftCmGlazing +
-      this.draftUnitized * this.draftCmUnitized;
-    const scrap = p?.scrapCm ?? 0;
     return {
-      needCm: Math.round(need),
-      scrapCm: Math.round(scrap),
-      gapCm: Math.max(0, Math.round(need) - Math.round(scrap)),
-      coveragePct:
-        need > 0
-          ? Math.min(100, Math.round((scrap / need) * 1000) / 10)
-          : 0,
-      projectName: p?.name ?? '',
+      scrapMm,
+      projectCount: projects.filter((p) => p.profileInventory.length > 0).length,
+      profilePieces,
     };
   });
 
-  readonly scenarioOptions: { id: Scenario; labelKey: string; mult: number }[] =
-    [
-      { id: 'full', labelKey: 'ADMIN_SIM_PAGE.SCEN_FULL', mult: 1 },
-      { id: 'half', labelKey: 'ADMIN_SIM_PAGE.SCEN_HALF', mult: 0.5 },
-      { id: 'extra', labelKey: 'ADMIN_SIM_PAGE.SCEN_EXTRA', mult: 1.15 },
-      { id: 'custom', labelKey: 'ADMIN_SIM_PAGE.SCEN_CUSTOM', mult: 0 },
-    ];
+  detailCoveragePct(): number {
+    const ev = this.evaluation();
+    if (!ev || ev.totalNeedMm <= 0) return 0;
+    return Math.min(
+      100,
+      Math.round((ev.totalCoveredMm / ev.totalNeedMm) * 100),
+    );
+  }
+
+  readonly scrapDrift = computed(() => {
+    const sel = this.selectedSim();
+    if (!sel) return null;
+    const liveMm =
+      this.snap()?.projects.find(
+        (p) => p.projectId === sel.scrapSourceProjectId,
+      )?.scrapMm ?? null;
+    if (liveMm == null) return null;
+    const savedMm = sel.inventoryAtSave.reduce((s, r) => s + r.totalMm, 0);
+    return Math.round((liveMm - savedMm) * 10) / 10;
+  });
+
+  readonly draftPreview = computed(() => {
+    const inv =
+      this.snap()?.projects.find(
+        (p) => p.projectId === this.draftScrapProjectId,
+      )?.profileInventory ?? [];
+    const needs = this.draftNeedRows
+      .filter((r) => r.qty > 0 && r.lengthMm > 0)
+      .map((r) => ({
+        profileKind: r.profileKind,
+        profileCode: normalizeProfileCode(r.profileCode),
+        qty: r.qty,
+        lengthMm: r.lengthMm,
+      }));
+    return evaluateProfileSimulation(inv, needs);
+  });
+
+  readonly draftScrapProjectName = computed(() => {
+    const id = this.draftScrapProjectId;
+    if (!id) return '';
+    return this.snap()?.projects.find((p) => p.projectId === id)?.name ?? '';
+  });
+
+  readonly draftScrapInventory = computed((): ProfileInventoryRow[] => {
+    const id = this.draftScrapProjectId;
+    if (!id) return [];
+    return (
+      this.snap()?.projects.find((p) => p.projectId === id)?.profileInventory ??
+      []
+    );
+  });
 
   ngOnInit(): void {
     this.loadStored();
-
     this.api
       .getSimulationSnapshot()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (s) => {
           this.snap.set(s);
-          if (!this.draftProjectId && s.projects[0]) {
-            this.applyProjectDefaults(s.projects[0].projectId);
+          if (!this.draftScrapProjectId && s.projects[0]) {
+            this.draftScrapProjectId = s.projects[0].projectId;
+            this.resetDraftRows(s.projects[0]);
           }
           this.loading.set(false);
         },
@@ -292,51 +206,73 @@ export class AdminSimulationComponent implements OnInit {
       });
   }
 
-  setScenario(v: Scenario): void {
-    this.scenario.set(v);
-  }
-
-  toggleLine(key: LineKey): void {
-    if (key === 'beams') this.useBeams.update((x) => !x);
-    if (key === 'glazing') this.useGlazing.update((x) => !x);
-    if (key === 'unitized') this.useUnitized.update((x) => !x);
-  }
-
-  isLineEnabled(key: LineKey): boolean {
-    if (key === 'beams') return this.useBeams();
-    if (key === 'glazing') return this.useGlazing();
-    return this.useUnitized();
-  }
-
   openNewModal(projectId?: string): void {
     this.modalError.set(null);
-    const sn = this.snap();
-    const pid = projectId ?? sn?.projects[0]?.projectId;
+    const pid = projectId ?? this.snap()?.projects[0]?.projectId;
     this.draftTitle = '';
     if (pid) {
-      this.applyProjectDefaults(pid);
+      this.draftScrapProjectId = pid;
+      const row = this.snap()?.projects.find((p) => p.projectId === pid);
+      if (row) this.resetDraftRows(row);
     } else {
-      this.draftProjectId = '';
-      this.draftBeams = 0;
-      this.draftGlazing = 0;
-      this.draftUnitized = 0;
+      this.draftScrapProjectId = '';
+      this.draftNeedRows = [this.emptyNeedRow()];
     }
     this.modalOpen.set(true);
   }
 
   closeModal(): void {
     this.modalOpen.set(false);
+    this.searchModalOpen.set(false);
     this.modalError.set(null);
   }
 
-  onDraftProjectChange(projectId: string): void {
-    this.draftProjectId = projectId;
+  async openDraftSearch(): Promise<void> {
+    this.modalError.set(null);
+    if (!this.draftScrapProjectId) {
+      this.modalError.set('ADMIN_SIM_PAGE.ERR_PROJECT');
+      return;
+    }
+    const hasNeed = this.draftNeedRows.some((r) => r.qty > 0 && r.lengthMm > 0);
+    if (!hasNeed) {
+      this.modalError.set('ADMIN_SIM_PAGE.ERR_SEARCH_NEED');
+      return;
+    }
+    this.searchRefreshing.set(true);
+    try {
+      const s = await firstValueFrom(this.api.getSimulationSnapshot());
+      this.snap.set(s);
+      this.searchModalOpen.set(true);
+    } catch {
+      this.modalError.set('ADMIN_SIM_PAGE.ERR_SEARCH_REFRESH');
+    } finally {
+      this.searchRefreshing.set(false);
+    }
+  }
+
+  closeSearchModal(): void {
+    this.searchModalOpen.set(false);
+  }
+
+  onDraftScrapProjectChange(projectId: string): void {
+    this.draftScrapProjectId = projectId;
     const row = this.snap()?.projects.find((p) => p.projectId === projectId);
-    if (row) {
-      const L = row.originalLengthCm;
-      this.draftCmBeam = L;
-      this.draftCmGlazing = L;
-      this.draftCmUnitized = L;
+    if (row) this.resetDraftRows(row);
+  }
+
+  addDraftRow(): void {
+    this.draftNeedRows = [...this.draftNeedRows, this.emptyNeedRow()];
+  }
+
+  removeDraftRow(index: number): void {
+    if (this.draftNeedRows.length <= 1) return;
+    this.draftNeedRows = this.draftNeedRows.filter((_, i) => i !== index);
+  }
+
+  onDraftProfileKindChange(row: DraftNeedRow, kind: ProfileKind): void {
+    row.profileKind = kind;
+    if (kind === 'CATALOG' && !isCatalogProfileCode(row.profileCode)) {
+      row.profileCode = 'MPS-X';
     }
   }
 
@@ -348,17 +284,28 @@ export class AdminSimulationComponent implements OnInit {
       return;
     }
     const p = this.snap()?.projects.find(
-      (x) => x.projectId === this.draftProjectId,
+      (x) => x.projectId === this.draftScrapProjectId,
     );
     if (!p) {
       this.modalError.set('ADMIN_SIM_PAGE.ERR_PROJECT');
       return;
     }
 
-    const baseNeedCm =
-      this.draftBeams * this.draftCmBeam +
-      this.draftGlazing * this.draftCmGlazing +
-      this.draftUnitized * this.draftCmUnitized;
+    const needLines: SimProfileNeedLine[] = this.draftNeedRows
+      .filter((r) => r.qty > 0 && r.lengthMm > 0)
+      .map((r) => ({
+        profileKind: r.profileKind,
+        profileCode: normalizeProfileCode(r.profileCode),
+        qty: Math.floor(r.qty),
+        lengthMm: Math.round(r.lengthMm),
+      }));
+
+    if (needLines.length === 0) {
+      this.modalError.set('ADMIN_SIM_PAGE.ERR_NEED_LINE');
+      return;
+    }
+
+    const evalResult = evaluateProfileSimulation(p.profileInventory, needLines);
 
     const id =
       typeof crypto !== 'undefined' && crypto.randomUUID
@@ -369,16 +316,13 @@ export class AdminSimulationComponent implements OnInit {
       id,
       title,
       createdAt: new Date().toISOString(),
-      projectId: p.projectId,
-      projectName: p.name,
-      beamsQty: this.draftBeams,
-      glazingQty: this.draftGlazing,
-      unitizedQty: this.draftUnitized,
-      cmPerBeam: this.draftCmBeam,
-      cmPerGlazing: this.draftCmGlazing,
-      cmPerUnitized: this.draftCmUnitized,
-      baseNeedCm: Math.round(baseNeedCm * 100) / 100,
-      scrapCmAtSave: Math.round(p.scrapCm * 100) / 100,
+      scrapSourceProjectId: p.projectId,
+      scrapSourceProjectName: p.name,
+      needLines,
+      inventoryAtSave: p.profileInventory.map((r) => ({ ...r })),
+      totalNeedMm: evalResult.totalNeedMm,
+      totalCoveredMm: evalResult.totalCoveredMm,
+      totalGapMm: evalResult.totalGapMm,
     };
 
     this.simulations.update((list) => [rec, ...list]);
@@ -389,10 +333,6 @@ export class AdminSimulationComponent implements OnInit {
 
   selectSim(id: string): void {
     this.selectedSimId.set(id);
-    this.scenario.set('full');
-    this.useBeams.set(true);
-    this.useGlazing.set(true);
-    this.useUnitized.set(true);
   }
 
   closeDetail(): void {
@@ -413,50 +353,135 @@ export class AdminSimulationComponent implements OnInit {
     }
   }
 
-  projectCoveragePct(p: SimulationProjectRow): number {
-    if (p.needCm <= 0) return 0;
-    return Math.min(100, Math.round((p.scrapCm / p.needCm) * 1000) / 10);
+  profileLabel(code: string): string {
+    return normalizeProfileCode(code);
   }
 
-  private applyProjectDefaults(projectId: string): void {
-    this.draftProjectId = projectId;
-    const row = this.snap()?.projects.find((p) => p.projectId === projectId);
-    const L = row?.originalLengthCm ?? 600;
-    this.draftCmBeam = L;
-    this.draftCmGlazing = L;
-    this.draftCmUnitized = L;
-    this.draftBeams = 0;
-    this.draftGlazing = 0;
-    this.draftUnitized = 0;
+  /** אותו אורך, פרופיל אחר — למשל חיפש MPS-Y ויש MPB-Y */
+  similarInventoryForLine(line: SimProfileNeedResult): ProfileInventoryRow[] {
+    const code = normalizeProfileCode(line.profileCode);
+    return this.draftScrapInventory().filter(
+      (b) => b.lengthMm === line.lengthMm && b.profileCode !== code && b.qty > 0,
+    );
+  }
+
+  /** אותו פרופיל, אורך אחר */
+  sameProfileOtherLengths(line: SimProfileNeedResult): ProfileInventoryRow[] {
+    const code = normalizeProfileCode(line.profileCode);
+    return this.draftScrapInventory().filter(
+      (b) => b.profileCode === code && b.lengthMm !== line.lengthMm && b.qty > 0,
+    );
+  }
+
+  applyInventoryToFirstRow(bucket: ProfileInventoryRow): void {
+    const row = this.draftNeedRows[0];
+    if (!row) return;
+    row.profileKind = bucket.profileKind;
+    row.profileCode = bucket.profileCode;
+    row.lengthMm = bucket.lengthMm;
+    if (!row.qty || row.qty <= 0) {
+      row.qty = 1;
+    }
+    this.closeSearchModal();
+  }
+
+  private emptyNeedRow(): DraftNeedRow {
+    return {
+      profileKind: 'CATALOG',
+      profileCode: 'MPS-X',
+      qty: 0,
+      lengthMm: 6000,
+    };
+  }
+
+  private resetDraftRows(p: SimulationProjectRow): void {
+    this.draftNeedRows = [
+      {
+        profileKind: 'CATALOG',
+        profileCode: 'MPS-X',
+        qty: 0,
+        lengthMm: Math.round(p.originalLengthMm) || 6000,
+      },
+    ];
   }
 
   private loadStored(): void {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const j = JSON.parse(raw) as OrderSimulationRecord[];
-      if (Array.isArray(j)) {
-        const ok = j.filter(
-          (r) =>
-            r &&
-            typeof r.id === 'string' &&
-            typeof r.title === 'string' &&
-            typeof r.baseNeedCm === 'number' &&
-            typeof r.scrapCmAtSave === 'number',
-        );
-        this.simulations.set(ok);
+      let raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        for (const legacy of LEGACY_STORAGE_KEYS) {
+          raw = localStorage.getItem(legacy);
+          if (raw) break;
+        }
+        if (!raw) return;
+      }
+      const j = JSON.parse(raw) as unknown;
+      if (!Array.isArray(j)) return;
+      const ok: OrderSimulationRecord[] = [];
+      for (const r of j) {
+        const rec = this.normalizeStoredRecord(r);
+        if (rec) ok.push(rec);
+      }
+      this.simulations.set(ok);
+      if (raw !== localStorage.getItem(STORAGE_KEY)) {
+        this.persist();
+        for (const legacy of LEGACY_STORAGE_KEYS) {
+          localStorage.removeItem(legacy);
+        }
       }
     } catch {
       /* ignore */
     }
   }
 
+  private normalizeStoredRecord(r: unknown): OrderSimulationRecord | null {
+    if (!r || typeof r !== 'object') return null;
+    const o = r as Record<string, unknown>;
+    if (typeof o['id'] !== 'string' || typeof o['title'] !== 'string') {
+      return null;
+    }
+    if (Array.isArray(o['needLines'])) {
+      const needLines: SimProfileNeedLine[] = [];
+      for (const line of o['needLines'] as unknown[]) {
+        if (!line || typeof line !== 'object') continue;
+        const l = line as Record<string, unknown>;
+        const qty = Number(l['qty']);
+        const lengthMm = Number(l['lengthMm']);
+        if (!Number.isFinite(qty) || !Number.isFinite(lengthMm)) continue;
+        needLines.push({
+          profileKind: l['profileKind'] === 'DRAWN' ? 'DRAWN' : 'CATALOG',
+          profileCode: normalizeProfileCode(String(l['profileCode'] ?? '')),
+          qty: Math.floor(qty),
+          lengthMm: Math.round(lengthMm),
+        });
+      }
+      if (!needLines.length) return null;
+      const inv = Array.isArray(o['inventoryAtSave'])
+        ? (o['inventoryAtSave'] as ProfileInventoryRow[])
+        : [];
+      const evalResult = evaluateProfileSimulation(inv, needLines);
+      return {
+        id: o['id'] as string,
+        title: o['title'] as string,
+        createdAt:
+          typeof o['createdAt'] === 'string'
+            ? o['createdAt']
+            : new Date().toISOString(),
+        scrapSourceProjectId: String(o['scrapSourceProjectId'] ?? ''),
+        scrapSourceProjectName: String(o['scrapSourceProjectName'] ?? ''),
+        needLines,
+        inventoryAtSave: inv,
+        totalNeedMm: evalResult.totalNeedMm,
+        totalCoveredMm: evalResult.totalCoveredMm,
+        totalGapMm: evalResult.totalGapMm,
+      };
+    }
+    return null;
+  }
+
   private persist(): void {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(this.simulations()),
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.simulations()));
     } catch {
       /* ignore */
     }

@@ -35,16 +35,24 @@
   --sf-radius: 1rem;
   --sf-font: 'Assistant', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  /* כפתורי UI — פלטת SkyFlow */
+  /* כפתורי UI — Accent Purple (skyflow-ui-button) */
+  --sf-ui-purple-300: #897fff;
+  --sf-ui-purple-400: #4a3aff;
   --sf-ui-btn-radius: var(--sf-radius);
-  --sf-ui-primary-from: var(--sf-blue);
-  --sf-ui-primary-to: var(--sf-indigo);
-  --sf-ui-ring-primary: rgba(85, 143, 195, 0.45);
-  --sf-ui-ring-secondary: rgba(255, 255, 255, 0.22);
-  --sf-ui-secondary-bg: rgba(255, 255, 255, 0.08);
-  --sf-ui-secondary-border: rgba(255, 255, 255, 0.18);
+  --sf-ui-primary-from: var(--sf-ui-purple-300);
+  --sf-ui-primary-to: var(--sf-ui-purple-400);
+  --sf-ui-primary-border: var(--sf-ui-purple-300);
+  --sf-ui-primary-shadow:
+    0 2px 3px 0 rgba(55, 52, 209, 0.21),
+    0 -2px 2px 0 rgba(80, 70, 189, 0.6) inset,
+    0 1px 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 3px 4px 0 rgba(223, 229, 255, 0.3) inset;
+  --sf-ui-ring-primary: rgba(137, 127, 255, 0.55);
+  --sf-ui-ring-secondary: rgba(137, 127, 255, 0.35);
+  --sf-ui-secondary-bg: rgba(255, 255, 255, 0.06);
+  --sf-ui-secondary-border: var(--sf-ui-purple-300);
   --sf-ui-secondary-text: rgba(255, 255, 255, 0.92);
-  --sf-ui-secondary-hover-bg: rgba(255, 255, 255, 0.14);
+  --sf-ui-secondary-hover-bg: rgba(137, 127, 255, 0.14);
 }
 
 @layer base {
@@ -131,14 +139,16 @@
     min-width: 0;
   }
 
+  /* —— כפתור משותף: skyflow-ui-button / .sf-ui-btn —— */
   .sf-ui-btn {
     display: inline-flex;
-    align-items: center;
+    min-height: 32px;
+    padding: 12px 14px;
     justify-content: center;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 6px;
     box-sizing: border-box;
     margin: 0;
-    padding: 0.625rem 1rem;
     border-radius: var(--sf-ui-btn-radius);
     font-family: var(--sf-font);
     font-weight: 600;
@@ -146,7 +156,7 @@
     line-height: 1.25rem;
     letter-spacing: 0.01em;
     text-decoration: none;
-    border: 1px solid transparent;
+    border: 0.5px solid transparent;
     cursor: pointer;
     transition:
       transform 0.15s ease,
@@ -156,7 +166,6 @@
       background 0.15s ease,
       color 0.15s ease,
       opacity 0.15s ease;
-    box-shadow: var(--sf-shadow);
   }
 
   .sf-ui-btn:focus-visible {
@@ -165,29 +174,28 @@
 
   .sf-ui-btn--primary {
     color: #fff;
-    border-color: transparent;
+    border-color: var(--sf-ui-primary-border);
     background: linear-gradient(
       180deg,
-      var(--sf-ui-primary-from),
-      var(--sf-ui-primary-to)
+      var(--sf-ui-primary-from) 0%,
+      var(--sf-ui-primary-to) 100%
     );
-    box-shadow: var(--sf-shadow);
+    box-shadow: var(--sf-ui-primary-shadow);
   }
 
   .sf-ui-btn--primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: var(--sf-shadow-hover);
-    filter: brightness(1.05);
+    transform: translateY(-1px);
+    filter: brightness(1.06);
   }
 
   .sf-ui-btn--primary:active:not(:disabled) {
     transform: translateY(0);
-    box-shadow: var(--sf-shadow);
+    filter: brightness(0.98);
   }
 
   .sf-ui-btn--primary:focus-visible {
     box-shadow:
-      var(--sf-shadow),
+      var(--sf-ui-primary-shadow),
       0 0 0 4px var(--sf-ui-ring-primary);
   }
 
@@ -201,33 +209,134 @@
   .sf-ui-btn--secondary:hover:not(:disabled) {
     background: var(--sf-ui-secondary-hover-bg);
     color: #fff;
+    border-color: var(--sf-ui-purple-300);
   }
 
   .sf-ui-btn--secondary:focus-visible {
-    box-shadow: var(--sf-shadow-inset), 0 0 0 4px var(--sf-ui-ring-secondary);
+    box-shadow:
+      var(--sf-shadow-inset),
+      0 0 0 4px var(--sf-ui-ring-primary);
+  }
+
+  .sf-ui-btn--ghost {
+    color: var(--sf-ui-secondary-text);
+    background: transparent;
+    border-color: rgba(137, 127, 255, 0.45);
+    box-shadow: none;
+  }
+
+  .sf-ui-btn--ghost:hover:not(:disabled) {
+    background: var(--sf-ui-secondary-hover-bg);
+    color: #fff;
+  }
+
+  .sf-ui-btn--danger {
+    color: #fff;
+    border-color: rgba(248, 113, 113, 0.65);
+    background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+    box-shadow:
+      0 2px 3px 0 rgba(127, 29, 29, 0.25),
+      0 -2px 2px 0 rgba(127, 29, 29, 0.35) inset,
+      0 1px 1px 0 rgba(255, 255, 255, 0.25) inset;
+  }
+
+  .sf-ui-btn--danger:hover:not(:disabled) {
+    filter: brightness(1.05);
   }
 
   .sf-ui-btn--lg {
     min-height: 3.5rem;
     padding: 0.85rem 1.5rem;
-    border-radius: var(--sf-radius);
     font-size: 1.2rem;
     letter-spacing: 0.02em;
   }
 
-  .sf-ui-btn--block {
+  .sf-ui-btn--block,
+  .sf-ui-button-host--full .sf-ui-btn {
     width: 100%;
+    align-self: stretch;
   }
 
   /** כפתור שליחה בעמדות עובד — גדול למגע */
   .sf-ui-btn--touch {
     width: 100%;
+    align-self: stretch;
     min-height: 5rem;
-    border-radius: var(--sf-radius);
     padding: 1rem 1.35rem;
     font-size: 1.75rem;
     font-weight: 700;
     letter-spacing: 0.03em;
+  }
+
+  /* מחלקות ישנות — אותו עיצוב primary/secondary */
+  .planning-wizard__btn--primary,
+  .profile-save-btn,
+  .admin-files-modal__btn.primary,
+  .admin-sim-modal__btn.primary {
+    color: #fff;
+    border-color: var(--sf-ui-primary-border);
+    background: linear-gradient(
+      180deg,
+      var(--sf-ui-primary-from) 0%,
+      var(--sf-ui-primary-to) 100%
+    );
+    box-shadow: var(--sf-ui-primary-shadow);
+  }
+
+  .planning-wizard__btn--ghost,
+  .admin-users-modal__btn.secondary,
+  .admin-files-modal__btn.secondary,
+  .admin-sim-modal__btn.secondary {
+    color: var(--sf-ui-secondary-text);
+    background: var(--sf-ui-secondary-bg);
+    border: 0.5px solid var(--sf-ui-secondary-border);
+    box-shadow: var(--sf-shadow-inset);
+  }
+
+  .admin-settings__btn-danger {
+    color: #fff;
+    border: 0.5px solid rgba(248, 113, 113, 0.65);
+    background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+    box-shadow:
+      0 2px 3px 0 rgba(127, 29, 29, 0.25),
+      0 -2px 2px 0 rgba(127, 29, 29, 0.35) inset;
+  }
+
+  /* רדיוס אחיד לכל כפתורי המערכת */
+  .sf-ui-btn,
+  .sf-lang-btn,
+  .sf-theme-toggle,
+  .sf-theme-toggle--icon,
+  .sf-bottom-nav__item,
+  .sf-bottom-nav__flyout-item,
+  .planning-wizard__btn,
+  .profile-save-btn,
+  .profile-segment button,
+  .profile-lang-grid button,
+  .admin-files-modal__btn,
+  .admin-sim-modal__btn,
+  .admin-users-modal__btn,
+  .admin-settings__btn-danger,
+  .admin-settings__btn-ghost,
+  .admin-settings__lang-card,
+  .admin-settings__theme-card,
+  .finish-verify-modal__btn,
+  .station-card__cta,
+  .station-back-cta,
+  .station-next-cta,
+  .station-complete-toast__cta,
+  .admin-proj-card__live,
+  .admin-proj-card__quick,
+  .admin-users__filter-chip,
+  .admin-files__chip,
+  .admin-sim__scenario-chip,
+  .planning-drafts-card__cta,
+  .planning-wizard__resume-chip {
+    border-radius: var(--sf-ui-btn-radius);
+  }
+
+  a.sf-ui-btn {
+    display: inline-flex;
   }
 
   .sf-ui-btn--touch .sf-ui-btn__spinner {

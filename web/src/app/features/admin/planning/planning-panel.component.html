@@ -24,14 +24,15 @@
           (input)="onNameInput($event)"
           [placeholder]="'PLANNING.NEW_PROJECT_PLACEHOLDER' | translate"
         />
-        <button
-          type="button"
-          class="sf-ui-btn sf-ui-btn--secondary shrink-0"
+        <skyflow-ui-button
+          variant="secondary"
+          btnClass="shrink-0"
           [disabled]="creating()"
+          [loading]="creating()"
           (click)="createDraft()"
         >
           {{ 'PLANNING.CREATE_PROJECT' | translate }}
-        </button>
+        </skyflow-ui-button>
       </div>
     </div>
   }
@@ -390,37 +391,38 @@
             class="planning-preview-actions mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"
           >
             @if (wizardMode() === 'uploadPreview' && pv.itemCount) {
-              <button
-                type="button"
-                class="sf-ui-btn sf-ui-btn--primary order-first w-full min-h-12 px-6 py-3 text-base font-black shadow-lg shadow-sky-500/20 sm:order-none sm:w-auto"
+              <skyflow-ui-button
+                variant="primary"
+                btnClass="order-first w-full min-h-12 px-6 py-3 text-base font-black shadow-lg shadow-sky-500/20 sm:order-none sm:w-auto"
                 (click)="onWizardContinue()"
               >
                 {{ 'PLANNING.WIZARD_CONTINUE_ASSIGN' | translate }}
-              </button>
-              <button
-                type="button"
-                class="planning-panel__btn-secondary sf-ui-btn sf-ui-btn--secondary w-full sm:w-auto"
+              </skyflow-ui-button>
+              <skyflow-ui-button
+                variant="secondary"
+                btnClass="planning-panel__btn-secondary w-full sm:w-auto"
                 (click)="exportPdf()"
               >
                 {{ 'PLANNING.EXPORT_PDF' | translate }}
-              </button>
+              </skyflow-ui-button>
             }
             @if (wizardMode() === 'default' || wizardMode() === 'summaryApprove') {
-              <button
-                type="button"
-                class="sf-ui-btn sf-ui-btn--primary w-full sm:w-auto"
+              <skyflow-ui-button
+                variant="primary"
+                btnClass="w-full sm:w-auto"
                 [disabled]="approving() || !pv.itemCount"
+                [loading]="approving()"
                 (click)="approve()"
               >
-                {{ 'PLANNING.APPROVE_CTA' | translate }}
-              </button>
-              <button
-                type="button"
-                class="planning-panel__btn-secondary sf-ui-btn sf-ui-btn--secondary w-full sm:w-auto"
+                {{ approveCtaKey() | translate }}
+              </skyflow-ui-button>
+              <skyflow-ui-button
+                variant="secondary"
+                btnClass="planning-panel__btn-secondary w-full sm:w-auto"
                 (click)="exportPdf()"
               >
                 {{ 'PLANNING.EXPORT_PDF' | translate }}
-              </button>
+              </skyflow-ui-button>
             }
           </div>
         </div>

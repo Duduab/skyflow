@@ -1,0 +1,80 @@
+@if (open()) {
+  <div
+    class="sf-ui-popup"
+    [class.sf-ui-popup--wide]="size() === 'wide'"
+    [class.sf-ui-popup--full]="size() === 'full'"
+    [style.--sf-ui-popup-z]="zIndex()"
+  >
+    <button
+      type="button"
+      class="sf-ui-popup__scrim"
+      (click)="onScrimClick()"
+      [attr.aria-label]="'UI_POPUP.SCRIM_CLOSE' | translate"
+    ></button>
+
+    <div
+      class="sf-ui-popup__panel"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="titleId() || null"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="close()"
+    >
+      <button
+        type="button"
+        class="sf-ui-popup__close"
+        (click)="close()"
+        [attr.aria-label]="'UI_POPUP.CLOSE' | translate"
+      >
+        <img
+          src="/assets/ui/ui-popup/icon-close.svg"
+          alt=""
+          width="19"
+          height="19"
+          aria-hidden="true"
+        />
+      </button>
+
+      @if (title() || subtitle()) {
+        <header class="sf-ui-popup__top">
+          @if (!hideIcon()) {
+            <div class="sf-ui-popup__icon" aria-hidden="true">
+              <ng-content select="[popup-icon]">
+                <img
+                  class="sf-ui-popup__icon-img"
+                  src="/assets/ui/ui-popup/icon-cookie.svg"
+                  alt=""
+                />
+              </ng-content>
+            </div>
+          }
+          <div class="sf-ui-popup__texts">
+            @if (title()) {
+              <h2 class="sf-ui-popup__title" [id]="titleId() || null">{{ title() }}</h2>
+            }
+            @if (subtitle()) {
+              <p class="sf-ui-popup__desc">{{ subtitle() }}</p>
+            }
+            <ng-content select="[popup-header-extra]" />
+          </div>
+        </header>
+      }
+
+      <div class="sf-ui-popup__body">
+        <ng-content />
+      </div>
+
+      <ng-content select="[popup-footer]" />
+
+      <footer class="sf-ui-popup__footer sf-ui-popup__footer--actions">
+        <div class="sf-ui-popup__divider" aria-hidden="true"></div>
+        <div class="sf-ui-popup__footer-inner">
+          <ng-content select="[popup-footer-start]" />
+          <div class="sf-ui-popup__actions">
+            <ng-content select="[popup-actions]" />
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+}

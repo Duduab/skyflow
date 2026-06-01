@@ -470,18 +470,14 @@
 
 .admin-settings__btn-ghost {
   padding: 0.5rem 0.9rem;
-  border-radius: var(--sf-radius);
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: transparent;
   font-size: 0.85rem;
   font-weight: 700;
-  cursor: pointer;
-  color: var(--admin-fg, #0f172a);
 }
 
-:host-context(html:not(.theme-light)) .admin-settings__btn-ghost {
+:host-context(html:not(.theme-light)) .admin-settings__btn-ghost.sf-ui-btn--ghost {
   border-color: rgba(248, 250, 252, 0.12);
   color: #f8fafc;
+  background: transparent;
 }
 
 .admin-settings__btn-ghost:disabled {

@@ -1,0 +1,291 @@
+/* Figma: Poups/Basic V4 — node 2280:1602 */
+
+.sf-ui-popup {
+  --sf-ui-popup-z: 80;
+  position: fixed;
+  inset: 0;
+  z-index: var(--sf-ui-popup-z);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.sf-ui-popup--full {
+  align-items: stretch;
+  padding: 0;
+}
+
+.sf-ui-popup__scrim {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(23, 15, 73, 0.42);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.sf-ui-popup__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 34rem);
+  max-height: min(92dvh, 90vh);
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #f1f2f9;
+  border-radius: 24px;
+  box-shadow:
+    0 4px 32px -4px rgba(111, 108, 143, 0.12),
+    0 3px 12px -2px rgba(170, 170, 190, 0.06);
+  color: #170f49;
+}
+
+.sf-ui-popup--wide .sf-ui-popup__panel {
+  width: min(96vw, 52rem);
+  max-height: min(94dvh, 92vh);
+}
+
+.sf-ui-popup--full .sf-ui-popup__panel {
+  width: 100%;
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+  border: none;
+  /* גלילה אחת לכל המסך — כותרת נעלמת עם התוכן (לא נשארת צפה) */
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.sf-ui-popup--full .sf-ui-popup__body {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.sf-ui-popup--full .sf-ui-popup__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 0 -8px 24px -8px rgba(23, 15, 73, 0.12);
+}
+
+.sf-ui-popup--full .sf-ui-popup__footer-inner {
+  justify-content: center;
+}
+
+.sf-ui-popup--full .sf-ui-popup__actions {
+  width: 100%;
+  max-width: none;
+  margin-inline-start: 0;
+  justify-content: center;
+}
+
+.sf-ui-popup__close {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 8px;
+  border: none;
+  border-radius: 200px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sf-ui-popup__close:hover {
+  background: rgba(241, 242, 249, 0.95);
+}
+
+.sf-ui-popup__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(137, 127, 255, 0.45);
+}
+
+.sf-ui-popup__top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-shrink: 0;
+  padding: 32px 40px 0 32px;
+}
+
+.sf-ui-popup__icon {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 11.667px;
+  border-radius: 50%;
+  background: #edecff;
+  box-shadow:
+    inset 0 1.429px 1.429px 0 rgba(255, 255, 255, 0.35),
+    inset 0 4.286px 5.714px 0 rgba(223, 229, 255, 0.3);
+}
+
+.sf-ui-popup__icon-img {
+  display: block;
+  width: 27px;
+  height: 27px;
+  object-fit: contain;
+}
+
+.sf-ui-popup__texts {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sf-ui-popup__title {
+  margin: 0;
+  font-family: var(--sf-font);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: #170f49;
+}
+
+.sf-ui-popup__desc {
+  margin: 0;
+  font-family: var(--sf-font);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #6f6c8f;
+  word-break: break-word;
+}
+
+.sf-ui-popup__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px 32px;
+  font-family: var(--sf-font);
+  font-size: 14px;
+  color: #170f49;
+}
+
+.sf-ui-popup__top + .sf-ui-popup__body {
+  padding-top: 24px;
+}
+
+.sf-ui-popup__footer {
+  flex-shrink: 0;
+}
+
+.sf-ui-popup__divider {
+  height: 1px;
+  background: #f1f2f9;
+}
+
+.sf-ui-popup__footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 56px;
+  padding: 24px 32px;
+}
+
+.sf-ui-popup__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-inline-start: auto;
+}
+
+.sf-ui-popup__footer--actions:not(:has(.sf-ui-popup__actions > *)) {
+  display: none;
+}
+
+/* תוכן פנימי — יורש צבעי Figma גם בלי רכיב popup (toast וכו') */
+.sf-ui-popup__body .admin-sim-detail,
+.sf-ui-popup__body .admin-users-detail__kpis,
+.sf-ui-popup__body .admin-files-preview__frame {
+  color: #170f49;
+}
+
+/* כפתור משני בפוטר — Figma Decline */
+.sf-ui-popup__actions .sf-ui-btn--secondary {
+  min-width: 100px;
+  color: #514f6e;
+  background: #fff;
+  border: 1px solid #a0a3bd;
+  box-shadow: none;
+}
+
+.sf-ui-popup__actions .sf-ui-btn--secondary:hover:not(:disabled) {
+  background: #f8f9fc;
+  border-color: #897fff;
+  color: #170f49;
+}
+
+.sf-ui-popup__actions .sf-ui-btn--primary,
+.sf-ui-popup__actions .sf-ui-btn--danger {
+  min-width: 100px;
+}
+
+.sf-ui-popup__body .admin-users__input,
+.sf-ui-popup__body .admin-files-modal__input,
+.sf-ui-popup__body .admin-sim-modal__input,
+.sf-ui-popup__body input:not([type='checkbox']):not([type='radio']),
+.sf-ui-popup__body select,
+.sf-ui-popup__body textarea {
+  border: 1px solid #f1f2f9;
+  border-radius: 14px;
+  background: #fff;
+  color: #170f49;
+  box-shadow: 0 0.5px 0.5px 0 rgba(25, 33, 61, 0.04);
+}
+
+.sf-ui-popup__body label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #514f6e;
+}
+
+@media (max-width: 520px) {
+  .sf-ui-popup__top {
+    padding: 24px 36px 0 20px;
+  }
+
+  .sf-ui-popup__body {
+    padding: 20px;
+  }
+
+  .sf-ui-popup__footer-inner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 20px;
+  }
+
+  .sf-ui-popup__actions {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .sf-ui-popup__actions .sf-ui-btn {
+    flex: 1 1 auto;
+  }
+}

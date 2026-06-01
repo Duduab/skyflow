@@ -2,9 +2,9 @@
   <p class="admin-page__loading">…</p>
 } @else if (listError(); as err) {
   <div class="admin-page__err">{{ err | translate }}</div>
-  <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="reload()">
+  <skyflow-ui-button variant="primary" (click)="reload()">
     {{ 'ADMIN_PLANNING_DRAFTS.RETRY' | translate }}
-  </button>
+  </skyflow-ui-button>
 } @else {
   @let s = stats();
 
@@ -155,32 +155,28 @@
               {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
             </a>
             @if (editingId() === d.id) {
-              <button
-                type="button"
-                class="sf-ui-btn"
+              <skyflow-ui-button
+                variant="secondary"
                 [disabled]="editSaving()"
+                [loading]="editSaving()"
                 (click)="saveEdit()"
               >
                 {{ 'ADMIN_PLANNING_DRAFTS.SAVE' | translate }}
-              </button>
-              <button type="button" class="sf-ui-btn" (click)="cancelEdit()">
+              </skyflow-ui-button>
+              <skyflow-ui-button variant="ghost" (click)="cancelEdit()">
                 {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
-              </button>
+              </skyflow-ui-button>
             } @else {
-              <button
-                type="button"
-                class="sf-ui-btn"
-                (click)="startEdit(d, $event)"
-              >
+              <skyflow-ui-button variant="secondary" (click)="startEdit(d, $event)">
                 {{ 'ADMIN_PLANNING_DRAFTS.EDIT' | translate }}
-              </button>
-              <button
-                type="button"
-                class="sf-ui-btn planning-drafts-card__delete"
+              </skyflow-ui-button>
+              <skyflow-ui-button
+                variant="danger"
+                btnClass="planning-drafts-card__delete"
                 (click)="openDeleteConfirm(d, $event)"
               >
                 {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
-              </button>
+              </skyflow-ui-button>
             }
           </div>
           @if (editingId() === d.id && editError(); as ek) {
@@ -251,36 +247,28 @@
                     {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
                   </a>
                   @if (editingId() === d.id) {
-                    <button
-                      type="button"
-                      class="sf-ui-btn"
+                    <skyflow-ui-button
+                      variant="secondary"
                       [disabled]="editSaving()"
+                      [loading]="editSaving()"
                       (click)="saveEdit()"
                     >
                       {{ 'ADMIN_PLANNING_DRAFTS.SAVE' | translate }}
-                    </button>
-                    <button
-                      type="button"
-                      class="sf-ui-btn"
-                      (click)="cancelEdit()"
-                    >
+                    </skyflow-ui-button>
+                    <skyflow-ui-button variant="ghost" (click)="cancelEdit()">
                       {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
-                    </button>
+                    </skyflow-ui-button>
                   } @else {
-                    <button
-                      type="button"
-                      class="sf-ui-btn"
-                      (click)="startEdit(d)"
-                    >
+                    <skyflow-ui-button variant="secondary" (click)="startEdit(d)">
                       {{ 'ADMIN_PLANNING_DRAFTS.EDIT' | translate }}
-                    </button>
-                    <button
-                      type="button"
-                      class="sf-ui-btn planning-drafts-table__delete"
+                    </skyflow-ui-button>
+                    <skyflow-ui-button
+                      variant="danger"
+                      btnClass="planning-drafts-table__delete"
                       (click)="openDeleteConfirm(d)"
                     >
                       {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
-                    </button>
+                    </skyflow-ui-button>
                   }
                 </div>
               </td>
@@ -293,46 +281,33 @@
 }
 
 @if (deleteTarget(); as target) {
-  <div
-    class="planning-drafts-modal"
-    role="dialog"
-    aria-modal="true"
-    [attr.aria-label]="'ADMIN_PLANNING_DRAFTS.DELETE_TITLE' | translate"
+  <skyflow-ui-popup
+    [open]="true"
+    (closed)="closeDeleteConfirm()"
+    [title]="'ADMIN_PLANNING_DRAFTS.DELETE_TITLE' | translate"
+    titleId="planning-drafts-delete-title"
+    [closeOnScrim]="!deleteBusy()"
   >
-    <button
-      type="button"
-      class="planning-drafts-modal__scrim"
-      (click)="closeDeleteConfirm()"
-      [attr.aria-label]="'ADMIN_PLANNING_DRAFTS.CANCEL' | translate"
-    ></button>
-    <div class="planning-drafts-modal__panel">
-      <h2 class="planning-drafts-modal__title">
-        {{ 'ADMIN_PLANNING_DRAFTS.DELETE_TITLE' | translate }}
-      </h2>
-      <p class="planning-drafts-modal__text">
-        {{
-          'ADMIN_PLANNING_DRAFTS.DELETE_CONFIRM'
-            | translate: { name: target.name }
-        }}
-      </p>
-      <div class="planning-drafts-modal__actions">
-        <button
-          type="button"
-          class="sf-ui-btn planning-drafts-modal__delete-btn"
-          [disabled]="deleteBusy()"
-          (click)="confirmDelete()"
-        >
-          {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
-        </button>
-        <button
-          type="button"
-          class="sf-ui-btn"
-          [disabled]="deleteBusy()"
-          (click)="closeDeleteConfirm()"
-        >
-          {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
-        </button>
-      </div>
+    <p class="planning-drafts-modal__text">
+      {{
+        'ADMIN_PLANNING_DRAFTS.DELETE_CONFIRM'
+          | translate: { name: target.name }
+      }}
+    </p>
+
+    <div popup-actions>
+      <skyflow-ui-button variant="ghost" [disabled]="deleteBusy()" (click)="closeDeleteConfirm()">
+        {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
+      </skyflow-ui-button>
+      <skyflow-ui-button
+        variant="danger"
+        btnClass="planning-drafts-modal__delete-btn"
+        [disabled]="deleteBusy()"
+        [loading]="deleteBusy()"
+        (click)="confirmDelete()"
+      >
+        {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
+      </skyflow-ui-button>
     </div>
-  </div>
+  </skyflow-ui-popup>
 }

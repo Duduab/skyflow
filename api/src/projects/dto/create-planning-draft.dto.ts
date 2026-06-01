@@ -1,4 +1,11 @@
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { ProjectLineMaterial, ProjectMachiningRoute } from '@prisma/client';
 
 export class CreatePlanningDraftDto {
   @IsString()
@@ -10,4 +17,10 @@ export class CreatePlanningDraftDto {
   @IsString()
   @MaxLength(4000)
   requirements?: string;
+
+  @IsEnum(ProjectLineMaterial)
+  lineMaterial!: ProjectLineMaterial;
+
+  @IsEnum(ProjectMachiningRoute)
+  machiningRoute!: ProjectMachiningRoute;
 }

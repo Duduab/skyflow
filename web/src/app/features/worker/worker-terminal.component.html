@@ -37,7 +37,7 @@
       <div class="space-y-3">
 
         <h1 class="text-hero tracking-tight text-white drop-shadow-lg">
-          {{ 'STATIONS.' + stationId | translate }}
+          {{ stationId | stationLabel: ctx.order | translate }}
         </h1>
         <p class="text-touch font-semibold text-white/80">
           {{ 'WORKER.STATION' | translate }} {{ stationId }}
@@ -61,7 +61,10 @@
 
     <section
       [class]="'station-brief station-brief--' + stationId + ' sf-panel'"
-      [attr.aria-label]="(('STATIONS.' + stationId) | translate) + ' — ' + ctx.order.name"
+      [class.station-visual--steelworkshop]="stationBriefVisualModifier() === 'station-visual--steelworkshop'"
+      [class.station-visual--aluranger]="stationBriefVisualModifier() === 'station-visual--aluranger'"
+      [ngStyle]="stationBriefVisualStyle()"
+      [attr.aria-label]="((stationId | stationLabel: ctx.order) | translate) + ' — ' + ctx.order.name"
     >
       <div class="station-brief__hero" aria-hidden="true">
         <div class="station-brief__hero-bg"></div>
@@ -70,7 +73,7 @@
         <span class="station-brief__index" dir="ltr">{{ stationId }}</span>
         <div class="station-brief__hero-content">
           <p class="station-brief__eyebrow">
-            {{ 'STATIONS.' + stationId | translate }}
+            {{ stationId | stationLabel: ctx.order | translate }}
           </p>
           <h2 class="station-brief__order">{{ ctx.order.name }}</h2>
         </div>
@@ -223,7 +226,351 @@
       </div>
     </section>
 
-    @if (stationId <= 4 && stationId >= 1 && ctx.sawWorkLines !== undefined) {
+    @if (stationId === 3 && assemblyCtx(ctx); as asm) {
+      <div class="assembly-station">
+        <header class="assembly-hero sf-panel" [attr.aria-label]="'WORKER.ASSEMBLY_INSTRUCTIONS_TITLE' | translate">
+          <div class="assembly-hero__head">
+            <div class="assembly-hero__copy">
+              <p class="assembly-hero__eyebrow">{{ 'WORKER.ASSEMBLY_HERO_EYEBROW' | translate }}</p>
+              <h2 class="assembly-hero__title">
+                {{ 'WORKER.ASSEMBLY_INSTRUCTIONS_TITLE' | translate }}
+              </h2>
+              <p class="assembly-hero__hint">
+                {{ 'WORKER.ASSEMBLY_INSTRUCTIONS_HINT' | translate }}
+              </p>
+              @if (asm.windowsTotalQty > 0) {
+                <p class="assembly-hero__stat">
+                  {{
+                    'WORKER.ASSEMBLY_WINDOWS_PROGRESS'
+                      | translate
+                        : {
+                            done: asm.windowsAssembledQty,
+                            total: asm.windowsTotalQty,
+                            units: asm.windowsUnitCount,
+                          }
+                  }}
+                </p>
+              }
+            </div>
+            @if (asm.windowsTotalQty > 0) {
+              <div
+                class="assembly-hero__ring"
+                role="img"
+                [attr.aria-label]="
+                  'WORKER.ASSEMBLY_WINDOWS_PROGRESS'
+                    | translate
+                      : {
+                          done: asm.windowsAssembledQty,
+                          total: asm.windowsTotalQty,
+                          units: asm.windowsUnitCount,
+                        }
+                "
+              >
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <circle class="assembly-hero__ring-track" cx="50" cy="50" r="42" />
+                  <circle
+                    class="assembly-hero__ring-arc"
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    [attr.stroke-dasharray]="progressCircumference"
+                    [attr.stroke-dashoffset]="
+                      progressDashOffset(assemblyWindowsProgressPercent(ctx))
+                    "
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
+                <div class="assembly-hero__ring-label" dir="ltr">
+                  <span class="assembly-hero__ring-value">{{
+                    assemblyWindowsProgressPercent(ctx)
+                  }}</span>
+                  <span class="assembly-hero__ring-sign">%</span>
+                </div>
+              </div>
+            }
+          </div>
+        </header>
+
+        <section
+          class="sf-panel md:p-8 assembly-windows"
+          [attr.aria-label]="'WORKER.ASSEMBLY_INSTRUCTIONS_TITLE' | translate"
+        >
+          @if (asm.windows.length === 0) {
+            <p class="assembly-empty">{{ 'WORKER.ASSEMBLY_WINDOWS_EMPTY' | translate }}</p>
+          } @else {
+            <label class="assembly-search">
+              <span class="assembly-search__label">{{
+                'WORKER.ASSEMBLY_SEARCH_LABEL' | translate
+              }}</span>
+              <input
+                type="search"
+                class="assembly-search__input"
+                [attr.placeholder]="'WORKER.ASSEMBLY_SEARCH_PLACEHOLDER' | translate"
+                [value]="assemblyWindowSearch()"
+                (input)="assemblyWindowSearch.set($any($event.target).value)"
+              />
+            </label>
+
+            <div class="assembly-workspace">
+              <div class="assembly-workspace__list" role="list">
+                @for (w of assemblyFilteredWindows(ctx); track w.id) {
+                  <button
+                    type="button"
+                    class="assembly-win-row"
+                    [class.is-active]="assemblySelectedWindowId() === w.id"
+                    [class.is-complete]="w.assembled"
+                    role="listitem"
+                    (click)="selectAssemblyWindow(w.id)"
+                  >
+                    <span class="assembly-win-row__code" dir="ltr">{{ w.displayLabel }}</span>
+                    <span class="assembly-win-row__qty" dir="ltr">
+                      {{ w.assembledQty }}/{{ w.quantity }}
+                    </span>
+                    <span
+                      class="assembly-win-row__bar"
+                      role="progressbar"
+                      [attr.aria-valuenow]="w.assembledQty"
+                      aria-valuemin="0"
+                      [attr.aria-valuemax]="w.quantity"
+                    >
+                      <span
+                        class="assembly-win-row__bar-fill"
+                        [style.width.%]="assemblyWindowItemPercent(w)"
+                      ></span>
+                    </span>
+                  </button>
+                }
+              </div>
+
+              @if (assemblySelectedWindow(ctx); as win) {
+                <article class="assembly-detail">
+                  <header class="assembly-detail__head">
+                    <h3 class="assembly-detail__title" dir="ltr">{{ win.displayLabel }}</h3>
+                    <p class="assembly-detail__target" dir="ltr">
+                      {{ 'WORKER.ASSEMBLY_DETAIL_TARGET' | translate }}:
+                      <strong>{{ win.quantity | number: '1.0-0' }}</strong>
+                      {{ 'WORKER.ASSEMBLY_QTY_UNIT' | translate }}
+                    </p>
+                  </header>
+
+                  <div class="assembly-detail__gallery">
+                    @if (assemblyWindowPhotoUrl(win); as photo) {
+                      <img [src]="photo" [alt]="win.displayLabel" />
+                      @if (assemblyWindowPhotoCount(win) > 1) {
+                        <div class="assembly-detail__gallery-nav" dir="ltr">
+                          <button
+                            type="button"
+                            class="assembly-detail__nav-btn"
+                            (click)="assemblyWindowPhotoPrev(win)"
+                          >
+                            ‹
+                          </button>
+                          <span>{{ assemblyWindowPhotoIdx() + 1 }}/{{ assemblyWindowPhotoCount(win) }}</span>
+                          <button
+                            type="button"
+                            class="assembly-detail__nav-btn"
+                            (click)="assemblyWindowPhotoNext(win)"
+                          >
+                            ›
+                          </button>
+                        </div>
+                      }
+                    } @else {
+                      <p class="assembly-detail__no-img">
+                        {{ 'WORKER.ASSEMBLY_NO_IMAGE' | translate }}
+                      </p>
+                    }
+                  </div>
+
+                  <div class="assembly-detail__report">
+                    <p class="assembly-detail__report-label">
+                      {{ 'WORKER.ASSEMBLY_QTY_LABEL' | translate }}
+                    </p>
+                    <div class="saw-type-card__stepper assembly-detail__stepper">
+                      <span
+                        class="saw-type-card__stepper-val"
+                        [class.saw-type-card__stepper-val--empty]="win.assembledQty <= 0"
+                        aria-live="polite"
+                      >
+                        @if (win.assembledQty > 0) {
+                          {{ win.assembledQty | number: '1.0-0' }}
+                        } @else {
+                          <span class="saw-type-card__stepper-placeholder">0</span>
+                        }
+                      </span>
+                      <div class="saw-type-card__stepper-btns" dir="ltr">
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--minus"
+                          [disabled]="assemblyTogglingWindow() || win.assembledQty <= 0"
+                          (click)="nudgeAssemblyWindowQty(win, -1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_MINUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">−</span>
+                        </button>
+                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--plus"
+                          [disabled]="
+                            assemblyTogglingWindow() || win.assembledQty >= win.quantity
+                          "
+                          (click)="nudgeAssemblyWindowQty(win, 1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_PLUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">+</span>
+                        </button>
+                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--fill"
+                          [disabled]="
+                            assemblyTogglingWindow() ||
+                            win.quantity <= 0 ||
+                            win.assembledQty >= win.quantity
+                          "
+                          (click)="fillAssemblyWindowQty(win)"
+                          [attr.aria-label]="
+                            'WORKER.SAW_CARD_FILL_A11Y'
+                              | translate: { qty: win.quantity | number: '1.0-0' }
+                          "
+                        >
+                          <span aria-hidden="true">✓</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  @if (win.specs.length) {
+                    <dl class="assembly-detail__specs">
+                      @for (sp of win.specs; track sp.label + sp.value) {
+                        <div class="assembly-detail__spec-row">
+                          <dt>{{ sp.label }}</dt>
+                          <dd dir="ltr">{{ sp.value }}</dd>
+                        </div>
+                      }
+                    </dl>
+                  }
+
+                  @if (win.components.length) {
+                    <details class="assembly-detail__bom">
+                      <summary>{{ 'WORKER.ASSEMBLY_BOM_TOGGLE' | translate }}</summary>
+                      <ul>
+                        @for (c of win.components; track c.line) {
+                          <li>{{ c.line }}</li>
+                        }
+                      </ul>
+                    </details>
+                  }
+                </article>
+              }
+            </div>
+          }
+        </section>
+
+        <section
+          class="sf-panel md:p-8 assembly-pipeline"
+          [attr.aria-label]="'WORKER.ASSEMBLY_PIPELINE_TITLE' | translate"
+        >
+          <header class="assembly-section-head">
+            <h2 class="assembly-section-head__title">
+              {{ 'WORKER.ASSEMBLY_PIPELINE_TITLE' | translate }}
+            </h2>
+            <p class="assembly-section-head__hint">
+              {{ 'WORKER.ASSEMBLY_PIPELINE_HINT' | translate }}
+            </p>
+          </header>
+
+          @let track = assemblyPipelineTrackPercents(ctx);
+          <div class="assembly-pipeline__summary" dir="ltr">
+            <span class="assembly-pipeline__pill">
+              {{ 'WORKER.ASSEMBLY_KPI_READY' | translate }}:
+              <strong>{{ asm.pipelineReadyCount }}/{{ asm.pipelineTotalCount }}</strong>
+            </span>
+            <span class="assembly-pipeline__pill assembly-pipeline__pill--saw">
+              {{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }} {{ track.sawPct }}%
+            </span>
+            <span class="assembly-pipeline__pill assembly-pipeline__pill--cnc">
+              {{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }} {{ track.cncPct }}%
+            </span>
+          </div>
+
+          <div class="assembly-pipeline__filters" role="tablist">
+            <button
+              type="button"
+              class="assembly-filter"
+              [class.is-on]="assemblyPipelineFilter() === 'ALL'"
+              (click)="setAssemblyPipelineFilter('ALL')"
+            >
+              {{ 'WORKER.ASSEMBLY_FILTER_ALL' | translate }}
+            </button>
+            @for (kind of assemblyPipelineTypeKeys(ctx); track kind) {
+              <button
+                type="button"
+                class="assembly-filter"
+                [class.is-on]="assemblyPipelineFilter() === kind"
+                (click)="setAssemblyPipelineFilter(kind)"
+              >
+                {{ assemblyPipelineTypeLabel(kind) }}
+              </button>
+            }
+          </div>
+
+          @if (assemblyFilteredPipeline(ctx).length === 0) {
+            <p class="assembly-empty">{{ 'WORKER.ASSEMBLY_PIPELINE_EMPTY' | translate }}</p>
+          } @else {
+            <ul class="assembly-feed" role="list">
+              @for (line of assemblyFilteredPipeline(ctx); track line.id) {
+                <li class="assembly-feed__row assembly-feed__row--{{ line.status }}" role="listitem">
+                  <div class="assembly-feed__media">
+                    @if (line.imagePaths[0]; as thumb) {
+                      <img [src]="thumb" alt="" loading="lazy" />
+                    } @else {
+                      <span class="assembly-feed__code" dir="ltr">{{
+                        line.sawsProfileCode || '—'
+                      }}</span>
+                    }
+                  </div>
+                  <div class="assembly-feed__main">
+                    <p class="assembly-feed__title" dir="ltr">
+                      {{ assemblyPipelineLineTitle(line) }}
+                    </p>
+                    <p class="assembly-feed__meta" dir="ltr">
+                      {{ assemblyPipelineTypeLabel(line.instructionKind) }} ·
+                      {{ line.sawnQty }}/{{ line.cncDoneQty }}/{{ line.quantity }}
+                    </p>
+                    <div class="assembly-feed__steps" aria-hidden="true">
+                      <span
+                        class="assembly-feed__step"
+                        [class.is-ok]="line.sawnQty >= line.quantity"
+                        >{{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }}</span
+                      >
+                      <span
+                        class="assembly-feed__step"
+                        [class.is-ok]="line.cncDoneQty >= line.quantity"
+                        >{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span
+                      >
+                      <span
+                        class="assembly-feed__step"
+                        [class.is-ok]="line.status === 'ready'"
+                        >{{ 'WORKER.ASSEMBLY_STEP_READY' | translate }}</span
+                      >
+                    </div>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
+    }
+
+    @if (
+      stationId <= 4 &&
+      stationId >= 1 &&
+      stationId !== 3 &&
+      ctx.sawWorkLines !== undefined
+    ) {
       <section
         class="sf-panel md:p-10 mt-6"
         [attr.aria-label]="'WORKER.SAW_PROFILE_LINES_TITLE' | translate"
@@ -245,41 +592,63 @@
             [attr.aria-label]="'WORKER.SAW_TYPE_GRID_LABEL' | translate"
           >
             @for (g of sawTypeGroups(ctx); track g.instructionKind || 'other') {
+              @let lockedUpstream = typeGroupLockedByUpstream(ctx, g);
+              @let tileComplete = typeGroupIsComplete(ctx, g);
               <button
                 type="button"
                 [class]="
                   'saw-type-tile saw-type-tile--st-' +
                   stationId +
-                  (typeGroupIsComplete(ctx, g) ? ' saw-type-tile--complete' : '')
+                  (lockedUpstream ? ' saw-type-tile--locked' : '') +
+                  (!lockedUpstream && tileComplete ? ' saw-type-tile--complete' : '')
                 "
                 role="listitem"
-                [disabled]="typeGroupIsComplete(ctx, g)"
+                [disabled]="lockedUpstream || tileComplete"
                 [attr.aria-label]="
-                  typeGroupIsComplete(ctx, g)
-                    ? (('WORKER.SAW_TYPE_TILE_ARIA_DONE' | translate) +
+                  lockedUpstream
+                    ? (('WORKER.SAW_TYPE_TILE_ARIA_LOCKED' | translate) +
                         ' — ' +
                         sawInstructionKindTitle(g.instructionKind, g.typeNum))
-                    : sawInstructionKindTitle(g.instructionKind, g.typeNum)
+                    : tileComplete
+                      ? (('WORKER.SAW_TYPE_TILE_ARIA_DONE' | translate) +
+                          ' — ' +
+                          sawInstructionKindTitle(g.instructionKind, g.typeNum))
+                      : sawInstructionKindTitle(g.instructionKind, g.typeNum)
                 "
                 (click)="openSawTypeModal(g)"
               >
                 <div class="saw-type-tile__ring-wrap" aria-hidden="true">
                   <svg class="saw-type-tile__svg" viewBox="0 0 100 100">
                     <circle class="saw-type-tile__track" cx="50" cy="50" r="42" />
-                    <circle
-                      class="saw-type-tile__arc"
-                      cx="50"
-                      cy="50"
-                      r="42"
-                      [attr.stroke-dasharray]="progressCircumference"
-                      [attr.stroke-dashoffset]="
-                        progressDashOffset(typeGroupProgressPercent(ctx, g))
-                      "
-                      transform="rotate(-90 50 50)"
-                    />
+                    @if (!lockedUpstream) {
+                      <circle
+                        class="saw-type-tile__arc"
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        [attr.stroke-dasharray]="progressCircumference"
+                        [attr.stroke-dashoffset]="
+                          progressDashOffset(typeGroupProgressPercent(ctx, g))
+                        "
+                        transform="rotate(-90 50 50)"
+                      />
+                    }
                   </svg>
                   <div class="saw-type-tile__ring-center">
-                    @if (typeGroupIsComplete(ctx, g)) {
+                    @if (lockedUpstream) {
+                      <span class="saw-type-tile__lock">
+                        <svg viewBox="0 0 24 24" class="saw-type-tile__lock-svg" aria-hidden="true">
+                          <rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor" />
+                          <path
+                            d="M8 11V8a4 4 0 0 1 8 0v3"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                          />
+                        </svg>
+                      </span>
+                    } @else if (tileComplete) {
                       <span class="saw-type-tile__check">
                         <svg viewBox="0 0 24 24" class="saw-type-tile__check-svg">
                           <path
@@ -307,7 +676,16 @@
                     g.totalQty
                   }}</span>
                 </p>
-                <p class="saw-type-tile__sawn text-touch font-semibold text-emerald-200/95">
+                @if (lockedUpstream) {
+                  <p class="saw-type-tile__locked-hint text-touch font-semibold">
+                    {{ 'WORKER.SAW_TYPE_LOCKED_WAIT_SAW' | translate }}
+                  </p>
+                }
+                <p
+                  class="saw-type-tile__sawn text-touch font-semibold"
+                  [class.text-emerald-200/95]="!lockedUpstream"
+                  [class.text-red-200/90]="lockedUpstream"
+                >
                   @if (stationId === 1) {
                     {{
                       'WORKER.SAW_TYPE_SAWN_PROGRESS'
@@ -336,7 +714,7 @@
                       'WORKER.SAW_TYPE_TILE_REMNANT_IF_ANY'
                         | translate
                           : {
-                              cm: typeGroupRemnantCm(ctx, g) | number: '1.0-0',
+                              mm: typeGroupRemnantMm(ctx, g) | number: '1.0-0',
                             }
                     }}
                   </p>
@@ -773,7 +1151,7 @@
                     }}</span>
                     <div class="finish-verify__summary-body">
                       <p class="finish-verify__summary-name">
-                        {{ 'STATIONS.' + row.stationId | translate }}
+                        {{ row.stationId | stationLabel: ctx.order | translate }}
                       </p>
                       <p class="finish-verify__summary-qty">
                         {{ row.processedQty | number: '1.0-0' }}
@@ -802,7 +1180,7 @@
                     }}</span>
                     <span class="finish-verify__step-main">
                       <span class="finish-verify__step-name">{{
-                        'STATIONS.' + step.stationId | translate
+                        step.stationId | stationLabel: ctx.order | translate
                       }}</span>
                       <span class="finish-verify__step-meta">
                         @if (row) {
@@ -993,7 +1371,7 @@
                 <span class="activity-log__trigger-main">
                   <span class="activity-log__station-id" dir="ltr">{{ sid }}</span>
                   <span class="activity-log__station-name">{{
-                    'STATIONS.' + sid | translate
+                    sid | stationLabel: ctx.order | translate
                   }}</span>
                 </span>
                 <span class="activity-log__meta">
@@ -1063,17 +1441,22 @@
 
     @if (canMoveToNextStation(ctx) && nextStationId(); as nextSid) {
       <div class="station-next-cta-wrap">
+        @if (stationId === 1 && stationProgress(ctx).percent < 100) {
+          <p class="station-next-cta-hint text-touch text-white/75">
+            {{ 'WORKER.SAW_NEXT_PARTIAL_HINT' | translate }}
+          </p>
+        }
         <a
           class="station-next-cta"
           [routerLink]="['/worker', nextSid]"
           [attr.aria-label]="
-            ('WORKER.GO_TO_NEXT_STATION' | translate: { station: ('STATIONS.' + nextSid | translate) })
+            ('WORKER.GO_TO_NEXT_STATION' | translate: { station: (nextSid | stationLabel: ctx.order | translate) })
           "
         >
           <span class="station-next-cta__text">
             {{
               'WORKER.GO_TO_NEXT_STATION'
-                | translate: { station: ('STATIONS.' + nextSid | translate) }
+                | translate: { station: (nextSid | stationLabel: ctx.order | translate) }
             }}
           </span>
           <span class="station-next-cta__icon" aria-hidden="true">
@@ -1108,62 +1491,113 @@
     }
 
 
+    <skyflow-station-complete-toast
+      [open]="stationCompleteToastVisible()"
+      [stationId]="stationId"
+      [nextStationId]="nextStationId()"
+      [order]="ctx.order"
+      (dismissed)="dismissStationCompleteToast()"
+    />
+
     @if (saveToastVisible()) {
       <div class="worker-save-toast" role="status" aria-live="polite">
         {{ 'WORKER.SAVE_SUCCESS' | translate }}
       </div>
     }
 
-    @if (sawTypeModalGroup(); as mg) {
-      <div class="saw-type-modal__root">
-        <div
-          class="saw-type-modal__scrim"
-          tabindex="-1"
-          aria-hidden="true"
-          (click)="closeSawTypeModal()"
-        ></div>
-        <div
-          class="saw-type-modal__panel sf-panel"
-          role="dialog"
-          aria-modal="true"
-          [attr.aria-labelledby]="'saw-type-modal-title'"
-        >
-          <div class="saw-type-modal__head">
-            <div class="saw-type-modal__head-text">
-              <h2 id="saw-type-modal-title" class="saw-type-modal__title" dir="ltr">
-                {{ sawInstructionKindTitle(mg.instructionKind, mg.typeNum) }}
-              </h2>
-              <p class="saw-type-modal__total-line text-touch font-bold text-white/90">
-                @if (stationId === 1) {
-                  {{
-                    'WORKER.SAW_MODAL_TOTAL_TO_SAW'
-                      | translate: { qty: mg.totalQty | number: '1.0-0' }
-                  }}
-                } @else {
-                  {{
-                    'WORKER.WORK_LINE_MODAL_TOTAL_PLANNED'
-                      | translate: { qty: mg.totalQty | number: '1.0-0' }
-                  }}
-                }
-              </p>
-              <p class="saw-type-modal__count-line text-touch text-white/65">
-                {{
-                  'WORKER.SAW_MODAL_ITEM_COUNT'
-                    | translate: { count: mg.lines.length }
-                }}
+    @if (sawSaveCelebrationCtx(); as celebCtx) {
+      <div
+        class="saw-save-celebration"
+        [class]="'saw-save-celebration saw-type-tile--st-' + stationId"
+        role="status"
+        aria-live="polite"
+        [attr.aria-label]="'WORKER.SAW_SAVE_CELEBRATION' | translate"
+      >
+        <div class="saw-save-celebration__grid">
+          @for (g of sawTypeGroups(celebCtx); track g.instructionKind || 'other') {
+            <div
+              class="saw-save-celebration__item"
+              [class.saw-save-celebration__item--done]="typeGroupIsComplete(celebCtx, g)"
+            >
+              <div class="saw-type-tile__ring-wrap saw-save-celebration__ring" aria-hidden="true">
+                <svg class="saw-type-tile__svg" viewBox="0 0 100 100">
+                  <circle class="saw-type-tile__track" cx="50" cy="50" r="42" />
+                  <circle
+                    class="saw-type-tile__arc"
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    [attr.stroke-dasharray]="progressCircumference"
+                    [attr.stroke-dashoffset]="
+                      progressDashOffset(typeGroupProgressPercent(celebCtx, g))
+                    "
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
+                <div class="saw-type-tile__ring-center">
+                  @if (typeGroupIsComplete(celebCtx, g)) {
+                    <span class="saw-type-tile__check">
+                      <svg viewBox="0 0 24 24" class="saw-type-tile__check-svg">
+                        <path
+                          fill="currentColor"
+                          d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                        />
+                      </svg>
+                    </span>
+                  } @else {
+                    <span class="saw-type-tile__pct-inner" dir="ltr">
+                      <span class="saw-type-tile__pct-value">{{
+                        typeGroupProgressPercent(celebCtx, g)
+                      }}</span
+                      ><span class="saw-type-tile__pct-sign">%</span>
+                    </span>
+                  }
+                </div>
+              </div>
+              <p class="saw-save-celebration__label" dir="ltr">
+                {{ sawInstructionKindTitle(g.instructionKind, g.typeNum) }}
               </p>
             </div>
-            <button
-              type="button"
-              class="saw-type-modal__close"
-              (click)="closeSawTypeModal()"
-              [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
-            >
-              <span aria-hidden="true">×</span>
-            </button>
+          }
+        </div>
+      </div>
+    }
+
+    @if (sawTypeModalGroup(); as mg) {
+      <skyflow-ui-popup
+        [open]="true"
+        size="full"
+        [hideIcon]="true"
+        (closed)="closeSawTypeModal()"
+        [title]="sawInstructionKindTitle(mg.instructionKind, mg.typeNum)"
+        titleId="saw-type-modal-title"
+        [zIndex]="85"
+      >
+        <div popup-header-extra class="saw-type-modal__stats" dir="rtl">
+          <div class="saw-type-modal__stat-chip saw-type-modal__stat-chip--primary">
+            <span class="saw-type-modal__stat-label">
+              @if (stationId === 1) {
+                {{ 'WORKER.SAW_MODAL_TOTAL_LABEL' | translate }}
+              } @else {
+                {{ 'WORKER.WORK_LINE_MODAL_TOTAL_LABEL' | translate }}
+              }
+            </span>
+            <strong class="saw-type-modal__stat-value">{{
+              modalTypeGroupReportedQty(mg) | number: '1.0-0'
+            }}</strong>
           </div>
-          <div class="saw-type-modal__scroll">
-            <div class="saw-type-modal__grid" role="list">
+          <div class="saw-type-modal__stat-chip">
+            <span class="saw-type-modal__stat-label">{{
+              'WORKER.SAW_MODAL_ITEMS_LABEL' | translate
+            }}</span>
+            <strong class="saw-type-modal__stat-value">{{
+              mg.lines.length | number: '1.0-0'
+            }}</strong>
+          </div>
+        </div>
+
+        <div class="saw-type-modal__scroll">
+          <div class="saw-type-modal__grid" role="list">
               @for (line of mg.lines; track line.id) {
                 <article class="saw-type-card" role="listitem">
                   <div class="saw-type-card__img-slot">
@@ -1203,7 +1637,7 @@
                     </p>
                   </div>
                   <div class="saw-type-card__steppers">
-                    <div class="saw-type-card__stepper" dir="ltr">
+                    <div class="saw-type-card__stepper">
                       <span
                         class="saw-type-card__stepper-val"
                         [class.saw-type-card__stepper-val--empty]="modalLineSawnQty(line.id) <= 0"
@@ -1217,7 +1651,7 @@
                           }}</span>
                         }
                       </span>
-                      <div class="saw-type-card__stepper-btns">
+                      <div class="saw-type-card__stepper-btns" dir="ltr">
                         <button
                           type="button"
                           class="saw-type-card__btn saw-type-card__btn--minus"
@@ -1259,24 +1693,24 @@
                       </div>
                     </div>
                     @if (stationId === 1) {
-                    <div class="saw-type-card__stepper saw-type-card__stepper--meters" dir="ltr">
-                      <div class="saw-type-card__stepper-meter-col">
-                        <span class="saw-type-card__stepper-meter-label">{{
-                          'WORKER.SAW_MODAL_METERS' | translate
+                    <div class="saw-type-card__stepper saw-type-card__stepper--mm">
+                      <div class="saw-type-card__stepper-mm-col">
+                        <span class="saw-type-card__stepper-mm-label">{{
+                          'WORKER.SAW_MODAL_MM' | translate
                         }}</span>
                         <span
-                          class="saw-type-card__stepper-val saw-type-card__stepper-val--meters"
+                          class="saw-type-card__stepper-val saw-type-card__stepper-val--mm"
                           aria-live="polite"
-                          >{{ modalLineMeters(line.id) | number: '1.1-1' }}</span
+                          >{{ modalLineMm(line.id) | number: '1.0-0' }}</span
                         >
                       </div>
-                      <div class="saw-type-card__stepper-btns">
+                      <div class="saw-type-card__stepper-btns" dir="ltr">
                         <button
                           type="button"
                           class="saw-type-card__btn saw-type-card__btn--minus"
-                          [disabled]="modalLineMeters(line.id) <= sawMetersMin + 0.0001"
-                          (click)="nudgeModalLineMeters(line.id, -0.1)"
-                          [attr.aria-label]="'WORKER.SAW_METERS_MINUS_A11Y' | translate"
+                          [disabled]="modalLineMm(line.id) <= sawMmMin"
+                          (click)="nudgeModalLineMm(line.id, -1)"
+                          [attr.aria-label]="'WORKER.SAW_MM_MINUS_A11Y' | translate"
                         >
                           <span aria-hidden="true">−</span>
                         </button>
@@ -1284,18 +1718,18 @@
                         <button
                           type="button"
                           class="saw-type-card__btn saw-type-card__btn--plus"
-                          [disabled]="modalLineMeters(line.id) >= sawMetersMax - 0.0001"
-                          (click)="nudgeModalLineMeters(line.id, 0.1)"
-                          [attr.aria-label]="'WORKER.SAW_METERS_PLUS_A11Y' | translate"
+                          [disabled]="modalLineMm(line.id) >= sawMmMax"
+                          (click)="nudgeModalLineMm(line.id, 1)"
+                          [attr.aria-label]="'WORKER.SAW_MM_PLUS_A11Y' | translate"
                         >
                           <span aria-hidden="true">+</span>
                         </button>
                       </div>
                     </div>
                     <p class="saw-type-card__remnant">
-                      {{ 'WORKER.SAW_MODAL_REMNANT_CM' | translate }}:
+                      {{ 'WORKER.SAW_MODAL_REMNANT_MM' | translate }}:
                       <span class="saw-type-card__remnant-val">{{
-                        modalLineRemnantCm(line) | number: '1.0-0'
+                        modalLineRemnantMm(line) | number: '1.0-0'
                       }}</span>
                     </p>
                     }
@@ -1304,22 +1738,41 @@
               }
             </div>
           </div>
-          <div class="saw-type-modal__footer">
-            <skyflow-ui-button
-              type="button"
-              variant="primary"
-              size="touch"
-              [block]="true"
-              [loading]="sawTypeModalSaving()"
-              [disabled]="sawTypeModalSaving()"
-              btnClass="shadow-sf-lg"
-              (click)="saveSawTypeModal()"
+
+        <div popup-actions class="saw-type-modal__save-wrap">
+          <skyflow-ui-button
+            type="button"
+            variant="primary"
+            [block]="true"
+            [loading]="sawTypeModalSaving()"
+            [disabled]="sawTypeModalSaving()"
+            btnClass="saw-type-modal__save-btn shadow-sf-lg"
+            (click)="saveSawTypeModal()"
+          >
+            <svg
+              class="saw-type-modal__save-ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
             >
-              {{ 'WORKER.SAW_MODAL_SAVE' | translate }}
-            </skyflow-ui-button>
-          </div>
+              <path
+                d="M12 2.5l1.35 2.75 3.05.44-2.2 2.15.52 3.03L12 9.4 9.28 10.87l.52-3.03-2.2-2.15 3.05-.44L12 2.5z"
+                fill="currentColor"
+                opacity="0.28"
+              />
+              <path
+                d="M7 13.5l3 3 7-7"
+                stroke="currentColor"
+                stroke-width="2.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            {{ 'WORKER.SAW_MODAL_SAVE' | translate }}
+          </skyflow-ui-button>
         </div>
-        @if (sawLineImagePreviewUrl(); as zoomUrl) {
+      </skyflow-ui-popup>
+      @if (sawLineImagePreviewUrl(); as zoomUrl) {
           <div
             class="saw-line-img-preview"
             role="dialog"
@@ -1340,107 +1793,81 @@
             </div>
           </div>
         }
-      </div>
     }
 
     @if (stationId === 5 && finishingVerifyKey(); as verifyKey) {
       @let step = finishingCheckStep(verifyKey);
       @let verifyDone = isFinishingCheckDone(verifyKey);
-      <div class="finish-verify-modal__root">
-        <div
-          class="finish-verify-modal__scrim"
-          tabindex="-1"
-          aria-hidden="true"
-          (click)="closeFinishingVerify()"
-        ></div>
-        <div
-          class="finish-verify-modal__panel sf-panel"
-          role="dialog"
-          aria-modal="true"
-          [attr.aria-labelledby]="'finish-verify-modal-title'"
-          [style.--step-accent]="step.accent"
-        >
-          <div class="finish-verify-modal__head">
-            <div class="finish-verify-modal__head-text">
-              <p class="finish-verify-modal__eyebrow">
-                {{ 'WORKER.FINISH_VERIFY_MODAL_EYEBROW' | translate }}
-              </p>
-              <h2 id="finish-verify-modal-title" class="finish-verify-modal__title">
-                {{
-                  'WORKER.FINISH_VERIFY_MODAL_TITLE'
-                    | translate: { station: ('STATIONS.' + step.stationId | translate) }
-                }}
-              </h2>
-              <p class="finish-verify-modal__sub">
-                {{ 'WORKER.FINISH_VERIFY_MODAL_SUB' | translate }}
-              </p>
+      <skyflow-ui-popup
+        [open]="true"
+        (closed)="closeFinishingVerify()"
+        [title]="
+          'WORKER.FINISH_VERIFY_MODAL_TITLE'
+            | translate: { station: (step.stationId | stationLabel: ctx.order | translate) }
+        "
+        [subtitle]="'WORKER.FINISH_VERIFY_MODAL_SUB' | translate"
+        titleId="finish-verify-modal-title"
+        [zIndex]="85"
+      >
+        <p popup-header-extra class="finish-verify-modal__eyebrow">
+          {{ 'WORKER.FINISH_VERIFY_MODAL_EYEBROW' | translate }}
+        </p>
+
+        <div class="finish-verify-modal__scroll" [style.--step-accent]="step.accent">
+          @if (activityLogForStation(ctx, step.stationId).length === 0) {
+            <div class="finish-verify-modal__empty">
+              {{ 'WORKER.FINISH_VERIFY_LOG_EMPTY' | translate }}
             </div>
-            <button
-              type="button"
-              class="finish-verify-modal__close"
-              (click)="closeFinishingVerify()"
-              [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-          </div>
-
-          <div class="finish-verify-modal__scroll">
-            @if (activityLogForStation(ctx, step.stationId).length === 0) {
-              <div class="finish-verify-modal__empty">
-                {{ 'WORKER.FINISH_VERIFY_LOG_EMPTY' | translate }}
-              </div>
-            } @else {
-              <ul class="finish-verify-modal__log" role="list">
-                @for (
-                  entry of activityLogForStation(ctx, step.stationId);
-                  track entry.id
-                ) {
-                  <li class="finish-verify-modal__log-item" role="listitem">
-                    <div class="finish-verify-modal__log-head">
-                      <time
-                        class="finish-verify-modal__log-time"
-                        [attr.datetime]="entry.createdAt"
-                        >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time
-                      >
-                      @if (entry.reporterName) {
-                        <span class="finish-verify-modal__log-reporter">{{
-                          entry.reporterName
-                        }}</span>
-                      }
-                    </div>
-                    <p class="finish-verify-modal__log-summary">
-                      {{ entry.summaryKey | translate: entry.summaryParams }}
-                    </p>
-                    @if (entry.issues) {
-                      <p class="finish-verify-modal__log-issues">{{ entry.issues }}</p>
+          } @else {
+            <ul class="finish-verify-modal__log" role="list">
+              @for (
+                entry of activityLogForStation(ctx, step.stationId);
+                track entry.id
+              ) {
+                <li class="finish-verify-modal__log-item" role="listitem">
+                  <div class="finish-verify-modal__log-head">
+                    <time
+                      class="finish-verify-modal__log-time"
+                      [attr.datetime]="entry.createdAt"
+                      >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time
+                    >
+                    @if (entry.reporterName) {
+                      <span class="finish-verify-modal__log-reporter">{{
+                        entry.reporterName
+                      }}</span>
                     }
-                  </li>
-                }
-              </ul>
-            }
-          </div>
+                  </div>
+                  <p class="finish-verify-modal__log-summary">
+                    {{ entry.summaryKey | translate: entry.summaryParams }}
+                  </p>
+                  @if (entry.issues) {
+                    <p class="finish-verify-modal__log-issues">{{ entry.issues }}</p>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
 
-          <div class="finish-verify-modal__footer">
+        <div popup-actions>
+          <button
+            type="button"
+            class="finish-verify-modal__btn finish-verify-modal__btn--ghost"
+            (click)="closeFinishingVerify()"
+          >
+            {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+          </button>
+          @if (!verifyDone) {
             <button
               type="button"
-              class="finish-verify-modal__btn finish-verify-modal__btn--ghost"
-              (click)="closeFinishingVerify()"
+              class="finish-verify-modal__btn finish-verify-modal__btn--approve"
+              (click)="confirmFinishingVerify(verifyKey)"
             >
-              {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+              {{ 'WORKER.FINISH_VERIFY_APPROVE' | translate }}
             </button>
-            @if (!verifyDone) {
-              <button
-                type="button"
-                class="finish-verify-modal__btn finish-verify-modal__btn--approve"
-                (click)="confirmFinishingVerify(verifyKey)"
-              >
-                {{ 'WORKER.FINISH_VERIFY_APPROVE' | translate }}
-              </button>
-            }
-          </div>
+          }
         </div>
-      </div>
+      </skyflow-ui-popup>
     }
 }
 </div>

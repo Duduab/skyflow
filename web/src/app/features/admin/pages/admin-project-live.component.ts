@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { forkJoin, interval, of, timer } from 'rxjs';
 import {
@@ -32,10 +32,24 @@ import {
   StationProgressVm,
 } from '../../worker/station-progress';
 import { StationsLoaderComponent } from '../../../shared/stations-loader/stations-loader.component';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { StationLabelPipe } from '../../../shared/station-label.pipe';
+import {
+  stationDescKey,
+  stationVisualModifierClass,
+  stationVisualStyle,
+} from '../../../core/station-presentation';
 
 @Component({
   selector: 'skyflow-admin-project-live',
-  imports: [TranslateModule, DatePipe, StationsLoaderComponent],
+  imports: [
+    TranslateModule,
+    DatePipe,
+    NgStyle,
+    StationsLoaderComponent,
+    UiButtonComponent,
+    StationLabelPipe,
+  ],
   templateUrl: './admin-project-live.component.html',
   styleUrls: [
     './admin-project-live.component.scss',
@@ -75,9 +89,25 @@ export class AdminProjectLiveComponent implements OnInit {
 
   readonly progressCircumference = PROGRESS_RING_C;
 
-  readonly projectName = computed(
-    () => this.contextByStation()[1]?.order.name ?? '',
+  readonly variantOrder = computed(
+    () => this.contextByStation()[1]?.order ?? null,
   );
+
+  readonly projectName = computed(
+    () => this.variantOrder()?.name ?? '',
+  );
+
+  stationDescKeyFor(stationId: number): string {
+    return stationDescKey(this.variantOrder(), stationId);
+  }
+
+  stationVisualModifier(stationId: number): string | null {
+    return stationVisualModifierClass(this.variantOrder(), stationId);
+  }
+
+  stationCardStyle(stationId: number): Record<string, string> {
+    return stationVisualStyle(this.variantOrder(), stationId);
+  }
 
   readonly averageOverallPercent = computed(() => {
     const map = this.contextByStation();

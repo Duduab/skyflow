@@ -5,10 +5,11 @@ import { TranslateModule } from '@ngx-translate/core';
 import { CurrentUserService } from '../../core/current-user.service';
 import { LanguageService, SkyflowLang } from '../../core/language.service';
 import { ThemeService, SkyflowTheme } from '../../core/theme.service';
+import { UiButtonComponent } from '../../shared/ui-button.component';
 
 @Component({
   selector: 'skyflow-profile-page',
-  imports: [FormsModule, TranslateModule],
+  imports: [FormsModule, TranslateModule, UiButtonComponent],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })

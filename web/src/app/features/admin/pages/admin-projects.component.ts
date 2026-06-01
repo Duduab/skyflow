@@ -22,6 +22,8 @@ import {
 } from '../../../core/skyflow.models';
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
+import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
+import { StationLabelPipe } from '../../../shared/station-label.pipe';
 
 type AdminProjectsStatusFilter =
   | 'all'
@@ -32,7 +34,14 @@ type AdminProjectsStatusFilter =
 
 @Component({
   selector: 'skyflow-admin-projects',
-  imports: [RouterLink, TranslateModule, DatePipe, DecimalPipe],
+  imports: [
+    RouterLink,
+    TranslateModule,
+    DatePipe,
+    DecimalPipe,
+    UiPopupComponent,
+    StationLabelPipe,
+  ],
   templateUrl: './admin-projects.component.html',
   styleUrl: './admin-projects.component.scss',
 })
@@ -69,10 +78,10 @@ export class AdminProjectsComponent implements OnInit {
   readonly selectedCard = signal<AdminProjectRow | null>(null);
   readonly openedByPhotoFailedIds = signal<Set<string>>(new Set());
 
-  readonly scrapCmTotal = computed(() => {
+  readonly scrapMmTotal = computed(() => {
     const rows = this.detailData()?.scrapRows;
     if (!rows?.length) return 0;
-    return rows.reduce((a, r) => a + r.itemLengthCm * r.scrapQty, 0);
+    return rows.reduce((a, r) => a + r.itemLengthMm * r.scrapQty, 0);
   });
 
   ngOnInit(): void {

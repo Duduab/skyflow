@@ -30,6 +30,7 @@ import { OrderPickerPreview } from '../../shared/order-picker-modal/order-picker
 import { LanguageService } from '../../core/language.service';
 import { ThemeService } from '../../core/theme.service';
 import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
+import { UiButtonComponent } from '../../shared/ui-button.component';
 import {
   enhanceAdminBarDataset,
   enhanceAdminDoughnutDataset,
@@ -47,6 +48,7 @@ const LIVE_CAROUSEL_PAGE_SIZE = 3;
     RouterLink,
     OrderPickerModalComponent,
     MatIconComponent,
+    UiButtonComponent,
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',

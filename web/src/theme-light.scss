@@ -90,6 +90,21 @@ html.theme-light .sf-ui-btn--secondary:hover:not(:disabled) {
   color: #0f172a;
 }
 
+html.theme-light .sf-ui-btn--ghost,
+html.theme-light .admin-settings__btn-ghost.sf-ui-btn--ghost {
+  color: #170f49;
+  border-color: #a0a3bd;
+  background: #fff;
+  box-shadow: none;
+}
+
+html.theme-light .sf-ui-btn--ghost:hover:not(:disabled),
+html.theme-light .admin-settings__btn-ghost.sf-ui-btn--ghost:hover:not(:disabled) {
+  color: #0f172a;
+  background: #f8f9fc;
+  border-color: #897fff;
+}
+
 html.theme-light .sf-ui-btn--primary:focus-visible {
   box-shadow:
     var(--sf-shadow),
@@ -354,7 +369,11 @@ html.theme-light skyflow-worker-hub .station-card__panel {
     rgba(226, 232, 240, 0.92) 100%
   );
   border-color: rgba(15, 23, 42, 0.1);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
   border-top-color: rgba(15, 23, 42, 0.08);
+  
+  
 }
 
 html.theme-light skyflow-worker-hub .station-card__headline {

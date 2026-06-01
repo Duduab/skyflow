@@ -1,6 +1,8 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { finalize, take } from 'rxjs/operators';
 
@@ -14,7 +16,7 @@ import {
 @Component({
   selector: 'skyflow-admin-planning-drafts',
   standalone: true,
-  imports: [TranslateModule, RouterLink, DatePipe, DecimalPipe],
+  imports: [TranslateModule, RouterLink, DatePipe, DecimalPipe, UiButtonComponent, UiPopupComponent],
   templateUrl: './admin-planning-drafts.component.html',
   styleUrl: './admin-planning-drafts.component.scss',
 })
@@ -108,7 +110,7 @@ export class AdminPlanningDraftsComponent implements OnInit {
     this.editSaving.set(true);
     this.editError.set(null);
     this.api
-      .patchPlanningDraft(id, name)
+      .patchPlanningDraft(id, { name })
       .pipe(
         take(1),
         finalize(() => this.editSaving.set(false)),

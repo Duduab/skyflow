@@ -100,6 +100,42 @@
               }
             </div>
             <div class="planning-wizard__field">
+              <label class="planning-wizard__field-label" for="wizard-line-material">{{
+                'PLANNING_NEW.LINE_MATERIAL_LABEL' | translate
+              }}</label>
+              <select
+                id="wizard-line-material"
+                class="planning-wizard__input planning-wizard__select"
+                [value]="lineMaterial()"
+                (change)="onLineMaterialChange($event)"
+              >
+                <option value="ALUMINUM">
+                  {{ 'PLANNING_NEW.LINE_MATERIAL_ALUMINUM' | translate }}
+                </option>
+                <option value="STEEL">
+                  {{ 'PLANNING_NEW.LINE_MATERIAL_STEEL' | translate }}
+                </option>
+              </select>
+            </div>
+            <div class="planning-wizard__field">
+              <label class="planning-wizard__field-label" for="wizard-machining-route">{{
+                'PLANNING_NEW.MACHINING_ROUTE_LABEL' | translate
+              }}</label>
+              <select
+                id="wizard-machining-route"
+                class="planning-wizard__input planning-wizard__select"
+                [value]="machiningRoute()"
+                (change)="onMachiningRouteChange($event)"
+              >
+                <option value="GLASS">
+                  {{ 'PLANNING_NEW.MACHINING_ROUTE_GLASS' | translate }}
+                </option>
+                <option value="ALU_RANGER">
+                  {{ 'PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER' | translate }}
+                </option>
+              </select>
+            </div>
+            <div class="planning-wizard__field">
               <label class="planning-wizard__field-label" for="wizard-project-details">
                 {{ 'PLANNING_NEW.WIZARD_DETAILS_LABEL' | translate }}
                 <span class="planning-wizard__field-optional">{{
@@ -116,14 +152,15 @@
               ></textarea>
             </div>
             <div class="planning-wizard__card-actions">
-              <button
-                type="button"
-                class="planning-wizard__btn planning-wizard__btn--primary"
+              <skyflow-ui-button
+                variant="primary"
+                btnClass="planning-wizard__btn"
                 [disabled]="creating()"
+                [loading]="creating()"
                 (click)="createProjectAndGoStep2()"
               >
                 {{ 'PLANNING_NEW.WIZARD_CTA_CREATE' | translate }}
-              </button>
+              </skyflow-ui-button>
             </div>
           </div>
         </section>
@@ -159,7 +196,9 @@
                 <span class="planning-wizard__flow-idx">2</span>
                 <p>
                   {{ 'PLANNING_NEW.WIZARD_FLOW_UNLOCK' | translate }}
-                  <strong class="planning-wizard__flow-strong">{{ 'STATIONS.1' | translate }}</strong>
+                  <strong class="planning-wizard__flow-strong">{{
+                    station1FlowLabelKey() | translate
+                  }}</strong>
                 </p>
               </div>
             </div>
@@ -170,7 +209,9 @@
             } @else if (assigneesLoadError(); as ak) {
               <p class="planning-wizard__field-err" role="alert">{{ ak | translate }}</p>
             } @else {
-              <h4 class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_SECTION_SAWS_MANAGER' | translate }}</h4>
+              <h4 class="planning-wizard__assign-subheading">{{
+                station1ManagerSectionKey() | translate
+              }}</h4>
               <div class="planning-wizard__assignee-grid">
                 <button
                   type="button"
@@ -286,9 +327,9 @@
             }
 
             <div class="planning-wizard__card-actions planning-wizard__card-actions--start">
-              <button type="button" class="planning-wizard__btn planning-wizard__btn--ghost" (click)="goStep2()">
+              <skyflow-ui-button variant="ghost" btnClass="planning-wizard__btn" (click)="goStep2()">
                 {{ 'PLANNING_NEW.WIZARD_BACK_STEP2' | translate }}
-              </button>
+              </skyflow-ui-button>
             </div>
           </div>
         </section>
@@ -302,6 +343,8 @@
           [projectName]="selectedName()"
           [wizardMode]="panelMode()"
           [panelHeader]="false"
+          [lineMaterial]="selectedVariantOrder().lineMaterial"
+          [machiningRoute]="selectedVariantOrder().machiningRoute"
           [planningSawsManagerUserId]="selectedSawsManagerId()"
           [sawsWorkerUserIds]="selectedWorkerIds()"
           (planningChanged)="onPlanningChanged()"
@@ -313,63 +356,49 @@
   </div>
 
   @if (successModalOpen() && successSnapshot(); as snap) {
-    <div class="planning-success-modal" role="presentation">
-      <button
-        type="button"
-        class="planning-success-modal__scrim"
-        [attr.aria-label]="'PLANNING_NEW.SUCCESS_MODAL_CANCEL' | translate"
-        (click)="cancelSuccessModal()"
-      ></button>
-      <div
-        class="planning-success-modal__panel"
-        role="dialog"
-        aria-modal="true"
-        [attr.aria-labelledby]="'planning-success-modal-title'"
-      >
-        <div class="planning-success-modal__glow" aria-hidden="true"></div>
-        <div class="planning-success-modal__inner">
-          <div class="planning-success-modal__icon-wrap" aria-hidden="true">
-            <span class="planning-success-modal__icon">✓</span>
-          </div>
-          <h2 id="planning-success-modal-title" class="planning-success-modal__title">
-            {{ 'PLANNING_NEW.SUCCESS_MODAL_TITLE' | translate }}
-          </h2>
-          <dl class="planning-success-modal__summary">
-            <div class="planning-success-modal__row">
-              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_NAME' | translate }}</dt>
-              <dd>{{ snap.name }}</dd>
-            </div>
-            <div class="planning-success-modal__row">
-              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_NOTES' | translate }}</dt>
-              <dd class="planning-success-modal__notes">{{ snap.notes }}</dd>
-            </div>
-            <div class="planning-success-modal__row">
-              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_MANAGER' | translate }}</dt>
-              <dd>{{ snap.manager }}</dd>
-            </div>
-            <div class="planning-success-modal__row">
-              <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_WORKERS' | translate }}</dt>
-              <dd>{{ snap.workers }}</dd>
-            </div>
-          </dl>
-          <div class="planning-success-modal__actions">
-            <button
-              type="button"
-              class="planning-wizard__btn planning-wizard__btn--ghost planning-success-modal__btn"
-              (click)="cancelSuccessModal()"
-            >
-              {{ 'PLANNING_NEW.SUCCESS_MODAL_CANCEL' | translate }}
-            </button>
-            <button
-              type="button"
-              class="planning-wizard__btn planning-wizard__btn--primary planning-success-modal__btn"
-              (click)="confirmSuccessModal()"
-            >
-              {{ 'PLANNING_NEW.SUCCESS_MODAL_CONFIRM' | translate }}
-            </button>
-          </div>
+    <skyflow-ui-popup
+      [open]="true"
+      (closed)="cancelSuccessModal()"
+      [title]="'PLANNING_NEW.SUCCESS_MODAL_TITLE' | translate"
+      titleId="planning-success-modal-title"
+    >
+      <span popup-icon class="planning-success-modal__icon" aria-hidden="true">✓</span>
+
+      <dl class="planning-success-modal__summary">
+        <div class="planning-success-modal__row">
+          <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_NAME' | translate }}</dt>
+          <dd>{{ snap.name }}</dd>
         </div>
+        <div class="planning-success-modal__row">
+          <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_NOTES' | translate }}</dt>
+          <dd class="planning-success-modal__notes">{{ snap.notes }}</dd>
+        </div>
+        <div class="planning-success-modal__row">
+          <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_MANAGER' | translate }}</dt>
+          <dd>{{ snap.manager }}</dd>
+        </div>
+        <div class="planning-success-modal__row">
+          <dt>{{ 'PLANNING_NEW.SUCCESS_FIELD_WORKERS' | translate }}</dt>
+          <dd>{{ snap.workers }}</dd>
+        </div>
+      </dl>
+
+      <div popup-actions>
+        <skyflow-ui-button
+          variant="ghost"
+          btnClass="planning-wizard__btn planning-success-modal__btn"
+          (click)="cancelSuccessModal()"
+        >
+          {{ 'PLANNING_NEW.SUCCESS_MODAL_CANCEL' | translate }}
+        </skyflow-ui-button>
+        <skyflow-ui-button
+          variant="primary"
+          btnClass="planning-wizard__btn planning-success-modal__btn"
+          (click)="confirmSuccessModal()"
+        >
+          {{ 'PLANNING_NEW.SUCCESS_MODAL_CONFIRM' | translate }}
+        </skyflow-ui-button>
       </div>
-    </div>
+    </skyflow-ui-popup>
   }
 </div>

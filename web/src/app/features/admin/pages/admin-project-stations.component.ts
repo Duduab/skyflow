@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, take } from 'rxjs/operators';
@@ -23,10 +24,24 @@ import {
   StationProgressVm,
 } from '../../worker/station-progress';
 import { StationsLoaderComponent } from '../../../shared/stations-loader/stations-loader.component';
+import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { StationLabelPipe } from '../../../shared/station-label.pipe';
+import {
+  stationDescKey,
+  stationVisualModifierClass,
+  stationVisualStyle,
+} from '../../../core/station-presentation';
 
 @Component({
   selector: 'skyflow-admin-project-stations',
-  imports: [RouterLink, TranslateModule, StationsLoaderComponent],
+  imports: [
+    RouterLink,
+    TranslateModule,
+    NgStyle,
+    StationsLoaderComponent,
+    UiButtonComponent,
+    StationLabelPipe,
+  ],
   templateUrl: './admin-project-stations.component.html',
   styleUrls: ['./admin-project-stations.component.scss', '../../worker/worker-hub.component.scss'],
 })
@@ -75,12 +90,28 @@ export class AdminProjectStationsComponent implements OnInit {
     return Math.round(sum / 7);
   });
 
-  readonly projectDisplayName = computed(() => {
+  readonly selectedOrder = computed((): ProjectOrder | null => {
     const pid = this.projectSelection.selectedProjectId();
     const list = this.orders();
-    if (!pid || !list.length) return '';
-    return list.find((o) => o.id === pid)?.name ?? '';
+    if (!pid || !list.length) return null;
+    return list.find((o) => o.id === pid) ?? null;
   });
+
+  readonly projectDisplayName = computed(() => {
+    return this.selectedOrder()?.name ?? '';
+  });
+
+  stationDescKeyFor(stationId: number): string {
+    return stationDescKey(this.selectedOrder(), stationId);
+  }
+
+  stationVisualModifier(stationId: number): string | null {
+    return stationVisualModifierClass(this.selectedOrder(), stationId);
+  }
+
+  stationCardStyle(stationId: number): Record<string, string> {
+    return stationVisualStyle(this.selectedOrder(), stationId);
+  }
 
   ngOnInit(): void {
     this.api

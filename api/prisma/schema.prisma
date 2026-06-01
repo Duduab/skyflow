@@ -44,6 +44,18 @@ enum SkyflowRole {
   SITE_MANAGER
 }
 
+/// חומר קו ייצור — קובע תצוגת תחנה 1 (מסורים / מסגריה)
+enum ProjectLineMaterial {
+  ALUMINUM
+  STEEL
+}
+
+/// מסלול עיבוד — קובע תצוגת תחנה 2 (CNC / Alu Ranger)
+enum ProjectMachiningRoute {
+  GLASS
+  ALU_RANGER
+}
+
 model User {
   id               String      @id @default(uuid())
   email            String      @unique
@@ -75,7 +87,7 @@ model ProjectOrder {
   status               OrderStatus       @default(PENDING)
   /// זרימת תכנון: לפני אישור — כל התחנות נעולות; אחרי אישור — מסורים ואז השרשרת הקיימת
   flowStatus           ProjectFlowStatus @default(PENDING_PLANNING)
-  /// Reference length for Station 1 scrap formula (cm per unit from BOM)
+  /// Reference length for Station 1 scrap formula (mm per unit from BOM)
   originalLength       Decimal           @db.Decimal(14, 4)
   /// Station 7 — תעודת משלוח שהועלתה לצורך הרכבה באתר (נתיב ציבורי באפליקציית הוויב)
   siteDeliveryNotePath String?
@@ -92,6 +104,10 @@ model ProjectOrder {
   /// משתמש שיצר/פתח את הפרויקט (טיוטת תכנון)
   createdByUserId        String?
   createdBy              User?   @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  /// אלומיניום → מסורים; פלדה → מסגריה (תחנה 1 — אותו stationId)
+  lineMaterial           ProjectLineMaterial     @default(ALUMINUM)
+  /// זכוכית → CNC; Alu Ranger → תחנה 2 וריאנט (אותו stationId)
+  machiningRoute         ProjectMachiningRoute   @default(GLASS)
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -174,8 +190,10 @@ model SawStationWorkLine {
   imagePaths    String[]             @default([])
   /// TYPE_2, TYPE_4, … מתוך ProductItem (לא WINDOW_INSTRUCTION)
   instructionKind String             @default("") @db.VarChar(32)
-  /// אורך חיתוך מהתכנון (ס״מ) — מתא בעמודת הפרופיל (MPS/MPB); מקור למטרים לניסור
-  planningCutLengthCm Int?
+  /// אורך חיתוך מהתכנון (מ״מ) — מתא בעמודת הפרופיל (MPS/MPB); מקור למטרים לניסור
+  planningCutLengthMm Int?
+  /// MPS-X | MPS-Y | MPB-X | MPB-Y when from planning Excel
+  sawsProfileCode     String? @db.VarChar(32)
   createdAt     DateTime             @default(now())
 
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -213,7 +231,7 @@ model StationLog {
   processedQty Int
   issues       String?  @db.Text
   workerId     String?
-  /// Station 1 (Saws): cut length per bar in cm
+  /// Station 1 (Saws): cut length per bar in mm
   cutLength    Decimal? @db.Decimal(14, 4)
   /// Station-specific JSON (e.g. Finishes checklist completion)
   extraPayload Json?
@@ -228,14 +246,19 @@ model ScrapReport {
   id         String   @id @default(uuid())
   projectId  String
   stationId  Int
-  /// Per-piece length in cm
+  /// Per-piece length in mm
   itemLength Decimal  @db.Decimal(14, 4)
   scrapQty   Int
+  /// CATALOG = MPS/MPB X2 from planning; DRAWN = custom / template profile
+  profileKind String  @default("CATALOG") @db.VarChar(16)
+  /// MPS-X, MPB-Y, … or drawn profile label / instruction kind
+  profileCode String  @default("LEGACY") @db.VarChar(32)
   createdAt  DateTime @default(now())
 
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, stationId])
+  @@index([projectId, profileKind, profileCode])
 }
 
 /// Station 6 — תמונות תיעוד סידור ואריזה (לפי slot)

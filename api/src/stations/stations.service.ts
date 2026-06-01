@@ -19,6 +19,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
+import {
+  assembledQtyMapFromLogPayload,
+  buildAssemblyPipelineLines,
+  buildAssemblyWindowUnits,
+  sumAssemblyWindowQty,
+  type AssemblyStationContextDto,
+} from '../common/assembly-context.util';
+import { lineQtyFromLabel } from '../planning/planning-assembly-media';
+import { loadAssemblyManifest } from '../planning/planning-assembly-media';
 
 export type WorkerActivityLogEntry = {
   id: string;
@@ -167,8 +176,8 @@ export class StationsService {
     return Object.fromEntries(lineSawn);
   }
 
-  /** מיזוג אחרון — מטרים לשורה ממודאל מסור */
-  private async latestSawLineMetersFromLogs(
+  /** מיזוג אחרון — מ״מ לשורה ממודאל מסור (תומך בדיווחים ישנים במטרים) */
+  private async latestSawLineMmFromLogs(
     projectId: string,
   ): Promise<Record<string, number>> {
     const logs = await this.prisma.stationLog.findMany({
@@ -177,20 +186,31 @@ export class StationsService {
       take: 150,
       select: { extraPayload: true },
     });
-    const lineMeters = new Map<string, number>();
+    const lineMm = new Map<string, number>();
     for (const log of logs) {
       const ep = log.extraPayload as Record<string, unknown> | null;
-      if (!ep?.['sawModalSnapshot'] || !ep['sawLineMetersById']) continue;
-      const bag = ep['sawLineMetersById'] as Record<string, unknown>;
-      for (const [lineId, v] of Object.entries(bag)) {
-        if (lineMeters.has(lineId)) continue;
-        const n = Number(v);
-        if (Number.isFinite(n) && n >= 0) {
-          lineMeters.set(lineId, Math.round(n * 100) / 100);
+      if (!ep?.['sawModalSnapshot']) continue;
+      const bags: Record<string, unknown>[] = [];
+      if (ep['sawLineMmById']) bags.push(ep['sawLineMmById'] as Record<string, unknown>);
+      if (ep['sawLineMetersById']) {
+        bags.push(ep['sawLineMetersById'] as Record<string, unknown>);
+      }
+      for (const bag of bags) {
+        for (const [lineId, v] of Object.entries(bag)) {
+          if (lineMm.has(lineId)) continue;
+          const n = Number(v);
+          if (!Number.isFinite(n) || n < 0) continue;
+          lineMm.set(lineId, this.normalizeSawLineLengthToMm(n));
         }
       }
     }
-    return Object.fromEntries(lineMeters);
+    return Object.fromEntries(lineMm);
+  }
+
+  /** דיווחים ישנים: ערך < 500 נחשב מטרים */
+  private normalizeSawLineLengthToMm(n: number): number {
+    if (n > 0 && n < 500) return Math.round(n * 1000);
+    return Math.round(n);
   }
 
   /** מיזוג אחרון מדיווחי מודאל תחנות 2–4 (שורה → כמות שדווחה בעמדה) */
@@ -311,7 +331,7 @@ export class StationsService {
           summaryKey: 'WORKER.ACT_LOG_S1',
           summaryParams: {
             qty,
-            cm: log.cutLength != null ? Number(log.cutLength) : 0,
+            mm: log.cutLength != null ? Number(log.cutLength) : 0,
           },
         };
       }
@@ -476,7 +496,8 @@ export class StationsService {
             sortOrder: true,
             imagePaths: true,
             instructionKind: true,
-            planningCutLengthCm: true,
+            planningCutLengthMm: true,
+            sawsProfileCode: true,
           },
         })
       : undefined;
@@ -492,7 +513,7 @@ export class StationsService {
         : undefined;
 
     let sawWorkSawnByLineId: Record<string, number> | undefined;
-    let sawWorkMetersByLineId: Record<string, number> | undefined;
+    let sawWorkMmByLineId: Record<string, number> | undefined;
     let sawWorkSawnByKindPayload: Record<string, number> | undefined;
     if (
       stationId >= 1 &&
@@ -501,16 +522,9 @@ export class StationsService {
       sawWorkLines?.length
     ) {
       sawWorkSawnByLineId = await this.latestSawLineSawnFromLogs(projectId);
-      sawWorkMetersByLineId = await this.latestSawLineMetersFromLogs(
-        projectId,
-      );
+      sawWorkMmByLineId = await this.latestSawLineMmFromLogs(projectId);
     }
-    if (
-      stationId === 1 &&
-      inProduction &&
-      sawWorkLines?.length &&
-      sawWorkSawnByLineId
-    ) {
+    if (inProduction && sawWorkLines?.length && sawWorkSawnByLineId) {
       sawWorkSawnByKindPayload = this.aggregateSawnByKind(
         sawWorkLines,
         sawWorkSawnByLineId,
@@ -595,6 +609,25 @@ export class StationsService {
       );
     }
 
+    let assemblyStation: AssemblyStationContextDto | undefined;
+    if (stationId === 3 && inProduction) {
+      const lines = sawWorkLines ?? [];
+      const sawnMap =
+        sawWorkSawnByLineId ??
+        (lines.length
+          ? await this.latestSawLineSawnFromLogs(projectId)
+          : {});
+      const cncMap = lines.length
+        ? await this.latestWorkLineDoneFromLogs(projectId, 2)
+        : {};
+      assemblyStation = await this.buildAssemblyStationContext(
+        projectId,
+        lines,
+        sawnMap,
+        cncMap,
+      );
+    }
+
     return {
       order,
       stationId,
@@ -622,12 +655,16 @@ export class StationsService {
       sawWorkLines?.length
         ? {
             sawWorkSawnByLineId: sawWorkSawnByLineId ?? {},
-            sawWorkMetersByLineId: sawWorkMetersByLineId ?? {},
+            sawWorkMmByLineId: sawWorkMmByLineId ?? {},
           }
         : {}),
-      ...(stationId === 1 && inProduction && sawWorkLines?.length
+      ...(stationId >= 1 &&
+      stationId <= 4 &&
+      inProduction &&
+      sawWorkLines?.length &&
+      sawWorkSawnByKindPayload
         ? {
-            sawWorkSawnByKind: sawWorkSawnByKindPayload ?? {},
+            sawWorkSawnByKind: sawWorkSawnByKindPayload,
           }
         : {}),
       ...(stationId >= 2 &&
@@ -638,6 +675,145 @@ export class StationsService {
         : {}),
       ...(siteAssembly ? { siteAssembly } : {}),
       ...(packReport ? { packReport } : {}),
+      ...(assemblyStation ? { assemblyStation } : {}),
+    };
+  }
+
+  private async latestAssembledWindowQtyMap(
+    projectId: string,
+    windowItems: { id: string; label: string }[],
+  ): Promise<Record<string, number>> {
+    const latest = await this.prisma.stationLog.findFirst({
+      where: { projectId, stationId: 3 },
+      orderBy: { createdAt: 'desc' },
+      select: { extraPayload: true },
+    });
+    const ep = latest?.extraPayload as Record<string, unknown> | null;
+    const map = assembledQtyMapFromLogPayload(ep);
+    if (
+      ep &&
+      Array.isArray(ep['assembledProductItemIds']) &&
+      !ep['assembledQtyByItemId']
+    ) {
+      for (const item of windowItems) {
+        if (map[item.id]) {
+          map[item.id] = lineQtyFromLabel(item.label);
+        }
+      }
+    }
+    return map;
+  }
+
+  private async buildAssemblyStationContext(
+    projectId: string,
+    sawWorkLines: {
+      id: string;
+      instructionKind: string;
+      description: string;
+      quantity: number;
+      sortOrder: number;
+      imagePaths: string[];
+      sawsProfileCode: string | null;
+      planningCutLengthMm: number | null;
+    }[],
+    sawnByLineId: Record<string, number>,
+    cncByLineId: Record<string, number>,
+  ): Promise<AssemblyStationContextDto> {
+    const windowItems = await this.prisma.productItem.findMany({
+      where: {
+        projectId,
+        instructionKind: 'WINDOW_INSTRUCTION',
+      },
+      include: { components: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const manifest = loadAssemblyManifest(projectId);
+    const assembledQtyById = await this.latestAssembledWindowQtyMap(
+      projectId,
+      windowItems.map((i) => ({ id: i.id, label: i.label })),
+    );
+
+    const pipeline = buildAssemblyPipelineLines(
+      sawWorkLines,
+      sawnByLineId,
+      cncByLineId,
+    );
+    const windows = buildAssemblyWindowUnits(
+      windowItems,
+      manifest?.itemImages ?? {},
+      assembledQtyById,
+    );
+    const { totalQty, assembledQty } = sumAssemblyWindowQty(windows);
+
+    return {
+      pipeline,
+      windows,
+      pipelineReadyCount: pipeline.filter((p) => p.status === 'ready').length,
+      pipelineTotalCount: pipeline.length,
+      windowsUnitCount: windows.length,
+      windowsTotalQty: totalQty,
+      windowsAssembledQty: assembledQty,
+    };
+  }
+
+  async setAssemblyWindowQty(
+    projectId: string,
+    productItemId: string,
+    assembledQty: number,
+    reporterUserId: string | null,
+  ) {
+    this.assertStation(3);
+    const order = await this.ordersService.findOne(projectId);
+    if (order.flowStatus !== ProjectFlowStatus.IN_PRODUCTION) {
+      throw new BadRequestException('Project is not in production');
+    }
+
+    const item = await this.prisma.productItem.findFirst({
+      where: { projectId, id: productItemId },
+      select: { id: true, instructionKind: true, label: true },
+    });
+    if (!item || item.instructionKind !== 'WINDOW_INSTRUCTION') {
+      throw new BadRequestException('Window instruction unit not found');
+    }
+
+    const windowItems = await this.prisma.productItem.findMany({
+      where: { projectId, instructionKind: 'WINDOW_INSTRUCTION' },
+      select: { id: true, label: true },
+    });
+    const map = await this.latestAssembledWindowQtyMap(projectId, windowItems);
+    const maxQty = lineQtyFromLabel(item.label);
+    const next = Math.min(maxQty, Math.max(0, Math.floor(Number(assembledQty) || 0)));
+    if (next <= 0) delete map[productItemId];
+    else map[productItemId] = next;
+
+    const { totalQty, assembledQty: sumAsm } = sumAssemblyWindowQty(
+      windowItems.map((w) => ({
+        quantity: lineQtyFromLabel(w.label),
+        assembledQty: map[w.id] ?? 0,
+      })),
+    );
+
+    await this.prisma.stationLog.create({
+      data: {
+        projectId,
+        stationId: 3,
+        processedQty: sumAsm,
+        workerId: reporterUserId,
+        extraPayload: {
+          assemblyWindowSnapshot: true,
+          assembledQtyByItemId: map,
+        },
+      },
+    });
+
+    return {
+      ok: true,
+      productItemId,
+      assembledQty: next,
+      quantity: maxQty,
+      windowsAssembledQty: sumAsm,
+      windowsTotalQty: totalQty,
     };
   }
 
@@ -835,12 +1011,22 @@ export class StationsService {
       );
     }
 
+    const profileCode = (dto.profileCode ?? 'LEGACY').trim().slice(0, 32) || 'LEGACY';
+    const profileKind =
+      dto.profileKind === 'DRAWN' || dto.profileKind === 'CATALOG'
+        ? dto.profileKind
+        : profileCode.match(/^MP[SB]-[XY]$/i)
+          ? 'CATALOG'
+          : 'DRAWN';
+
     return this.prisma.scrapReport.create({
       data: {
         projectId: dto.projectId,
         stationId,
         itemLength: dto.itemLength,
         scrapQty: dto.scrapQty,
+        profileKind,
+        profileCode: profileCode.toUpperCase(),
       },
     });
   }

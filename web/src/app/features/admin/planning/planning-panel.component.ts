@@ -17,17 +17,14 @@ import {
   PlanningPreviewSheetTabDto,
   PlanningWizardPanelMode,
   ProjectFlowStatus,
+  ProjectLineMaterial,
+  ProjectMachiningRoute,
 } from '../../../core/skyflow.models';
+import { planningApproveCtaKey } from '../../../core/station-presentation';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { parsePlanningComponentLabel } from './planning-component-label.util';
-
-function httpErrorMessage(err: unknown, fallback: string): string {
-  const body = (err as { error?: { message?: string | string[] } })?.error;
-  const m = body?.message;
-  if (Array.isArray(m) && m.length) return String(m[0]);
-  if (typeof m === 'string' && m.length) return m;
-  return fallback;
-}
+import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { httpErrorMessage } from '../../../core/http-error.util';
 
 function previewHasUsefulContent(
   p: PlanningParsePreviewDto | null | undefined,
@@ -43,7 +40,7 @@ function previewHasUsefulContent(
 
 @Component({
   selector: 'skyflow-planning-panel',
-  imports: [TranslateModule, NgClass],
+  imports: [TranslateModule, NgClass, UiButtonComponent],
   templateUrl: './planning-panel.component.html',
   styleUrl: './planning-panel.component.scss',
 })
@@ -72,8 +69,17 @@ export class PlanningPanelComponent {
   readonly wizardMode = input<PlanningWizardPanelMode>('default');
   /** כותרת ותת־כותרת של הפאנל */
   readonly panelHeader = input(true);
+  readonly lineMaterial = input<ProjectLineMaterial>('ALUMINUM');
+  readonly machiningRoute = input<ProjectMachiningRoute>('GLASS');
   readonly planningSawsManagerUserId = input<string | null>(null);
   readonly sawsWorkerUserIds = input<readonly string[]>([]);
+
+  approveCtaKey(): string {
+    return planningApproveCtaKey({
+      lineMaterial: this.lineMaterial(),
+      machiningRoute: this.machiningRoute(),
+    });
+  }
 
   readonly planningChanged = output<void>();
   readonly planningApproved = output<void>();
@@ -128,7 +134,11 @@ export class PlanningPanelComponent {
     this.creating.set(true);
     this.error.set(null);
     this.api
-      .postPlanningDraft(name)
+      .postPlanningDraft({
+        name,
+        lineMaterial: 'ALUMINUM',
+        machiningRoute: 'GLASS',
+      })
       .pipe(
         take(1),
         finalize(() => this.creating.set(false)),

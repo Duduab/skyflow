@@ -131,42 +131,26 @@
 }
 
 @if (detailOpen()) {
-  <div class="admin-proj-modal" role="dialog" aria-modal="true" dir="rtl">
-    <button
-      type="button"
-      class="admin-proj-modal__backdrop"
-      (click)="closeDetail()"
-      [attr.aria-label]="'ADMIN_PROJECTS.MODAL_CLOSE' | translate"
-    ></button>
-
-    <div class="admin-proj-modal__panel" [attr.data-surface]="theme.mode()">
-      <header class="admin-proj-modal__hero">
-        <div class="admin-proj-modal__hero-text">
-          <p class="admin-proj-modal__eyebrow">{{ 'ADMIN_PROJECTS.MODAL_SUBTITLE' | translate }}</p>
-          <h2 class="admin-proj-modal__title">{{ selectedCard()?.name }}</h2>
-          @if (selectedCard(); as sc) {
-            <div class="admin-proj-modal__chips">
-              <span class="admin-proj-modal__chip">{{ ('ORDER_STATUS.' + sc.status) | translate }}</span>
-              <span class="admin-proj-modal__chip admin-proj-modal__chip--accent"
-                >{{ 'ADMIN_PAGE.PROGRESS' | translate }} · {{ sc.progressPct }}%</span
-              >
-              <span class="admin-proj-modal__chip">{{ 'ADMIN_PAGE.PACKED' | translate }}: {{ sc.packed }} / {{ sc.totalItems }}</span>
-            </div>
-          }
-        </div>
-        <button
-          type="button"
-          class="admin-proj-modal__close"
-          (click)="closeDetail()"
-          [attr.aria-label]="'ADMIN_PROJECTS.MODAL_CLOSE' | translate"
+  <skyflow-ui-popup
+    [open]="true"
+    size="wide"
+    [hideIcon]="true"
+    (closed)="closeDetail()"
+    [title]="selectedCard()?.name ?? ''"
+    [subtitle]="'ADMIN_PROJECTS.MODAL_SUBTITLE' | translate"
+    titleId="admin-proj-detail-title"
+  >
+    @if (selectedCard(); as sc) {
+      <div popup-header-extra class="admin-proj-modal__chips">
+        <span class="admin-proj-modal__chip">{{ ('ORDER_STATUS.' + sc.status) | translate }}</span>
+        <span class="admin-proj-modal__chip admin-proj-modal__chip--accent"
+          >{{ 'ADMIN_PAGE.PROGRESS' | translate }} · {{ sc.progressPct }}%</span
         >
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
-      </header>
+        <span class="admin-proj-modal__chip">{{ 'ADMIN_PAGE.PACKED' | translate }}: {{ sc.packed }} / {{ sc.totalItems }}</span>
+      </div>
+    }
 
-      <div class="admin-proj-modal__body">
+    <div class="admin-proj-modal__body" dir="rtl">
         @if (detailLoading()) {
           <p class="admin-proj-modal__loading">{{ 'ADMIN_PROJECTS.MODAL_LOADING' | translate }}</p>
         } @else if (detailError(); as de) {
@@ -220,7 +204,9 @@
                   @for (s of act.stations; track s.stationId) {
                     <tr>
                       <td>
-                        <span class="admin-proj-modal__station-name">{{ 'STATIONS.' + s.stationId | translate }}</span>
+                        <span class="admin-proj-modal__station-name">{{
+                          s.stationId | stationLabel: selectedCard() | translate
+                        }}</span>
                       </td>
                       <td>{{ s.logEntries }}</td>
                       <td>{{ s.processedQty }}</td>
@@ -260,7 +246,9 @@
                   <div class="admin-proj-modal__timeline-dot"></div>
                   <div class="admin-proj-modal__timeline-card">
                     <div class="admin-proj-modal__timeline-meta">
-                      <span class="admin-proj-modal__timeline-st">{{ 'STATIONS.' + log.stationId | translate }}</span>
+                      <span class="admin-proj-modal__timeline-st">{{
+                        log.stationId | stationLabel: selectedCard() | translate
+                      }}</span>
                       <time [attr.datetime]="log.createdAt">{{ log.createdAt | date: 'medium' : undefined : dateLocale() }}</time>
                     </div>
                     <p class="admin-proj-modal__timeline-qty">
@@ -278,11 +266,11 @@
           <section class="admin-proj-modal__section admin-proj-modal__section--scrap">
             <div class="admin-proj-modal__scrap-head">
               <h3 class="admin-proj-modal__h">{{ 'ADMIN_PROJECTS.SECTION_SCRAP' | translate }}</h3>
-              @if (scrapCmTotal() > 0) {
+              @if (scrapMmTotal() > 0) {
                 <p class="admin-proj-modal__scrap-sum">
-                  {{ 'ADMIN_PROJECTS.SCRAP_CM_TOTAL' | translate }}:
-                  <strong>{{ scrapCmTotal() | number: '1.0-0' }}</strong>
-                  {{ 'WORKER.SAW_CM_UNIT' | translate }}
+                  {{ 'ADMIN_PROJECTS.SCRAP_MM_TOTAL' | translate }}:
+                  <strong>{{ scrapMmTotal() | number: '1.0-0' }}</strong>
+                  {{ 'WORKER.SAW_MM_UNIT' | translate }}
                 </p>
               }
             </div>
@@ -303,9 +291,9 @@
                   <tbody>
                     @for (r of act.scrapRows; track r.id) {
                       <tr>
-                        <td>{{ 'STATIONS.' + r.stationId | translate }}</td>
+                        <td>{{ r.stationId | stationLabel: selectedCard() | translate }}</td>
                         <td>{{ r.scrapQty }}</td>
-                        <td>{{ r.itemLengthCm | number: '1.0-2' }}</td>
+                        <td>{{ r.itemLengthMm | number: '1.0-2' }}</td>
                         <td>{{ r.createdAt | date: 'medium' : undefined : dateLocale() }}</td>
                       </tr>
                     }
@@ -325,7 +313,6 @@
             </a>
           </footer>
         }
-      </div>
     </div>
-  </div>
+  </skyflow-ui-popup>
 }

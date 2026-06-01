@@ -53,6 +53,8 @@ export class ProjectsController {
       dto.name,
       dto.requirements,
       req.user?.userId ?? null,
+      dto.lineMaterial,
+      dto.machiningRoute,
     );
   }
 
@@ -62,7 +64,7 @@ export class ProjectsController {
     @Param('id') id: string,
     @Body() dto: UpdatePlanningDraftDto,
   ) {
-    return this.projectsService.updatePlanningDraft(id, dto.name);
+    return this.projectsService.updatePlanningDraft(id, dto);
   }
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)

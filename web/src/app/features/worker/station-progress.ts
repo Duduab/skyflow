@@ -27,6 +27,11 @@ function qtyAt(ctx: WorkerContext, stationId: number): number {
   return ctx.totals.find((t) => t.stationId === stationId)?.processedQty ?? 0;
 }
 
+/** לפחות דיווח מסורים אחד (מודאל TYPE) — פותח מעבר ל-CNC */
+export function hasAnySawStationReport(ctx: WorkerContext): boolean {
+  return sumSawWorkSawnByLine(ctx) > 0;
+}
+
 /** סכום פריטים שנוסרו לפי שורות תכנון (מודאל TYPE / לוגים) */
 function sumSawWorkSawnByLine(ctx: WorkerContext): number {
   const m = ctx.sawWorkSawnByLineId;
@@ -151,6 +156,21 @@ export function computeStationProgress(
     };
   }
 
+  if (sid === 3 && (ctx.assemblyStation?.windowsTotalQty ?? 0) > 0) {
+    const a = ctx.assemblyStation!;
+    const target = Math.max(1, a.windowsTotalQty);
+    const done = a.windowsAssembledQty;
+    const remaining = Math.max(0, target - done);
+    const percent = Math.min(100, Math.round((done / target) * 100));
+    return {
+      done,
+      target,
+      remaining,
+      percent,
+      noUpstreamTarget: false,
+    };
+  }
+
   if (sid >= 2 && sid <= 4) {
     const target =
       ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0
@@ -189,7 +209,11 @@ export function computeStationProgress(
   };
 }
 
-/** תחנה 1 פתוחה רק אחרי אישור תכנון; תחנה k>1 רק אם כל התחנות 1..k-1 ב־100%. */
+/**
+ * תחנה 1 אחרי אישור תכנון.
+ * תחנה 2 (CNC) נפתחת אחרי דיווח מסורים אחד לפחות — לא חייב 100% במסורים.
+ * תחנות 3+ — כל התחנות הקודמות (מלבד מסורים) ב־100%.
+ */
 export function isStationUnlockedInChain(
   stationId: number,
   contextByStation: Partial<Record<number, WorkerContext>>,
@@ -203,6 +227,10 @@ export function isStationUnlockedInChain(
   for (let i = 1; i < stationId; i++) {
     const ctx = contextByStation[i];
     if (!ctx) return false;
+    if (i === 1) {
+      if (!hasAnySawStationReport(ctx)) return false;
+      continue;
+    }
     if (computeStationProgress(i, ctx).percent < 100) return false;
   }
   return true;

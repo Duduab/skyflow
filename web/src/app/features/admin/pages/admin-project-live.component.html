@@ -42,9 +42,9 @@
           </div>
         </div>
       }
-      <button type="button" class="admin-live__exit sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg" (click)="exit()">
+      <skyflow-ui-button variant="secondary" size="lg" btnClass="admin-live__exit" (click)="exit()">
         {{ 'ADMIN_PROJECTS.LIVE_EXIT' | translate }}
-      </button>
+      </skyflow-ui-button>
     </div>
   </header>
 
@@ -66,9 +66,9 @@
     } @else if (accessDenied()) {
       <div class="admin-live__state admin-live__state--warn">
         <p>{{ 'ADMIN_PROJECTS.LIVE_DENIED' | translate }}</p>
-        <button type="button" class="sf-ui-btn sf-ui-btn--secondary sf-ui-btn--lg admin-live__exit" (click)="exit()">
+        <skyflow-ui-button variant="secondary" size="lg" btnClass="admin-live__exit" (click)="exit()">
           {{ 'ADMIN_PROJECTS.LIVE_EXIT' | translate }}
-        </button>
+        </skyflow-ui-button>
       </div>
     } @else {
       <section class="worker-hub admin-live__hub">
@@ -78,8 +78,12 @@
             @for (s of row; track s.id) {
               @let prog = hubProgress(s.id);
               @let unlocked = stationUnlocked(s.id);
+              @let order = variantOrder();
               <div
                 [class]="'station-card admin-live-card station-card--' + s.id"
+                [class.station-visual--steelworkshop]="stationVisualModifier(s.id) === 'station-visual--steelworkshop'"
+                [class.station-visual--aluranger]="stationVisualModifier(s.id) === 'station-visual--aluranger'"
+                [ngStyle]="stationCardStyle(s.id)"
                 [class.station-card--locked]="!unlocked"
                 role="article"
               >
@@ -136,7 +140,7 @@
 
                 <div class="station-card__panel">
                   <h2 class="station-card__headline">
-                    {{ 'STATIONS.' + s.id | translate }}
+                    {{ s.id | stationLabel: order | translate }}
                   </h2>
                   @if (stationManagers()[s.id]; as mgr) {
                     <p class="station-card__mgr">
@@ -145,7 +149,7 @@
                     </p>
                   }
                   <p class="station-card__desc">
-                    {{ 'WORKER_HUB.STATION_DESC_' + s.id | translate }}
+                    {{ stationDescKeyFor(s.id) | translate }}
                   </p>
 
                   <div class="station-card__footer">

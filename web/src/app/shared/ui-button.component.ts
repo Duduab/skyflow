@@ -1,5 +1,12 @@
 import { Component, computed, input } from '@angular/core';
 
+export type UiButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type UiButtonSize = 'md' | 'lg' | 'touch';
+
+/**
+ * כפתור UI משותף לכל האפליקציה.
+ * עיצוב: styles.scss → .sf-ui-btn / .sf-ui-btn--{variant}
+ */
 @Component({
   selector: 'skyflow-ui-button',
   standalone: true,
@@ -37,16 +44,15 @@ import { Component, computed, input } from '@angular/core';
   `,
 })
 export class UiButtonComponent {
-  readonly variant = input<'primary' | 'secondary'>('primary');
+  readonly variant = input<UiButtonVariant>('primary');
   readonly loading = input(false);
   readonly disabled = input(false);
   readonly type = input<'button' | 'submit' | 'reset'>('button');
-  readonly size = input<'md' | 'lg' | 'touch'>('md');
+  readonly size = input<UiButtonSize>('md');
   readonly block = input(false);
-  /** Extra CSS classes (e.g. layout hooks, shadows). */
+  /** Extra CSS classes (layout hooks only — prefer variant/size). */
   readonly btnClass = input('');
 
-  /** רוחב מלא כשהכפתור touch/block — מונע קיפול גובה של ה-host */
   readonly hostClasses = computed(() => {
     const full = this.block() || this.size() === 'touch';
     return ['sf-ui-button-host', full ? 'sf-ui-button-host--full' : '']
@@ -55,10 +61,11 @@ export class UiButtonComponent {
   });
 
   readonly classes = computed(() => {
+    const v = this.variant();
     const sz = this.size();
     const parts = [
       'sf-ui-btn',
-      this.variant() === 'primary' ? 'sf-ui-btn--primary' : 'sf-ui-btn--secondary',
+      `sf-ui-btn--${v}`,
       sz === 'lg' ? 'sf-ui-btn--lg' : '',
       sz === 'touch' ? 'sf-ui-btn--touch' : '',
       this.block() ? 'sf-ui-btn--block' : '',

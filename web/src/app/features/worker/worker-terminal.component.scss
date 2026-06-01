@@ -105,7 +105,6 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.55rem 1rem 0.55rem 0.75rem;
-  border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   color: rgba(248, 250, 252, 0.92);
   background:
@@ -153,6 +152,13 @@
 
 .station-back-cta__text {
   line-height: 1.2;
+}
+
+.station-next-cta-hint {
+  margin: 0 0 0.65rem;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .station-next-cta-wrap {
@@ -271,6 +277,129 @@
 
 /* station-brief styles live in ./_station-brief.scss */
 
+/* מודאל ניסור — כפתור שמירה בפוטר */
+.saw-type-modal__save-wrap {
+  width: 100%;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
+.saw-type-modal__save-btn.sf-ui-btn {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.65rem 2rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  gap: 0.55rem;
+}
+
+.saw-type-modal__save-ico {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+.sf-ui-popup--full .sf-ui-popup__actions.saw-type-modal__save-wrap,
+.sf-ui-popup--full .saw-type-modal__save-wrap {
+  width: 100%;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
+/* אחרי שמירה — מסך מוחשך + טבעות אחוזים */
+.saw-save-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(12px);
+  animation: saw-save-celebration-in 0.4s ease;
+}
+
+@keyframes saw-save-celebration-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.saw-save-celebration__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.35rem 1.5rem;
+  width: min(100%, 22rem);
+}
+
+@media (min-width: 480px) {
+  .saw-save-celebration__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(100%, 28rem);
+  }
+}
+
+.saw-save-celebration__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  animation: saw-save-celebration-pop 0.55s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+
+.saw-save-celebration__item:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.saw-save-celebration__item:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.saw-save-celebration__item:nth-child(4) {
+  animation-delay: 0.18s;
+}
+.saw-save-celebration__item:nth-child(5) {
+  animation-delay: 0.24s;
+}
+.saw-save-celebration__item:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+@keyframes saw-save-celebration-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.saw-save-celebration__ring.saw-type-tile__ring-wrap {
+  width: clamp(5.25rem, 22vw, 6.75rem);
+  height: clamp(5.25rem, 22vw, 6.75rem);
+  margin-bottom: 0;
+}
+
+.saw-save-celebration__label {
+  margin: 0;
+  font-size: clamp(0.95rem, 3.5vw, 1.15rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: rgba(248, 250, 252, 0.92);
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.saw-save-celebration__item--done .saw-save-celebration__label {
+  color: rgba(167, 243, 208, 0.98);
+}
+
 /* כרטיסי סוג ניסור — ריבוע (יחס 1:1) + טבעת התקדמות */
 .saw-type-tile {
   --tile-ring-accent: #558fc3;
@@ -359,6 +488,56 @@
 
 .saw-type-tile--complete .saw-type-tile__arc {
   stroke: #34d399;
+}
+
+.saw-type-tile--locked {
+  --tile-ring-accent: #f87171;
+  border-color: rgba(248, 113, 113, 0.75);
+  background: linear-gradient(
+    165deg,
+    rgba(127, 29, 29, 0.55) 0%,
+    rgba(69, 10, 10, 0.78) 100%
+  );
+  box-shadow: var(--sf-shadow-inset), 0 0 0 1px rgba(239, 68, 68, 0.28);
+  cursor: not-allowed;
+}
+
+.saw-type-tile--locked .saw-type-tile__track {
+  stroke: rgba(254, 202, 202, 0.22);
+}
+
+.saw-type-tile--locked .saw-type-tile__kind {
+  color: #fecaca;
+}
+
+.saw-type-tile--locked .saw-type-tile__qty {
+  color: rgba(254, 202, 202, 0.75);
+}
+
+.saw-type-tile__lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.85rem, 7vw, 2.2rem);
+  height: clamp(1.85rem, 7vw, 2.2rem);
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.95);
+  color: #fef2f2;
+  box-shadow: var(--sf-shadow);
+}
+
+.saw-type-tile__lock-svg {
+  width: 58%;
+  height: 58%;
+  display: block;
+}
+
+.saw-type-tile__locked-hint {
+  margin: 0.1rem 0 0;
+  line-height: 1.25;
+  font-size: clamp(0.78rem, 3vw, 0.95rem);
+  color: #fca5a5;
+  max-width: 100%;
 }
 
 .saw-type-tile__ring-wrap {
@@ -472,14 +651,24 @@
   inset: 0;
   z-index: 110;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
+  flex-direction: column;
+  width: 100vw;
+  height: 100dvh;
+  height: 100vh;
+  max-height: 100dvh;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
 }
 
 .saw-type-modal__scrim {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  height: 100vh;
+  min-height: 100%;
+  z-index: 0;
   background: rgba(2, 6, 23, 0.62);
   backdrop-filter: blur(8px);
 }
@@ -487,13 +676,17 @@
 .saw-type-modal__panel {
   position: relative;
   z-index: 1;
-  width: min(92vw, 72rem);
-  max-height: min(94vh, 56rem);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 1.35rem 1.5rem 1.5rem;
+  padding: max(1rem, env(safe-area-inset-top, 0px)) 1.25rem
+    max(1rem, env(safe-area-inset-bottom, 0px));
   overflow: hidden;
-  border-radius: var(--sf-radius);
+  border-radius: 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: linear-gradient(
     165deg,
@@ -503,47 +696,97 @@
   box-shadow: var(--sf-shadow), 0 0 0 1px rgba(85, 143, 195, 0.12);
 }
 
-.saw-type-modal__head {
+/* כותרת מודאל — גוללת עם הרשימה (לא נשארת קבועה) */
+.saw-type-modal__fheader {
+  margin-bottom: 0.85rem;
+}
+
+.saw-type-modal__fheader-inner {
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  flex-shrink: 0;
+  padding: 0.35rem 0.15rem 0.5rem;
+  text-align: right;
 }
 
-.saw-type-modal__head-text {
+.saw-type-modal__fheader-copy {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.25rem;
-  flex: 1;
-  min-width: 0;
-  width: 100%;
+  gap: 0.5rem;
 }
 
 .saw-type-modal__title {
   margin: 0;
-  font-size: clamp(1.5rem, 3.5vw, 2rem);
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  width: 100%;
+  text-align: start;
+  font-size: clamp(2.35rem, 6vw, 3.35rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
   color: #fff;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
-  width: 100%;
-  text-align: right;
 }
 
-.saw-type-modal__total-line {
-  margin: 0.35rem 0 0;
-  font-size: clamp(1.15rem, 2.6vw, 1.4rem);
+.saw-type-modal__stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-self: stretch;
+  gap: 0.55rem;
   width: 100%;
-  text-align: right;
+  margin-top: 0.2rem;
 }
 
-.saw-type-modal__count-line {
-  margin: 0;
-  font-size: clamp(1.02rem, 2.2vw, 1.15rem);
-  width: 100%;
-  text-align: right;
+.saw-type-modal__stat-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: var(--sf-radius);
+  border: 1px solid rgba(85, 143, 195, 0.42);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(85, 143, 195, 0.26) 0%,
+      rgba(75, 104, 157, 0.16) 100%
+    ),
+    linear-gradient(165deg, #1a2740 0%, #141a26 48%, #10141c 100%);
+  box-shadow: var(--sf-shadow-inset), 0 0 0 1px rgba(85, 143, 195, 0.14);
+}
+
+.saw-type-modal__stat-chip--primary {
+  border: 2px solid rgba(147, 197, 253, 0.85);
+  box-shadow:
+    var(--sf-shadow-inset),
+    var(--sf-shadow),
+    0 0 0 1px rgba(85, 143, 195, 0.35);
+}
+
+.saw-type-modal__stat-label {
+  font-size: clamp(0.78rem, 1.8vw, 0.88rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: rgba(186, 230, 253, 0.82);
+  text-align: start;
+}
+
+.saw-type-modal__stat-value {
+  font-size: clamp(1.4rem, 3.2vw, 1.9rem);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: rgba(224, 242, 254, 0.98);
+  letter-spacing: -0.02em;
+}
+
+.saw-type-modal__stat-chip--primary .saw-type-modal__stat-value {
+  color: #fff;
 }
 
 .saw-type-modal__close {
@@ -551,43 +794,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  margin: -0.35rem -0.35rem 0 0;
-  border: none;
+  width: 2.65rem;
+  height: 2.65rem;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--sf-radius);
   background: rgba(255, 255, 255, 0.06);
-  color: rgba(248, 250, 252, 0.88);
+  color: rgba(248, 250, 252, 0.9);
   font-size: 1.75rem;
   line-height: 1;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
   transition:
     background 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    border-color 0.15s ease;
 
   &:hover {
-    background: rgba(248, 113, 113, 0.22);
-    color: #fecaca;
+    border-color: rgba(239, 68, 68, 0.45);
+    background: rgba(254, 226, 226, 0.95);
+    color: #b91c1c;
   }
 }
 
+/* גלילה ב־.sf-ui-popup--full .sf-ui-popup__panel — בלי מכל גלילה נפרד */
 .saw-type-modal__scroll {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  margin-top: 0.85rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .saw-type-modal__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2rem;
-  padding: 0.25rem 0.2rem 0.85rem 0;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
+  padding: 0.25rem 0.2rem 1rem 0;
   align-content: start;
 }
 
@@ -786,7 +1025,7 @@ button.saw-type-card__ring--btn {
   box-shadow: var(--sf-shadow-inset);
 }
 
-.saw-type-card__stepper-meter-col {
+.saw-type-card__stepper-mm-col {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -794,7 +1033,7 @@ button.saw-type-card__ring--btn {
   min-width: 0;
 }
 
-.saw-type-card__stepper-meter-label {
+.saw-type-card__stepper-mm-label {
   font-size: clamp(0.78rem, 1.9vw, 0.88rem);
   font-weight: 800;
   letter-spacing: 0.03em;
@@ -802,7 +1041,7 @@ button.saw-type-card__ring--btn {
   line-height: 1.1;
 }
 
-.saw-type-card__stepper-val--meters {
+.saw-type-card__stepper-val--mm {
   font-size: clamp(1.38rem, 3.2vw, 1.85rem);
 }
 

@@ -38,9 +38,9 @@
             }
           </select>
         </label>
-        <button
-          type="button"
-          class="admin-scrap__export sf-ui-btn sf-ui-btn--secondary"
+        <skyflow-ui-button
+          variant="secondary"
+          btnClass="admin-scrap__export"
           (click)="exportToExcel()"
           [disabled]="detailRows().length === 0"
           [attr.aria-label]="'ADMIN_SCRAP_PAGE.EXPORT_EXCEL' | translate"
@@ -57,7 +57,7 @@
             />
           </svg>
           <span>{{ 'ADMIN_SCRAP_PAGE.EXPORT_SHORT' | translate }}</span>
-        </button>
+        </skyflow-ui-button>
       </div>
     </div>
   </header>
@@ -83,9 +83,9 @@
           <h2 class="admin-scrap__insight-title">{{ 'ADMIN_SCRAP_PAGE.INSIGHT_TITLE' | translate }}</h2>
           <p class="admin-scrap__insight-text">
             @if (trendDirection() === 'better') {
-              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_BETTER' | translate: { delta: (-m.deltaCm | number: '1.0-0'), pct: (m.deltaPct != null ? (-m.deltaPct | number: '1.0-1') : '') } }}
+              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_BETTER' | translate: { delta: (-m.deltaMm | number: '1.0-0'), pct: (m.deltaPct != null ? (-m.deltaPct | number: '1.0-1') : '') } }}
             } @else if (trendDirection() === 'worse') {
-              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_WORSE' | translate: { delta: (m.deltaCm | number: '1.0-0'), pct: (m.deltaPct | number: '1.0-1') } }}
+              {{ 'ADMIN_SCRAP_PAGE.INSIGHT_WORSE' | translate: { delta: (m.deltaMm | number: '1.0-0'), pct: (m.deltaPct | number: '1.0-1') } }}
             } @else {
               {{ 'ADMIN_SCRAP_PAGE.INSIGHT_FLAT' | translate }}
             }
@@ -103,28 +103,28 @@
 
       <section class="admin-scrap__kpis" aria-label="scrap kpis">
         <article class="admin-scrap__kpi">
-          <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_TOTAL_CM' | translate }}</span>
-          <span class="admin-scrap__kpi-value">{{ m.totalCm | number: '1.0-0' }}</span>
-          <span class="admin-scrap__kpi-unit">{{ 'ADMIN_SCRAP_PAGE.UNIT_CM' | translate }}</span>
+          <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_TOTAL_MM' | translate }}</span>
+          <span class="admin-scrap__kpi-value">{{ m.totalMm | number: '1.0-0' }}</span>
+          <span class="admin-scrap__kpi-unit">{{ 'ADMIN_SCRAP_PAGE.UNIT_MM' | translate }}</span>
         </article>
         <article class="admin-scrap__kpi admin-scrap__kpi--today">
           <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_TODAY' | translate }}</span>
-          <span class="admin-scrap__kpi-value">{{ m.todayCm | number: '1.0-0' }}</span>
+          <span class="admin-scrap__kpi-value">{{ m.todayMm | number: '1.0-0' }}</span>
           <span class="admin-scrap__kpi-meta">{{ m.todayPieces | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}</span>
         </article>
         <article class="admin-scrap__kpi">
           <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_YESTERDAY' | translate }}</span>
-          <span class="admin-scrap__kpi-value">{{ m.yesterdayCm | number: '1.0-0' }}</span>
+          <span class="admin-scrap__kpi-value">{{ m.yesterdayMm | number: '1.0-0' }}</span>
           <span class="admin-scrap__kpi-meta">{{ m.yesterdayPieces | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}</span>
         </article>
-        <article class="admin-scrap__kpi" [class.admin-scrap__kpi--up]="m.deltaCm > 0" [class.admin-scrap__kpi--down]="m.deltaCm < 0">
+        <article class="admin-scrap__kpi" [class.admin-scrap__kpi--up]="m.deltaMm > 0" [class.admin-scrap__kpi--down]="m.deltaMm < 0">
           <span class="admin-scrap__kpi-label">{{ 'ADMIN_SCRAP_PAGE.KPI_DELTA' | translate }}</span>
           <span class="admin-scrap__kpi-value">
-            @if (m.deltaCm > 0) { + }{{ m.deltaCm | number: '1.0-0' }}
+            @if (m.deltaMm > 0) { + }{{ m.deltaMm | number: '1.0-0' }}
           </span>
           @if (m.deltaPct != null) {
             <span class="admin-scrap__kpi-meta">{{ m.deltaPct }}%</span>
-          } @else if (m.todayCm > 0 && m.yesterdayCm === 0) {
+          } @else if (m.todayMm > 0 && m.yesterdayMm === 0) {
             <span class="admin-scrap__kpi-meta">{{ 'ADMIN_SCRAP_PAGE.KPI_NEW_TODAY' | translate }}</span>
           }
         </article>
@@ -207,7 +207,7 @@
                 (click)="filterByProject(t.projectId)"
               >
                 <span class="admin-scrap__project-name">{{ t.projectName }}</span>
-                <span class="admin-scrap__project-cm">{{ t.totalScrapCm | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.UNIT_CM' | translate }}</span>
+                <span class="admin-scrap__project-mm">{{ t.totalScrapMm | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.UNIT_MM' | translate }}</span>
                 <span class="admin-scrap__project-meta">
                   {{ t.totalPieces | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}
                   · {{ t.rowCount }} {{ 'ADMIN_SCRAP_PAGE.COL_ENTRIES' | translate }}
@@ -231,7 +231,7 @@
             @for (s of stationTotals(); track s.stationId) {
               <li class="admin-scrap__station-row">
                 <span class="admin-scrap__station-name">{{ s.stationName }}</span>
-                <span class="admin-scrap__station-cm">{{ s.totalScrapCm | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.UNIT_CM' | translate }}</span>
+                <span class="admin-scrap__station-mm">{{ s.totalScrapMm | number: '1.0-0' }} {{ 'ADMIN_SCRAP_PAGE.UNIT_MM' | translate }}</span>
                 <span class="admin-scrap__station-pieces">{{ s.totalPieces }} {{ 'ADMIN_SCRAP_PAGE.KPI_PIECES' | translate }}</span>
               </li>
             }
@@ -252,9 +252,10 @@
                   <th>{{ 'ADMIN_PAGE.PROJECTS' | translate }}</th>
                 }
                 <th>{{ 'ADMIN_PROJECTS.COL_STATION' | translate }}</th>
+                <th>{{ 'ADMIN_SCRAP_PAGE.COL_PROFILE' | translate }}</th>
                 <th>{{ 'WORKER.SCRAP_LENGTH' | translate }}</th>
                 <th>{{ 'ADMIN_PROJECTS.COL_SCRAP_QTY' | translate }}</th>
-                <th>{{ 'ADMIN_SCRAP_PAGE.COL_LINE_CM' | translate }}</th>
+                <th>{{ 'ADMIN_SCRAP_PAGE.COL_LINE_MM' | translate }}</th>
                 <th>{{ 'ADMIN_PROJECTS.COL_TIME' | translate }}</th>
               </tr>
             </thead>
@@ -265,9 +266,10 @@
                     <td>{{ r.projectName }}</td>
                   }
                   <td>{{ r.stationName }}</td>
-                  <td>{{ r.itemLengthCm | number: '1.0-2' }}</td>
+                  <td>{{ r.profileCode }}</td>
+                  <td>{{ r.itemLengthMm | number: '1.0-2' }}</td>
                   <td>{{ r.scrapQty }}</td>
-                  <td class="admin-scrap__td-cm">{{ rowCm(r) | number: '1.0-0' }}</td>
+                  <td class="admin-scrap__td-mm">{{ rowMm(r) | number: '1.0-0' }}</td>
                   <td>{{ r.createdAt | date: 'short' : undefined : dateLocale() }}</td>
                 </tr>
               }

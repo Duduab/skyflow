@@ -1,0 +1,84 @@
+@if (open()) {
+  <div
+    class="station-complete-toast"
+    role="alertdialog"
+    aria-modal="false"
+    aria-live="assertive"
+    [attr.aria-labelledby]="'station-complete-toast-title'"
+    [attr.aria-describedby]="'station-complete-toast-desc'"
+  >
+    <button
+      type="button"
+      class="station-complete-toast__close"
+      (click)="dismissed.emit()"
+      [attr.aria-label]="'WORKER.STATION_COMPLETE_CLOSE' | translate"
+    >
+      <img
+        src="/assets/ui/ui-popup/icon-close.svg"
+        alt=""
+        width="19"
+        height="19"
+        aria-hidden="true"
+      />
+    </button>
+
+    <div class="station-complete-toast__inner">
+      <div class="station-complete-toast__top">
+        <div class="station-complete-toast__icon" aria-hidden="true">
+          <span class="station-complete-toast__icon-bg"></span>
+          <span class="station-complete-toast__icon-art">
+            <img
+              class="station-complete-toast__icon-envelope"
+              src="/assets/ui/station-complete-toast/part-4ca5f073-1e8c-4baf-81ea-f859cd3ee774.svg"
+              alt=""
+            />
+          </span>
+        </div>
+
+        <div class="station-complete-toast__texts">
+          <h2 id="station-complete-toast-title" class="station-complete-toast__title">
+            {{
+              'WORKER.STATION_COMPLETE_TITLE'
+                | translate: { station: (stationId() | stationLabel: order() | translate) }
+            }}
+          </h2>
+          <p id="station-complete-toast-desc" class="station-complete-toast__desc">
+            @if (nextStationId(); as nextSid) {
+              {{
+                'WORKER.STATION_COMPLETE_DESC'
+                  | translate
+                    : {
+                        station: (stationId() | stationLabel: order() | translate),
+                        next: (nextSid | stationLabel: order() | translate),
+                      }
+              }}
+            } @else {
+              {{
+                'WORKER.STATION_COMPLETE_DESC_FINAL'
+                  | translate: { station: (stationId() | stationLabel: order() | translate) }
+              }}
+            }
+          </p>
+        </div>
+      </div>
+
+      @if (nextStationId(); as nextSid) {
+        <footer class="station-complete-toast__footer">
+          <div class="station-complete-toast__divider" aria-hidden="true"></div>
+          <div class="station-complete-toast__footer-inner">
+            <a
+              class="station-complete-toast__cta"
+              [routerLink]="['/worker', nextSid]"
+              (click)="dismissed.emit()"
+            >
+              {{
+                'WORKER.GO_TO_NEXT_STATION'
+                  | translate: { station: (nextSid | stationLabel: order() | translate) }
+              }}
+            </a>
+          </div>
+        </footer>
+      }
+    </div>
+  </div>
+}

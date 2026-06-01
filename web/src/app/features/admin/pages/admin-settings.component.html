@@ -120,12 +120,12 @@
         </dl>
         <div class="admin-settings-card__footer">
           <div class="admin-settings__account-actions">
-            <button type="button" class="admin-settings__btn-danger" (click)="logout()">
+            <skyflow-ui-button variant="danger" btnClass="admin-settings__btn-danger" (click)="logout()">
               {{ 'APP.HEADER_LOGOUT' | translate }}
-            </button>
-            <button type="button" class="admin-settings__btn-ghost" (click)="clearLocalData()">
+            </skyflow-ui-button>
+            <skyflow-ui-button variant="ghost" btnClass="admin-settings__btn-ghost" (click)="clearLocalData()">
               {{ 'ADMIN_SETTINGS_PAGE.CLEAR_LOCAL' | translate }}
-            </button>
+            </skyflow-ui-button>
           </div>
           <p class="admin-settings__hint">{{ 'ADMIN_SETTINGS_PAGE.CLEAR_LOCAL_HINT' | translate }}</p>
         </div>
@@ -183,13 +183,9 @@
             <p class="admin-settings__saved" role="status">{{ 'PROFILE.SAVED' | translate }}</p>
           }
 
-          <button
-            type="button"
-            class="admin-settings__save sf-ui-btn sf-ui-btn--primary"
-            (click)="saveProfile()"
-          >
+          <skyflow-ui-button variant="primary" btnClass="admin-settings__save" (click)="saveProfile()">
             {{ 'ADMIN_SETTINGS_PAGE.SAVE' | translate }}
-          </button>
+          </skyflow-ui-button>
         </div>
       </div>
     </section>
@@ -223,14 +219,15 @@
           </p>
         }
         <div class="admin-settings-card__footer">
-          <button
-            type="button"
-            class="admin-settings__btn-ghost"
+          <skyflow-ui-button
+            variant="ghost"
+            btnClass="admin-settings__btn-ghost"
             (click)="checkHealth()"
             [disabled]="healthChecking()"
+            [loading]="healthChecking()"
           >
             {{ 'ADMIN_SETTINGS_PAGE.HEALTH_RETRY' | translate }}
-          </button>
+          </skyflow-ui-button>
           <p class="admin-settings__hint">{{ 'ADMIN_SETTINGS_PAGE.SERVER_HINT' | translate }}</p>
         </div>
       </div>

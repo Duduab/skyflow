@@ -92,6 +92,7 @@
   display: none;
 }
 
+.admin-dash__toolbar skyflow-ui-button,
 .admin-dash__toolbar .sf-ui-btn {
   min-height: 2.625rem;
   padding-block: 0.55rem;
@@ -100,7 +101,8 @@
 }
 
 @media (min-width: 640px) {
-  .admin-dash__toolbar .sf-ui-btn {
+  .admin-dash__toolbar skyflow-ui-button,
+.admin-dash__toolbar .sf-ui-btn {
     align-self: center;
   }
 }
@@ -197,7 +199,6 @@
   line-height: 1;
   color: #ecfdf5;
   text-shadow: none;
-  border-radius: var(--sf-ui-btn-radius);
   background: linear-gradient(
     165deg,
     rgba(52, 211, 153, 0.95) 0%,
@@ -408,11 +409,11 @@
   gap: 0.6rem;
 }
 
+.admin-dash__toolbar skyflow-ui-button,
 .admin-dash__toolbar .sf-ui-btn {
   width: 100%;
   min-height: 2.75rem;
   justify-content: center;
-  border-radius: var(--sf-radius);
   font-size: 0.9rem;
 }
 

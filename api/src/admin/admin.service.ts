@@ -2,19 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus, ProjectFlowStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  CATALOG_PROFILE_CODES,
+  aggregateScrapReports,
+} from '../common/profile-inventory.js';
+import {
   averageOverallLinePercent,
   siteLinePercentFromOrderRow,
 } from './line-progress.util';
-
-const STATION_NAMES: Record<number, string> = {
-  1: 'מסורים',
-  2: 'CNC',
-  3: 'הרכבה',
-  4: 'הדבקות',
-  5: 'פינישים',
-  6: 'אריזה',
-  7: 'הרכבה באתר',
-};
+import { resolveStationDisplayNameHe } from '../common/station-presentation.util.js';
 
 const STATION_ORDER = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -138,7 +133,12 @@ export class AdminService {
       scopeId
         ? this.prisma.projectOrder.findUnique({
             where: { id: scopeId },
-            select: { id: true, name: true },
+            select: {
+              id: true,
+              name: true,
+              lineMaterial: true,
+              machiningRoute: true,
+            },
           })
         : Promise.resolve(null),
     ]);
@@ -213,7 +213,15 @@ export class AdminService {
       dailyUnits.push(byDay.get(key) ?? 0);
     }
 
-    const stationLabels = STATION_ORDER.map((id) => STATION_NAMES[id]);
+    const variantOrder = selectedProject
+      ? {
+          lineMaterial: selectedProject.lineMaterial,
+          machiningRoute: selectedProject.machiningRoute,
+        }
+      : null;
+    const stationLabels = STATION_ORDER.map((id) =>
+      resolveStationDisplayNameHe(id, variantOrder),
+    );
     const stationData = STATION_ORDER.map((id) => {
       const g = stationGroup.find((x) => x.stationId === id);
       return g?._sum.processedQty ?? 0;
@@ -328,6 +336,8 @@ export class AdminService {
           name: o.name,
           status: o.status,
           flowStatus: o.flowStatus,
+          lineMaterial: o.lineMaterial,
+          machiningRoute: o.machiningRoute,
           totalItems: o.totalItems,
           packed,
           progressPct: averageOverallLinePercent(
@@ -368,6 +378,13 @@ export class AdminService {
   ): Promise<
     { stationId: number; name: string; severity: number; detail: string }[]
   > {
+    const variantOrder = scopeId
+      ? await this.prisma.projectOrder.findUnique({
+          where: { id: scopeId },
+          select: { lineMaterial: true, machiningRoute: true },
+        })
+      : null;
+
     const logs = await this.prisma.stationLog.groupBy({
       by: ['stationId'],
       where: scopeId ? { projectId: scopeId } : {},
@@ -382,7 +399,9 @@ export class AdminService {
         visits > 0 ? Math.max(0, 100 - processed / (visits * 4)) : 50;
       return {
         stationId: l.stationId,
-        name: STATION_NAMES[l.stationId] ?? `עמדה ${l.stationId}`,
+        name:
+          resolveStationDisplayNameHe(l.stationId, variantOrder) ??
+          `עמדה ${l.stationId}`,
         severity: Math.round(severity),
         detail:
           processed === 0
@@ -403,7 +422,9 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
       take: 800,
       include: {
-        project: { select: { name: true } },
+        project: {
+          select: { name: true, lineMaterial: true, machiningRoute: true },
+        },
       },
     });
     return {
@@ -412,15 +433,17 @@ export class AdminService {
         projectId: r.projectId,
         projectName: r.project.name,
         stationId: r.stationId,
-        stationName: STATION_NAMES[r.stationId] ?? `עמדה ${r.stationId}`,
-        itemLengthCm: Number(r.itemLength),
+        stationName: resolveStationDisplayNameHe(r.stationId, r.project),
+        itemLengthMm: Number(r.itemLength),
         scrapQty: r.scrapQty,
+        profileKind: r.profileKind,
+        profileCode: r.profileCode,
         createdAt: r.createdAt.toISOString(),
       })),
     };
   }
 
-  /** Rough BOM vs scrap-inventory for order simulation (demo). */
+  /** Profile scrap inventory + project list for order simulation. */
   async getSimulationSnapshot() {
     const projects = await this.prisma.projectOrder.findMany({
       select: {
@@ -436,28 +459,47 @@ export class AdminService {
         projectId: true,
         itemLength: true,
         scrapQty: true,
+        profileKind: true,
+        profileCode: true,
       },
     });
-    const scrapCmByProject = new Map<string, number>();
-    for (const s of scraps) {
-      const cm = Number(s.itemLength) * s.scrapQty;
-      scrapCmByProject.set(
-        s.projectId,
-        (scrapCmByProject.get(s.projectId) ?? 0) + cm,
-      );
+    const scrapMmByProject = new Map<string, number>();
+    const inventoryByProject = new Map<string, ReturnType<typeof aggregateScrapReports>>();
+
+    for (const p of projects) {
+      inventoryByProject.set(p.id, []);
     }
+
+    const scrapsByProject = new Map<string, typeof scraps>();
+    for (const s of scraps) {
+      const mm = Number(s.itemLength) * s.scrapQty;
+      scrapMmByProject.set(
+        s.projectId,
+        (scrapMmByProject.get(s.projectId) ?? 0) + mm,
+      );
+      const arr = scrapsByProject.get(s.projectId) ?? [];
+      arr.push(s);
+      scrapsByProject.set(s.projectId, arr);
+    }
+
+    for (const [projectId, rows] of scrapsByProject) {
+      inventoryByProject.set(projectId, aggregateScrapReports(rows));
+    }
+
     return {
+      catalogProfileCodes: [...CATALOG_PROFILE_CODES],
       projects: projects.map((p) => {
-        const needCm = Number(p.originalLength) * p.totalItems;
-        const scrapCm = scrapCmByProject.get(p.id) ?? 0;
+        const needMm = Number(p.originalLength) * p.totalItems;
+        const scrapMm = scrapMmByProject.get(p.id) ?? 0;
         return {
           projectId: p.id,
           name: p.name,
-          needCm,
-          scrapCm,
-          gapCm: Math.max(0, needCm - scrapCm),
-          originalLengthCm: Number(p.originalLength),
+          needMm,
+          scrapMm,
+          gapMm: Math.max(0, needMm - scrapMm),
+          originalLengthMm: Number(p.originalLength),
           totalItems: p.totalItems,
+          profileInventory: inventoryByProject.get(p.id) ?? [],
         };
       }),
     };
@@ -480,6 +522,8 @@ export class AdminService {
         totalItems: true,
         updatedAt: true,
         createdAt: true,
+        lineMaterial: true,
+        machiningRoute: true,
         _count: { select: { documents: true } },
       },
     });
@@ -487,6 +531,11 @@ export class AdminService {
     if (!project) {
       throw new NotFoundException('project not found');
     }
+
+    const variantOrder = {
+      lineMaterial: project.lineMaterial,
+      machiningRoute: project.machiningRoute,
+    };
 
     const [logGroups, scrapGroups, recentLogs, scrapRows, stationLogEntries] =
       await Promise.all([
@@ -546,7 +595,7 @@ export class AdminService {
       const sg = scrapGroups.find((x) => x.stationId === sid);
       return {
         stationId: sid,
-        stationName: STATION_NAMES[sid] ?? `עמדה ${sid}`,
+        stationName: resolveStationDisplayNameHe(sid, variantOrder),
         logEntries: lg?._count._all ?? 0,
         processedQty: lg?._sum.processedQty ?? 0,
         firstEntryAt: lg?._min.createdAt?.toISOString() ?? null,
@@ -584,9 +633,9 @@ export class AdminService {
       scrapRows: scrapRows.map((r) => ({
         id: r.id,
         stationId: r.stationId,
-        stationName: STATION_NAMES[r.stationId] ?? `עמדה ${r.stationId}`,
+        stationName: resolveStationDisplayNameHe(r.stationId, variantOrder),
         scrapQty: r.scrapQty,
-        itemLengthCm: Number(r.itemLength),
+        itemLengthMm: Number(r.itemLength),
         createdAt: r.createdAt.toISOString(),
       })),
     };

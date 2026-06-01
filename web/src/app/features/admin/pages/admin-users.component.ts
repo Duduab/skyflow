@@ -14,6 +14,7 @@ import * as XLSX from 'xlsx';
 import { finalize } from 'rxjs/operators';
 
 import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 import { ApiService } from '../../../core/api.service';
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
@@ -36,7 +37,14 @@ type RoleFilter = SkyflowRole | '';
 
 @Component({
   selector: 'skyflow-admin-users',
-  imports: [FormsModule, TranslateModule, UiButtonComponent, DecimalPipe, DatePipe],
+  imports: [
+    FormsModule,
+    TranslateModule,
+    UiButtonComponent,
+    UiPopupComponent,
+    DecimalPipe,
+    DatePipe,
+  ],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss',
 })

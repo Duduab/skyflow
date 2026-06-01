@@ -10,6 +10,8 @@ import {
   ProductType,
   ProjectDocumentKind,
   ProjectFlowStatus,
+  ProjectLineMaterial,
+  ProjectMachiningRoute,
   SkyflowRole,
 } from '@prisma/client';
 import { copyFileSync, existsSync, mkdirSync, rmSync } from 'fs';
@@ -26,9 +28,11 @@ import {
   planningImportStorageDir,
   type PlanningSheetImagesManifest,
 } from '../planning/planning-workbook-media';
+import { persistAssemblyPlanningMedia } from '../planning/planning-assembly-media';
 import { isProjectProductionComplete } from '../common/project-station-completion.util';
-import { planningCutLengthCmFromSpec } from '../common/planning-cut-length.util';
+import { planningCutLengthMmFromSpec } from '../common/planning-cut-length.util';
 import type { ApprovePlanningDto } from './dto/approve-planning.dto.js';
+import type { UpdatePlanningDraftDto } from './dto/update-planning-draft.dto.js';
 import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto.js';
 import type { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto.js';
 import { MailService } from '../mail/mail.service.js';
@@ -76,8 +80,10 @@ export class ProjectsService {
 
   async createPlanningDraft(
     name: string,
-    requirements?: string,
-    createdByUserId?: string | null,
+    requirements: string | undefined,
+    createdByUserId: string | null | undefined,
+    lineMaterial: ProjectLineMaterial,
+    machiningRoute: ProjectMachiningRoute,
   ) {
     const details = requirements?.trim() ?? '';
     const creatorId =
@@ -93,6 +99,8 @@ export class ProjectsService {
         flowStatus: ProjectFlowStatus.PENDING_PLANNING,
         originalLength: new Prisma.Decimal(0),
         createdByUserId: creatorId,
+        lineMaterial,
+        machiningRoute,
       },
     });
   }
@@ -110,6 +118,8 @@ export class ProjectsService {
           updatedAt: true,
           createdAt: true,
           requirements: true,
+          lineMaterial: true,
+          machiningRoute: true,
           _count: { select: { productItems: true } },
         },
       })
@@ -124,6 +134,8 @@ export class ProjectsService {
             updatedAt: r.updatedAt,
             createdAt: r.createdAt,
             requirements: r.requirements ?? '',
+            lineMaterial: r.lineMaterial,
+            machiningRoute: r.machiningRoute,
             itemCount,
             wizardStep,
             progressPct,
@@ -132,18 +144,33 @@ export class ProjectsService {
       );
   }
 
-  async updatePlanningDraft(projectId: string, name: string) {
+  async updatePlanningDraft(projectId: string, dto: UpdatePlanningDraftDto) {
     const order = await this.prisma.projectOrder.findUnique({
       where: { id: projectId },
     });
     if (!order) throw new NotFoundException(`Project ${projectId} not found`);
     if (order.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
-      throw new BadRequestException('Only planning drafts can be renamed');
+      throw new BadRequestException('Only planning drafts can be updated');
     }
-    const trimmed = name.trim();
+    const data: Prisma.ProjectOrderUpdateInput = {};
+    if (dto.name !== undefined) {
+      data.name = dto.name.trim();
+    }
+    if (dto.requirements !== undefined) {
+      data.requirements = dto.requirements.trim();
+    }
+    if (dto.lineMaterial !== undefined) {
+      data.lineMaterial = dto.lineMaterial;
+    }
+    if (dto.machiningRoute !== undefined) {
+      data.machiningRoute = dto.machiningRoute;
+    }
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No fields to update');
+    }
     const updated = await this.prisma.projectOrder.update({
       where: { id: projectId },
-      data: { name: trimmed },
+      data,
     });
     const itemCount = await this.prisma.productItem.count({
       where: { projectId },
@@ -151,11 +178,13 @@ export class ProjectsService {
     const { wizardStep, progressPct } = planningDraftWizardMeta(itemCount);
     return {
       id: projectId,
-      name: trimmed,
+      name: updated.name,
       flowStatus: updated.flowStatus,
       updatedAt: updated.updatedAt,
       createdAt: updated.createdAt,
       requirements: updated.requirements ?? '',
+      lineMaterial: updated.lineMaterial,
+      machiningRoute: updated.machiningRoute,
       itemCount,
       wizardStep,
       progressPct,
@@ -303,7 +332,8 @@ export class ProjectsService {
       sortOrder: number;
       imagePaths: string[];
       instructionKind: string;
-      planningCutLengthCm: number | null;
+      planningCutLengthMm: number | null;
+      sawsProfileCode: string | null;
     }[] = [];
 
     let sawSort = 0;
@@ -348,7 +378,8 @@ export class ProjectsService {
           sortOrder: sawSort++,
           imagePaths,
           instructionKind: item.instructionKind,
-          planningCutLengthCm: planningCutLengthCmFromSpec(comp.spec),
+          planningCutLengthMm: planningCutLengthMmFromSpec(comp.spec),
+          sawsProfileCode: comp.sawsProfileCode ?? null,
         });
       }
     }
@@ -365,7 +396,8 @@ export class ProjectsService {
             sortOrder: row.sortOrder,
             imagePaths: row.imagePaths,
             instructionKind: row.instructionKind,
-            planningCutLengthCm: row.planningCutLengthCm,
+            planningCutLengthMm: row.planningCutLengthMm,
+            sawsProfileCode: row.sawsProfileCode,
           },
         });
       }
@@ -391,6 +423,13 @@ export class ProjectsService {
         },
       });
     });
+
+    const itemsAfter = await this.prisma.productItem.findMany({
+      where: { projectId },
+      include: { components: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+    persistAssemblyPlanningMedia(projectId, itemsAfter, manifest);
 
     clearPlanningImportDir(projectId);
 

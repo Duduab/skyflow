@@ -8,9 +8,9 @@
       <p class="admin-page__sub">{{ 'ADMIN_USERS_PAGE.SUB' | translate }}</p>
     </div>
     <div class="admin-users__hero-actions">
-      <button
-        type="button"
-        class="admin-users__export-roster sf-ui-btn sf-ui-btn--secondary"
+      <skyflow-ui-button
+        variant="secondary"
+        btnClass="admin-users__export-roster"
         (click)="exportRosterExcel()"
         [disabled]="filteredUsers().length === 0"
         [attr.aria-label]="'ADMIN_USERS_PAGE.EXPORT_ROSTER' | translate"
@@ -21,14 +21,14 @@
           <path fill="#fff" d="M7.5 11h1.8l1.1 2.7 1.1-2.7H13l-1.9 4.8h-1.4L7.5 11zm6.2 0h4.8v1.2h-3.1v.9h2.9v1.2h-2.9v1.1h3.2v1.2h-4.9V11z" />
         </svg>
         <span>{{ 'ADMIN_USERS_PAGE.EXPORT_SHORT' | translate }}</span>
-      </button>
-      <button
-        type="button"
-        class="admin-users__add sf-ui-btn sf-ui-btn--primary"
+      </skyflow-ui-button>
+      <skyflow-ui-button
+        variant="primary"
+        btnClass="admin-users__add"
         (click)="openCreateModal()"
       >
         {{ 'ADMIN_USERS_PAGE.ADD_USER' | translate }}
-      </button>
+      </skyflow-ui-button>
     </div>
   </header>
 
@@ -50,9 +50,9 @@
   @if (!users().length) {
     <section class="admin-users__empty">
       <p>{{ 'ADMIN_USERS_PAGE.LIST_EMPTY' | translate }}</p>
-      <button type="button" class="sf-ui-btn sf-ui-btn--primary" (click)="openCreateModal()">
+      <skyflow-ui-button variant="primary" (click)="openCreateModal()">
         {{ 'ADMIN_USERS_PAGE.ADD_USER' | translate }}
-      </button>
+      </skyflow-ui-button>
     </section>
   } @else if (filterEmpty()) {
     <section class="admin-users__empty admin-users__empty--filter">
@@ -106,31 +106,15 @@
 }
 
 @if (editModalOpen()) {
-  <div class="admin-users-overlay admin-users-overlay--edit" (click)="closeEditModal()" role="presentation">
-    <div
-      class="admin-users-overlay__panel"
-      [attr.data-surface]="theme.mode()"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="admin-users-edit-title"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="admin-users-modal__head">
-        <h2 id="admin-users-edit-title" class="admin-users-modal__title">
-          {{ 'ADMIN_USERS_PAGE.EDIT_TITLE' | translate }}
-        </h2>
-        <button
-          type="button"
-          class="admin-users-modal__close"
-          (click)="closeEditModal()"
-          [attr.aria-label]="'ADMIN_USERS_PAGE.MODAL_CLOSE' | translate"
-        >
-          ×
-        </button>
-      </div>
-      <p class="admin-users-modal__sub">{{ 'ADMIN_USERS_PAGE.EDIT_SUB' | translate }}</p>
-
-      <form class="admin-users__form" (ngSubmit)="submitEdit()">
+  <skyflow-ui-popup
+    [open]="true"
+    (closed)="closeEditModal()"
+    [title]="'ADMIN_USERS_PAGE.EDIT_TITLE' | translate"
+    [subtitle]="'ADMIN_USERS_PAGE.EDIT_SUB' | translate"
+    titleId="admin-users-edit-title"
+    [zIndex]="90"
+  >
+    <form class="admin-users__form" id="admin-users-edit-form" (ngSubmit)="submitEdit()">
         <div class="admin-users__row">
           <label class="admin-users__field">
             <span>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</span>
@@ -213,50 +197,32 @@
         @if (formError(); as fe) {
           <p class="admin-users__err" role="alert">{{ fe | translate }}</p>
         }
-        <div class="admin-users-modal__actions">
-          <button type="button" class="admin-users-modal__btn secondary" (click)="closeEditModal()">
-            {{ 'ADMIN_USERS_PAGE.MODAL_CANCEL' | translate }}
-          </button>
-          <skyflow-ui-button
-            type="submit"
-            variant="primary"
-            [loading]="saving()"
-            btnClass="admin-users__submit"
-          >
-            {{ 'ADMIN_USERS_PAGE.EDIT_SUBMIT' | translate }}
-          </skyflow-ui-button>
-        </div>
-      </form>
+    </form>
+    <div popup-actions>
+      <skyflow-ui-button variant="secondary" (click)="closeEditModal()">
+        {{ 'ADMIN_USERS_PAGE.MODAL_CANCEL' | translate }}
+      </skyflow-ui-button>
+      <skyflow-ui-button
+        type="submit"
+        form="admin-users-edit-form"
+        variant="primary"
+        [loading]="saving()"
+      >
+        {{ 'ADMIN_USERS_PAGE.EDIT_SUBMIT' | translate }}
+      </skyflow-ui-button>
     </div>
-  </div>
+  </skyflow-ui-popup>
 }
 
 @if (createModalOpen()) {
-  <div class="admin-users-overlay" (click)="closeCreateModal()" role="presentation">
-    <div
-      class="admin-users-overlay__panel"
-      [attr.data-surface]="theme.mode()"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="admin-users-create-title"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="admin-users-modal__head">
-        <h2 id="admin-users-create-title" class="admin-users-modal__title">
-          {{ 'ADMIN_USERS_PAGE.CREATE_TITLE' | translate }}
-        </h2>
-        <button
-          type="button"
-          class="admin-users-modal__close"
-          (click)="closeCreateModal()"
-          [attr.aria-label]="'ADMIN_USERS_PAGE.MODAL_CLOSE' | translate"
-        >
-          ×
-        </button>
-      </div>
-      <p class="admin-users-modal__sub">{{ 'ADMIN_USERS_PAGE.CREATE_SUB' | translate }}</p>
-
-      <form class="admin-users__form" (ngSubmit)="submitCreate()">
+  <skyflow-ui-popup
+    [open]="true"
+    (closed)="closeCreateModal()"
+    [title]="'ADMIN_USERS_PAGE.CREATE_TITLE' | translate"
+    [subtitle]="'ADMIN_USERS_PAGE.CREATE_SUB' | translate"
+    titleId="admin-users-create-title"
+  >
+    <form class="admin-users__form" id="admin-users-create-form" (ngSubmit)="submitCreate()">
         <div class="admin-users__row">
           <label class="admin-users__field">
             <span>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</span>
@@ -340,84 +306,55 @@
         @if (formError(); as fe) {
           <p class="admin-users__err" role="alert">{{ fe | translate }}</p>
         }
-        <div class="admin-users-modal__actions">
-          <button type="button" class="admin-users-modal__btn secondary" (click)="closeCreateModal()">
-            {{ 'ADMIN_USERS_PAGE.MODAL_CANCEL' | translate }}
-          </button>
-          <skyflow-ui-button
-            type="submit"
-            variant="primary"
-            [loading]="saving()"
-            btnClass="admin-users__submit"
-          >
-            {{ 'ADMIN_USERS_PAGE.CREATE_SUBMIT' | translate }}
-          </skyflow-ui-button>
-        </div>
-      </form>
+    </form>
+    <div popup-actions>
+      <skyflow-ui-button variant="secondary" (click)="closeCreateModal()">
+        {{ 'ADMIN_USERS_PAGE.MODAL_CANCEL' | translate }}
+      </skyflow-ui-button>
+      <skyflow-ui-button
+        type="submit"
+        form="admin-users-create-form"
+        variant="primary"
+        [loading]="saving()"
+      >
+        {{ 'ADMIN_USERS_PAGE.CREATE_SUBMIT' | translate }}
+      </skyflow-ui-button>
     </div>
-  </div>
+  </skyflow-ui-popup>
 }
 
 @if (detailUser(); as u) {
-  <div class="admin-users-overlay" (click)="closeUserDetail()" role="presentation">
-    <div
-      class="admin-users-overlay__panel admin-users-overlay__panel--wide"
-      [attr.data-surface]="theme.mode()"
-      role="dialog"
-      aria-modal="true"
-      [attr.aria-labelledby]="'admin-users-detail-' + u.id"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="admin-users-modal__head">
-        <div class="admin-users-detail__identity">
-          <span class="admin-users__avatar admin-users__avatar--lg" aria-hidden="true">
-            @if (u.photoUrl) {
-              <img [src]="u.photoUrl" alt="" />
-            } @else {
-              {{ initials(u) }}
-            }
-          </span>
-          <div>
-            <h2 [id]="'admin-users-detail-' + u.id" class="admin-users-modal__title">
-              {{ u.firstName }} {{ u.lastName }}
-            </h2>
-            <p class="admin-users-detail__meta">{{ u.email }}</p>
-            <span class="admin-users__role" [class]="roleBadgeClass(u.role)">
-              {{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}
-            </span>
-          </div>
-        </div>
-        <div class="admin-users-detail__toolbar">
-          <button
-            type="button"
-            class="admin-users-detail__tool secondary"
-            (click)="openEditFromDetail()"
-          >
-            {{ 'ADMIN_USERS_PAGE.EDIT_USER' | translate }}
-          </button>
-          <button
-            type="button"
-            class="admin-users-detail__tool secondary"
-            (click)="exportPerformanceExcel()"
-            [disabled]="!performance()"
-          >
-            <svg class="admin-users__export-ico" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="#217346" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
-              <path fill="#33a867" d="M14 2v6h6" />
-              <path fill="#fff" d="M7.5 11h1.8l1.1 2.7 1.1-2.7H13l-1.9 4.8h-1.4L7.5 11zm6.2 0h4.8v1.2h-3.1v.9h2.9v1.2h-2.9v1.1h3.2v1.2h-4.9V11z" />
-            </svg>
-            {{ 'ADMIN_USERS_PAGE.EXPORT_PERF' | translate }}
-          </button>
-          <button
-            type="button"
-            class="admin-users-modal__close"
-            (click)="closeUserDetail()"
-            [attr.aria-label]="'ADMIN_USERS_PAGE.MODAL_CLOSE' | translate"
-          >
-            ×
-          </button>
-        </div>
+  <skyflow-ui-popup
+    [open]="true"
+    (closed)="closeUserDetail()"
+    size="wide"
+    [title]="u.firstName + ' ' + u.lastName"
+    [subtitle]="u.email"
+    [titleId]="'admin-users-detail-' + u.id"
+  >
+    <div popup-header-extra class="admin-users-detail__header-extra">
+      <span class="admin-users__role" [class]="roleBadgeClass(u.role)">
+        {{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}
+      </span>
+      <div class="admin-users-detail__toolbar">
+        <skyflow-ui-button variant="secondary" btnClass="admin-users-detail__tool" (click)="openEditFromDetail()">
+          {{ 'ADMIN_USERS_PAGE.EDIT_USER' | translate }}
+        </skyflow-ui-button>
+        <skyflow-ui-button
+          variant="secondary"
+          btnClass="admin-users-detail__tool"
+          (click)="exportPerformanceExcel()"
+          [disabled]="!performance()"
+        >
+          <svg class="admin-users__export-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#217346" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+            <path fill="#33a867" d="M14 2v6h6" />
+            <path fill="#fff" d="M7.5 11h1.8l1.1 2.7 1.1-2.7H13l-1.9 4.8h-1.4L7.5 11zm6.2 0h4.8v1.2h-3.1v.9h2.9v1.2h-2.9v1.1h3.2v1.2h-4.9V11z" />
+          </svg>
+          {{ 'ADMIN_USERS_PAGE.EXPORT_PERF' | translate }}
+        </skyflow-ui-button>
       </div>
+    </div>
 
       @if (performanceLoading()) {
         <p class="admin-users-detail__loading">{{ 'ADMIN_USERS_PAGE.PERF_LOADING' | translate }}</p>
@@ -561,6 +498,5 @@
           }
         </section>
       }
-    </div>
-  </div>
+  </skyflow-ui-popup>
 }
