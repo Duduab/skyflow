@@ -23,12 +23,14 @@ import type { Request } from 'express';
 import { OrdersService } from '../orders/orders.service';
 import {
   ensurePackPhotoDir,
+  ensureAssemblyPhotoDir,
   ensureSiteDeliveryDir,
   StationsService,
 } from './stations.service';
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { SetAssemblyWindowQtyDto } from './dto/set-assembly-window-qty.dto.js';
+import { SetGluingTypeDoneDto } from './dto/set-gluing-type-done.dto.js';
 
 @Controller('stations')
 @UseGuards(RolesGuard)
@@ -55,10 +57,18 @@ export class StationsController {
 
   @Post(':stationId/logs')
   async submitLog(
-    @Req() req: { user?: { userId?: string } },
+    @Req() req: { user?: { userId?: string; role?: SkyflowRole } },
     @Param('stationId', ParseIntPipe) stationId: number,
     @Body() dto: CreateStationLogDto,
   ) {
+    if (
+      stationId === 7 &&
+      req.user?.role !== SkyflowRole.SITE_MANAGER
+    ) {
+      throw new BadRequestException(
+        'Site manager role required for on-site assembly reporting',
+      );
+    }
     return this.stationsService.createStationLog(
       stationId,
       dto,
@@ -75,6 +85,75 @@ export class StationsController {
       dto.projectId.trim(),
       dto.productItemId.trim(),
       dto.assembledQty,
+      req.user?.userId ?? null,
+    );
+  }
+
+  /** Station 3 — דיווח הרכבה + תמונה לפי TYPE */
+  @Post('3/assembly-type-report')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req: Request, _file: Express.Multer.File, cb) => {
+          cb(null, ensureAssemblyPhotoDir());
+        },
+        filename: (req: Request, file: Express.Multer.File, cb) => {
+          const raw = req.query['projectId'] ?? 'proj';
+          const safe =
+            String(raw).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80) || 'proj';
+          const kind = String(req.query['instructionKind'] ?? 'type')
+            .replace(/[^a-zA-Z0-9_-]/g, '')
+            .slice(0, 24);
+          const ext = extname(file.originalname).toLowerCase();
+          const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+          const suf = allowed.includes(ext) ? ext : '.jpg';
+          cb(null, `${safe}-${kind}-${Date.now()}${suf}`);
+        },
+      }),
+      limits: { fileSize: 12 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(
+          file.mimetype,
+        );
+        cb(
+          ok ? null : new BadRequestException('Image file required'),
+          ok,
+        );
+      },
+    }),
+  )
+  async submitAssemblyTypeReport(
+    @Req() req: { user?: { userId?: string } },
+    @Query('projectId') projectId: string,
+    @Query('instructionKind') instructionKind: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!projectId?.trim()) {
+      throw new BadRequestException('projectId query parameter is required');
+    }
+    if (!instructionKind?.trim()) {
+      throw new BadRequestException('instructionKind query parameter is required');
+    }
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    return this.stationsService.submitAssemblyTypeReport(
+      projectId.trim(),
+      instructionKind.trim(),
+      file.filename,
+      req.user?.userId ?? null,
+    );
+  }
+
+  @Post('4/gluing-type')
+  async setGluingTypeDone(
+    @Req() req: { user?: { userId?: string } },
+    @Body() dto: SetGluingTypeDoneDto,
+  ) {
+    return this.stationsService.setGluingTypeDone(
+      dto.projectId.trim(),
+      dto.instructionKind.trim(),
+      dto.done,
       req.user?.userId ?? null,
     );
   }
@@ -121,12 +200,18 @@ export class StationsController {
     }),
   )
   async uploadDeliveryNote(
+    @Req() req: { user?: { role?: SkyflowRole } },
     @Param('stationId', ParseIntPipe) stationId: number,
     @Query('projectId') projectId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (stationId !== 7) {
       throw new BadRequestException('Delivery note upload is only for station 7');
+    }
+    if (req.user?.role !== SkyflowRole.SITE_MANAGER) {
+      throw new BadRequestException(
+        'Site manager role required for delivery note upload',
+      );
     }
     if (!projectId?.trim()) {
       throw new BadRequestException('projectId query parameter is required');

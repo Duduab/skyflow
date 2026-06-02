@@ -11,6 +11,8 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartDataset, ChartType } from 'chart.js';
@@ -171,6 +173,7 @@ function aggregateScrapByDay(
     RouterLink,
     BaseChartDirective,
     UiButtonComponent,
+    UiSelectComponent,
   ],
   templateUrl: './admin-scrap.component.html',
   styleUrl: './admin-scrap.component.scss',
@@ -358,8 +361,15 @@ export class AdminScrapComponent implements OnInit {
     this.onProjectFilterChange(projectId);
   }
 
-  onProjectFilterChange(value: string): void {
-    const id = value === '' ? null : value;
+  projectFilterOptions(d: AdminDashboard): UiSelectOption[] {
+    return [
+      { value: '', label: this.translate.instant('ADMIN_SCRAP_PAGE.FILTER_ALL') },
+      ...d.projects.map((p) => ({ value: p.id, label: p.name })),
+    ];
+  }
+
+  onProjectFilterChange(value: string | number | null): void {
+    const id = value == null || value === '' ? null : String(value);
     this.projectFilter.set(id);
     this.loading.set(true);
 

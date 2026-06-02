@@ -21,11 +21,19 @@ import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import {
   assembledQtyMapFromLogPayload,
+  assemblyTypeReportMapFromLogPayload,
   buildAssemblyPipelineLines,
   buildAssemblyWindowUnits,
+  countAssemblyTypeReports,
   sumAssemblyWindowQty,
   type AssemblyStationContextDto,
 } from '../common/assembly-context.util';
+import {
+  buildGluingStationContext,
+  gluingDoneMapFromLogPayload,
+  sumGluingProgress,
+  type GluingStationContextDto,
+} from '../common/gluing-context.util';
 import { lineQtyFromLabel } from '../planning/planning-assembly-media';
 import { loadAssemblyManifest } from '../planning/planning-assembly-media';
 
@@ -52,6 +60,11 @@ export function siteDeliveryUploadDir(): string {
 /** Writable public folder for station 6 pack report photos. */
 export function packPhotoUploadDir(): string {
   return join(process.cwd(), '..', 'web', 'public', 'assets', 'pack-photos');
+}
+
+/** Writable public folder for station 3 assembly TYPE report photos. */
+export function assemblyPhotoUploadDir(): string {
+  return join(process.cwd(), '..', 'web', 'public', 'assets', 'assembly-photos');
 }
 
 @Injectable()
@@ -339,6 +352,16 @@ export class StationsService {
       case 3:
       case 4: {
         const ep234 = log.extraPayload as Record<string, unknown> | null;
+        if (ep234?.['gluingSnapshot']) {
+          const kind = String(ep234['instructionKind'] ?? '');
+          const approved = ep234['done'] === true;
+          return {
+            summaryKey: approved
+              ? 'WORKER.ACT_LOG_GLUING_TYPE_DONE'
+              : 'WORKER.ACT_LOG_GLUING_TYPE_UNDONE',
+            summaryParams: { kind, qty },
+          };
+        }
         if (ep234?.['workLineModalSnapshot']) {
           const raw = ep234['lineQtyById'] as
             | Record<string, unknown>
@@ -609,6 +632,18 @@ export class StationsService {
       );
     }
 
+    let gluingStation: GluingStationContextDto | undefined;
+    if (stationId === 4 && inProduction) {
+      const cncMap = sawWorkLines?.length
+        ? await this.latestWorkLineDoneFromLogs(projectId, 2)
+        : {};
+      gluingStation = await this.buildGluingStationContext(
+        projectId,
+        sawWorkLines ?? [],
+        cncMap,
+      );
+    }
+
     let assemblyStation: AssemblyStationContextDto | undefined;
     if (stationId === 3 && inProduction) {
       const lines = sawWorkLines ?? [];
@@ -676,6 +711,122 @@ export class StationsService {
       ...(siteAssembly ? { siteAssembly } : {}),
       ...(packReport ? { packReport } : {}),
       ...(assemblyStation ? { assemblyStation } : {}),
+      ...(gluingStation ? { gluingStation } : {}),
+    };
+  }
+
+  private async latestGluingDoneByKind(
+    projectId: string,
+  ): Promise<Record<string, boolean>> {
+    const latest = await this.prisma.stationLog.findFirst({
+      where: { projectId, stationId: 4 },
+      orderBy: { createdAt: 'desc' },
+      select: { extraPayload: true },
+    });
+    return gluingDoneMapFromLogPayload(latest?.extraPayload);
+  }
+
+  private async buildGluingStationContext(
+    projectId: string,
+    sawWorkLines: {
+      id: string;
+      instructionKind: string;
+      quantity: number;
+    }[],
+    cncByLineId: Record<string, number>,
+  ): Promise<GluingStationContextDto> {
+    const items = await this.prisma.productItem.findMany({
+      where: { projectId },
+      select: {
+        id: true,
+        label: true,
+        instructionKind: true,
+        sortOrder: true,
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+    const gluingDoneByKind = await this.latestGluingDoneByKind(projectId);
+    return buildGluingStationContext(
+      items,
+      sawWorkLines,
+      cncByLineId,
+      gluingDoneByKind,
+    );
+  }
+
+  async setGluingTypeDone(
+    projectId: string,
+    instructionKind: string,
+    done: boolean,
+    reporterUserId: string | null,
+  ) {
+    this.assertStation(4);
+    const order = await this.ordersService.findOne(projectId);
+    if (order.flowStatus !== ProjectFlowStatus.IN_PRODUCTION) {
+      throw new BadRequestException('Project is not in production');
+    }
+
+    const kind = instructionKind.trim();
+    if (!kind) {
+      throw new BadRequestException('instructionKind is required');
+    }
+
+    const sawWorkLines = await this.prisma.sawStationWorkLine.findMany({
+      where: { projectId },
+      select: { id: true, instructionKind: true, quantity: true },
+    });
+    const cncMap = sawWorkLines.length
+      ? await this.latestWorkLineDoneFromLogs(projectId, 2)
+      : {};
+    const ctx = await this.buildGluingStationContext(
+      projectId,
+      sawWorkLines,
+      cncMap,
+    );
+    const group = ctx.groups.find((g) => g.instructionKind === kind);
+    if (!group) {
+      throw new BadRequestException('No GL units for this TYPE in planning');
+    }
+    if (done && group.locked) {
+      throw new BadRequestException('CNC is not complete for this TYPE yet');
+    }
+
+    const map = await this.latestGluingDoneByKind(projectId);
+    if (done) map[kind] = true;
+    else delete map[kind];
+
+    const nextGroups = ctx.groups.map((g) => ({
+      ...g,
+      done: map[g.instructionKind] === true,
+    }));
+    const { doneGlUnitQty } = sumGluingProgress(nextGroups);
+
+    await this.prisma.stationLog.create({
+      data: {
+        projectId,
+        stationId: 4,
+        processedQty: doneGlUnitQty,
+        workerId: reporterUserId,
+        extraPayload: {
+          gluingSnapshot: true,
+          instructionKind: kind,
+          done,
+          gluingDoneByInstructionKind: map,
+        },
+      },
+    });
+
+    const fresh = await this.buildGluingStationContext(
+      projectId,
+      sawWorkLines,
+      cncMap,
+    );
+
+    return {
+      ok: true,
+      instructionKind: kind,
+      done,
+      gluingStation: fresh,
     };
   }
 
@@ -745,6 +896,11 @@ export class StationsService {
       assembledQtyById,
     );
     const { totalQty, assembledQty } = sumAssemblyWindowQty(windows);
+    const typeReportByKind = await this.latestAssemblyTypeReportMap(projectId);
+    const { typesReportedCount, typesReportTarget } = countAssemblyTypeReports(
+      pipeline,
+      typeReportByKind,
+    );
 
     return {
       pipeline,
@@ -754,6 +910,117 @@ export class StationsService {
       windowsUnitCount: windows.length,
       windowsTotalQty: totalQty,
       windowsAssembledQty: assembledQty,
+      typeReportByKind,
+      typesReportedCount,
+      typesReportTarget,
+    };
+  }
+
+  private async latestAssemblyTypeReportMap(
+    projectId: string,
+  ): Promise<Record<string, { reported: boolean; photoUrl: string | null }>> {
+    const latest = await this.prisma.stationLog.findFirst({
+      where: { projectId, stationId: 3 },
+      orderBy: { createdAt: 'desc' },
+      select: { extraPayload: true },
+    });
+    return assemblyTypeReportMapFromLogPayload(latest?.extraPayload);
+  }
+
+  async submitAssemblyTypeReport(
+    projectId: string,
+    instructionKind: string,
+    photoFilename: string,
+    reporterUserId: string | null,
+  ) {
+    this.assertStation(3);
+    const order = await this.ordersService.findOne(projectId);
+    if (order.flowStatus !== ProjectFlowStatus.IN_PRODUCTION) {
+      throw new BadRequestException('Project is not in production');
+    }
+
+    const kind = instructionKind.trim();
+    if (!kind) {
+      throw new BadRequestException('instructionKind is required');
+    }
+
+    const sawWorkLines = await this.prisma.sawStationWorkLine.findMany({
+      where: { projectId },
+      select: {
+        id: true,
+        instructionKind: true,
+        description: true,
+        quantity: true,
+        sortOrder: true,
+        imagePaths: true,
+        sawsProfileCode: true,
+        planningCutLengthMm: true,
+      },
+    });
+    const sawnMap = sawWorkLines.length
+      ? await this.latestSawLineSawnFromLogs(projectId)
+      : {};
+    const cncMap = sawWorkLines.length
+      ? await this.latestWorkLineDoneFromLogs(projectId, 2)
+      : {};
+    const pipeline = buildAssemblyPipelineLines(
+      sawWorkLines,
+      sawnMap,
+      cncMap,
+    );
+    const readyForKind = pipeline.some(
+      (l) => (l.instructionKind ?? '').trim() === kind && l.status === 'ready',
+    );
+    if (!readyForKind) {
+      throw new BadRequestException('TYPE is not ready for assembly report');
+    }
+
+    const photoUrl = `/assets/assembly-photos/${photoFilename}`;
+    const reportMap = await this.latestAssemblyTypeReportMap(projectId);
+    reportMap[kind] = { reported: true, photoUrl };
+
+    const windowItems = await this.prisma.productItem.findMany({
+      where: { projectId, instructionKind: 'WINDOW_INSTRUCTION' },
+      select: { id: true, label: true },
+    });
+    const assembledMap = await this.latestAssembledWindowQtyMap(
+      projectId,
+      windowItems,
+    );
+    const { totalQty, assembledQty: sumAsm } = sumAssemblyWindowQty(
+      windowItems.map((w) => ({
+        quantity: lineQtyFromLabel(w.label),
+        assembledQty: assembledMap[w.id] ?? 0,
+      })),
+    );
+
+    await this.prisma.stationLog.create({
+      data: {
+        projectId,
+        stationId: 3,
+        processedQty: sumAsm,
+        workerId: reporterUserId,
+        extraPayload: {
+          assemblyTypeReportSnapshot: true,
+          instructionKind: kind,
+          assemblyTypeReportByKind: reportMap,
+          assembledQtyByItemId: assembledMap,
+        },
+      },
+    });
+
+    const fresh = await this.buildAssemblyStationContext(
+      projectId,
+      sawWorkLines,
+      sawnMap,
+      cncMap,
+    );
+
+    return {
+      ok: true,
+      instructionKind: kind,
+      photoUrl,
+      assemblyStation: fresh,
     };
   }
 
@@ -1041,6 +1308,12 @@ export function ensureSiteDeliveryDir(): string {
 
 export function ensurePackPhotoDir(): string {
   const dir = packPhotoUploadDir();
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+export function ensureAssemblyPhotoDir(): string {
+  const dir = assemblyPhotoUploadDir();
   mkdirSync(dir, { recursive: true });
   return dir;
 }

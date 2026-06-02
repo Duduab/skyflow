@@ -9,5 +9,5 @@ export class SkyflowLogoLoaderComponent {
   /** md — כרטיס לוגין; lg — overlay גלובלי */
   readonly size = input<'md' | 'lg'>('md');
 
-  readonly logoSrc = '/assets/logo/dark-mode.png';
+  readonly logoSrc = '/assets/logo/bright-mode.png';
 }

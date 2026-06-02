@@ -54,6 +54,15 @@ export interface AssemblyStationContextDto {
   /** סה״כ חלונות לפי כמויות בתכנון */
   windowsTotalQty: number;
   windowsAssembledQty: number;
+  /** דיווח הרכבה + תמונה לפי TYPE */
+  typeReportByKind: Record<string, AssemblyTypeReportDto>;
+  typesReportedCount: number;
+  typesReportTarget: number;
+}
+
+export interface AssemblyTypeReportDto {
+  reported: boolean;
+  photoUrl: string | null;
 }
 
 function normHeader(h: string): string {
@@ -105,6 +114,49 @@ export function assembledQtyMapFromLogPayload(extra: unknown): Record<string, nu
     if (typeof id === 'string' && id.trim()) out[id.trim()] = 1;
   }
   return out;
+}
+
+export function assemblyTypeReportMapFromLogPayload(
+  extra: unknown,
+): Record<string, AssemblyTypeReportDto> {
+  const out: Record<string, AssemblyTypeReportDto> = {};
+  if (!extra || typeof extra !== 'object') return out;
+  const bag = (extra as Record<string, unknown>)['assemblyTypeReportByKind'];
+  if (!bag || typeof bag !== 'object' || Array.isArray(bag)) return out;
+  for (const [kind, v] of Object.entries(bag as Record<string, unknown>)) {
+    if (typeof kind !== 'string' || !kind.trim()) continue;
+    if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+    const row = v as Record<string, unknown>;
+    const photoUrl =
+      typeof row['photoUrl'] === 'string' && row['photoUrl'].trim()
+        ? row['photoUrl'].trim()
+        : null;
+    out[kind.trim()] = {
+      reported: row['reported'] === true || !!photoUrl,
+      photoUrl,
+    };
+  }
+  return out;
+}
+
+export function countAssemblyTypeReports(
+  pipeline: Pick<AssemblyPipelineLineDto, 'instructionKind' | 'status'>[],
+  typeReportByKind: Record<string, AssemblyTypeReportDto>,
+): { typesReportedCount: number; typesReportTarget: number } {
+  const readyKinds = new Set<string>();
+  for (const line of pipeline) {
+    const k = (line.instructionKind ?? '').trim();
+    if (!k || k === 'WINDOW_INSTRUCTION') continue;
+    if (line.status === 'ready') readyKinds.add(k);
+  }
+  let typesReportedCount = 0;
+  for (const k of readyKinds) {
+    if (typeReportByKind[k]?.reported) typesReportedCount++;
+  }
+  return {
+    typesReportedCount,
+    typesReportTarget: readyKinds.size,
+  };
 }
 
 export function sumAssemblyWindowQty(

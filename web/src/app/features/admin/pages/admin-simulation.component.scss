@@ -779,6 +779,66 @@
   color: #0f172a;
 }
 
+.admin-sim-modal__select {
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+:host ::ng-deep .admin-sim-modal__select .sf-ui-select__trigger {
+  min-height: 2.75rem;
+  padding-block: 0.55rem;
+  padding-inline: 0.85rem 0.65rem;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: var(--sf-ui-btn-radius);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  box-shadow: var(--sf-shadow-inset);
+}
+
+:host ::ng-deep .admin-sim-modal__select .sf-ui-select__trigger:hover:not(:disabled) {
+  border-color: rgba(85, 143, 195, 0.45);
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+:host ::ng-deep .admin-sim-modal__select .sf-ui-select__value--placeholder {
+  color: #64748b;
+  font-weight: 400;
+}
+
+:host ::ng-deep .admin-sim-modal__select .sf-ui-select__chevron {
+  color: #3e5d88;
+}
+
+:host ::ng-deep .admin-sim-modal__select--compact .sf-ui-select__trigger {
+  min-height: 0;
+  height: auto;
+  padding: 0.55rem 0.75rem;
+  padding-inline-end: 0.65rem;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: var(--sf-radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: #0f172a;
+  background: #fff;
+  box-shadow: 0 0.5px 0.5px 0 rgba(25, 33, 61, 0.04);
+}
+
+:host ::ng-deep .admin-sim-modal__select--compact .sf-ui-select__trigger:hover:not(:disabled) {
+  border-color: rgba(85, 143, 195, 0.45);
+  background: #fff;
+}
+
+:host ::ng-deep .admin-sim-modal__select--compact .sf-ui-select__value--placeholder {
+  color: #64748b;
+  font-weight: 400;
+}
+
 .admin-sim-overlay__panel[data-surface='dark'] .admin-sim-modal__input {
   background: #020617;
   border-color: rgba(248, 250, 252, 0.14);

@@ -96,21 +96,7 @@
       @for (d of filteredDrafts(); track d.id) {
         <article class="planning-drafts-card">
           <div class="planning-drafts-card__head">
-            @if (editingId() === d.id) {
-              <label class="planning-drafts-card__edit-field">
-                <span class="sr-only">{{ 'ADMIN_PLANNING_DRAFTS.EDIT_NAME' | translate }}</span>
-                <input
-                  type="text"
-                  class="planning-drafts-card__edit-input"
-                  [value]="editName()"
-                  (input)="onEditNameInput($event)"
-                  (keydown.enter)="saveEdit()"
-                  (keydown.escape)="cancelEdit()"
-                />
-              </label>
-            } @else {
-              <h2 class="planning-drafts-card__name">{{ d.name }}</h2>
-            }
+            <h2 class="planning-drafts-card__name">{{ d.name }}</h2>
             <span class="planning-drafts-card__step">{{
               stepLabelKey(d) | translate
             }}</span>
@@ -152,36 +138,22 @@
               [queryParams]="{ draftId: d.id }"
               class="planning-drafts-card__cta sf-ui-btn sf-ui-btn--primary"
             >
-              {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+              <span class="planning-drafts-card__btn-inner">
+                <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
+                {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+              </span>
             </a>
-            @if (editingId() === d.id) {
-              <skyflow-ui-button
-                variant="secondary"
-                [disabled]="editSaving()"
-                [loading]="editSaving()"
-                (click)="saveEdit()"
-              >
-                {{ 'ADMIN_PLANNING_DRAFTS.SAVE' | translate }}
-              </skyflow-ui-button>
-              <skyflow-ui-button variant="ghost" (click)="cancelEdit()">
-                {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
-              </skyflow-ui-button>
-            } @else {
-              <skyflow-ui-button variant="secondary" (click)="startEdit(d, $event)">
-                {{ 'ADMIN_PLANNING_DRAFTS.EDIT' | translate }}
-              </skyflow-ui-button>
-              <skyflow-ui-button
-                variant="danger"
-                btnClass="planning-drafts-card__delete"
-                (click)="openDeleteConfirm(d, $event)"
-              >
+            <skyflow-ui-button
+              variant="danger"
+              btnClass="planning-drafts-card__delete"
+              (click)="openDeleteConfirm(d, $event)"
+            >
+              <span class="planning-drafts-card__btn-inner">
+                <skyflow-mat-icon icon="delete" [size]="18" [weight]="400" />
                 {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
-              </skyflow-ui-button>
-            }
+              </span>
+            </skyflow-ui-button>
           </div>
-          @if (editingId() === d.id && editError(); as ek) {
-            <p class="planning-drafts-card__err" role="alert">{{ ek | translate }}</p>
-          }
         </article>
       }
     </div>
@@ -202,18 +174,7 @@
           @for (d of filteredDrafts(); track d.id) {
             <tr>
               <td class="planning-drafts-table__name">
-                @if (editingId() === d.id) {
-                  <input
-                    type="text"
-                    class="planning-drafts-table__edit-input"
-                    [value]="editName()"
-                    (input)="onEditNameInput($event)"
-                    (keydown.enter)="saveEdit()"
-                    (keydown.escape)="cancelEdit()"
-                  />
-                } @else {
-                  <span class="planning-drafts-table__name-text">{{ d.name }}</span>
-                }
+                <span class="planning-drafts-table__name-text">{{ d.name }}</span>
               </td>
               <td>
                 <div class="planning-drafts-table__progress">
@@ -244,32 +205,21 @@
                     [queryParams]="{ draftId: d.id }"
                     class="sf-ui-btn sf-ui-btn--primary"
                   >
-                    {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+                    <span class="planning-drafts-card__btn-inner">
+                      <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
+                      {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+                    </span>
                   </a>
-                  @if (editingId() === d.id) {
-                    <skyflow-ui-button
-                      variant="secondary"
-                      [disabled]="editSaving()"
-                      [loading]="editSaving()"
-                      (click)="saveEdit()"
-                    >
-                      {{ 'ADMIN_PLANNING_DRAFTS.SAVE' | translate }}
-                    </skyflow-ui-button>
-                    <skyflow-ui-button variant="ghost" (click)="cancelEdit()">
-                      {{ 'ADMIN_PLANNING_DRAFTS.CANCEL' | translate }}
-                    </skyflow-ui-button>
-                  } @else {
-                    <skyflow-ui-button variant="secondary" (click)="startEdit(d)">
-                      {{ 'ADMIN_PLANNING_DRAFTS.EDIT' | translate }}
-                    </skyflow-ui-button>
-                    <skyflow-ui-button
-                      variant="danger"
-                      btnClass="planning-drafts-table__delete"
-                      (click)="openDeleteConfirm(d)"
-                    >
+                  <skyflow-ui-button
+                    variant="danger"
+                    btnClass="planning-drafts-table__delete"
+                    (click)="openDeleteConfirm(d)"
+                  >
+                    <span class="planning-drafts-card__btn-inner">
+                      <skyflow-mat-icon icon="delete" [size]="18" [weight]="400" />
                       {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
-                    </skyflow-ui-button>
-                  }
+                    </span>
+                  </skyflow-ui-button>
                 </div>
               </td>
             </tr>

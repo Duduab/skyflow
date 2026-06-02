@@ -25,7 +25,7 @@
   position: absolute;
   inset: -5px;
   content: '';
-  border-radius: var(--sf-radius);
+  border-radius: 999px;
   pointer-events: none;
 }
 
@@ -68,7 +68,12 @@
   width: auto;
   max-width: 78%;
   object-fit: contain;
+  mix-blend-mode: multiply;
   filter: drop-shadow(0 6px 16px rgba(62, 93, 136, 0.18));
+}
+
+:host-context(.http-loader-overlay) .skyflow-logo-loader__img {
+  mix-blend-mode: normal;
 }
 
 @keyframes skyflow-logo-progress {

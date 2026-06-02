@@ -1,0 +1,353 @@
+/* Station 4 — הדבקות לפי TYPE וקודי GL */
+
+.gluing-station {
+  --glu-accent: #d8b4fe;
+  --glu-accent-glow: rgba(216, 180, 254, 0.45);
+  --glu-done: #34d399;
+  --glu-done-glow: rgba(52, 211, 153, 0.4);
+  --glu-locked: #f87171;
+  --glu-surface: rgba(0, 0, 0, 0.38);
+  --glu-border: rgba(255, 255, 255, 0.14);
+  --glu-muted: rgba(255, 255, 255, 0.68);
+
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.gluing-hero {
+  padding: 0;
+  overflow: hidden;
+  border-width: 2px;
+}
+
+.gluing-hero__head {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.35rem 1.25rem 1.4rem;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 1.5rem 1.55rem;
+  }
+}
+
+.gluing-hero__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.gluing-hero__eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--glu-accent);
+}
+
+.gluing-hero__title {
+  margin: 0.4rem 0 0;
+  font-size: clamp(1.35rem, 3.2vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #000;
+}
+
+.gluing-hero__hint {
+  margin: 0.5rem 0 0;
+  max-width: 36rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #000;
+}
+
+.gluing-hero__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.gluing-hero__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--glu-surface);
+  border: 1px solid var(--glu-border);
+
+  strong {
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.gluing-hero__pill--done {
+  color: #5b21b6;
+  border-color: var(--glu-accent);
+  background: rgba(216, 180, 254, 0.35);
+
+  strong {
+    color: #4c1d95;
+  }
+}
+
+.gluing-hero__ring {
+  position: relative;
+  flex-shrink: 0;
+  width: 6.25rem;
+  height: 6.25rem;
+  align-self: center;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.gluing-hero__ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 7;
+}
+
+.gluing-hero__ring-arc {
+  fill: none;
+  stroke: var(--glu-accent);
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 10px var(--glu-accent-glow));
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.gluing-hero__ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  color: #fff;
+}
+
+.gluing-hero__ring-value {
+  font-size: 1.45rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.gluing-hero__ring-sign {
+  font-size: 0.85rem;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
+.gluing-empty {
+  margin: 0;
+  padding: 1.25rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--glu-muted);
+}
+
+.gluing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 960px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.gluing-type-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.15rem 1.1rem 1.2rem;
+  border-radius: var(--sf-radius, 1rem);
+  border: 2px solid var(--glu-accent);
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+  text-align: start;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+
+  &:hover {
+    border-color: var(--glu-accent);
+    box-shadow:
+      0 6px 22px rgba(216, 180, 254, 0.28),
+      0 0 0 1px rgba(216, 180, 254, 0.2);
+    transform: translateY(-1px);
+  }
+}
+
+.gluing-type-card--locked {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: #fff;
+  opacity: 0.92;
+}
+
+.gluing-type-card--done {
+  border-color: rgba(52, 211, 153, 0.55);
+  box-shadow: 0 4px 18px rgba(52, 211, 153, 0.12);
+}
+
+.gluing-type-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.gluing-type-card__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #000;
+}
+
+.gluing-type-card__badge {
+  flex-shrink: 0;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.72);
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.gluing-type-card__badge--done {
+  color: #065f46;
+  background: rgba(52, 211, 153, 0.14);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.gluing-type-card__badge--locked {
+  color: #b91c1c;
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.gluing-type-card__units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.gluing-type-card__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #1e1b4b;
+  background: rgba(216, 180, 254, 0.22);
+  border: 1px solid rgba(216, 180, 254, 0.55);
+}
+
+.gluing-type-card--done .gluing-type-card__chip {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #065f46;
+}
+
+.gluing-type-card__cnc {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.62);
+}
+
+.gluing-type-card__cnc-bar {
+  flex: 1;
+  height: 0.35rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.gluing-type-card__cnc-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #558fc3, #7dd3fc);
+  transition: width 0.35s ease;
+}
+
+.gluing-type-card__cnc--ok .gluing-type-card__cnc-fill {
+  background: linear-gradient(90deg, #34d399, #6ee7b7);
+}
+
+.gluing-type-card__locked-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #b91c1c;
+}
+
+.gluing-type-card__action {
+  margin-top: auto;
+  width: 100%;
+  min-height: 3.1rem;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: calc(var(--sf-radius, 1rem) - 0.15rem);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e1b4b;
+  background: linear-gradient(180deg, #ede9fe 0%, var(--glu-accent) 100%);
+  box-shadow: 0 4px 14px rgba(216, 180, 254, 0.25);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(216, 180, 254, 0.35);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.gluing-type-card__action--done {
+  color: #ecfdf5;
+  background: linear-gradient(180deg, #6ee7b7 0%, var(--glu-done) 100%);
+  box-shadow: 0 4px 14px var(--glu-done-glow);
+}
+
+.gluing-type-card__action--busy {
+  opacity: 0.7;
+  pointer-events: none;
+}

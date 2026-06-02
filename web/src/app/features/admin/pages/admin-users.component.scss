@@ -166,42 +166,77 @@
   box-shadow: var(--sf-shadow);
 }
 
-.admin-users__card-main {
+.admin-users__card-top {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem 0.85rem;
   width: 100%;
-  padding: 1rem 1.05rem 0.65rem;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: start;
-  font: inherit;
-  color: inherit;
-  transition: transform 0.15s ease;
+  padding: 1rem 1.05rem 0.75rem;
 }
 
-.admin-users__card-main:hover {
-  transform: translateY(-1px);
+.admin-users__card-actions {
+  --admin-users-card-action-h: 2.75rem;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0 0.65rem 0.65rem;
+  box-sizing: border-box;
 }
 
-.admin-users__card-main:focus-visible {
-  outline: 2px solid rgba(85, 143, 195, 0.65);
-  outline-offset: -2px;
+:host ::ng-deep .admin-users__card-actions > skyflow-ui-button {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+}
+
+:host ::ng-deep .admin-users__card-perf.sf-ui-btn {
+  width: 100%;
+  min-height: var(--admin-users-card-action-h);
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: var(--sf-shadow);
 }
 
 .admin-users__card-edit {
-  margin: 0 0.65rem 0.65rem;
-  padding: 0.4rem 0.65rem;
-  align-self: flex-start;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: var(--sf-radius);
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--admin-users-card-action-h);
+  margin: 0;
+  padding: 0 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid rgba(15, 23, 42, 0.1);
+  border-radius: var(--sf-ui-btn-radius);
   background: rgba(241, 245, 249, 0.9);
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
   color: #475569;
   cursor: pointer;
+  box-shadow: var(--sf-shadow-inset);
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.admin-users__card-btn-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 :host-context(html:not(.theme-light)) .admin-users__card-edit {
@@ -306,20 +341,6 @@
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--admin-muted, #64748b);
-}
-
-.admin-users__card-cta {
-  width: 100%;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: #2563eb;
-}
-
-@media (min-width: 520px) {
-  .admin-users__card-cta {
-    width: auto;
-    margin-inline-start: auto;
-  }
 }
 
 .admin-users-detail__toolbar {
@@ -473,6 +494,37 @@
 
 .admin-users__select {
   cursor: pointer;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+:host ::ng-deep .admin-users__select .sf-ui-select__trigger {
+  min-height: 2.75rem;
+  padding-block: 0.55rem;
+  padding-inline: 0.85rem 0.65rem;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: var(--sf-ui-btn-radius);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  box-shadow: var(--sf-shadow-inset);
+}
+
+:host ::ng-deep .admin-users__select .sf-ui-select__trigger:hover:not(:disabled) {
+  border-color: rgba(85, 143, 195, 0.45);
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+:host ::ng-deep .admin-users__select .sf-ui-select__value--placeholder {
+  color: #64748b;
+  font-weight: 400;
+}
+
+:host ::ng-deep .admin-users__select .sf-ui-select__chevron {
+  color: #3e5d88;
 }
 
 .admin-users__err {

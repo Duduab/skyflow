@@ -2,6 +2,59 @@
   display: block;
 }
 
+.worker-terminal__body--site-gated {
+  pointer-events: none;
+  user-select: none;
+  filter: blur(3px);
+  opacity: 0.45;
+}
+
+:host ::ng-deep skyflow-ui-select.sf-select {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  appearance: none;
+  background-image: none;
+}
+
+:host ::ng-deep .sf-select .sf-ui-select {
+  width: 100%;
+}
+
+:host ::ng-deep .station-top-bar .sf-select .sf-ui-select__trigger {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+  height: 2.875rem;
+  padding: 0 0.85rem 0 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: calc(var(--sf-radius) * 0.85);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #000;
+  background: #fff;
+  box-shadow: var(--sf-shadow);
+}
+
+:host ::ng-deep .station-top-bar .sf-select .sf-ui-select__trigger:hover:not(:disabled) {
+  border-color: rgba(85, 143, 195, 0.42);
+}
+
+:host ::ng-deep .station-top-bar .sf-select .sf-ui-select__trigger:focus-visible {
+  outline: none;
+  border-color: rgba(85, 143, 195, 0.55);
+  box-shadow: var(--sf-shadow), 0 0 0 3px rgba(85, 143, 195, 0.32);
+}
+
+:host ::ng-deep .station-top-bar .sf-select .sf-ui-select__value--placeholder {
+  font-weight: 400;
+}
+
 .station-progress {
   scroll-margin-top: 1.25rem;
 }
@@ -96,8 +149,23 @@
   padding-left: 4px;
 }
 
+.station-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.25rem;
+  flex-wrap: wrap;
+}
+
 .station-back-nav {
-  margin-bottom: -0.35rem;
+  flex-shrink: 0;
+}
+
+.station-order-picker {
+  min-width: min(100%, 16rem);
+  max-width: 20rem;
+  flex: 1 1 12rem;
+  margin-inline-start: auto;
 }
 
 .station-back-cta {
@@ -302,7 +370,9 @@
 }
 
 .sf-ui-popup--full .sf-ui-popup__actions.saw-type-modal__save-wrap,
-.sf-ui-popup--full .saw-type-modal__save-wrap {
+.sf-ui-popup--full .saw-type-modal__save-wrap,
+.sf-ui-popup--sheet .sf-ui-popup__actions.saw-type-modal__save-wrap,
+.sf-ui-popup--sheet .saw-type-modal__save-wrap {
   width: 100%;
   max-width: 22rem;
   margin-inline: auto;
@@ -824,19 +894,13 @@
 
 .saw-type-modal__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 1.5rem;
   padding: 0.25rem 0.2rem 1rem 0;
   align-content: start;
 }
 
-@media (max-width: 1100px) {
-  .saw-type-modal__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .saw-type-modal__grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -851,17 +915,17 @@
 
 /* כרטיס פריט — לפי Food terminal POS (Figma), מותאם ל-Skykon */
 .saw-type-card {
-  --saw-card-ring: clamp(6.75rem, 22vw, 8.25rem);
+  --saw-card-ring: clamp(5.5rem, 16vw, 7.25rem);
 
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.65rem;
-  min-height: clamp(26rem, 58vh, 36rem);
+  min-height: 0;
   min-width: 0;
   padding: 0.85rem 1.15rem 1.35rem;
-  overflow: visible;
+  overflow: hidden;
   border-radius: var(--sf-radius);
   border: 1px solid rgba(85, 143, 195, 0.42);
   background:
@@ -1219,4 +1283,56 @@ button.saw-type-card__ring--btn {
   object-fit: contain;
   border-radius: var(--sf-radius);
   box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+:host ::ng-deep .sf-ui-popup__panel.station-report-popup {
+  .sf-ui-popup__title {
+    font-size: clamp(1.45rem, 3.4vw, 2rem) !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.12 !important;
+    color: #0f172a !important;
+  }
+
+  .saw-type-modal__stat-chip {
+    border: 2px solid color-mix(in srgb, var(--sr-accent) 45%, #fff) !important;
+    background: var(--sr-accent-soft) !important;
+    box-shadow: none !important;
+  }
+
+  .saw-type-modal__stat-chip--primary {
+    border: 2px solid var(--sr-accent) !important;
+    background: var(--sr-accent-fill) !important;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--sr-accent) 18%, transparent) !important;
+  }
+
+  .saw-type-modal__stat-label {
+    color: color-mix(in srgb, var(--sr-accent-strong) 70%, #64748b) !important;
+  }
+
+  .saw-type-modal__stat-value {
+    color: #0f172a !important;
+  }
+
+  .saw-type-modal__save-btn.sf-ui-btn--primary {
+    border: 2px solid var(--sr-accent) !important;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sr-accent) 88%, #fff) 0%,
+      var(--sr-accent) 100%
+    ) !important;
+    color: #0f172a !important;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--sr-accent) 35%, transparent) !important;
+  }
+
+  .saw-type-modal__save-btn.sf-ui-btn--primary:hover:not(:disabled),
+  .saw-type-modal__save-btn.sf-ui-btn--primary:focus-visible {
+    border-color: var(--sr-accent) !important;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sr-accent) 88%, #fff) 0%,
+      var(--sr-accent) 100%
+    ) !important;
+    color: #0f172a !important;
+  }
 }

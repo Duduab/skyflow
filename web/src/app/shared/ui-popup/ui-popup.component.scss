@@ -49,6 +49,48 @@
   max-height: min(94dvh, 92vh);
 }
 
+/* דיווח תחנה — כמעט מסך מלא, מעוגל (ברירת מחדל למודלי עובד) */
+.sf-ui-popup--sheet .sf-ui-popup__panel {
+  width: min(96vw, 56rem);
+  max-width: 56rem;
+  height: min(92dvh, 900px);
+  max-height: min(92dvh, 900px);
+  border-radius: 28px;
+  border: 2px solid #f1f2f9;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  box-shadow:
+    0 24px 64px -12px rgba(23, 15, 73, 0.22),
+    0 8px 24px -8px rgba(111, 108, 143, 0.14);
+}
+
+.sf-ui-popup--sheet .sf-ui-popup__body {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.sf-ui-popup--sheet .sf-ui-popup__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #fff;
+  box-shadow: 0 -8px 24px -8px rgba(23, 15, 73, 0.12);
+}
+
+.sf-ui-popup--sheet .sf-ui-popup__footer-inner {
+  justify-content: center;
+}
+
+.sf-ui-popup--sheet .sf-ui-popup__actions {
+  width: 100%;
+  max-width: none;
+  margin-inline-start: 0;
+  justify-content: center;
+}
+
 .sf-ui-popup--full .sf-ui-popup__panel {
   width: 100%;
   max-width: 100%;
@@ -215,6 +257,15 @@
   margin-inline-start: auto;
 }
 
+.sf-ui-popup__actions ::ng-deep [popup-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 100%;
+}
+
 .sf-ui-popup__footer--actions:not(:has(.sf-ui-popup__actions > *)) {
   display: none;
 }
@@ -266,6 +317,17 @@
 }
 
 @media (max-width: 520px) {
+  .sf-ui-popup--sheet {
+    padding: 0.5rem;
+  }
+
+  .sf-ui-popup--sheet .sf-ui-popup__panel {
+    width: 100%;
+    height: min(94dvh, 100%);
+    max-height: 94dvh;
+    border-radius: 20px;
+  }
+
   .sf-ui-popup__top {
     padding: 24px 36px 0 20px;
   }

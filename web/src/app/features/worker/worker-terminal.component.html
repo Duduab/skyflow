@@ -1,24 +1,36 @@
 <div class="mx-auto max-w-4xl space-y-10">
-  <nav class="station-back-nav" [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate">
-    <a
-      class="station-back-cta"
-      routerLink="/worker"
-      [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate"
-    >
-      <span class="station-back-cta__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-          <path
-            d="M9 18l6-6-6-6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </span>
-      <span class="station-back-cta__text">{{
-        'WORKER.BACK_TO_STATIONS' | translate
-      }}</span>
-    </a>
-  </nav>
+  <header class="station-top-bar">
+    <nav class="station-back-nav" [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate">
+      <a
+        class="station-back-cta"
+        routerLink="/worker"
+        [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate"
+      >
+        <span class="station-back-cta__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+            <path
+              d="M9 18l6-6-6-6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <span class="station-back-cta__text">{{
+          'WORKER.BACK_TO_STATIONS' | translate
+        }}</span>
+      </a>
+    </nav>
+    @if (orders().length) {
+      <div class="station-order-picker">
+        <skyflow-ui-select
+          class="sf-select"
+          [options]="orderSelectOptions()"
+          [value]="projectSelection.selectedProjectId() ?? ''"
+          (valueChange)="onOrderChange($event)"
+        />
+      </div>
+    }
+  </header>
 
 @if (loading()) {
   <div class="py-24 text-center text-touch font-bold text-white/80">
@@ -32,31 +44,16 @@
   </div>
 } @else if (context(); as ctx) {
     <div
-      class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between"
+      class="worker-terminal__body"
+      [class.worker-terminal__body--site-gated]="siteManagerAuthRequired()"
     >
-      <div class="space-y-3">
-
-        <h1 class="text-hero tracking-tight text-white drop-shadow-lg">
-          {{ stationId | stationLabel: ctx.order | translate }}
-        </h1>
-        <p class="text-touch font-semibold text-white/80">
-          {{ 'WORKER.STATION' | translate }} {{ stationId }}
-        </p>
-      </div>
-      @if (orders().length) {
-        <label class="flex max-w-xl flex-col gap-3 text-touch font-bold text-white">
-          {{ 'WORKER.SELECT_ORDER' | translate }}
-          <select
-            class="sf-select"
-            [value]="projectSelection.selectedProjectId() ?? ''"
-            (change)="onOrderChange($any($event.target).value)"
-          >
-            @for (o of orders(); track o.id) {
-              <option [value]="o.id">{{ o.name }}</option>
-            }
-          </select>
-        </label>
-      }
+    <div class="space-y-3">
+      <h1 class="text-hero tracking-tight text-white drop-shadow-lg">
+        {{ stationId | stationLabel: ctx.order | translate }}
+      </h1>
+      <p class="text-touch font-semibold text-white/80">
+        {{ 'WORKER.STATION' | translate }} {{ stationId }}
+      </p>
     </div>
 
     <section
@@ -226,6 +223,24 @@
       </div>
     </section>
 
+    @if (stationId === 7 && !siteManagerAuthRequired()) {
+      <section class="sf-panel md:p-8 site-station-cta">
+        <h2 class="site-station-cta__title">
+          {{ 'WORKER.SITE_REPORT_CTA_TITLE' | translate }}
+        </h2>
+        <p class="site-station-cta__hint">
+          {{ 'WORKER.SITE_REPORT_CTA_HINT' | translate }}
+        </p>
+        <button
+          type="button"
+          class="site-station-cta__btn"
+          (click)="openSiteReportModal()"
+        >
+          {{ 'WORKER.ASSEMBLY_TYPE_REPORT_BTN' | translate }}
+        </button>
+      </section>
+    }
+
     @if (stationId === 3 && assemblyCtx(ctx); as asm) {
       <div class="assembly-station">
         <header class="assembly-hero sf-panel" [attr.aria-label]="'WORKER.ASSEMBLY_INSTRUCTIONS_TITLE' | translate">
@@ -238,7 +253,18 @@
               <p class="assembly-hero__hint">
                 {{ 'WORKER.ASSEMBLY_INSTRUCTIONS_HINT' | translate }}
               </p>
-              @if (asm.windowsTotalQty > 0) {
+              @if (asm.typesReportTarget > 0) {
+                <p class="assembly-hero__stat">
+                  {{
+                    'WORKER.ASSEMBLY_TYPES_REPORT_PROGRESS'
+                      | translate
+                        : {
+                            done: asm.typesReportedCount,
+                            total: asm.typesReportTarget,
+                          }
+                  }}
+                </p>
+              } @else if (asm.windowsTotalQty > 0) {
                 <p class="assembly-hero__stat">
                   {{
                     'WORKER.ASSEMBLY_WINDOWS_PROGRESS'
@@ -252,18 +278,25 @@
                 </p>
               }
             </div>
-            @if (asm.windowsTotalQty > 0) {
+            @if (asm.typesReportTarget > 0 || asm.windowsTotalQty > 0) {
               <div
                 class="assembly-hero__ring"
                 role="img"
                 [attr.aria-label]="
-                  'WORKER.ASSEMBLY_WINDOWS_PROGRESS'
-                    | translate
-                      : {
-                          done: asm.windowsAssembledQty,
-                          total: asm.windowsTotalQty,
-                          units: asm.windowsUnitCount,
-                        }
+                  asm.typesReportTarget > 0
+                    ? ('WORKER.ASSEMBLY_TYPES_REPORT_PROGRESS'
+                        | translate
+                          : {
+                              done: asm.typesReportedCount,
+                              total: asm.typesReportTarget,
+                            })
+                    : ('WORKER.ASSEMBLY_WINDOWS_PROGRESS'
+                        | translate
+                          : {
+                              done: asm.windowsAssembledQty,
+                              total: asm.windowsTotalQty,
+                              units: asm.windowsUnitCount,
+                            })
                 "
               >
                 <svg viewBox="0 0 100 100" aria-hidden="true">
@@ -275,198 +308,117 @@
                     r="42"
                     [attr.stroke-dasharray]="progressCircumference"
                     [attr.stroke-dashoffset]="
-                      progressDashOffset(assemblyWindowsProgressPercent(ctx))
+                      progressDashOffset(
+                        asm.typesReportTarget > 0
+                          ? assemblyTypesReportProgressPercent(ctx)
+                          : assemblyWindowsProgressPercent(ctx)
+                      )
                     "
                     transform="rotate(-90 50 50)"
                   />
                 </svg>
                 <div class="assembly-hero__ring-label" dir="ltr">
-                  <span class="assembly-hero__ring-value">{{
-                    assemblyWindowsProgressPercent(ctx)
-                  }}</span>
-                  <span class="assembly-hero__ring-sign">%</span>
+                  @if (
+                    asm.typesReportTarget > 0 &&
+                    asm.typesReportedCount >= asm.typesReportTarget
+                  ) {
+                    <span class="assembly-hero__ring-check" aria-hidden="true">✓</span>
+                  } @else {
+                    <span class="assembly-hero__ring-value">{{
+                      asm.typesReportTarget > 0
+                        ? assemblyTypesReportProgressPercent(ctx)
+                        : assemblyWindowsProgressPercent(ctx)
+                    }}</span>
+                    <span class="assembly-hero__ring-sign">%</span>
+                  }
                 </div>
               </div>
             }
           </div>
         </header>
 
-        <section
-          class="sf-panel md:p-8 assembly-windows"
-          [attr.aria-label]="'WORKER.ASSEMBLY_INSTRUCTIONS_TITLE' | translate"
-        >
-          @if (asm.windows.length === 0) {
-            <p class="assembly-empty">{{ 'WORKER.ASSEMBLY_WINDOWS_EMPTY' | translate }}</p>
-          } @else {
-            <label class="assembly-search">
-              <span class="assembly-search__label">{{
-                'WORKER.ASSEMBLY_SEARCH_LABEL' | translate
-              }}</span>
-              <input
-                type="search"
-                class="assembly-search__input"
-                [attr.placeholder]="'WORKER.ASSEMBLY_SEARCH_PLACEHOLDER' | translate"
-                [value]="assemblyWindowSearch()"
-                (input)="assemblyWindowSearch.set($any($event.target).value)"
-              />
-            </label>
+        @if (assemblyInstructionWindows(ctx).length) {
+          <section
+            class="sf-panel md:p-8 assembly-window-guide"
+            [attr.aria-label]="'WORKER.ASSEMBLY_WINDOW_GUIDE_TITLE' | translate"
+          >
+            <header class="assembly-section-head">
+              <h2 class="assembly-section-head__title">
+                {{ 'WORKER.ASSEMBLY_WINDOW_GUIDE_TITLE' | translate }}
+              </h2>
+              <p class="assembly-section-head__hint">
+                {{ 'WORKER.ASSEMBLY_WINDOW_GUIDE_HINT' | translate }}
+              </p>
+            </header>
 
-            <div class="assembly-workspace">
-              <div class="assembly-workspace__list" role="list">
-                @for (w of assemblyFilteredWindows(ctx); track w.id) {
+            @if (assemblyInstructionWindows(ctx).length > 1) {
+              <div class="assembly-window-guide__tabs" role="tablist">
+                @for (w of assemblyInstructionWindows(ctx); track w.id) {
                   <button
                     type="button"
-                    class="assembly-win-row"
-                    [class.is-active]="assemblySelectedWindowId() === w.id"
-                    [class.is-complete]="w.assembled"
-                    role="listitem"
-                    (click)="selectAssemblyWindow(w.id)"
+                    class="assembly-window-guide__tab"
+                    role="tab"
+                    [class.is-active]="assemblyInstructionWindowId() === w.id"
+                    [attr.aria-selected]="assemblyInstructionWindowId() === w.id"
+                    (click)="selectAssemblyInstructionWindow(w.id)"
                   >
-                    <span class="assembly-win-row__code" dir="ltr">{{ w.displayLabel }}</span>
-                    <span class="assembly-win-row__qty" dir="ltr">
-                      {{ w.assembledQty }}/{{ w.quantity }}
-                    </span>
-                    <span
-                      class="assembly-win-row__bar"
-                      role="progressbar"
-                      [attr.aria-valuenow]="w.assembledQty"
-                      aria-valuemin="0"
-                      [attr.aria-valuemax]="w.quantity"
-                    >
-                      <span
-                        class="assembly-win-row__bar-fill"
-                        [style.width.%]="assemblyWindowItemPercent(w)"
-                      ></span>
-                    </span>
+                    <span dir="ltr">{{ w.displayLabel }}</span>
                   </button>
                 }
               </div>
+            }
 
-              @if (assemblySelectedWindow(ctx); as win) {
-                <article class="assembly-detail">
-                  <header class="assembly-detail__head">
-                    <h3 class="assembly-detail__title" dir="ltr">{{ win.displayLabel }}</h3>
-                    <p class="assembly-detail__target" dir="ltr">
-                      {{ 'WORKER.ASSEMBLY_DETAIL_TARGET' | translate }}:
-                      <strong>{{ win.quantity | number: '1.0-0' }}</strong>
-                      {{ 'WORKER.ASSEMBLY_QTY_UNIT' | translate }}
-                    </p>
-                  </header>
-
-                  <div class="assembly-detail__gallery">
-                    @if (assemblyWindowPhotoUrl(win); as photo) {
-                      <img [src]="photo" [alt]="win.displayLabel" />
-                      @if (assemblyWindowPhotoCount(win) > 1) {
-                        <div class="assembly-detail__gallery-nav" dir="ltr">
-                          <button
-                            type="button"
-                            class="assembly-detail__nav-btn"
-                            (click)="assemblyWindowPhotoPrev(win)"
-                          >
-                            ‹
-                          </button>
-                          <span>{{ assemblyWindowPhotoIdx() + 1 }}/{{ assemblyWindowPhotoCount(win) }}</span>
-                          <button
-                            type="button"
-                            class="assembly-detail__nav-btn"
-                            (click)="assemblyWindowPhotoNext(win)"
-                          >
-                            ›
-                          </button>
-                        </div>
-                      }
-                    } @else {
-                      <p class="assembly-detail__no-img">
-                        {{ 'WORKER.ASSEMBLY_NO_IMAGE' | translate }}
-                      </p>
-                    }
-                  </div>
-
-                  <div class="assembly-detail__report">
-                    <p class="assembly-detail__report-label">
-                      {{ 'WORKER.ASSEMBLY_QTY_LABEL' | translate }}
-                    </p>
-                    <div class="saw-type-card__stepper assembly-detail__stepper">
-                      <span
-                        class="saw-type-card__stepper-val"
-                        [class.saw-type-card__stepper-val--empty]="win.assembledQty <= 0"
-                        aria-live="polite"
-                      >
-                        @if (win.assembledQty > 0) {
-                          {{ win.assembledQty | number: '1.0-0' }}
-                        } @else {
-                          <span class="saw-type-card__stepper-placeholder">0</span>
-                        }
-                      </span>
-                      <div class="saw-type-card__stepper-btns" dir="ltr">
-                        <button
-                          type="button"
-                          class="saw-type-card__btn saw-type-card__btn--minus"
-                          [disabled]="assemblyTogglingWindow() || win.assembledQty <= 0"
-                          (click)="nudgeAssemblyWindowQty(win, -1)"
-                          [attr.aria-label]="'WORKER.SAW_CARD_MINUS_A11Y' | translate"
-                        >
-                          <span aria-hidden="true">−</span>
-                        </button>
-                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
-                        <button
-                          type="button"
-                          class="saw-type-card__btn saw-type-card__btn--plus"
-                          [disabled]="
-                            assemblyTogglingWindow() || win.assembledQty >= win.quantity
-                          "
-                          (click)="nudgeAssemblyWindowQty(win, 1)"
-                          [attr.aria-label]="'WORKER.SAW_CARD_PLUS_A11Y' | translate"
-                        >
-                          <span aria-hidden="true">+</span>
-                        </button>
-                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
-                        <button
-                          type="button"
-                          class="saw-type-card__btn saw-type-card__btn--fill"
-                          [disabled]="
-                            assemblyTogglingWindow() ||
-                            win.quantity <= 0 ||
-                            win.assembledQty >= win.quantity
-                          "
-                          (click)="fillAssemblyWindowQty(win)"
-                          [attr.aria-label]="
-                            'WORKER.SAW_CARD_FILL_A11Y'
-                              | translate: { qty: win.quantity | number: '1.0-0' }
-                          "
-                        >
-                          <span aria-hidden="true">✓</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  @if (win.specs.length) {
-                    <dl class="assembly-detail__specs">
-                      @for (sp of win.specs; track sp.label + sp.value) {
-                        <div class="assembly-detail__spec-row">
-                          <dt>{{ sp.label }}</dt>
-                          <dd dir="ltr">{{ sp.value }}</dd>
-                        </div>
-                      }
-                    </dl>
-                  }
-
-                  @if (win.components.length) {
-                    <details class="assembly-detail__bom">
-                      <summary>{{ 'WORKER.ASSEMBLY_BOM_TOGGLE' | translate }}</summary>
-                      <ul>
-                        @for (c of win.components; track c.line) {
-                          <li>{{ c.line }}</li>
-                        }
-                      </ul>
-                    </details>
-                  }
-                </article>
+            @if (assemblyInstructionSelectedWindow(ctx); as guideWin) {
+              @if (assemblyInstructionWindows(ctx).length === 1) {
+                <p class="assembly-window-guide__unit" dir="ltr">
+                  {{ guideWin.displayLabel }}
+                </p>
               }
-            </div>
-          }
-        </section>
+
+              <div class="assembly-window-guide__viewer">
+                @if (assemblyInstructionPhotoUrl(guideWin); as guideUrl) {
+                  <button
+                    type="button"
+                    class="assembly-window-guide__zoom"
+                    (click)="openSawLineImagePreview(guideUrl)"
+                    [attr.aria-label]="'WORKER.ASSEMBLY_WINDOW_GUIDE_ZOOM' | translate"
+                  >
+                    <img
+                      [src]="guideUrl"
+                      [alt]="guideWin.displayLabel"
+                      class="assembly-window-guide__img"
+                    />
+                  </button>
+                  @if (assemblyInstructionPhotoCount(guideWin) > 1) {
+                    <div class="assembly-window-guide__nav" dir="ltr">
+                      <button
+                        type="button"
+                        class="assembly-window-guide__nav-btn"
+                        (click)="assemblyInstructionPhotoPrev(guideWin)"
+                        [attr.aria-label]="'WORKER.ASSEMBLY_WINDOW_GUIDE_PREV' | translate"
+                      >
+                        ‹
+                      </button>
+                      <span class="assembly-window-guide__nav-count">
+                        {{ assemblyInstructionPhotoIdx() + 1 }}/{{
+                          assemblyInstructionPhotoCount(guideWin)
+                        }}
+                      </span>
+                      <button
+                        type="button"
+                        class="assembly-window-guide__nav-btn"
+                        (click)="assemblyInstructionPhotoNext(guideWin)"
+                        [attr.aria-label]="'WORKER.ASSEMBLY_WINDOW_GUIDE_NEXT' | translate"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  }
+                }
+              </div>
+            }
+          </section>
+        }
 
         <section
           class="sf-panel md:p-8 assembly-pipeline"
@@ -495,71 +447,293 @@
             </span>
           </div>
 
-          <div class="assembly-pipeline__filters" role="tablist">
-            <button
-              type="button"
-              class="assembly-filter"
-              [class.is-on]="assemblyPipelineFilter() === 'ALL'"
-              (click)="setAssemblyPipelineFilter('ALL')"
-            >
-              {{ 'WORKER.ASSEMBLY_FILTER_ALL' | translate }}
-            </button>
-            @for (kind of assemblyPipelineTypeKeys(ctx); track kind) {
-              <button
-                type="button"
-                class="assembly-filter"
-                [class.is-on]="assemblyPipelineFilter() === kind"
-                (click)="setAssemblyPipelineFilter(kind)"
-              >
-                {{ assemblyPipelineTypeLabel(kind) }}
-              </button>
-            }
-          </div>
-
-          @if (assemblyFilteredPipeline(ctx).length === 0) {
+          @if (assemblyPipelineTypeGroups(ctx).length === 0) {
             <p class="assembly-empty">{{ 'WORKER.ASSEMBLY_PIPELINE_EMPTY' | translate }}</p>
           } @else {
-            <ul class="assembly-feed" role="list">
-              @for (line of assemblyFilteredPipeline(ctx); track line.id) {
-                <li class="assembly-feed__row assembly-feed__row--{{ line.status }}" role="listitem">
-                  <div class="assembly-feed__media">
-                    @if (line.imagePaths[0]; as thumb) {
-                      <img [src]="thumb" alt="" loading="lazy" />
-                    } @else {
-                      <span class="assembly-feed__code" dir="ltr">{{
-                        line.sawsProfileCode || '—'
+            <div
+              class="assembly-type-grid"
+              role="list"
+              [attr.aria-label]="'WORKER.ASSEMBLY_PIPELINE_TITLE' | translate"
+            >
+              @for (g of assemblyPipelineTypeGroups(ctx); track g.instructionKind) {
+                <article
+                  class="assembly-type-card"
+                  [class.assembly-type-card--ready]="g.status === 'ready'"
+                  [class.assembly-type-card--locked]="g.status === 'locked'"
+                  [class.assembly-type-card--reported]="assemblyTypeReported(ctx, g)"
+                  role="listitem"
+                >
+                  <div class="assembly-type-card__head">
+                    <h3 class="assembly-type-card__title" dir="ltr">
+                      {{ sawInstructionKindTitle(g.instructionKind, g.typeNum) }}
+                    </h3>
+                    @if (assemblyTypeReported(ctx, g)) {
+                      <div class="assembly-type-card__ring-wrap" aria-hidden="true">
+                        <svg class="assembly-type-card__svg" viewBox="0 0 100 100">
+                          <circle class="assembly-type-card__track" cx="50" cy="50" r="42" />
+                          <circle
+                            class="assembly-type-card__arc assembly-type-card__arc--done"
+                            cx="50"
+                            cy="50"
+                            r="42"
+                            [attr.stroke-dasharray]="progressCircumference"
+                            [attr.stroke-dashoffset]="progressDashOffset(100)"
+                            transform="rotate(-90 50 50)"
+                          />
+                        </svg>
+                        <span class="assembly-type-card__check">✓</span>
+                      </div>
+                    } @else if (g.status === 'locked') {
+                      <span class="assembly-type-card__badge assembly-type-card__badge--locked">
+                        {{ 'WORKER.ASSEMBLY_BADGE_LOCKED' | translate }}
+                      </span>
+                    }
+                  </div>
+
+                  <p class="assembly-type-card__meta">
+                    {{
+                      'WORKER.ASSEMBLY_TYPE_PROFILE_COUNT'
+                        | translate: { count: g.lineCount }
+                    }}
+                  </p>
+
+                  <div class="assembly-type-card__chips" aria-label="Profiles">
+                    @for (chip of g.profileChips; track chip) {
+                      <span class="assembly-type-card__chip" dir="ltr">{{ chip }}</span>
+                    }
+                    @if (g.extraChipCount > 0) {
+                      <span class="assembly-type-card__chip assembly-type-card__chip--more" dir="ltr">
+                        +{{ g.extraChipCount }}
+                      </span>
+                    }
+                  </div>
+
+                  <div
+                    class="assembly-type-card__track"
+                    [class.assembly-type-card__track--ok]="
+                      g.sawnQty >= g.totalQty && g.totalQty > 0
+                    "
+                  >
+                    <span>{{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }}</span>
+                    <span class="assembly-type-card__track-bar" aria-hidden="true">
+                      <span
+                        class="assembly-type-card__track-fill assembly-type-card__track-fill--saw"
+                        [style.width.%]="assemblyTypeTrackPercent(g.sawnQty, g.totalQty)"
+                      ></span>
+                    </span>
+                    <span dir="ltr">{{ g.sawnQty }}/{{ g.totalQty }}</span>
+                  </div>
+
+                  <div
+                    class="assembly-type-card__track"
+                    [class.assembly-type-card__track--ok]="
+                      g.cncDoneQty >= g.totalQty && g.totalQty > 0
+                    "
+                  >
+                    <span>{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span>
+                    <span class="assembly-type-card__track-bar" aria-hidden="true">
+                      <span
+                        class="assembly-type-card__track-fill assembly-type-card__track-fill--cnc"
+                        [style.width.%]="assemblyTypeTrackPercent(g.cncDoneQty, g.totalQty)"
+                      ></span>
+                    </span>
+                    <span dir="ltr">{{ g.cncDoneQty }}/{{ g.totalQty }}</span>
+                  </div>
+
+                  <div class="assembly-type-card__steps" aria-hidden="true">
+                    <span
+                      class="assembly-type-card__step"
+                      [class.is-ok]="g.sawnQty >= g.totalQty && g.totalQty > 0"
+                      >{{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }}</span
+                    >
+                    <span
+                      class="assembly-type-card__step"
+                      [class.is-ok]="g.cncDoneQty >= g.totalQty && g.totalQty > 0"
+                      >{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span
+                    >
+                    <span
+                      class="assembly-type-card__step"
+                      [class.is-ok]="g.status === 'ready'"
+                      >{{ 'WORKER.ASSEMBLY_STEP_READY' | translate }}</span
+                    >
+                  </div>
+
+                  @if (g.status === 'locked') {
+                    <p class="assembly-type-card__locked-hint">
+                      {{ 'WORKER.SAW_TYPE_LOCKED_WAIT_SAW' | translate }}
+                    </p>
+                  }
+
+                  @if (!assemblyTypeReported(ctx, g) && g.status === 'ready') {
+                    <button
+                      type="button"
+                      class="assembly-type-card__action"
+                      (click)="openAssemblyTypeModal(g)"
+                    >
+                      {{ 'WORKER.ASSEMBLY_TYPE_REPORT_BTN' | translate }}
+                    </button>
+                  }
+                </article>
+              }
+            </div>
+          }
+        </section>
+      </div>
+    }
+
+    @if (stationId === 4 && gluingCtx(ctx); as glu) {
+      <div class="gluing-station">
+        <header
+          class="gluing-hero sf-panel"
+          [attr.aria-label]="'WORKER.GLUING_TITLE' | translate"
+        >
+          <div class="gluing-hero__head">
+            <div class="gluing-hero__copy">
+              <p class="gluing-hero__eyebrow">
+                {{ 'WORKER.GLUING_HERO_EYEBROW' | translate }}
+              </p>
+              <h2 class="gluing-hero__title">
+                {{ 'WORKER.GLUING_TITLE' | translate }}
+              </h2>
+              <p class="gluing-hero__hint">
+                {{ 'WORKER.GLUING_HINT' | translate }}
+              </p>
+              @if (glu.typesWithGluing > 0) {
+                <div class="gluing-hero__pills">
+                  <span class="gluing-hero__pill">
+                    {{ 'WORKER.GLUING_KPI_TYPES' | translate }}:
+                    <strong dir="ltr"
+                      >{{ glu.typesDone }}/{{ glu.typesWithGluing }}</strong
+                    >
+                  </span>
+                  <span class="gluing-hero__pill gluing-hero__pill--done">
+                    {{ 'WORKER.GLUING_KPI_UNITS' | translate }}:
+                    <strong dir="ltr"
+                      >{{ glu.doneGlUnitQty }}/{{ glu.totalGlUnitQty }}</strong
+                    >
+                  </span>
+                </div>
+              }
+            </div>
+            @if (glu.typesWithGluing > 0) {
+              <div
+                class="gluing-hero__ring"
+                role="img"
+                [attr.aria-label]="
+                  'WORKER.GLUING_PROGRESS'
+                    | translate
+                      : {
+                          done: glu.typesDone,
+                          total: glu.typesWithGluing,
+                        }
+                "
+              >
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <circle class="gluing-hero__ring-track" cx="50" cy="50" r="42" />
+                  <circle
+                    class="gluing-hero__ring-arc"
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    [attr.stroke-dasharray]="progressCircumference"
+                    [attr.stroke-dashoffset]="
+                      progressDashOffset(gluingProgressPercent(ctx))
+                    "
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
+                <div class="gluing-hero__ring-label" dir="ltr">
+                  <span class="gluing-hero__ring-value">{{
+                    gluingProgressPercent(ctx)
+                  }}</span>
+                  <span class="gluing-hero__ring-sign">%</span>
+                </div>
+              </div>
+            }
+          </div>
+        </header>
+
+        <section
+          class="sf-panel md:p-8"
+          [attr.aria-label]="'WORKER.GLUING_TYPES_TITLE' | translate"
+        >
+          @if (glu.groups.length === 0) {
+            <p class="gluing-empty">{{ 'WORKER.GLUING_EMPTY' | translate }}</p>
+          } @else {
+            <div
+              class="gluing-grid"
+              role="list"
+              [attr.aria-label]="'WORKER.GLUING_TYPES_TITLE' | translate"
+            >
+              @for (g of glu.groups; track g.instructionKind) {
+                <article
+                  class="gluing-type-card"
+                  [class.gluing-type-card--locked]="g.locked && !g.done"
+                  [class.gluing-type-card--done]="g.done"
+                  role="listitem"
+                >
+                  <div class="gluing-type-card__head">
+                    <h3 class="gluing-type-card__title" dir="ltr">
+                      {{ sawInstructionKindTitle(g.instructionKind, g.typeNum) }}
+                    </h3>
+                    @if (g.done) {
+                      <span class="gluing-type-card__badge gluing-type-card__badge--done">
+                        {{ 'WORKER.GLUING_BADGE_DONE' | translate }}
+                      </span>
+                    } @else if (g.locked) {
+                      <span class="gluing-type-card__badge gluing-type-card__badge--locked">
+                        {{ 'WORKER.GLUING_BADGE_LOCKED' | translate }}
+                      </span>
+                    }
+                  </div>
+
+                  <div class="gluing-type-card__units" aria-label="GL units">
+                    @for (u of g.units; track u.productItemId) {
+                      <span class="gluing-type-card__chip" dir="ltr">{{
+                        u.displayLabel
                       }}</span>
                     }
                   </div>
-                  <div class="assembly-feed__main">
-                    <p class="assembly-feed__title" dir="ltr">
-                      {{ assemblyPipelineLineTitle(line) }}
-                    </p>
-                    <p class="assembly-feed__meta" dir="ltr">
-                      {{ assemblyPipelineTypeLabel(line.instructionKind) }} ·
-                      {{ line.sawnQty }}/{{ line.cncDoneQty }}/{{ line.quantity }}
-                    </p>
-                    <div class="assembly-feed__steps" aria-hidden="true">
+
+                  <div
+                    class="gluing-type-card__cnc"
+                    [class.gluing-type-card__cnc--ok]="
+                      g.cncTargetQty > 0 && g.cncDoneQty >= g.cncTargetQty
+                    "
+                  >
+                    <span>{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span>
+                    <span class="gluing-type-card__cnc-bar" aria-hidden="true">
                       <span
-                        class="assembly-feed__step"
-                        [class.is-ok]="line.sawnQty >= line.quantity"
-                        >{{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }}</span
-                      >
-                      <span
-                        class="assembly-feed__step"
-                        [class.is-ok]="line.cncDoneQty >= line.quantity"
-                        >{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span
-                      >
-                      <span
-                        class="assembly-feed__step"
-                        [class.is-ok]="line.status === 'ready'"
-                        >{{ 'WORKER.ASSEMBLY_STEP_READY' | translate }}</span
-                      >
-                    </div>
+                        class="gluing-type-card__cnc-fill"
+                        [style.width.%]="gluingCncPercent(g)"
+                      ></span>
+                    </span>
+                    <span dir="ltr">{{ g.cncDoneQty }}/{{ g.cncTargetQty }}</span>
                   </div>
-                </li>
+
+                  @if (g.locked && !g.done) {
+                    <p class="gluing-type-card__locked-hint">
+                      {{ 'WORKER.GLUING_LOCKED_WAIT_CNC' | translate }}
+                    </p>
+                  }
+
+                  @if (!g.locked || g.done) {
+                    <button
+                      type="button"
+                      class="gluing-type-card__action"
+                      [class.gluing-type-card__action--done]="g.done"
+                      (click)="openGluingTypeModal(g)"
+                    >
+                      {{
+                        g.done
+                          ? ('WORKER.GLUING_MODAL_REVIEW' | translate)
+                          : ('WORKER.ASSEMBLY_TYPE_REPORT_BTN' | translate)
+                      }}
+                    </button>
+                  }
+                </article>
               }
-            </ul>
+            </div>
           }
         </section>
       </div>
@@ -569,6 +743,7 @@
       stationId <= 4 &&
       stationId >= 1 &&
       stationId !== 3 &&
+      stationId !== 4 &&
       ctx.sawWorkLines !== undefined
     ) {
       <section
@@ -875,7 +1050,7 @@
                       type="button"
                       class="pack-report__slot-btn"
                       [disabled]="uploading"
-                      (click)="triggerPackPhotoInput(slot)"
+                      (click)="openPackPhotoModal(slot)"
                     >
                       @if (photoUrl) {
                         <img [src]="photoUrl" alt="" class="pack-report__thumb" />
@@ -1069,7 +1244,7 @@
       </div>
     </section>
 
-    @if (stationId !== 1 && stationId !== 6 && !usesWorkLineModalUi(ctx)) {
+    @if (stationId !== 1 && stationId !== 4 && stationId !== 6 && stationId !== 7 && !usesWorkLineModalUi(ctx)) {
       <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-10">
         @switch (stationId) {
           @case (2) {
@@ -1217,111 +1392,6 @@
               </p>
             }
           </div>
-        }
-        @case (7) {
-          @if (!ctx.siteAssembly?.deliveryNoteUrl) {
-            <div class="sf-panel border-sf-blue/35 bg-sf-blue/10 p-8 md:p-10">
-              <p class="text-hero font-black text-white">
-                {{ 'WORKER.SITE_UPLOAD_TITLE' | translate }}
-              </p>
-              <p class="mt-4 text-touch font-semibold text-white/85">
-                {{ 'WORKER.SITE_UPLOAD_HINT' | translate }}
-              </p>
-              <p class="mt-3 text-sm font-semibold text-white/55">
-                {{ 'WORKER.SITE_SCAN_STUB' | translate }}
-              </p>
-              <input
-                type="file"
-                accept=".pdf,image/*"
-                class="sf-input mt-8 max-w-md"
-                (change)="onDeliveryFileSelected($event)"
-                [disabled]="uploadingDelivery()"
-              />
-              @if (uploadingDelivery()) {
-                <p class="mt-4 text-touch font-bold text-white/75">…</p>
-              }
-            </div>
-          } @else {
-            <div class="space-y-10">
-              <div class="sf-panel border-white/20 bg-black/40 p-6">
-                <p class="text-touch font-bold text-white">
-                  {{ 'WORKER.SITE_DOC_LABEL' | translate }}
-                </p>
-                <a
-                  class="mt-4 inline-flex text-touch font-black text-sf-blue underline"
-                  [href]="ctx.siteAssembly!.deliveryNoteUrl!"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {{ 'WORKER.SITE_OPEN_DOC' | translate }}
-                </a>
-              </div>
-              <div class="grid gap-6 md:grid-cols-3">
-                <div
-                  class="rounded-xl border border-white/15 bg-black/35 px-4 py-5"
-                >
-                  <p class="text-sm font-bold text-white/70">
-                    {{ 'WORKER.SITE_EXPECTED_BEAMS' | translate }}
-                  </p>
-                  <p class="mt-2 text-3xl font-black text-white">
-                    {{ ctx.siteAssembly!.expectedBeams }}
-                  </p>
-                </div>
-                <div
-                  class="rounded-xl border border-white/15 bg-black/35 px-4 py-5"
-                >
-                  <p class="text-sm font-bold text-white/70">
-                    {{ 'WORKER.SITE_EXPECTED_GLAZING' | translate }}
-                  </p>
-                  <p class="mt-2 text-3xl font-black text-white">
-                    {{ ctx.siteAssembly!.expectedGlazing }}
-                  </p>
-                </div>
-                <div
-                  class="rounded-xl border border-white/15 bg-black/35 px-4 py-5"
-                >
-                  <p class="text-sm font-bold text-white/70">
-                    {{ 'WORKER.SITE_EXPECTED_UNITIZED' | translate }}
-                  </p>
-                  <p class="mt-2 text-3xl font-black text-white">
-                    {{ ctx.siteAssembly!.expectedUnitized }}
-                  </p>
-                </div>
-              </div>
-              <div class="grid gap-8 md:grid-cols-3">
-                <label class="block text-touch font-bold text-white">
-                  {{ 'WORKER.SITE_ASSEMBLED_BEAMS' | translate }}
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    formControlName="assembledBeams"
-                    class="sf-input mt-4"
-                  />
-                </label>
-                <label class="block text-touch font-bold text-white">
-                  {{ 'WORKER.SITE_ASSEMBLED_GLAZING' | translate }}
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    formControlName="assembledGlazing"
-                    class="sf-input mt-4"
-                  />
-                </label>
-                <label class="block text-touch font-bold text-white">
-                  {{ 'WORKER.SITE_ASSEMBLED_UNITIZED' | translate }}
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    formControlName="assembledUnitized"
-                    class="sf-input mt-4"
-                  />
-                </label>
-              </div>
-            </div>
-          }
         }
       }
 
@@ -1475,21 +1545,6 @@
       </div>
     }
 
-    @if (doneMsg() && stationId === 6) {
-      <div class="sf-success-banner" role="status">
-        <p class="text-hero font-black leading-tight text-white md:text-5xl">
-          {{ 'WORKER.SUCCESS_PACK' | translate }}
-        </p>
-      </div>
-    }
-    @if (doneMsg() && stationId === 7) {
-      <div class="sf-success-banner" role="status">
-        <p class="text-hero font-black leading-tight text-white md:text-5xl">
-          {{ 'WORKER.SUCCESS_SITE_ASSEMBLY' | translate }}
-        </p>
-      </div>
-    }
-
 
     <skyflow-station-complete-toast
       [open]="stationCompleteToastVisible()"
@@ -1566,12 +1621,16 @@
     @if (sawTypeModalGroup(); as mg) {
       <skyflow-ui-popup
         [open]="true"
-        size="full"
+        size="sheet"
         [hideIcon]="true"
         (closed)="closeSawTypeModal()"
         [title]="sawInstructionKindTitle(mg.instructionKind, mg.typeNum)"
         titleId="saw-type-modal-title"
         [zIndex]="85"
+        [panelClass]="
+          'station-report-popup station-report-popup--' +
+          (stationId === 1 ? 'saw' : 'cnc')
+        "
       >
         <div popup-header-extra class="saw-type-modal__stats" dir="rtl">
           <div class="saw-type-modal__stat-chip saw-type-modal__stat-chip--primary">
@@ -1795,11 +1854,233 @@
         }
     }
 
+    @if (stationId === 3 && assemblyTypeModalGroup(); as ag) {
+      <skyflow-ui-popup
+        [open]="true"
+        size="sheet"
+        [hideIcon]="true"
+        (closed)="closeAssemblyTypeModal()"
+        [title]="sawInstructionKindTitle(ag.instructionKind, ag.typeNum)"
+        titleId="assembly-type-modal-title"
+        [zIndex]="85"
+        panelClass="station-report-popup station-report-popup--asm"
+      >
+        <p popup-header-extra class="assembly-type-modal__hint">
+          {{ 'WORKER.ASSEMBLY_TYPE_MODAL_HINT' | translate }}
+        </p>
+
+        <div class="assembly-type-modal__body">
+          @if (assemblyCtx(ctx)?.windows?.length === 0) {
+            <p class="assembly-empty">{{ 'WORKER.ASSEMBLY_WINDOWS_EMPTY' | translate }}</p>
+          } @else {
+            <div class="assembly-workspace assembly-workspace--modal">
+              <div class="assembly-workspace__list" role="list">
+                @for (w of assemblyFilteredWindows(ctx); track w.id) {
+                  <button
+                    type="button"
+                    class="assembly-win-row"
+                    [class.is-active]="assemblySelectedWindowId() === w.id"
+                    [class.is-complete]="w.assembled"
+                    role="listitem"
+                    (click)="selectAssemblyWindow(w.id)"
+                  >
+                    <span class="assembly-win-row__code" dir="ltr">{{ w.displayLabel }}</span>
+                    <span class="assembly-win-row__qty" dir="ltr">
+                      {{ w.assembledQty }}/{{ w.quantity }}
+                    </span>
+                    <span
+                      class="assembly-win-row__bar"
+                      role="progressbar"
+                      [attr.aria-valuenow]="w.assembledQty"
+                      aria-valuemin="0"
+                      [attr.aria-valuemax]="w.quantity"
+                    >
+                      <span
+                        class="assembly-win-row__bar-fill"
+                        [style.width.%]="assemblyWindowItemPercent(w)"
+                      ></span>
+                    </span>
+                  </button>
+                }
+              </div>
+
+              @if (assemblySelectedWindow(ctx); as win) {
+                <article class="assembly-detail assembly-detail--modal">
+                  <header class="assembly-detail__head">
+                    <h3 class="assembly-detail__title" dir="ltr">{{ win.displayLabel }}</h3>
+                    <p class="assembly-detail__target" dir="ltr">
+                      {{ 'WORKER.ASSEMBLY_DETAIL_TARGET' | translate }}:
+                      <strong>{{ win.quantity | number: '1.0-0' }}</strong>
+                      {{ 'WORKER.ASSEMBLY_QTY_UNIT' | translate }}
+                    </p>
+                  </header>
+
+                  <div class="assembly-detail__gallery">
+                    @if (assemblyWindowPhotoUrl(win); as photo) {
+                      <img [src]="photo" [alt]="win.displayLabel" />
+                      @if (assemblyWindowPhotoCount(win) > 1) {
+                        <div class="assembly-detail__gallery-nav" dir="ltr">
+                          <button
+                            type="button"
+                            class="assembly-detail__nav-btn"
+                            (click)="assemblyWindowPhotoPrev(win)"
+                          >
+                            ‹
+                          </button>
+                          <span>{{ assemblyWindowPhotoIdx() + 1 }}/{{ assemblyWindowPhotoCount(win) }}</span>
+                          <button
+                            type="button"
+                            class="assembly-detail__nav-btn"
+                            (click)="assemblyWindowPhotoNext(win)"
+                          >
+                            ›
+                          </button>
+                        </div>
+                      }
+                    } @else {
+                      <p class="assembly-detail__no-img">
+                        {{ 'WORKER.ASSEMBLY_NO_IMAGE' | translate }}
+                      </p>
+                    }
+                  </div>
+
+                  <div class="assembly-detail__report">
+                    <p class="assembly-detail__report-label">
+                      {{ 'WORKER.ASSEMBLY_QTY_LABEL' | translate }}
+                    </p>
+                    <div class="saw-type-card__stepper assembly-detail__stepper">
+                      <span
+                        class="saw-type-card__stepper-val"
+                        [class.saw-type-card__stepper-val--empty]="win.assembledQty <= 0"
+                        aria-live="polite"
+                      >
+                        @if (win.assembledQty > 0) {
+                          {{ win.assembledQty | number: '1.0-0' }}
+                        } @else {
+                          <span class="saw-type-card__stepper-placeholder">0</span>
+                        }
+                      </span>
+                      <div class="saw-type-card__stepper-btns" dir="ltr">
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--minus"
+                          [disabled]="assemblyTogglingWindow() || win.assembledQty <= 0"
+                          (click)="nudgeAssemblyWindowQty(win, -1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_MINUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">−</span>
+                        </button>
+                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--plus"
+                          [disabled]="
+                            assemblyTogglingWindow() || win.assembledQty >= win.quantity
+                          "
+                          (click)="nudgeAssemblyWindowQty(win, 1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_PLUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">+</span>
+                        </button>
+                        <span class="saw-type-card__stepper-divider" aria-hidden="true"></span>
+                        <button
+                          type="button"
+                          class="saw-type-card__btn saw-type-card__btn--fill"
+                          [disabled]="
+                            assemblyTogglingWindow() ||
+                            win.quantity <= 0 ||
+                            win.assembledQty >= win.quantity
+                          "
+                          (click)="fillAssemblyWindowQty(win)"
+                          [attr.aria-label]="
+                            'WORKER.SAW_CARD_FILL_A11Y'
+                              | translate: { qty: win.quantity | number: '1.0-0' }
+                          "
+                        >
+                          <span aria-hidden="true">✓</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  @if (win.specs.length) {
+                    <dl class="assembly-detail__specs">
+                      @for (sp of win.specs; track sp.label + sp.value) {
+                        <div class="assembly-detail__spec-row">
+                          <dt>{{ sp.label }}</dt>
+                          <dd dir="ltr">{{ sp.value }}</dd>
+                        </div>
+                      }
+                    </dl>
+                  }
+
+                  @if (win.components.length) {
+                    <details class="assembly-detail__bom">
+                      <summary>{{ 'WORKER.ASSEMBLY_BOM_TOGGLE' | translate }}</summary>
+                      <ul>
+                        @for (c of win.components; track c.line) {
+                          <li>{{ c.line }}</li>
+                        }
+                      </ul>
+                    </details>
+                  }
+                </article>
+              }
+            </div>
+          }
+
+          <section class="assembly-type-modal__photo">
+            <p class="assembly-type-modal__photo-label">
+              {{ 'WORKER.ASSEMBLY_TYPE_PHOTO_LABEL' | translate }}
+            </p>
+            <div class="assembly-type-modal__photo-box">
+              @if (assemblyTypeModalPhotoPreview(); as preview) {
+                <img [src]="preview" alt="" class="assembly-type-modal__photo-img" />
+              } @else {
+                <p class="assembly-type-modal__photo-empty">
+                  {{ 'WORKER.ASSEMBLY_TYPE_PHOTO_EMPTY' | translate }}
+                </p>
+              }
+            </div>
+            <input
+              id="assembly-type-photo-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="sr-only"
+              (change)="onAssemblyTypePhotoSelected($event)"
+            />
+            <button
+              type="button"
+              class="assembly-type-modal__photo-btn"
+              (click)="triggerAssemblyTypePhotoInput()"
+            >
+              {{ 'WORKER.ASSEMBLY_TYPE_PHOTO_UPLOAD' | translate }}
+            </button>
+          </section>
+        </div>
+
+        <div popup-actions>
+          <skyflow-ui-button variant="secondary" (click)="closeAssemblyTypeModal()">
+            {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+          </skyflow-ui-button>
+          <skyflow-ui-button
+            variant="primary"
+            [loading]="assemblyTypeModalSaving()"
+            [disabled]="!assemblyTypeModalPhotoFile() || assemblyTypeModalSaving()"
+            (click)="submitAssemblyTypeReport()"
+          >
+            {{ 'WORKER.ASSEMBLY_TYPE_REPORT_SAVE' | translate }}
+          </skyflow-ui-button>
+        </div>
+      </skyflow-ui-popup>
+    }
+
     @if (stationId === 5 && finishingVerifyKey(); as verifyKey) {
       @let step = finishingCheckStep(verifyKey);
       @let verifyDone = isFinishingCheckDone(verifyKey);
       <skyflow-ui-popup
         [open]="true"
+        size="sheet"
         (closed)="closeFinishingVerify()"
         [title]="
           'WORKER.FINISH_VERIFY_MODAL_TITLE'
@@ -1808,6 +2089,7 @@
         [subtitle]="'WORKER.FINISH_VERIFY_MODAL_SUB' | translate"
         titleId="finish-verify-modal-title"
         [zIndex]="85"
+        panelClass="station-report-popup station-report-popup--fin"
       >
         <p popup-header-extra class="finish-verify-modal__eyebrow">
           {{ 'WORKER.FINISH_VERIFY_MODAL_EYEBROW' | translate }}
@@ -1868,6 +2150,272 @@
           }
         </div>
       </skyflow-ui-popup>
+    }
+
+    @if (stationId === 4 && gluingTypeModalGroup(); as gg) {
+      <skyflow-ui-popup
+        [open]="true"
+        size="sheet"
+        [hideIcon]="true"
+        (closed)="closeGluingTypeModal()"
+        [title]="sawInstructionKindTitle(gg.instructionKind, gg.typeNum)"
+        titleId="gluing-type-modal-title"
+        [zIndex]="85"
+        panelClass="station-report-popup station-report-popup--glu"
+      >
+        <p popup-header-extra class="station-report-modal__hint">
+          {{ 'WORKER.GLUING_MODAL_HINT' | translate }}
+        </p>
+
+        <div class="station-report-modal__body">
+          <div class="station-report-modal__chips" aria-label="GL units">
+            @for (u of gg.units; track u.productItemId) {
+              <span class="station-report-modal__chip" dir="ltr">{{ u.displayLabel }}</span>
+            }
+          </div>
+
+          <div
+            class="gluing-type-card__cnc"
+            [class.gluing-type-card__cnc--ok]="
+              gg.cncTargetQty > 0 && gg.cncDoneQty >= gg.cncTargetQty
+            "
+          >
+            <span>{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span>
+            <span class="gluing-type-card__cnc-bar" aria-hidden="true">
+              <span
+                class="gluing-type-card__cnc-fill"
+                [style.width.%]="gluingCncPercent(gg)"
+              ></span>
+            </span>
+            <span dir="ltr">{{ gg.cncDoneQty }}/{{ gg.cncTargetQty }}</span>
+          </div>
+        </div>
+
+        <div popup-actions>
+          <skyflow-ui-button variant="secondary" (click)="closeGluingTypeModal()">
+            {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+          </skyflow-ui-button>
+          <skyflow-ui-button
+            variant="primary"
+            [loading]="gluingTogglingKind() === gg.instructionKind"
+            [disabled]="gluingTogglingKind() === gg.instructionKind"
+            (click)="toggleGluingType(gg)"
+          >
+            @if (gg.done) {
+              {{ 'WORKER.GLUING_UNDO' | translate }}
+            } @else {
+              {{ 'WORKER.GLUING_APPROVE' | translate }}
+            }
+          </skyflow-ui-button>
+        </div>
+      </skyflow-ui-popup>
+    }
+
+    @if (stationId === 6 && packPhotoModalSlot() !== null) {
+      @let packSlot = packPhotoModalSlot()!;
+      @let packUrl = packPhotoUrl(ctx, packSlot);
+      @let packUploading = isPackPhotoSlotUploading(packSlot);
+      <skyflow-ui-popup
+        [open]="true"
+        size="sheet"
+        [hideIcon]="true"
+        (closed)="closePackPhotoModal()"
+        [title]="
+          'WORKER.PACK_PHOTO_MODAL_TITLE'
+            | translate: { n: packSlot + 1 }
+        "
+        titleId="pack-photo-modal-title"
+        [zIndex]="85"
+        panelClass="station-report-popup station-report-popup--pack"
+      >
+        <p popup-header-extra class="station-report-modal__hint">
+          {{ 'WORKER.PACK_PHOTOS_HINT' | translate }}
+        </p>
+
+        <div class="station-report-modal__body">
+          <div class="station-report-modal__photo-box">
+            @if (packUrl) {
+              <img [src]="packUrl" alt="" class="station-report-modal__photo-img" />
+            } @else {
+              <p class="station-report-modal__photo-empty">
+                {{ 'WORKER.PACK_PHOTOS_SLOT_EMPTY' | translate }}
+              </p>
+            }
+          </div>
+          <input
+            [id]="'pack-photo-input-' + packSlot"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="sr-only"
+            (change)="onPackPhotoSelected($event, packSlot)"
+            [disabled]="packUploading"
+          />
+          <button
+            type="button"
+            class="station-report-modal__upload-btn"
+            [disabled]="packUploading"
+            (click)="triggerPackPhotoInput(packSlot)"
+          >
+            {{
+              packUrl
+                ? ('WORKER.PACK_PHOTOS_REPLACE' | translate)
+                : ('WORKER.PACK_PHOTOS_UPLOAD' | translate)
+            }}
+          </button>
+        </div>
+
+        <div popup-actions>
+          <skyflow-ui-button variant="secondary" (click)="closePackPhotoModal()">
+            {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+          </skyflow-ui-button>
+        </div>
+      </skyflow-ui-popup>
+    }
+
+    @if (stationId === 7 && siteReportModalOpen() && form) {
+      <skyflow-ui-popup
+        [open]="true"
+        size="sheet"
+        [hideIcon]="true"
+        (closed)="closeSiteReportModal()"
+        [title]="'WORKER.SITE_REPORT_MODAL_TITLE' | translate"
+        titleId="site-report-modal-title"
+        [zIndex]="86"
+        panelClass="station-report-popup station-report-popup--site"
+      >
+        <p popup-header-extra class="station-report-modal__hint">
+          {{
+            ctx.siteAssembly?.deliveryNoteUrl
+              ? ('WORKER.SITE_REPORT_MODAL_HINT' | translate)
+              : ('WORKER.SITE_UPLOAD_HINT' | translate)
+          }}
+        </p>
+
+        @if (!ctx.siteAssembly?.deliveryNoteUrl) {
+          <div class="station-report-modal__body">
+            <p class="station-report-modal__hint">
+              {{ 'WORKER.SITE_SCAN_STUB' | translate }}
+            </p>
+            <input
+              id="site-delivery-input-modal"
+              type="file"
+              accept=".pdf,image/*"
+              class="sr-only"
+              (change)="onDeliveryFileSelected($event)"
+              [disabled]="uploadingDelivery()"
+            />
+            <button
+              type="button"
+              class="station-report-modal__upload-btn"
+              [disabled]="uploadingDelivery()"
+              (click)="triggerSiteDeliveryModalInput()"
+            >
+              {{ 'WORKER.SITE_UPLOAD_BTN' | translate }}
+            </button>
+          </div>
+
+          <div popup-actions>
+            <skyflow-ui-button variant="secondary" (click)="closeSiteReportModal()">
+              {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+            </skyflow-ui-button>
+          </div>
+        } @else {
+          <div class="station-report-modal__body" [formGroup]="form">
+            <a
+              class="station-report-modal__doc-link"
+              [href]="ctx.siteAssembly!.deliveryNoteUrl!"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ 'WORKER.SITE_OPEN_DOC' | translate }}
+            </a>
+
+            <div class="station-report-modal__grid">
+              <div class="station-report-modal__kpi">
+                <p class="station-report-modal__kpi-label">
+                  {{ 'WORKER.SITE_EXPECTED_BEAMS' | translate }}
+                </p>
+                <p class="station-report-modal__kpi-value">
+                  {{ ctx.siteAssembly!.expectedBeams }}
+                </p>
+              </div>
+              <div class="station-report-modal__kpi">
+                <p class="station-report-modal__kpi-label">
+                  {{ 'WORKER.SITE_EXPECTED_GLAZING' | translate }}
+                </p>
+                <p class="station-report-modal__kpi-value">
+                  {{ ctx.siteAssembly!.expectedGlazing }}
+                </p>
+              </div>
+              <div class="station-report-modal__kpi">
+                <p class="station-report-modal__kpi-label">
+                  {{ 'WORKER.SITE_EXPECTED_UNITIZED' | translate }}
+                </p>
+                <p class="station-report-modal__kpi-value">
+                  {{ ctx.siteAssembly!.expectedUnitized }}
+                </p>
+              </div>
+            </div>
+
+            <div class="station-report-modal__grid">
+              <label class="station-report-modal__field">
+                {{ 'WORKER.SITE_ASSEMBLED_BEAMS' | translate }}
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  formControlName="assembledBeams"
+                  class="station-report-modal__input"
+                />
+              </label>
+              <label class="station-report-modal__field">
+                {{ 'WORKER.SITE_ASSEMBLED_GLAZING' | translate }}
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  formControlName="assembledGlazing"
+                  class="station-report-modal__input"
+                />
+              </label>
+              <label class="station-report-modal__field">
+                {{ 'WORKER.SITE_ASSEMBLED_UNITIZED' | translate }}
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  formControlName="assembledUnitized"
+                  class="station-report-modal__input"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div popup-actions>
+            <skyflow-ui-button variant="secondary" (click)="closeSiteReportModal()">
+              {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+            </skyflow-ui-button>
+            <skyflow-ui-button
+              variant="primary"
+              [loading]="saving()"
+              [disabled]="form.invalid || saving()"
+              (click)="submitSiteReportFromModal()"
+            >
+              {{ 'WORKER.SUBMIT' | translate }}
+            </skyflow-ui-button>
+          </div>
+        }
+      </skyflow-ui-popup>
+    }
+
+    </div>
+
+    @if (siteManagerAuthRequired()) {
+      <skyflow-login-popup
+        [open]="true"
+        (authenticated)="onSiteManagerAuthenticated()"
+        (dismissed)="onSiteManagerLoginDismiss()"
+      />
     }
 }
 </div>

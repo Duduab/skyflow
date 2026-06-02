@@ -3,6 +3,7 @@
     class="sf-ui-popup"
     [class.sf-ui-popup--wide]="size() === 'wide'"
     [class.sf-ui-popup--full]="size() === 'full'"
+    [class.sf-ui-popup--sheet]="size() === 'sheet'"
     [style.--sf-ui-popup-z]="zIndex()"
   >
     <button
@@ -13,7 +14,7 @@
     ></button>
 
     <div
-      class="sf-ui-popup__panel"
+      [class]="'sf-ui-popup__panel ' + panelClass()"
       role="dialog"
       aria-modal="true"
       [attr.aria-labelledby]="titleId() || null"

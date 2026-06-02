@@ -412,35 +412,25 @@ html.theme-light skyflow-worker-hub .station-card__index--done {
 }
 
 html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn {
-  color: #065f46;
+  color: #fff;
   background: linear-gradient(
-    165deg,
-    rgba(167, 243, 208, 0.98) 0%,
-    rgba(52, 211, 153, 0.95) 100%
+    180deg,
+    var(--sf-ui-primary-from) 0%,
+    var(--sf-ui-primary-to) 100%
   );
-  border-color: rgba(5, 150, 105, 0.45);
-  box-shadow: var(--sf-shadow-inset);
+  border-color: var(--sf-ui-primary-border);
+  box-shadow: var(--sf-ui-primary-shadow);
 }
 
 html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn:hover {
-  filter: brightness(0.97);
-  box-shadow: var(--sf-shadow-inset);
+  filter: brightness(1.06);
+  box-shadow: var(--sf-ui-primary-shadow);
 }
 
-html.theme-light skyflow-admin-dashboard .admin-dash__orders-open.sf-ui-btn {
-  color: #065f46;
-  background: linear-gradient(
-    165deg,
-    rgba(167, 243, 208, 0.98) 0%,
-    rgba(52, 211, 153, 0.95) 100%
-  );
-  border-color: rgba(5, 150, 105, 0.45);
-  box-shadow: var(--sf-shadow-inset);
-}
-
-html.theme-light skyflow-admin-dashboard .admin-dash__orders-open.sf-ui-btn:hover {
-  filter: brightness(0.97);
-  box-shadow: var(--sf-shadow-inset);
+html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn:focus-visible {
+  box-shadow:
+    var(--sf-ui-primary-shadow),
+    0 0 0 4px var(--sf-ui-ring-primary);
 }
 
 html.theme-light .sf-bottom-nav__bar {
@@ -693,16 +683,6 @@ html.theme-light skyflow-admin-dashboard .admin-dash__project-select:focus-visib
     ) !important;
 }
 
-html.theme-light skyflow-admin-dashboard .admin-dash__export {
-  color: #0f172a !important;
-  background-color: rgba(15, 23, 42, 0.06) !important;
-  border-color: rgba(15, 23, 42, 0.18) !important;
-}
-
-html.theme-light skyflow-admin-dashboard .admin-dash__export:hover {
-  background-color: rgba(15, 23, 42, 0.1) !important;
-}
-
 html.theme-light skyflow-admin-dashboard .admin-dash .sf-panel.shadow-sf,
 html.theme-light skyflow-admin-dashboard .admin-dash .sf-panel.shadow-sf-lg {
   border-color: rgba(15, 23, 42, 0.1) !important;
@@ -759,17 +739,27 @@ html.theme-light skyflow-worker-terminal .station-brief.sf-panel {
   background: #fff;
 }
 
+html.theme-light skyflow-worker-terminal .station-brief__eyebrow {
+  color: color-mix(in srgb, var(--brief-accent) 82%, #0f172a);
+}
+
+html.theme-light skyflow-worker-terminal .station-brief__order {
+  color: var(--brief-accent);
+  text-shadow: none;
+}
+
 html.theme-light skyflow-worker-terminal .station-brief__lead {
   background: linear-gradient(
     165deg,
     rgba(255, 255, 255, 0.96) 0%,
-    rgba(224, 242, 254, 0.55) 100%
+    color-mix(in srgb, var(--brief-accent) 16%, #fff) 100%
   );
+  border-color: color-mix(in srgb, var(--brief-accent) 32%, rgba(15, 23, 42, 0.1));
   box-shadow: var(--sf-shadow-inset);
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__lead-role {
-  color: rgba(62, 93, 136, 0.82);
+  color: color-mix(in srgb, var(--brief-accent) 78%, #0f172a);
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__lead-name {
@@ -781,27 +771,32 @@ html.theme-light skyflow-worker-terminal .station-brief__lead-hint {
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__avatar-img {
-  border-color: rgba(85, 143, 195, 0.45);
+  border-color: color-mix(in srgb, var(--brief-accent) 55%, #fff);
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__avatar-fallback {
-  border-color: rgba(85, 143, 195, 0.35);
-  background: rgba(224, 242, 254, 0.65);
-  color: rgba(62, 93, 136, 0.85);
+  border-color: color-mix(in srgb, var(--brief-accent) 40%, #fff);
+  background: color-mix(in srgb, var(--brief-accent) 14%, #fff);
+  color: color-mix(in srgb, var(--brief-accent) 72%, #0f172a);
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__stat {
-  background: rgba(248, 250, 252, 0.92);
-  border-color: rgba(62, 93, 136, 0.12);
+  background: color-mix(in srgb, var(--brief-accent) 8%, #fff);
+  border-color: color-mix(in srgb, var(--brief-accent) 28%, rgba(15, 23, 42, 0.1));
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__stat-label {
   color: rgba(30, 41, 59, 0.58);
 }
 
+html.theme-light skyflow-worker-terminal .station-brief__stat-value {
+  color: var(--brief-accent);
+  text-shadow: none;
+}
+
 html.theme-light skyflow-worker-terminal .station-brief__req {
   background: rgba(248, 250, 252, 0.88);
-  border-color: rgba(62, 93, 136, 0.1);
+  border-color: color-mix(in srgb, var(--brief-accent) 18%, rgba(15, 23, 42, 0.1));
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__req-label {
@@ -814,7 +809,11 @@ html.theme-light skyflow-worker-terminal .station-brief__req-text {
 
 html.theme-light skyflow-worker-terminal .station-brief__team {
   background: rgba(248, 250, 252, 0.9);
-  border-color: rgba(85, 143, 195, 0.2);
+  border-color: color-mix(in srgb, var(--brief-accent) 24%, rgba(15, 23, 42, 0.1));
+}
+
+html.theme-light skyflow-worker-terminal .station-brief__team-title {
+  color: color-mix(in srgb, var(--brief-accent) 72%, #0f172a);
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__team-hint {
@@ -823,7 +822,7 @@ html.theme-light skyflow-worker-terminal .station-brief__team-hint {
 
 html.theme-light skyflow-worker-terminal .station-brief__team-chip {
   background: #fff;
-  border-color: rgba(62, 93, 136, 0.12);
+  border-color: color-mix(in srgb, var(--brief-accent) 20%, rgba(15, 23, 42, 0.1));
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__team-name {
@@ -831,7 +830,8 @@ html.theme-light skyflow-worker-terminal .station-brief__team-name {
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__intro {
-  background: rgba(248, 250, 252, 0.92);
+  background: color-mix(in srgb, var(--brief-accent) 8%, #fff);
+  border-inline-start-color: var(--brief-accent);
   color: rgba(30, 41, 59, 0.78);
 }
 

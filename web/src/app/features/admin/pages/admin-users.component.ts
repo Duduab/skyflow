@@ -13,8 +13,11 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import * as XLSX from 'xlsx';
 import { finalize } from 'rxjs/operators';
 
+import { MatIconComponent } from '../../../shared/mat-icon/mat-icon.component';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
+import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 import { ApiService } from '../../../core/api.service';
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
@@ -41,7 +44,9 @@ type RoleFilter = SkyflowRole | '';
     FormsModule,
     TranslateModule,
     UiButtonComponent,
+    MatIconComponent,
     UiPopupComponent,
+    UiSelectComponent,
     DecimalPipe,
     DatePipe,
   ],
@@ -229,6 +234,23 @@ export class AdminUsersComponent implements OnInit {
 
   needsStationEdit(): boolean {
     return this.needsStationForRole(this.editRole);
+  }
+
+  roleSelectOptions(): UiSelectOption<SkyflowRole>[] {
+    return this.roleOptions.map((role) => ({
+      value: role,
+      label: this.translate.instant(`ADMIN_USERS_PAGE.ROLE_${role}`),
+    }));
+  }
+
+  stationSelectOptions(): UiSelectOption<number | null>[] {
+    return [
+      {
+        value: null,
+        label: this.translate.instant('ADMIN_USERS_PAGE.STATION_OPTIONAL'),
+      },
+      ...([1, 2, 3, 4, 5, 6, 7].map((n) => ({ value: n, label: String(n) }))),
+    ];
   }
 
   submitCreate(): void {

@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe, DOCUMENT, NgStyle } from '@angular/common';
 import {
   Component,
+  computed,
   DestroyRef,
   inject,
   OnInit,
@@ -17,19 +18,25 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { ApiService } from '../../core/api.service';
+import { CurrentUserService } from '../../core/current-user.service';
 import { UiButtonComponent } from '../../shared/ui-button.component';
+import { UiSelectComponent } from '../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../shared/ui-select/ui-select.types';
 import { UiPopupComponent } from '../../shared/ui-popup/ui-popup.component';
 import { StationCompleteToastComponent } from '../../shared/station-complete-toast/station-complete-toast.component';
 import {
   AssemblyPipelineLineDto,
+  AssemblyPipelineStatus,
   AssemblyStationContextDto,
   AssemblyWindowUnitDto,
+  GluingStationContextDto,
+  GluingTypeGroupDto,
   ProjectOrder,
   SawWorkLineDto,
   SummaryStationRow,
@@ -52,6 +59,7 @@ import {
   profileKindFromCode,
 } from '../../core/profile-inventory.util';
 import { httpErrorMessage } from '../../core/http-error.util';
+import { LoginPopupComponent } from '../auth/login-popup.component';
 import { StationLabelPipe } from '../../shared/station-label.pipe';
 import {
   stationLabelKey,
@@ -65,6 +73,20 @@ interface SawTypeGroupVm {
   typeNum: string | null;
   lines: SawWorkLineDto[];
   totalQty: number;
+}
+
+interface AssemblyTypeGroupVm {
+  instructionKind: string;
+  typeNum: string | null;
+  lines: AssemblyPipelineLineDto[];
+  lineCount: number;
+  totalQty: number;
+  sawnQty: number;
+  cncDoneQty: number;
+  readyLineCount: number;
+  status: AssemblyPipelineStatus;
+  profileChips: string[];
+  extraChipCount: number;
 }
 
 type FinishingCheckKey = 's1' | 's2' | 's3' | 's4';
@@ -97,11 +119,13 @@ function allCheckedValidator(): ValidatorFn {
     DecimalPipe,
     DatePipe,
     UiButtonComponent,
+    UiSelectComponent,
     RouterLink,
     StationCompleteToastComponent,
     UiPopupComponent,
     NgStyle,
     StationLabelPipe,
+    LoginPopupComponent,
   ],
   templateUrl: './worker-terminal.component.html',
   styleUrl: './worker-terminal.component.scss',
@@ -109,6 +133,8 @@ function allCheckedValidator(): ValidatorFn {
 export class WorkerTerminalComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly currentUser = inject(CurrentUserService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly doc = inject(DOCUMENT);
@@ -124,7 +150,6 @@ export class WorkerTerminalComponent implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  readonly doneMsg = signal(false);
   readonly saveToastVisible = signal(false);
   readonly stationCompleteToastVisible = signal(false);
 
@@ -132,6 +157,10 @@ export class WorkerTerminalComponent implements OnInit {
   readonly context = signal<WorkerContext | null>(null);
 
   readonly progressCircumference = PROGRESS_RING_C;
+
+  readonly siteManagerAuthRequired = computed(
+    () => this.stationId === 7 && !this.currentUser.isSiteManager(),
+  );
 
   readonly managerPhotoFailed = signal(false);
   readonly uploadingDelivery = signal(false);
@@ -149,7 +178,17 @@ export class WorkerTerminalComponent implements OnInit {
   readonly assemblyWindowSearch = signal('');
   readonly assemblySelectedWindowId = signal<string | null>(null);
   readonly assemblyWindowPhotoIdx = signal(0);
+  readonly assemblyInstructionWindowId = signal<string | null>(null);
+  readonly assemblyInstructionPhotoIdx = signal(0);
   readonly assemblyTogglingWindow = signal(false);
+  readonly assemblyTypeModalGroup = signal<AssemblyTypeGroupVm | null>(null);
+  readonly assemblyTypeModalSaving = signal(false);
+  readonly assemblyTypeModalPhotoFile = signal<File | null>(null);
+  private assemblyTypeModalPhotoPreviewUrl: string | null = null;
+  readonly gluingTogglingKind = signal<string | null>(null);
+  readonly gluingTypeModalGroup = signal<GluingTypeGroupDto | null>(null);
+  readonly packPhotoModalSlot = signal<number | null>(null);
+  readonly siteReportModalOpen = signal(false);
 
   readonly sawTypeModalSaving = signal(false);
 
@@ -223,6 +262,7 @@ export class WorkerTerminalComponent implements OnInit {
         clearTimeout(this.sawSaveCelebrationTimer);
         this.sawSaveCelebrationTimer = null;
       }
+      this.revokeAssemblyTypeModalPhotoPreview();
     });
 
     this.route.paramMap
@@ -255,9 +295,13 @@ export class WorkerTerminalComponent implements OnInit {
       });
   }
 
-  onOrderChange(id: string): void {
-    this.projectSelection.select(id);
+  onOrderChange(id: string | number | null): void {
+    this.projectSelection.select(id == null ? '' : String(id));
     this.tryLoadContext();
+  }
+
+  orderSelectOptions(): UiSelectOption[] {
+    return this.orders().map((o) => ({ value: o.id, label: o.name }));
   }
 
   stationProgress(ctx: WorkerContext): StationProgressVm {
@@ -660,6 +704,94 @@ export class WorkerTerminalComponent implements OnInit {
     return ctx.assemblyStation ?? null;
   }
 
+  gluingCtx(ctx: WorkerContext): GluingStationContextDto | null {
+    return ctx.gluingStation ?? null;
+  }
+
+  gluingProgressPercent(ctx: WorkerContext): number {
+    const g = this.gluingCtx(ctx);
+    if (!g || g.typesWithGluing <= 0) return 0;
+    return Math.min(
+      100,
+      Math.round((g.typesDone / g.typesWithGluing) * 100),
+    );
+  }
+
+  gluingCncPercent(g: GluingTypeGroupDto): number {
+    if (g.cncTargetQty <= 0) return 0;
+    return Math.min(
+      100,
+      Math.round((g.cncDoneQty / g.cncTargetQty) * 100),
+    );
+  }
+
+  async toggleGluingType(g: GluingTypeGroupDto): Promise<void> {
+    const pid = this.projectSelection.selectedProjectId();
+    if (!pid || this.gluingTogglingKind()) return;
+    if (g.locked && !g.done) return;
+
+    const nextDone = !g.done;
+    this.gluingTogglingKind.set(g.instructionKind);
+    this.error.set(null);
+    try {
+      const res = await firstValueFrom(
+        this.api.setGluingTypeDone(pid, g.instructionKind, nextDone),
+      );
+      const fresh = await firstValueFrom(
+        this.api.getWorkerContext(4, pid),
+      );
+      this.applyWorkerContext({
+        ...fresh,
+        gluingStation: res.gluingStation ?? fresh.gluingStation ?? null,
+      });
+      this.closeGluingTypeModal();
+      this.onReportSaved(this.context()!);
+    } catch (e: unknown) {
+      this.error.set(
+        httpErrorMessage(e, 'עדכון הדבקות נכשל — נסה שוב'),
+      );
+    } finally {
+      this.gluingTogglingKind.set(null);
+    }
+  }
+
+  openGluingTypeModal(g: GluingTypeGroupDto): void {
+    if (g.locked && !g.done) return;
+    this.gluingTypeModalGroup.set(g);
+  }
+
+  closeGluingTypeModal(): void {
+    this.gluingTypeModalGroup.set(null);
+  }
+
+  openPackPhotoModal(slot: number): void {
+    this.packPhotoModalSlot.set(slot);
+  }
+
+  closePackPhotoModal(): void {
+    this.packPhotoModalSlot.set(null);
+  }
+
+  openSiteReportModal(): void {
+    if (this.siteManagerAuthRequired()) return;
+    this.siteReportModalOpen.set(true);
+  }
+
+  closeSiteReportModal(): void {
+    this.siteReportModalOpen.set(false);
+  }
+
+  async submitSiteReportFromModal(): Promise<void> {
+    if (!this.form || this.form.invalid) {
+      this.form?.markAllAsTouched();
+      return;
+    }
+    await this.submit();
+    if (!this.error()) {
+      this.closeSiteReportModal();
+    }
+  }
+
   assemblyPipelineTypeKeys(ctx: WorkerContext): string[] {
     const pipe = this.assemblyCtx(ctx)?.pipeline ?? [];
     const keys = new Set<string>();
@@ -716,6 +848,173 @@ export class WorkerTerminalComponent implements OnInit {
   assemblyPipelineTypeLabel(kind: string): string {
     const m = /^TYPE_(\d+)$/i.exec(kind.trim());
     return m ? `TYPE ${m[1]}` : kind.replace(/_/g, ' ');
+  }
+
+  assemblyPipelineTypeGroups(ctx: WorkerContext): AssemblyTypeGroupVm[] {
+    const pipe = this.assemblyCtx(ctx)?.pipeline ?? [];
+    const map = new Map<string, AssemblyPipelineLineDto[]>();
+    for (const line of pipe) {
+      const k = (line.instructionKind ?? '').trim();
+      if (!k) continue;
+      const arr = map.get(k) ?? [];
+      arr.push(line);
+      map.set(k, arr);
+    }
+
+    const groups: AssemblyTypeGroupVm[] = [];
+    for (const [instructionKind, lines] of map.entries()) {
+      const sorted = [...lines].sort((a, b) => a.sortOrder - b.sortOrder);
+      let totalQty = 0;
+      let sawnQty = 0;
+      let cncDoneQty = 0;
+      let readyLineCount = 0;
+      const chipSet = new Set<string>();
+
+      for (const line of sorted) {
+        totalQty += line.quantity;
+        sawnQty += line.sawnQty;
+        cncDoneQty += line.cncDoneQty;
+        if (line.status === 'ready') readyLineCount++;
+        const chip =
+          line.sawsProfileCode?.trim() ||
+          this.assemblyPipelineLineTitle(line);
+        if (chip) chipSet.add(chip);
+      }
+
+      let status: AssemblyPipelineStatus = 'locked';
+      if (sorted.length > 0 && readyLineCount === sorted.length) {
+        status = 'ready';
+      } else if (sawnQty > 0) {
+        status = 'saw_only';
+      }
+
+      const allChips = [...chipSet].sort((a, b) => a.localeCompare(b));
+      const maxChips = 6;
+
+      groups.push({
+        instructionKind,
+        typeNum: /^TYPE_(\d+)$/i.exec(instructionKind)?.[1] ?? null,
+        lines: sorted,
+        lineCount: sorted.length,
+        totalQty,
+        sawnQty,
+        cncDoneQty,
+        readyLineCount,
+        status,
+        profileChips: allChips.slice(0, maxChips),
+        extraChipCount: Math.max(0, allChips.length - maxChips),
+      });
+    }
+
+    return groups.sort(
+      (a, b) =>
+        sawTypeOrderKey(a.instructionKind) -
+          sawTypeOrderKey(b.instructionKind) ||
+        a.instructionKind.localeCompare(b.instructionKind),
+    );
+  }
+
+  assemblyTypeTrackPercent(done: number, total: number): number {
+    if (total <= 0) return 0;
+    return Math.min(100, Math.round((done / total) * 100));
+  }
+
+  assemblyTypeReported(ctx: WorkerContext, g: AssemblyTypeGroupVm): boolean {
+    return (
+      ctx.assemblyStation?.typeReportByKind?.[g.instructionKind]?.reported ===
+      true
+    );
+  }
+
+  assemblyTypesReportProgressPercent(ctx: WorkerContext): number {
+    const a = ctx.assemblyStation;
+    if (!a || a.typesReportTarget <= 0) return 0;
+    return Math.min(
+      100,
+      Math.round((a.typesReportedCount / a.typesReportTarget) * 100),
+    );
+  }
+
+  openAssemblyTypeModal(g: AssemblyTypeGroupVm): void {
+    if (g.status !== 'ready') return;
+    const ctx = this.context();
+    if (ctx && this.assemblyTypeReported(ctx, g)) return;
+    this.revokeAssemblyTypeModalPhotoPreview();
+    this.assemblyTypeModalPhotoFile.set(null);
+    this.assemblyTypeModalGroup.set(g);
+    const wins = ctx?.assemblyStation?.windows ?? [];
+    if (wins.length) {
+      const cur = this.assemblySelectedWindowId();
+      if (!cur || !wins.some((w) => w.id === cur)) {
+        this.assemblySelectedWindowId.set(wins[0]!.id);
+      }
+      this.assemblyWindowPhotoIdx.set(0);
+    }
+  }
+
+  closeAssemblyTypeModal(): void {
+    this.revokeAssemblyTypeModalPhotoPreview();
+    this.assemblyTypeModalPhotoFile.set(null);
+    this.assemblyTypeModalGroup.set(null);
+  }
+
+  assemblyTypeModalPhotoPreview(): string | null {
+    if (this.assemblyTypeModalPhotoPreviewUrl) {
+      return this.assemblyTypeModalPhotoPreviewUrl;
+    }
+    const ctx = this.context();
+    const g = this.assemblyTypeModalGroup();
+    if (!ctx || !g) return null;
+    return ctx.assemblyStation?.typeReportByKind?.[g.instructionKind]?.photoUrl ?? null;
+  }
+
+  triggerAssemblyTypePhotoInput(): void {
+    this.doc.getElementById('assembly-type-photo-input')?.click();
+  }
+
+  onAssemblyTypePhotoSelected(ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.revokeAssemblyTypeModalPhotoPreview();
+    this.assemblyTypeModalPhotoPreviewUrl = URL.createObjectURL(file);
+    this.assemblyTypeModalPhotoFile.set(file);
+    input.value = '';
+  }
+
+  private revokeAssemblyTypeModalPhotoPreview(): void {
+    if (this.assemblyTypeModalPhotoPreviewUrl) {
+      URL.revokeObjectURL(this.assemblyTypeModalPhotoPreviewUrl);
+      this.assemblyTypeModalPhotoPreviewUrl = null;
+    }
+  }
+
+  async submitAssemblyTypeReport(): Promise<void> {
+    const g = this.assemblyTypeModalGroup();
+    const pid = this.projectSelection.selectedProjectId();
+    const file = this.assemblyTypeModalPhotoFile();
+    if (!g || !pid || !file || this.assemblyTypeModalSaving()) return;
+
+    this.assemblyTypeModalSaving.set(true);
+    this.error.set(null);
+    try {
+      const res = await firstValueFrom(
+        this.api.postAssemblyTypeReport(pid, g.instructionKind, file),
+      );
+      const fresh = await firstValueFrom(this.api.getWorkerContext(3, pid));
+      this.applyWorkerContext({
+        ...fresh,
+        assemblyStation: res.assemblyStation ?? fresh.assemblyStation ?? null,
+      });
+      this.closeAssemblyTypeModal();
+      this.onReportSaved(this.context()!);
+    } catch (e: unknown) {
+      this.error.set(
+        httpErrorMessage(e, 'שמירת דיווח הרכבה נכשלה — נסה שוב'),
+      );
+    } finally {
+      this.assemblyTypeModalSaving.set(false);
+    }
   }
 
   setAssemblyPipelineFilter(key: string): void {
@@ -813,6 +1112,53 @@ export class WorkerTerminalComponent implements OnInit {
   fillAssemblyWindowQty(unit: AssemblyWindowUnitDto): void {
     if (unit.assembledQty >= unit.quantity) return;
     void this.saveAssemblyWindowQty(unit, unit.quantity);
+  }
+
+  assemblyInstructionWindows(ctx: WorkerContext): AssemblyWindowUnitDto[] {
+    return (this.assemblyCtx(ctx)?.windows ?? []).filter(
+      (w) => (w.imagePaths?.length ?? 0) > 0,
+    );
+  }
+
+  assemblyInstructionSelectedWindow(
+    ctx: WorkerContext,
+  ): AssemblyWindowUnitDto | null {
+    const list = this.assemblyInstructionWindows(ctx);
+    if (!list.length) return null;
+    const id = this.assemblyInstructionWindowId();
+    return list.find((w) => w.id === id) ?? list[0] ?? null;
+  }
+
+  selectAssemblyInstructionWindow(id: string): void {
+    this.assemblyInstructionWindowId.set(id);
+    this.assemblyInstructionPhotoIdx.set(0);
+  }
+
+  assemblyInstructionPhotoUrl(
+    unit: AssemblyWindowUnitDto | null,
+  ): string | null {
+    if (!unit?.imagePaths?.length) return null;
+    const i = Math.min(
+      this.assemblyInstructionPhotoIdx(),
+      unit.imagePaths.length - 1,
+    );
+    return unit.imagePaths[Math.max(0, i)] ?? null;
+  }
+
+  assemblyInstructionPhotoCount(unit: AssemblyWindowUnitDto | null): number {
+    return unit?.imagePaths?.length ?? 0;
+  }
+
+  assemblyInstructionPhotoPrev(unit: AssemblyWindowUnitDto | null): void {
+    const n = this.assemblyInstructionPhotoCount(unit);
+    if (n <= 1) return;
+    this.assemblyInstructionPhotoIdx.update((i) => (i - 1 + n) % n);
+  }
+
+  assemblyInstructionPhotoNext(unit: AssemblyWindowUnitDto | null): void {
+    const n = this.assemblyInstructionPhotoCount(unit);
+    if (n <= 1) return;
+    this.assemblyInstructionPhotoIdx.update((i) => (i + 1) % n);
   }
 
   assemblyWindowsProgressPercent(ctx: WorkerContext): number {
@@ -918,8 +1264,11 @@ export class WorkerTerminalComponent implements OnInit {
     return this.typeGroupRemnantMm(ctx, g) > 0;
   }
 
-  /** תחנות 2–4 עם שורות תכנון — UI מודאל TYPE בלי טופס ראשי */
+  /** תחנות 2–3 עם שורות תכנון — UI מודאל TYPE בלי טופס ראשי */
   usesWorkLineModalUi(ctx: WorkerContext): boolean {
+    if (this.stationId === 4) {
+      return false;
+    }
     return (
       this.stationId >= 2 &&
       this.stationId <= 4 &&
@@ -998,6 +1347,14 @@ export class WorkerTerminalComponent implements OnInit {
 
   closeFinishingVerify(): void {
     this.finishingVerifyKey.set(null);
+  }
+
+  onSiteManagerAuthenticated(): void {
+    this.tryLoadContext();
+  }
+
+  onSiteManagerLoginDismiss(): void {
+    void this.router.navigateByUrl('/worker');
   }
 
   confirmFinishingVerify(key: FinishingCheckKey): void {
@@ -1091,6 +1448,10 @@ export class WorkerTerminalComponent implements OnInit {
     this.doc.getElementById(`pack-photo-input-${slotIndex}`)?.click();
   }
 
+  triggerSiteDeliveryModalInput(): void {
+    this.doc.getElementById('site-delivery-input-modal')?.click();
+  }
+
   async onPackPhotoSelected(ev: Event, slotIndex: number): Promise<void> {
     const input = ev.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -1116,9 +1477,9 @@ export class WorkerTerminalComponent implements OnInit {
       });
       this.syncPackExtraSlots(ctx);
       if (res.complete) {
-        this.doneMsg.set(true);
         this.scrollToProgress();
       }
+      this.closePackPhotoModal();
       this.onReportSaved(ctx);
     } catch {
       this.error.set('העלאת תמונת אריזה נכשלה — נסה שוב');
@@ -1289,7 +1650,15 @@ export class WorkerTerminalComponent implements OnInit {
       sawWorkMmByLineId: ctx.sawWorkMmByLineId ?? {},
       sawWorkMetersByLineId: ctx.sawWorkMetersByLineId ?? {},
       workLineDoneByLineId: ctx.workLineDoneByLineId ?? {},
-      assemblyStation: ctx.assemblyStation ?? null,
+      assemblyStation: ctx.assemblyStation
+        ? {
+            ...ctx.assemblyStation,
+            typeReportByKind: ctx.assemblyStation.typeReportByKind ?? {},
+            typesReportedCount: ctx.assemblyStation.typesReportedCount ?? 0,
+            typesReportTarget: ctx.assemblyStation.typesReportTarget ?? 0,
+          }
+        : null,
+      gluingStation: ctx.gluingStation ?? null,
     });
     this.managerPhotoFailed.set(false);
     this.teamPhotoFailedIdx.set(new Set());
@@ -1304,6 +1673,20 @@ export class WorkerTerminalComponent implements OnInit {
           ctx.assemblyStation.windows[0].id,
         );
         this.assemblyWindowPhotoIdx.set(0);
+      }
+
+      const withImages = ctx.assemblyStation.windows.filter(
+        (w) => (w.imagePaths?.length ?? 0) > 0,
+      );
+      if (withImages.length) {
+        const curGuide = this.assemblyInstructionWindowId();
+        if (!curGuide || !withImages.some((w) => w.id === curGuide)) {
+          this.assemblyInstructionWindowId.set(withImages[0]!.id);
+          this.assemblyInstructionPhotoIdx.set(0);
+        }
+      } else {
+        this.assemblyInstructionWindowId.set(null);
+        this.assemblyInstructionPhotoIdx.set(0);
       }
     }
 
@@ -1324,12 +1707,7 @@ export class WorkerTerminalComponent implements OnInit {
     if (this.stationId === 6) {
       this.syncPackExtraSlots(ctx);
     }
-    if (this.stationId === 6 && ctx.packReport?.complete) {
-      this.doneMsg.set(true);
-    }
     if (this.stationId === 7) {
-      const pct = this.stationProgress(ctx).percent;
-      this.doneMsg.set(pct >= 100);
       const sa = ctx.siteAssembly;
       if (sa && this.form?.get('assembledBeams')) {
         this.form.patchValue({
@@ -1354,7 +1732,6 @@ export class WorkerTerminalComponent implements OnInit {
     }
     this.loading.set(true);
     this.error.set(null);
-    this.doneMsg.set(false);
     this.activityLogExpanded.set(new Set());
     this.api
       .getWorkerContext(this.stationId, pid)
@@ -1523,12 +1900,6 @@ export class WorkerTerminalComponent implements OnInit {
         sawWorkMetersByLineId: ctx.sawWorkMetersByLineId ?? {},
         workLineDoneByLineId: ctx.workLineDoneByLineId ?? {},
       });
-      if (sid === 6 && ctx.packedQty >= ctx.requiredPackQty) {
-        this.doneMsg.set(true);
-      }
-      if (sid === 7 && this.stationProgress(ctx).percent >= 100) {
-        this.doneMsg.set(true);
-      }
       this.scrollToProgress();
       this.onReportSaved(ctx);
     } catch {

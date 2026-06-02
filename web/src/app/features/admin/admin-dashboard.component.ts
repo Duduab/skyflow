@@ -14,28 +14,33 @@ import { RouterLink } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartDataset, ChartType } from 'chart.js';
+import * as XLSX from 'xlsx';
 import { Subject } from 'rxjs';
-import { finalize, switchMap, take } from 'rxjs/operators';
+import { finalize, switchMap } from 'rxjs/operators';
 
 import { ApiService } from '../../core/api.service';
 import {
   AdminDashboard,
   AdminProjectRow,
-  ProjectOrder,
   ShippingResponse,
 } from '../../core/skyflow.models';
-import { loadOrderPickerPreviews } from '../../shared/order-picker-modal/order-picker-preview.loader';
-import { OrderPickerModalComponent } from '../../shared/order-picker-modal/order-picker-modal.component';
-import { OrderPickerPreview } from '../../shared/order-picker-modal/order-picker.types';
 import { LanguageService } from '../../core/language.service';
 import { ThemeService } from '../../core/theme.service';
 import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import { UiButtonComponent } from '../../shared/ui-button.component';
+import { CountUpDirective } from '../../shared/count-up/count-up.directive';
+import { UiSelectComponent } from '../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../shared/ui-select/ui-select.types';
 import {
   enhanceAdminBarDataset,
   enhanceAdminDoughnutDataset,
   enhanceAdminLineDataset,
 } from './admin-chart-style.util';
+import {
+  buildAdminDashboardWorkbook,
+  dashboardExportFileName,
+  hebrewDashboardExportTr,
+} from './admin-dashboard-export.util';
 
 const LIVE_CAROUSEL_PAGE_SIZE = 3;
 
@@ -46,9 +51,10 @@ const LIVE_CAROUSEL_PAGE_SIZE = 3;
     BaseChartDirective,
     DatePipe,
     RouterLink,
-    OrderPickerModalComponent,
     MatIconComponent,
     UiButtonComponent,
+    CountUpDirective,
+    UiSelectComponent,
   ],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss',
@@ -77,25 +83,9 @@ export class AdminDashboardComponent implements OnInit {
   readonly liveCarouselPageSize = LIVE_CAROUSEL_PAGE_SIZE;
   readonly liveCarouselSliding = signal(false);
 
-  readonly adminOrdersModalOpen = signal(false);
-  readonly adminOrderPreviews = signal<Map<string, OrderPickerPreview>>(
-    new Map(),
-  );
-  readonly loadingAdminOrderPreviews = signal(false);
-
-  readonly projectsAsOrders = computed((): ProjectOrder[] => {
-    const d = this.data();
-    if (!d?.projects?.length) return [];
-    return d.projects.map((o) => ({
-      id: o.id,
-      name: o.name,
-      totalItems: o.totalItems,
-      requirements: '',
-      status: o.status,
-      flowStatus: o.flowStatus ?? 'IN_PRODUCTION',
-      originalLength: '',
-    }));
-  });
+  readonly exportCsvLoading = signal(false);
+  readonly exportCsvToastVisible = signal(false);
+  private exportCsvToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** פרויקטים בעמוד הנוכחי (טבלת דשבורד) */
   readonly pagedProjectsList = computed(() => {
@@ -162,6 +152,12 @@ export class AdminDashboardComponent implements OnInit {
   >(() => this.doughnutChartOptions(this.theme.mode() === 'light'));
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      if (this.exportCsvToastTimer) {
+        clearTimeout(this.exportCsvToastTimer);
+      }
+    });
+
     effect(() => {
       const d = this.data();
       this.lang.current();
@@ -205,27 +201,19 @@ export class AdminDashboardComponent implements OnInit {
       });
   }
 
-  onAdminOrderPicked(projectId: string | null): void {
-    this.selectedProjectId.set(projectId);
-    this.closeAdminOrdersModal();
-    this.reload$.next();
-  }
-
-  openAdminOrdersModal(): void {
-    this.adminOrdersModalOpen.set(true);
-    this.refreshAdminOrderPreviews();
-  }
-
-  closeAdminOrdersModal(): void {
-    this.adminOrdersModalOpen.set(false);
-  }
-
   adminFilterSummary(d: AdminDashboard): string {
     const id = this.selectedProjectId();
     if (!id) {
       return this.translate.instant('ADMIN_PAGE.ALL_PROJECTS');
     }
     return d.projects.find((x) => x.id === id)?.name ?? id;
+  }
+
+  projectFilterOptions(d: AdminDashboard): UiSelectOption[] {
+    return [
+      { value: '', label: this.translate.instant('ADMIN_PAGE.ALL_PROJECTS') },
+      ...d.projects.map((p) => ({ value: p.id, label: p.name })),
+    ];
   }
 
   liveProjects(d: AdminDashboard): AdminProjectRow[] {
@@ -259,24 +247,6 @@ export class AdminDashboardComponent implements OnInit {
     this.liveCarouselSliding.set(false);
   }
 
-  private refreshAdminOrderPreviews(): void {
-    const orders = this.projectsAsOrders();
-    if (!orders.length) {
-      this.adminOrderPreviews.set(new Map());
-      return;
-    }
-    this.loadingAdminOrderPreviews.set(true);
-    loadOrderPickerPreviews(this.api, orders)
-      .pipe(
-        take(1),
-        finalize(() => this.loadingAdminOrderPreviews.set(false)),
-      )
-      .subscribe({
-        next: (m) => this.adminOrderPreviews.set(m),
-        error: () => this.loadingAdminOrderPreviews.set(false),
-      });
-  }
-
   dateLocale(): string {
     const c = this.lang.current();
     if (c === 'en') return 'en-GB';
@@ -284,8 +254,9 @@ export class AdminDashboardComponent implements OnInit {
     return 'he-IL';
   }
 
-  onProjectFilterChange(value: string): void {
-    this.selectedProjectId.set(value || null);
+  onProjectFilterChange(value: string | number | null): void {
+    const v = value == null ? '' : String(value);
+    this.selectedProjectId.set(v || null);
     this.projectsPageIndex.set(0);
     this.resetLiveCarousel();
     this.reload$.next();
@@ -302,30 +273,39 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   exportDashboardCsv(d: AdminDashboard): void {
-    const lines: string[][] = [
-      ['metric', 'value'],
-      ['activeProjects', String(d.summary.activeOrders)],
-      ['totalOrders', String(d.summary.totalOrders)],
-      ['processedVolume', String(d.summary.processedVolume)],
-      ['stationLogEntries', String(d.summary.stationLogEntries)],
-      ['scrapUnits', String(d.summary.scrapUnits)],
-      [
-        'scrapRatePct',
-        d.summary.scrapRatePct != null ? String(d.summary.scrapRatePct) : '',
-      ],
-      ['lastActivityAt', d.summary.lastActivityAt ?? ''],
-      ['scope', d.summary.scope],
-    ];
-    const esc = (s: string) =>
-      /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    const body = lines.map((row) => row.map(esc).join(',')).join('\n');
-    const blob = new Blob([body], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `skyflow-dashboard-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (this.exportCsvLoading()) return;
+    this.exportCsvLoading.set(true);
+    const started = performance.now();
+    const filterLabel = this.adminFilterSummary(d);
+
+    try {
+      const tr = hebrewDashboardExportTr;
+      const wb = buildAdminDashboardWorkbook(
+        d,
+        this.shipping(),
+        filterLabel,
+        tr,
+      );
+      XLSX.writeFile(wb, dashboardExportFileName(d, filterLabel));
+    } finally {
+      const elapsed = performance.now() - started;
+      const wait = Math.max(0, 450 - elapsed);
+      setTimeout(() => {
+        this.exportCsvLoading.set(false);
+        this.showExportCsvToast();
+      }, wait);
+    }
+  }
+
+  private showExportCsvToast(): void {
+    if (this.exportCsvToastTimer) {
+      clearTimeout(this.exportCsvToastTimer);
+    }
+    this.exportCsvToastVisible.set(true);
+    this.exportCsvToastTimer = setTimeout(() => {
+      this.exportCsvToastVisible.set(false);
+      this.exportCsvToastTimer = null;
+    }, 3200);
   }
 
   private applyDashboard(d: AdminDashboard): void {

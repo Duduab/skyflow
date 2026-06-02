@@ -24,27 +24,24 @@
       >
         {{ 'ADMIN_SCRAP_PAGE.GO_SIMULATION' | translate }}
       </a>
-      <div class="admin-scrap__hero-cluster">
-        <label class="admin-scrap__filter">
-          <span class="admin-scrap__filter-label">{{ 'ADMIN_SCRAP_PAGE.FILTER_LABEL' | translate }}</span>
-          <select
-            class="admin-scrap__filter-select"
-            [value]="projectFilter() ?? ''"
-            (change)="onProjectFilterChange($any($event.target).value)"
-          >
-            <option value="">{{ 'ADMIN_SCRAP_PAGE.FILTER_ALL' | translate }}</option>
-            @for (p of dash.projects; track p.id) {
-              <option [value]="p.id">{{ p.name }}</option>
-            }
-          </select>
-        </label>
-        <skyflow-ui-button
-          variant="secondary"
-          btnClass="admin-scrap__export"
-          (click)="exportToExcel()"
-          [disabled]="detailRows().length === 0"
-          [attr.aria-label]="'ADMIN_SCRAP_PAGE.EXPORT_EXCEL' | translate"
-        >
+      <label class="admin-scrap__filter">
+        <span class="sr-only">{{ 'ADMIN_SCRAP_PAGE.FILTER_LABEL' | translate }}</span>
+        <skyflow-ui-select
+          class="admin-scrap__filter-select"
+          size="hero"
+          [options]="projectFilterOptions(dash)"
+          [value]="projectFilter() ?? ''"
+          (valueChange)="onProjectFilterChange($event)"
+        />
+      </label>
+      <skyflow-ui-button
+        variant="secondary"
+        btnClass="admin-scrap__export"
+        (click)="exportToExcel()"
+        [disabled]="detailRows().length === 0"
+        [attr.aria-label]="'ADMIN_SCRAP_PAGE.EXPORT_EXCEL' | translate"
+      >
+        <span class="admin-scrap__export-inner">
           <svg class="admin-scrap__export-ico" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="#217346"
@@ -57,8 +54,8 @@
             />
           </svg>
           <span>{{ 'ADMIN_SCRAP_PAGE.EXPORT_SHORT' | translate }}</span>
-        </skyflow-ui-button>
-      </div>
+        </span>
+      </skyflow-ui-button>
     </div>
   </header>
 

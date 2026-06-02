@@ -156,10 +156,40 @@ export function computeStationProgress(
     };
   }
 
-  if (sid === 3 && (ctx.assemblyStation?.windowsTotalQty ?? 0) > 0) {
-    const a = ctx.assemblyStation!;
-    const target = Math.max(1, a.windowsTotalQty);
-    const done = a.windowsAssembledQty;
+  if (sid === 3 && ctx.assemblyStation) {
+    const a = ctx.assemblyStation;
+    if (a.typesReportTarget > 0) {
+      const target = Math.max(1, a.typesReportTarget);
+      const done = a.typesReportedCount;
+      const remaining = Math.max(0, target - done);
+      const percent = Math.min(100, Math.round((done / target) * 100));
+      return {
+        done,
+        target,
+        remaining,
+        percent,
+        noUpstreamTarget: false,
+      };
+    }
+    if (a.windowsTotalQty > 0) {
+      const target = Math.max(1, a.windowsTotalQty);
+      const done = a.windowsAssembledQty;
+      const remaining = Math.max(0, target - done);
+      const percent = Math.min(100, Math.round((done / target) * 100));
+      return {
+        done,
+        target,
+        remaining,
+        percent,
+        noUpstreamTarget: false,
+      };
+    }
+  }
+
+  if (sid === 4 && (ctx.gluingStation?.typesWithGluing ?? 0) > 0) {
+    const g = ctx.gluingStation!;
+    const target = Math.max(1, g.typesWithGluing);
+    const done = g.typesDone;
     const remaining = Math.max(0, target - done);
     const percent = Math.min(100, Math.round((done / target) * 100));
     return {

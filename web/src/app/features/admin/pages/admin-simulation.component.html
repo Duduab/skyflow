@@ -292,17 +292,15 @@
 
       <label class="admin-sim-modal__field">
         <span>{{ 'ADMIN_SIM_PAGE.SCRAP_SOURCE' | translate }}</span>
-        <select
+        <skyflow-ui-select
           name="draftScrapProjectId"
-          class="admin-sim-modal__input"
+          class="admin-sim-modal__input admin-sim-modal__select"
+          size="hero"
+          [options]="scrapProjectOptions()"
           [ngModel]="draftScrapProjectId"
           (ngModelChange)="onDraftScrapProjectChange($event)"
-          required
-        >
-          @for (p of snap()?.projects ?? []; track p.projectId) {
-            <option [value]="p.projectId">{{ p.name }}</option>
-          }
-        </select>
+          [panelZIndex]="140"
+        />
       </label>
 
       <p class="admin-sim-modal__hint">{{ 'ADMIN_SIM_PAGE.MODAL_PROJECT_HINT' | translate }}</p>
@@ -319,25 +317,26 @@
         <div class="admin-sim-modal__need-row">
           <label class="admin-sim-modal__field admin-sim-modal__field--compact">
             <span>{{ 'ADMIN_SIM_PAGE.PROFILE_KIND' | translate }}</span>
-            <select
-              class="admin-sim-modal__input"
+            <skyflow-ui-select
+              class="admin-sim-modal__input admin-sim-modal__select admin-sim-modal__select--compact"
+              [options]="profileKindOptions()"
               [ngModel]="row.profileKind"
               (ngModelChange)="onDraftProfileKindChange(row, $event)"
               [name]="'kind' + i"
-            >
-              <option value="CATALOG">{{ 'ADMIN_SIM_PAGE.PROFILE_CATALOG' | translate }}</option>
-              <option value="DRAWN">{{ 'ADMIN_SIM_PAGE.PROFILE_DRAWN' | translate }}</option>
-            </select>
+              [panelZIndex]="140"
+            />
           </label>
 
           @if (row.profileKind === 'CATALOG') {
             <label class="admin-sim-modal__field admin-sim-modal__field--compact">
               <span>{{ 'ADMIN_SIM_PAGE.PROFILE_CODE' | translate }}</span>
-              <select class="admin-sim-modal__input" [(ngModel)]="row.profileCode" [name]="'code' + i">
-                @for (code of catalogCodes; track code) {
-                  <option [value]="code">{{ code }}</option>
-                }
-              </select>
+              <skyflow-ui-select
+                class="admin-sim-modal__input admin-sim-modal__select admin-sim-modal__select--compact"
+                [options]="catalogCodeOptions()"
+                [(ngModel)]="row.profileCode"
+                [name]="'code' + i"
+                [panelZIndex]="140"
+              />
             </label>
           } @else {
             <label class="admin-sim-modal__field admin-sim-modal__field--grow">

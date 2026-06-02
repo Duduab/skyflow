@@ -1,0 +1,87 @@
+<div
+  class="sf-ui-select"
+  [class.sf-ui-select--open]="open()"
+  [class.sf-ui-select--disabled]="isDisabled()"
+  [class.sf-ui-select--md]="size() === 'md'"
+  [class.sf-ui-select--lg]="size() === 'lg'"
+  [class.sf-ui-select--touch]="size() === 'touch'"
+  [class.sf-ui-select--hero]="size() === 'hero'"
+>
+  <button
+    #trigger
+    type="button"
+    class="sf-ui-select__trigger"
+    [class]="triggerClass()"
+    [disabled]="isDisabled()"
+    [attr.id]="inputId() || null"
+    [attr.aria-expanded]="open()"
+    aria-haspopup="listbox"
+    [attr.aria-controls]="listboxId"
+    [attr.aria-labelledby]="labelledBy() || null"
+    (click)="toggle()"
+    (keydown)="onTriggerKeydown($event)"
+  >
+    <span class="sf-ui-select__value" [class.sf-ui-select__value--placeholder]="!hasSelection()">
+      {{ displayLabel() }}
+    </span>
+    <span class="sf-ui-select__chevron" aria-hidden="true">
+      <skyflow-mat-icon icon="expand_more" [size]="chevronSize()" [weight]="500" />
+    </span>
+  </button>
+
+  @if (open()) {
+    <div
+      #panel
+      class="sf-ui-select__panel"
+      [class.sf-ui-select__panel--fixed]="useFixedPanel()"
+      [attr.id]="listboxId"
+      role="listbox"
+      [attr.aria-labelledby]="labelledBy() || null"
+    >
+      @if (showSearch()) {
+        <div class="sf-ui-select__search-wrap">
+          <skyflow-mat-icon icon="search" [size]="18" [weight]="400" />
+          <input
+            #searchInput
+            type="search"
+            class="sf-ui-select__search"
+            [placeholder]="searchPlaceholder()"
+            [value]="searchQuery()"
+            (input)="onSearchInput($event)"
+            (keydown)="onSearchKeydown($event)"
+          />
+        </div>
+      }
+
+      <ul class="sf-ui-select__list" role="presentation">
+        @for (opt of filteredOptions(); track optionTrack(opt); let i = $index) {
+          <li
+            role="option"
+            class="sf-ui-select__option"
+            [class.sf-ui-select__option--selected]="isSelected(opt)"
+            [class.sf-ui-select__option--active]="activeIndex() === i"
+            [class.sf-ui-select__option--disabled]="opt.disabled"
+            [attr.aria-selected]="isSelected(opt)"
+            [attr.aria-disabled]="opt.disabled || null"
+            (pointerdown)="onOptionActivate($event, opt)"
+            (mouseenter)="activeIndex.set(i)"
+          >
+            <span class="sf-ui-select__option-label">{{ opt.label }}</span>
+            @if (isSelected(opt)) {
+              <skyflow-mat-icon
+                class="sf-ui-select__option-check"
+                icon="check"
+                [size]="18"
+                [weight]="600"
+              />
+            }
+          </li>
+        } @empty {
+          <li class="sf-ui-select__empty" aria-hidden="true">
+            {{ emptyLabel() || ('COMMON.NO_RESULTS' | translate) }}
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</div>

@@ -52,6 +52,8 @@
                         next: (nextSid | stationLabel: order() | translate),
                       }
               }}
+            } @else if (stationId() === 7) {
+              {{ 'WORKER.SUCCESS_SITE_ASSEMBLY' | translate }}
             } @else {
               {{
                 'WORKER.STATION_COMPLETE_DESC_FINAL'

@@ -13,7 +13,9 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { ApiService } from '../../../core/api.service';
 import {
@@ -56,6 +58,7 @@ interface DraftNeedRow {
     RouterLink,
     UiButtonComponent,
     UiPopupComponent,
+    UiSelectComponent,
   ],
   templateUrl: './admin-simulation.component.html',
   styleUrl: './admin-simulation.component.scss',
@@ -63,6 +66,7 @@ interface DraftNeedRow {
 export class AdminSimulationComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
   readonly theme = inject(ThemeService);
 
   readonly catalogCodes = CATALOG_PROFILE_CODES;
@@ -254,10 +258,35 @@ export class AdminSimulationComponent implements OnInit {
     this.searchModalOpen.set(false);
   }
 
-  onDraftScrapProjectChange(projectId: string): void {
-    this.draftScrapProjectId = projectId;
-    const row = this.snap()?.projects.find((p) => p.projectId === projectId);
+  onDraftScrapProjectChange(projectId: string | number | null): void {
+    const id = String(projectId ?? '');
+    this.draftScrapProjectId = id;
+    const row = this.snap()?.projects.find((p) => p.projectId === id);
     if (row) this.resetDraftRows(row);
+  }
+
+  scrapProjectOptions(): UiSelectOption[] {
+    return (this.snap()?.projects ?? []).map((p) => ({
+      value: p.projectId,
+      label: p.name,
+    }));
+  }
+
+  profileKindOptions(): UiSelectOption<ProfileKind>[] {
+    return [
+      {
+        value: 'CATALOG',
+        label: this.translate.instant('ADMIN_SIM_PAGE.PROFILE_CATALOG'),
+      },
+      {
+        value: 'DRAWN',
+        label: this.translate.instant('ADMIN_SIM_PAGE.PROFILE_DRAWN'),
+      },
+    ];
+  }
+
+  catalogCodeOptions(): UiSelectOption[] {
+    return this.catalogCodes.map((code) => ({ value: code, label: code }));
   }
 
   addDraftRow(): void {
@@ -269,8 +298,11 @@ export class AdminSimulationComponent implements OnInit {
     this.draftNeedRows = this.draftNeedRows.filter((_, i) => i !== index);
   }
 
-  onDraftProfileKindChange(row: DraftNeedRow, kind: ProfileKind): void {
-    row.profileKind = kind;
+  onDraftProfileKindChange(
+    row: DraftNeedRow,
+    kind: string | number | null,
+  ): void {
+    row.profileKind = String(kind) as ProfileKind;
     if (kind === 'CATALOG' && !isCatalogProfileCode(row.profileCode)) {
       row.profileCode = 'MPS-X';
     }

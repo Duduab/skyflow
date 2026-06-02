@@ -9,7 +9,7 @@ import {
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { fromEvent } from 'rxjs';
 import { finalize, take } from 'rxjs';
 
@@ -23,6 +23,8 @@ import {
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
+import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 import { StationLabelPipe } from '../../../shared/station-label.pipe';
 
 type AdminProjectsStatusFilter =
@@ -40,6 +42,7 @@ type AdminProjectsStatusFilter =
     DatePipe,
     DecimalPipe,
     UiPopupComponent,
+    UiSelectComponent,
     StationLabelPipe,
   ],
   templateUrl: './admin-projects.component.html',
@@ -48,6 +51,7 @@ type AdminProjectsStatusFilter =
 export class AdminProjectsComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
   private readonly lang = inject(LanguageService);
   readonly theme = inject(ThemeService);
 
@@ -140,16 +144,30 @@ export class AdminProjectsComponent implements OnInit {
     this.openedByPhotoFailedIds.update((s) => new Set(s).add(userId));
   }
 
-  setStatusFilter(value: string): void {
+  setStatusFilter(value: string | number | null): void {
+    const v = value == null ? 'all' : String(value);
     if (
-      value === 'all' ||
-      value === 'PENDING' ||
-      value === 'IN_PROGRESS' ||
-      value === 'COMPLETED' ||
-      value === 'ON_HOLD'
+      v === 'all' ||
+      v === 'PENDING' ||
+      v === 'IN_PROGRESS' ||
+      v === 'COMPLETED' ||
+      v === 'ON_HOLD'
     ) {
-      this.statusFilter.set(value);
+      this.statusFilter.set(v);
     }
+  }
+
+  statusFilterOptions(): UiSelectOption<AdminProjectsStatusFilter>[] {
+    return [
+      { value: 'all', label: this.translate.instant('ADMIN_PROJECTS.FILTER_ALL') },
+      { value: 'PENDING', label: this.translate.instant('ORDER_STATUS.PENDING') },
+      {
+        value: 'IN_PROGRESS',
+        label: this.translate.instant('ORDER_STATUS.IN_PROGRESS'),
+      },
+      { value: 'COMPLETED', label: this.translate.instant('ORDER_STATUS.COMPLETED') },
+      { value: 'ON_HOLD', label: this.translate.instant('ORDER_STATUS.ON_HOLD') },
+    ];
   }
 
   openDetail(p: AdminProjectRow): void {

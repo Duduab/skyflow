@@ -102,22 +102,45 @@
 
 .admin-shell__brand {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
   padding: 0.35rem 0.5rem 0.75rem;
 }
 
-.admin-shell__brand-mark {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--admin-fg);
+.admin-shell__brand-logo {
+  width: 2.65rem;
+  height: auto;
+  flex-shrink: 0;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  filter: drop-shadow(0 4px 10px rgba(62, 93, 136, 0.16));
 }
 
-.admin-shell__brand-sub {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--admin-muted);
+.admin-shell__brand-mark {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.08em;
+  line-height: 0.92;
+  color: #0f172a;
+}
+
+.admin-shell__brand-mark strong {
+  background: linear-gradient(135deg, #7dd3fc 0%, #38bdf8 48%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 900;
+}
+
+:host-context(html:not(.theme-light)) .admin-shell__brand-mark {
+  color: #f8fafc;
+}
+
+:host-context(html:not(.theme-light)) .admin-shell__brand-logo {
+  mix-blend-mode: normal;
+  filter: drop-shadow(0 4px 12px rgba(125, 211, 252, 0.22));
 }
 
 .admin-shell__nav {
@@ -325,7 +348,7 @@
 
   /* במגירה: סימון מותג גם למעלה — דופק מינימלי מול ה־topbar */
   .admin-shell__brand-mark {
-    font-size: 1.25rem;
+    font-size: 1.28rem;
   }
 }
 

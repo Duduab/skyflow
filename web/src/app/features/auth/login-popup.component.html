@@ -1,0 +1,70 @@
+<skyflow-ui-popup
+  [open]="open()"
+  [closeOnScrim]="false"
+  [hideIcon]="true"
+  [title]="titleKey() | translate"
+  [subtitle]="subtitleKey() | translate"
+  titleId="login-popup-title"
+  [zIndex]="95"
+  (closed)="onDismiss()"
+>
+  <div class="login-popup">
+    <div class="login-popup__logo">
+      <skyflow-logo-loader />
+    </div>
+
+    <form class="login-popup__form" (ngSubmit)="submit()">
+      <label class="login-popup__label">
+        <span>{{ 'LOGIN.EMAIL' | translate }}</span>
+        <input
+          type="email"
+          name="email"
+          class="login-popup__input"
+          [(ngModel)]="email"
+          autocomplete="username"
+          required
+        />
+      </label>
+      <label class="login-popup__label">
+        <span>{{ 'LOGIN.PASSWORD' | translate }}</span>
+        <input
+          type="password"
+          name="password"
+          class="login-popup__input"
+          [(ngModel)]="password"
+          autocomplete="current-password"
+          required
+        />
+      </label>
+
+      @if (errorMsg; as err) {
+        <p class="login-popup__err" role="alert">{{ err | translate }}</p>
+      }
+
+      <skyflow-ui-button
+        type="submit"
+        variant="primary"
+        size="lg"
+        [loading]="busy"
+        [block]="true"
+        btnClass="login-popup__submit"
+      >
+        <span class="login-popup__submit-inner">
+          <skyflow-mat-icon
+            class="login-popup__submit-icon"
+            icon="west"
+            [size]="22"
+            [weight]="300"
+          />
+          <span>{{ 'LOGIN.SUBMIT' | translate }}</span>
+        </span>
+      </skyflow-ui-button>
+    </form>
+  </div>
+
+  <div popup-actions>
+    <skyflow-ui-button variant="secondary" (click)="onDismiss()">
+      {{ 'WORKER.BACK_TO_STATIONS' | translate }}
+    </skyflow-ui-button>
+  </div>
+</skyflow-ui-popup>

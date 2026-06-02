@@ -33,12 +33,13 @@
   --sf-shadow-hover: rgba(0, 0, 0, 0.1) 0px 4px 12px;
   --sf-shadow-inset: inset rgba(0, 0, 0, 0.1) 0px 4px 12px;
   --sf-radius: 1rem;
+  --sf-control-radius: 0.625rem;
   --sf-font: 'Assistant', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* כפתורי UI — Accent Purple (skyflow-ui-button) */
   --sf-ui-purple-300: #897fff;
   --sf-ui-purple-400: #4a3aff;
-  --sf-ui-btn-radius: var(--sf-radius);
+  --sf-ui-btn-radius: var(--sf-control-radius);
   --sf-ui-primary-from: var(--sf-ui-purple-300);
   --sf-ui-primary-to: var(--sf-ui-purple-400);
   --sf-ui-primary-border: var(--sf-ui-purple-300);
@@ -665,6 +666,7 @@
     width: 1.8rem;
     height: 1.8rem;
     flex-shrink: 0;
+    border-radius: 50%;
   }
 
   .sf-bottom-nav__icon svg {
@@ -678,7 +680,7 @@
     height: 2rem;
     flex-shrink: 0;
     overflow: hidden;
-    border-radius: 999px;
+    border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.35);
     box-shadow: var(--sf-shadow);
   }
@@ -696,7 +698,7 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 999px;
+    border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.35);
     background: linear-gradient(145deg, var(--sf-blue), var(--sf-indigo));
     font-size: 0.72rem;
@@ -939,7 +941,7 @@
   .sf-input {
     width: 100%;
     min-height: 4rem;
-    border-radius: var(--sf-radius);
+    border-radius: var(--sf-control-radius);
     border: 2px solid var(--sf-navy);
     padding: 0.75rem 1rem;
     font-size: 1.75rem;
@@ -951,7 +953,7 @@
 
   .sf-input:focus-visible,
   .sf-textarea:focus-visible,
-  .sf-select:focus-visible {
+  select.sf-select:focus-visible {
     outline: 4px solid rgba(85, 143, 195, 0.9);
     outline-offset: 3px;
   }
@@ -959,7 +961,7 @@
   .sf-textarea {
     width: 100%;
     min-height: 7rem;
-    border-radius: var(--sf-radius);
+    border-radius: var(--sf-control-radius);
     border: 2px solid var(--sf-navy);
     padding: 1rem 1.15rem;
     font-size: 1.35rem;
@@ -969,7 +971,7 @@
     box-shadow: var(--sf-shadow);
   }
 
-  .sf-select {
+  select.sf-select {
     width: 100%;
     min-height: 4.45rem;
     border-radius: var(--sf-radius);
@@ -992,11 +994,11 @@
     cursor: pointer;
   }
 
-  .sf-select::-ms-expand {
+  select.sf-select::-ms-expand {
     display: none;
   }
 
-  [dir='rtl'] .sf-select {
+  [dir='rtl'] select.sf-select {
     background-position: center left 1.05rem;
   }
 
@@ -1085,6 +1087,7 @@
 }
 
 @import 'app/features/worker/worker-terminal-partials';
+@import 'app/features/admin/pages/planning-wizard-select';
 @import './theme-light.scss';
 
 /* כותרות — משקל אחיד; דורס Tailwind font-black/font-bold על כותרות */
@@ -1107,4 +1110,18 @@ h4.font-extrabold,
 h5.font-extrabold,
 h6.font-extrabold {
   font-weight: 500 !important;
+}
+
+/* radius אחיד — inputs, selects, textareas, כפתורי UI */
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+textarea,
+select,
+.sf-ui-btn,
+a.sf-ui-btn {
+  border-radius: var(--sf-control-radius) !important;
+}
+
+/* select dropdown — תמיד מעל תוכן admin/worker */
+body > .sf-ui-select__panel {
+  z-index: 250 !important;
 }

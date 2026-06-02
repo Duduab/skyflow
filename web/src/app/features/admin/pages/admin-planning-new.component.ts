@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, take } from 'rxjs/operators';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -18,6 +18,8 @@ import {
 import { PlanningPanelComponent } from '../planning/planning-panel.component';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
+import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 
 type WizardStep = 1 | 2 | 3;
 
@@ -36,6 +38,7 @@ export interface PlanningSuccessSnapshot {
     PlanningPanelComponent,
     UiButtonComponent,
     UiPopupComponent,
+    UiSelectComponent,
   ],
   templateUrl: './admin-planning-new.component.html',
   styleUrl: './admin-planning-new.component.scss',
@@ -137,11 +140,37 @@ export class AdminPlanningNewComponent implements OnInit {
     );
   }
 
-  onMachiningRouteChange(ev: Event): void {
-    this.machiningRoute.set(
-      (ev.target as HTMLSelectElement).value as ProjectMachiningRoute,
-    );
+  onLineMaterialSelect(value: string | number | null): void {
+    if (value == null) return;
+    this.lineMaterial.set(String(value) as ProjectLineMaterial);
   }
+
+  onMachiningRouteSelect(value: string | number | null): void {
+    if (value == null) return;
+    this.machiningRoute.set(String(value) as ProjectMachiningRoute);
+  }
+
+  readonly lineMaterialOptions = computed((): UiSelectOption<ProjectLineMaterial>[] => [
+    {
+      value: 'ALUMINUM',
+      label: this.translate.instant('PLANNING_NEW.LINE_MATERIAL_ALUMINUM'),
+    },
+    {
+      value: 'STEEL',
+      label: this.translate.instant('PLANNING_NEW.LINE_MATERIAL_STEEL'),
+    },
+  ]);
+
+  readonly machiningRouteOptions = computed((): UiSelectOption<ProjectMachiningRoute>[] => [
+    {
+      value: 'GLASS',
+      label: this.translate.instant('PLANNING_NEW.MACHINING_ROUTE_GLASS'),
+    },
+    {
+      value: 'ALU_RANGER',
+      label: this.translate.instant('PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER'),
+    },
+  ]);
 
   /** וריאנט הפרויקט הנבחר (טיוטה / אחרי יצירה) */
   selectedVariantOrder(): {

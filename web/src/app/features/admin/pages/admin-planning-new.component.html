@@ -103,37 +103,29 @@
               <label class="planning-wizard__field-label" for="wizard-line-material">{{
                 'PLANNING_NEW.LINE_MATERIAL_LABEL' | translate
               }}</label>
-              <select
-                id="wizard-line-material"
-                class="planning-wizard__input planning-wizard__select"
+              <skyflow-ui-select
+                inputId="wizard-line-material"
+                class="planning-wizard__select"
+                [fixedPanel]="false"
+                [panelZIndex]="400"
+                [options]="lineMaterialOptions()"
                 [value]="lineMaterial()"
-                (change)="onLineMaterialChange($event)"
-              >
-                <option value="ALUMINUM">
-                  {{ 'PLANNING_NEW.LINE_MATERIAL_ALUMINUM' | translate }}
-                </option>
-                <option value="STEEL">
-                  {{ 'PLANNING_NEW.LINE_MATERIAL_STEEL' | translate }}
-                </option>
-              </select>
+                (valueChange)="onLineMaterialSelect($event)"
+              />
             </div>
             <div class="planning-wizard__field">
               <label class="planning-wizard__field-label" for="wizard-machining-route">{{
                 'PLANNING_NEW.MACHINING_ROUTE_LABEL' | translate
               }}</label>
-              <select
-                id="wizard-machining-route"
-                class="planning-wizard__input planning-wizard__select"
+              <skyflow-ui-select
+                inputId="wizard-machining-route"
+                class="planning-wizard__select"
+                [fixedPanel]="false"
+                [panelZIndex]="400"
+                [options]="machiningRouteOptions()"
                 [value]="machiningRoute()"
-                (change)="onMachiningRouteChange($event)"
-              >
-                <option value="GLASS">
-                  {{ 'PLANNING_NEW.MACHINING_ROUTE_GLASS' | translate }}
-                </option>
-                <option value="ALU_RANGER">
-                  {{ 'PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER' | translate }}
-                </option>
-              </select>
+                (valueChange)="onMachiningRouteSelect($event)"
+              />
             </div>
             <div class="planning-wizard__field">
               <label class="planning-wizard__field-label" for="wizard-project-details">

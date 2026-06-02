@@ -10,7 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { finalize, map, switchMap, take } from 'rxjs/operators';
 
 import { ApiService } from '../../../core/api.service';
@@ -23,6 +23,8 @@ import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
+import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 
 export type FilesKindFilter = '' | ProjectDocumentKind;
 
@@ -39,13 +41,14 @@ export interface AdminFileListItem {
 
 @Component({
   selector: 'skyflow-admin-files',
-  imports: [TranslateModule, DatePipe, UiButtonComponent, UiPopupComponent],
+  imports: [TranslateModule, DatePipe, UiButtonComponent, UiPopupComponent, UiSelectComponent],
   templateUrl: './admin-files.component.html',
   styleUrl: './admin-files.component.scss',
 })
 export class AdminFilesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly lang = inject(LanguageService);
+  private readonly translate = inject(TranslateService);
   private readonly sanitizer = inject(DomSanitizer);
   readonly theme = inject(ThemeService);
 
@@ -166,8 +169,35 @@ export class AdminFilesComponent implements OnInit {
     this.kindFilter.set(value);
   }
 
-  onProjectFilterChange(value: string): void {
-    this.projectFilter.set(value);
+  onProjectFilterChange(value: string | number | null): void {
+    this.projectFilter.set(value == null ? '' : String(value));
+  }
+
+  projectFilterOptions(d: AdminDashboard): UiSelectOption[] {
+    return [
+      { value: '', label: this.translate.instant('ADMIN_FILES_PAGE.FILTER_ALL') },
+      ...d.projects.map((p) => ({ value: p.id, label: p.name })),
+    ];
+  }
+
+  uploadProjectOptions(): UiSelectOption[] {
+    return (this.data()?.projects ?? []).map((p) => ({
+      value: p.id,
+      label: p.name,
+    }));
+  }
+
+  docKindOptions(): UiSelectOption<ProjectDocumentKind>[] {
+    return [
+      {
+        value: 'WORK_ORDER',
+        label: this.translate.instant('ADMIN_FILES_PAGE.KIND_WORK_ORDER'),
+      },
+      {
+        value: 'PURCHASE_ORDER',
+        label: this.translate.instant('ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER'),
+      },
+    ];
   }
 
   openPreview(file: AdminFileListItem): void {
@@ -386,13 +416,14 @@ export class AdminFilesComponent implements OnInit {
     this.uploadOk.set(false);
   }
 
-  onProjectSelect(value: string): void {
-    this.selectedProjectId.set(value);
+  onProjectSelect(value: string | number | null): void {
+    this.selectedProjectId.set(value == null ? '' : String(value));
     this.uploadError.set(null);
   }
 
-  onDocKindSelect(value: string): void {
-    this.docKind.set(value === 'PURCHASE_ORDER' ? 'PURCHASE_ORDER' : 'WORK_ORDER');
+  onDocKindSelect(value: string | number | null): void {
+    const v = value == null ? '' : String(value);
+    this.docKind.set(v === 'PURCHASE_ORDER' ? 'PURCHASE_ORDER' : 'WORK_ORDER');
   }
 
   submitUpload(): void {

@@ -1,7 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 
-export type UiPopupSize = 'default' | 'wide' | 'full';
+export type UiPopupSize = 'default' | 'wide' | 'full' | 'sheet';
 
 /**
  * Popup shell — Figma Poups/Basic V4 (node 2280:1602).
@@ -23,6 +23,8 @@ export class UiPopupComponent {
   readonly closeOnScrim = input(true);
   readonly hideIcon = input(false);
   readonly zIndex = input(80);
+  /** מחלקות נוספות על הפאנל (למשל accent תחנה) */
+  readonly panelClass = input('');
 
   readonly closed = output<void>();
 

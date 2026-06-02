@@ -19,6 +19,10 @@ export class CurrentUserService {
   readonly lastName = computed(() => this.sessionUser()?.lastName?.trim() ?? '');
   readonly photoUrl = computed(() => this.sessionUser()?.photoUrl ?? null);
 
+  readonly isSiteManager = computed(
+    () => this.sessionUser()?.role === 'SITE_MANAGER',
+  );
+
   readonly isAdmin = computed(
     () => this.sessionUser()?.role === 'ADMIN',
   );

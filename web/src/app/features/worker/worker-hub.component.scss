@@ -91,7 +91,7 @@
   top: 30px;
 }
 
-/* כפתור הזמנות — מראה כמו .station-card__index--done */
+/* כפתור הזמנות — סגול מערכת (כמו sf-ui-btn--primary) */
 .worker-hub__orders-open.sf-ui-btn {
   flex-shrink: 0;
   min-height: 2.375rem;
@@ -103,16 +103,16 @@
   letter-spacing: -0.03em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: #ecfdf5;
+  color: #fff;
   text-shadow: none;
   margin-top: 0;
+  border: 1px solid var(--sf-ui-primary-border);
   background: linear-gradient(
-    165deg,
-    rgba(52, 211, 153, 0.95) 0%,
-    rgba(16, 185, 129, 0.88) 100%
+    180deg,
+    var(--sf-ui-primary-from) 0%,
+    var(--sf-ui-primary-to) 100%
   );
-  border: 1px solid rgba(167, 243, 208, 0.65);
-  box-shadow: var(--sf-shadow-inset);
+  box-shadow: var(--sf-ui-primary-shadow);
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease,
@@ -120,18 +120,20 @@
     opacity 0.15s ease;
 
   &:hover {
-    filter: brightness(1.08);
+    filter: brightness(1.06);
     transform: translateY(-2px);
-    box-shadow: var(--sf-shadow-inset);
+    box-shadow: var(--sf-ui-primary-shadow);
   }
 
   &:focus-visible {
     outline: none;
-    box-shadow: var(--sf-shadow-inset), 0 0 0 4px rgba(52, 211, 153, 0.45);
+    box-shadow:
+      var(--sf-ui-primary-shadow),
+      0 0 0 4px var(--sf-ui-ring-primary);
   }
 
   &:active {
-    filter: brightness(0.96);
+    filter: brightness(0.98);
     transform: translateY(0);
   }
 }

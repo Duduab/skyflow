@@ -108,12 +108,19 @@ export function persistAssemblyPlanningMedia(
       const d = imageRowDistanceToBlock(im.anchorRow, rowS, rowE);
       if (d <= maxRowSkew) hits.push(im);
     }
-    hits.sort(
+    const matched =
+      hits.length > 0
+        ? hits
+        : [...raw].sort(
+            (a, b) =>
+              a.anchorRow - b.anchorRow || a.anchorCol - b.anchorCol,
+          );
+    matched.sort(
       (a, b) => a.anchorRow - b.anchorRow || a.anchorCol - b.anchorCol,
     );
 
     const paths: string[] = [];
-    for (const im of hits) {
+    for (const im of matched) {
       const src = join(importDir, im.file);
       if (!existsSync(src)) continue;
       const ext = extname(im.file) || '.bin';

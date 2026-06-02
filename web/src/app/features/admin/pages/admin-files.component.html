@@ -39,16 +39,12 @@
     <div class="admin-files__toolbar">
       <label class="admin-files__filter">
         <span class="admin-files__filter-label">{{ 'ADMIN_FILES_PAGE.FILTER_PROJECT' | translate }}</span>
-        <select
+        <skyflow-ui-select
           class="admin-files__filter-select"
+          [options]="projectFilterOptions(d)"
           [value]="projectFilter()"
-          (change)="onProjectFilterChange($any($event.target).value)"
-        >
-          <option value="">{{ 'ADMIN_FILES_PAGE.FILTER_ALL' | translate }}</option>
-          @for (p of d.projects; track p.id) {
-            <option [value]="p.id">{{ p.name }}</option>
-          }
-        </select>
+          (valueChange)="onProjectFilterChange($event)"
+        />
       </label>
       <div class="admin-files__chips" role="toolbar" [attr.aria-label]="'ADMIN_FILES_PAGE.FILTER_TOOLBAR' | translate">
         @for (opt of kindFilterOptions; track opt.value) {
@@ -89,7 +85,16 @@
             (click)="openPreview(f)"
             [attr.aria-label]="f.title"
           >
-            <span class="admin-files-doc__icon" aria-hidden="true">PDF</span>
+            <span class="admin-files-doc__top">
+              <span class="admin-files-doc__icon" aria-hidden="true">PDF</span>
+              <time
+                class="admin-files-doc__date"
+                [attr.datetime]="f.createdAt"
+                [attr.title]="f.createdAt | date: 'full' : undefined : dateLocale()"
+              >
+                {{ f.createdAt | date: 'dd/MM/yy' : undefined : dateLocale() }}
+              </time>
+            </span>
             <span class="admin-files-doc__main">
               <span class="admin-files-doc__title">{{ f.title }}</span>
               <span class="admin-files-doc__meta">
@@ -98,13 +103,6 @@
                 <span class="admin-files-doc__kind">{{ kindLabelKey(f.kind) | translate }}</span>
               </span>
             </span>
-            <time
-              class="admin-files-doc__date"
-              [attr.datetime]="f.createdAt"
-              [attr.title]="f.createdAt | date: 'full' : undefined : dateLocale()"
-            >
-              {{ f.createdAt | date: 'dd/MM/yy' : undefined : dateLocale() }}
-            </time>
           </button>
         </li>
       }
@@ -309,16 +307,14 @@
         @if (uploadMode() === 'existing') {
           <label class="admin-files-modal__field">
             <span>{{ 'ADMIN_FILES_PAGE.SELECT_PROJECT' | translate }}</span>
-            <select
+            <skyflow-ui-select
               class="admin-files-modal__input"
+              [options]="uploadProjectOptions()"
               [value]="selectedProjectId()"
-              (change)="onProjectSelect($any($event.target).value)"
               [disabled]="!(data()?.projects ?? []).length"
-            >
-              @for (p of data()?.projects ?? []; track p.id) {
-                <option [value]="p.id">{{ p.name }}</option>
-              }
-            </select>
+              (valueChange)="onProjectSelect($event)"
+              [panelZIndex]="140"
+            />
           </label>
         } @else {
           <label class="admin-files-modal__field">
@@ -337,14 +333,13 @@
 
         <label class="admin-files-modal__field">
           <span>{{ 'ADMIN_FILES_PAGE.DOC_KIND' | translate }}</span>
-          <select
+          <skyflow-ui-select
             class="admin-files-modal__input"
+            [options]="docKindOptions()"
             [value]="docKind()"
-            (change)="onDocKindSelect($any($event.target).value)"
-          >
-            <option value="WORK_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_WORK_ORDER' | translate }}</option>
-            <option value="PURCHASE_ORDER">{{ 'ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER' | translate }}</option>
-          </select>
+            (valueChange)="onDocKindSelect($event)"
+            [panelZIndex]="140"
+          />
         </label>
 
         <label class="admin-files-modal__field">

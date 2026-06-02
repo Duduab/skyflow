@@ -69,6 +69,43 @@ export class ApiService {
     });
   }
 
+  /** Station 3 — דיווח הרכבה + תמונה לפי TYPE */
+  postAssemblyTypeReport(
+    projectId: string,
+    instructionKind: string,
+    file: File,
+  ) {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<{
+      ok: boolean;
+      instructionKind: string;
+      photoUrl: string;
+      assemblyStation: import('./skyflow.models').AssemblyStationContextDto;
+    }>(
+      `${this.base}/stations/3/assembly-type-report?projectId=${encodeURIComponent(projectId)}&instructionKind=${encodeURIComponent(instructionKind)}`,
+      fd,
+    );
+  }
+
+  /** Station 4 — אישור / ביטול הדבקות לפי TYPE */
+  setGluingTypeDone(
+    projectId: string,
+    instructionKind: string,
+    done: boolean,
+  ) {
+    return this.http.post<{
+      ok: boolean;
+      instructionKind: string;
+      done: boolean;
+      gluingStation: import('./skyflow.models').GluingStationContextDto;
+    }>(`${this.base}/stations/4/gluing-type`, {
+      projectId,
+      instructionKind,
+      done,
+    });
+  }
+
   /** Station 7 — upload תעודת משלוח (multipart). */
   postSiteDeliveryNote(projectId: string, file: File) {
     const fd = new FormData();

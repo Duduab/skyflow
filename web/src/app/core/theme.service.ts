@@ -6,12 +6,12 @@ const STORAGE_KEY = 'skyflow-theme';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  readonly mode = signal<SkyflowTheme>('dark');
+  readonly mode = signal<SkyflowTheme>('light');
 
   constructor() {
     const stored = localStorage.getItem(STORAGE_KEY) as SkyflowTheme | null;
     const initial =
-      stored && ['dark', 'light'].includes(stored) ? stored : 'dark';
+      stored && ['dark', 'light'].includes(stored) ? stored : 'light';
     this.apply(initial);
   }
 

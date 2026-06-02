@@ -137,6 +137,8 @@ export interface WorkerContext {
   packReport?: PackReportContext | null;
   /** Station 3 — הרכבה: קו ייצור + הוראות חלונות */
   assemblyStation?: AssemblyStationContextDto | null;
+  /** Station 4 — הדבקות לפי TYPE וקודי GL */
+  gluingStation?: GluingStationContextDto | null;
 }
 
 export type AssemblyPipelineStatus = 'locked' | 'saw_only' | 'ready';
@@ -184,6 +186,40 @@ export interface AssemblyStationContextDto {
   windowsUnitCount: number;
   windowsTotalQty: number;
   windowsAssembledQty: number;
+  typeReportByKind: Record<string, AssemblyTypeReportDto>;
+  typesReportedCount: number;
+  typesReportTarget: number;
+}
+
+export interface AssemblyTypeReportDto {
+  reported: boolean;
+  photoUrl: string | null;
+}
+
+export interface GluingUnitDto {
+  productItemId: string;
+  unitCode: string;
+  quantity: number;
+  displayLabel: string;
+}
+
+export interface GluingTypeGroupDto {
+  instructionKind: string;
+  typeNum: string | null;
+  units: GluingUnitDto[];
+  totalGlUnitQty: number;
+  done: boolean;
+  locked: boolean;
+  cncDoneQty: number;
+  cncTargetQty: number;
+}
+
+export interface GluingStationContextDto {
+  groups: GluingTypeGroupDto[];
+  typesWithGluing: number;
+  typesDone: number;
+  totalGlUnitQty: number;
+  doneGlUnitQty: number;
 }
 
 export interface PackReportContext {

@@ -362,14 +362,15 @@
   margin-top: auto;
 }
 
-.planning-drafts-card__actions > skyflow-ui-button {
+:host ::ng-deep .planning-drafts-card__actions > skyflow-ui-button {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-self: stretch;
+  width: 100%;
 }
 
-.planning-drafts-card__actions > skyflow-ui-button .sf-ui-btn,
+:host ::ng-deep .planning-drafts-card__actions > skyflow-ui-button .sf-ui-btn,
 .planning-drafts-card__actions > .sf-ui-btn,
 .planning-drafts-card__actions > .planning-drafts-card__cta {
   flex: 1 1 0;
@@ -380,11 +381,21 @@
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  padding: 0.55rem 0.5rem;
+  padding: 0.55rem 0.65rem;
   font-size: 0.82rem;
   line-height: 1.15;
   white-space: nowrap;
   box-sizing: border-box;
+  text-align: center;
+}
+
+.planning-drafts-card__btn-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  white-space: nowrap;
 }
 
 .planning-drafts-card__cta {
@@ -392,11 +403,26 @@
   text-decoration: none;
 }
 
-.planning-drafts-card__delete,
-.planning-drafts-table__delete,
+:host ::ng-deep .planning-drafts-card__delete.sf-ui-btn--danger,
+:host ::ng-deep .planning-drafts-table__delete.sf-ui-btn--danger {
+  color: #fff !important;
+  border-color: rgba(248, 113, 113, 0.65) !important;
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%) !important;
+  box-shadow:
+    0 2px 3px 0 rgba(127, 29, 29, 0.25),
+    0 -2px 2px 0 rgba(127, 29, 29, 0.35) inset,
+    0 1px 1px 0 rgba(255, 255, 255, 0.25) inset !important;
+}
+
+:host ::ng-deep .planning-drafts-card__delete.sf-ui-btn--danger:hover:not(:disabled),
+:host ::ng-deep .planning-drafts-table__delete.sf-ui-btn--danger:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
 .planning-drafts-modal__delete-btn {
-  color: #b91c1c;
-  border-color: rgba(248, 113, 113, 0.35);
+  color: #fff;
+  border-color: rgba(248, 113, 113, 0.65);
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
 }
 
 .planning-drafts-card__edit-input,
@@ -510,14 +536,15 @@
   gap: 0.4rem;
 }
 
-.planning-drafts-table__actions > skyflow-ui-button {
+:host ::ng-deep .planning-drafts-table__actions > skyflow-ui-button {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-self: stretch;
+  width: 100%;
 }
 
-.planning-drafts-table__actions > skyflow-ui-button .sf-ui-btn,
+:host ::ng-deep .planning-drafts-table__actions > skyflow-ui-button .sf-ui-btn,
 .planning-drafts-table__actions > .sf-ui-btn {
   flex: 1 1 0;
   min-width: 0;
@@ -527,11 +554,13 @@
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  padding: 0.45rem 0.5rem;
+  padding: 0.55rem 0.65rem;
   font-size: 0.82rem;
   line-height: 1.15;
   white-space: nowrap;
   box-sizing: border-box;
+  text-decoration: none;
+  text-align: center;
 }
 
 .planning-drafts-modal {

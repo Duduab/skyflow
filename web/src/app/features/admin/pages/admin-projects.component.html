@@ -23,17 +23,12 @@
           </label>
           <label class="admin-proj-filter">
             <span class="admin-proj-filter__label">{{ 'ADMIN_PROJECTS.FILTER_LABEL' | translate }}</span>
-            <select
+            <skyflow-ui-select
               class="admin-proj-filter__select"
+              [options]="statusFilterOptions()"
               [value]="statusFilter()"
-              (change)="setStatusFilter($any($event.target).value)"
-            >
-              <option value="all">{{ 'ADMIN_PROJECTS.FILTER_ALL' | translate }}</option>
-              <option value="PENDING">{{ 'ORDER_STATUS.PENDING' | translate }}</option>
-              <option value="IN_PROGRESS">{{ 'ORDER_STATUS.IN_PROGRESS' | translate }}</option>
-              <option value="COMPLETED">{{ 'ORDER_STATUS.COMPLETED' | translate }}</option>
-              <option value="ON_HOLD">{{ 'ORDER_STATUS.ON_HOLD' | translate }}</option>
-            </select>
+              (valueChange)="setStatusFilter($event)"
+            />
           </label>
         </div>
       </div>

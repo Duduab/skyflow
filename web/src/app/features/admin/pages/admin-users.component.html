@@ -65,40 +65,47 @@
     <div class="admin-users__grid">
       @for (u of filteredUsers(); track u.id) {
         <article class="admin-users__card">
-          <button
-            type="button"
-            class="admin-users__card-main"
-            (click)="openUserDetail(u)"
-          >
-          <span class="admin-users__avatar" aria-hidden="true">
-            @if (u.photoUrl) {
-              <img [src]="u.photoUrl" alt="" />
-            } @else {
-              {{ initials(u) }}
-            }
-          </span>
-          <span class="admin-users__card-body">
-            <span class="admin-users__name">{{ u.firstName }} {{ u.lastName }}</span>
-            <span class="admin-users__email">{{ u.email }}</span>
-            <span class="admin-users__role" [class]="roleBadgeClass(u.role)">
-              {{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}
+          <div class="admin-users__card-top">
+            <span class="admin-users__avatar" aria-hidden="true">
+              @if (u.photoUrl) {
+                <img [src]="u.photoUrl" alt="" />
+              } @else {
+                {{ initials(u) }}
+              }
             </span>
-            @if (u.managedStationId != null) {
-              <span class="admin-users__station-tag">
-                {{ 'ADMIN_USERS_PAGE.STATION_TAG' | translate: { n: u.managedStationId } }}
+            <span class="admin-users__card-body">
+              <span class="admin-users__name">{{ u.firstName }} {{ u.lastName }}</span>
+              <span class="admin-users__email">{{ u.email }}</span>
+              <span class="admin-users__role" [class]="roleBadgeClass(u.role)">
+                {{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}
               </span>
-            }
-          </span>
-          <span class="admin-users__card-cta">{{ 'ADMIN_USERS_PAGE.VIEW_PERFORMANCE' | translate }}</span>
-          </button>
-          <button
-            type="button"
-            class="admin-users__card-edit"
-            (click)="openEditModal(u, $event)"
-            [attr.aria-label]="'ADMIN_USERS_PAGE.EDIT_USER' | translate"
-          >
-            {{ 'ADMIN_USERS_PAGE.EDIT_USER' | translate }}
-          </button>
+              @if (u.managedStationId != null) {
+                <span class="admin-users__station-tag">
+                  {{ 'ADMIN_USERS_PAGE.STATION_TAG' | translate: { n: u.managedStationId } }}
+                </span>
+              }
+            </span>
+          </div>
+          <div class="admin-users__card-actions">
+            <skyflow-ui-button
+              variant="primary"
+              btnClass="admin-users__card-perf"
+              (click)="openUserDetail(u)"
+            >
+              {{ 'ADMIN_USERS_PAGE.VIEW_PERFORMANCE' | translate }}
+            </skyflow-ui-button>
+            <button
+              type="button"
+              class="admin-users__card-edit"
+              (click)="openEditModal(u, $event)"
+              [attr.aria-label]="'ADMIN_USERS_PAGE.EDIT_USER' | translate"
+            >
+              <span class="admin-users__card-btn-inner">
+                <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
+                {{ 'ADMIN_USERS_PAGE.EDIT_USER' | translate }}
+              </span>
+            </button>
+          </div>
         </article>
       }
     </div>
@@ -164,33 +171,26 @@
         <div class="admin-users__row admin-users__row--roles">
           <label class="admin-users__field">
             <span>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</span>
-            <select
+            <skyflow-ui-select
               name="editRole"
               class="admin-users__input admin-users__select"
+              size="hero"
+              [options]="roleSelectOptions()"
               [(ngModel)]="editRole"
-            >
-              @for (r of roleOptions; track r) {
-                <option [value]="r">
-                  {{ ('ADMIN_USERS_PAGE.ROLE_' + r) | translate }}
-                </option>
-              }
-            </select>
+              [panelZIndex]="140"
+            />
           </label>
           @if (needsStationEdit()) {
             <label class="admin-users__field">
               <span>{{ 'ADMIN_USERS_PAGE.MANAGED_STATION' | translate }}</span>
-              <select
+              <skyflow-ui-select
                 name="editManagedStationId"
                 class="admin-users__input admin-users__select"
+                size="hero"
+                [options]="stationSelectOptions()"
                 [(ngModel)]="editManagedStationId"
-              >
-                <option [ngValue]="null">
-                  {{ 'ADMIN_USERS_PAGE.STATION_OPTIONAL' | translate }}
-                </option>
-                @for (n of [1, 2, 3, 4, 5, 6, 7]; track n) {
-                  <option [ngValue]="n">{{ n }}</option>
-                }
-              </select>
+                [panelZIndex]="140"
+              />
             </label>
           }
         </div>
@@ -273,33 +273,26 @@
         <div class="admin-users__row admin-users__row--roles">
           <label class="admin-users__field">
             <span>{{ 'ADMIN_USERS_PAGE.ROLE' | translate }}</span>
-            <select
+            <skyflow-ui-select
               name="newRole"
               class="admin-users__input admin-users__select"
+              size="hero"
+              [options]="roleSelectOptions()"
               [(ngModel)]="newRole"
-            >
-              @for (r of roleOptions; track r) {
-                <option [value]="r">
-                  {{ ('ADMIN_USERS_PAGE.ROLE_' + r) | translate }}
-                </option>
-              }
-            </select>
+              [panelZIndex]="140"
+            />
           </label>
           @if (needsStation()) {
             <label class="admin-users__field">
               <span>{{ 'ADMIN_USERS_PAGE.MANAGED_STATION' | translate }}</span>
-              <select
+              <skyflow-ui-select
                 name="newManagedStationId"
                 class="admin-users__input admin-users__select"
+                size="hero"
+                [options]="stationSelectOptions()"
                 [(ngModel)]="newManagedStationId"
-              >
-                <option [ngValue]="null">
-                  {{ 'ADMIN_USERS_PAGE.STATION_OPTIONAL' | translate }}
-                </option>
-                @for (n of [1, 2, 3, 4, 5, 6, 7]; track n) {
-                  <option [ngValue]="n">{{ n }}</option>
-                }
-              </select>
+                [panelZIndex]="140"
+              />
             </label>
           }
         </div>

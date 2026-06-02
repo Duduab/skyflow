@@ -25,6 +25,31 @@ const DEFAULT_TOKENS: Record<number, StationVisualTokens> = {
     glow: 'rgba(34, 211, 238, 0.38)',
     heroImage: '/assets/stations/2.png',
   },
+  3: {
+    accent: '#34d399',
+    glow: 'rgba(52, 211, 153, 0.38)',
+    heroImage: '/assets/stations/3.png',
+  },
+  4: {
+    accent: '#d8b4fe',
+    glow: 'rgba(216, 180, 254, 0.38)',
+    heroImage: '/assets/stations/4.png',
+  },
+  5: {
+    accent: '#fb7185',
+    glow: 'rgba(251, 113, 133, 0.38)',
+    heroImage: '/assets/stations/5.png',
+  },
+  6: {
+    accent: '#6ee7b7',
+    glow: 'rgba(110, 231, 183, 0.38)',
+    heroImage: '/assets/stations/6.png',
+  },
+  7: {
+    accent: '#f59e0b',
+    glow: 'rgba(245, 158, 11, 0.4)',
+    heroImage: '/assets/stations/6.png',
+  },
 };
 
 const VARIANT_TOKENS: Record<StationVisualVariant, Partial<Record<number, StationVisualTokens>>> = {
