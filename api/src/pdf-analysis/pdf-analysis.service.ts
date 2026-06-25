@@ -3,6 +3,8 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import Anthropic from '@anthropic-ai/sdk';
@@ -80,12 +82,14 @@ export interface DrawingPreviewResponse {
 
 @Injectable()
 export class PdfAnalysisService {
-  private readonly anthropic: Anthropic;
-  private readonly s3: S3Client;
-  private readonly s3Bucket: string;
-  private readonly awsRegion: string;
+  private readonly logger = new Logger(PdfAnalysisService.name);
+  private readonly anthropic: Anthropic | null;
+  private readonly s3: S3Client | null;
+  private readonly s3Bucket: string | null;
+  private readonly awsRegion: string | null;
   private readonly anthropicModel: string;
   private readonly drawingUrlTtlSec: number;
+  private readonly cloudConfigured: boolean;
 
   constructor(private readonly prisma: PrismaService) {
     const anthropicApiKey = process.env['ANTHROPIC_API_KEY']?.trim();
@@ -95,33 +99,54 @@ export class PdfAnalysisService {
     const s3Bucket = process.env['AWS_S3_BUCKET']?.trim();
     const anthropicModel = process.env['ANTHROPIC_MODEL']?.trim();
 
-    if (!anthropicApiKey) {
-      throw new Error('ANTHROPIC_API_KEY is required');
-    }
-    if (!awsAccessKeyId || !awsSecretAccessKey || !awsRegion || !s3Bucket) {
-      throw new Error(
-        'AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION and AWS_S3_BUCKET are required',
+    this.cloudConfigured = Boolean(
+      anthropicApiKey &&
+        awsAccessKeyId &&
+        awsSecretAccessKey &&
+        awsRegion &&
+        s3Bucket,
+    );
+
+    if (!this.cloudConfigured) {
+      this.logger.warn(
+        'PDF analysis disabled — set ANTHROPIC_API_KEY and AWS S3 env vars to enable upload/analyze',
       );
+      this.anthropic = null;
+      this.s3 = null;
+      this.s3Bucket = null;
+      this.awsRegion = null;
+      this.anthropicModel = anthropicModel || 'claude-3-5-sonnet-latest';
+      this.drawingUrlTtlSec = 600;
+      return;
     }
 
-    this.anthropic = new Anthropic({ apiKey: anthropicApiKey });
+    this.anthropic = new Anthropic({ apiKey: anthropicApiKey! });
     this.s3 = new S3Client({
-      region: awsRegion,
+      region: awsRegion!,
       credentials: {
-        accessKeyId: awsAccessKeyId,
-        secretAccessKey: awsSecretAccessKey,
+        accessKeyId: awsAccessKeyId!,
+        secretAccessKey: awsSecretAccessKey!,
       },
     });
-    this.s3Bucket = s3Bucket;
-    this.awsRegion = awsRegion;
+    this.s3Bucket = s3Bucket!;
+    this.awsRegion = awsRegion!;
     this.anthropicModel = anthropicModel || 'claude-3-5-sonnet-latest';
     this.drawingUrlTtlSec = 600;
+  }
+
+  private assertCloudConfigured(): void {
+    if (!this.cloudConfigured || !this.anthropic || !this.s3 || !this.s3Bucket || !this.awsRegion) {
+      throw new ServiceUnavailableException(
+        'PDF analysis is not configured on this server (ANTHROPIC_API_KEY and AWS S3 credentials required)',
+      );
+    }
   }
 
   async analyzeAndBackup(
     fileBuffer: Buffer,
     originalName: string,
   ): Promise<AnalyzeAndBackupResponse> {
+    this.assertCloudConfigured();
     if (!fileBuffer.byteLength) {
       throw new BadRequestException('Uploaded PDF is empty');
     }
@@ -198,7 +223,7 @@ export class PdfAnalysisService {
     pageImageBase64: string,
   ): Promise<{ result: BomExtractionResult; hasDrawing: boolean[] }> {
     try {
-      const result = await this.anthropic.messages.create({
+      const result = await this.anthropic!.messages.create({
         model: this.anthropicModel,
         max_tokens: 4000,
         temperature: 0,
@@ -408,15 +433,15 @@ export class PdfAnalysisService {
       if (!keep) return '';
       try {
         const key = `manufacturing-plans/drawings/${day}/${randomUUID()}-${index}.png`;
-        await this.s3.send(
+        await this.s3!.send(
           new PutObjectCommand({
-            Bucket: this.s3Bucket,
+            Bucket: this.s3Bucket!,
             Key: key,
             Body: crop.pngBuffer,
             ContentType: 'image/png',
           }),
         );
-        return `https://${this.s3Bucket}.s3.${this.awsRegion}.amazonaws.com/${key}`;
+        return `https://${this.s3Bucket!}.s3.${this.awsRegion!}.amazonaws.com/${key}`;
       } catch {
         // A failed drawing upload must not fail the whole analysis.
         return '';
@@ -426,13 +451,14 @@ export class PdfAnalysisService {
   }
 
   async createDrawingPreviewUrl(objectUrl: string): Promise<DrawingPreviewResponse> {
+    this.assertCloudConfigured();
     const key = this.extractS3Key(objectUrl);
     const command = new GetObjectCommand({
-      Bucket: this.s3Bucket,
+      Bucket: this.s3Bucket!,
       Key: key,
     });
     try {
-      const url = await getSignedUrl(this.s3, command, {
+      const url = await getSignedUrl(this.s3!, command, {
         expiresIn: this.drawingUrlTtlSec,
       });
       return {
@@ -450,7 +476,7 @@ export class PdfAnalysisService {
       throw new BadRequestException('drawing URL is missing');
     }
     const pattern = new RegExp(
-      `^https://${this.s3Bucket}\\.s3\\.${this.awsRegion}\\.amazonaws\\.com/(.+)$`,
+      `^https://${this.s3Bucket!}\\.s3\\.${this.awsRegion!}\\.amazonaws\\.com/(.+)$`,
       'i',
     );
     const match = raw.match(pattern);
@@ -461,18 +487,19 @@ export class PdfAnalysisService {
   }
 
   private async uploadToS3(fileBuffer: Buffer, originalName: string): Promise<string> {
+    this.assertCloudConfigured();
     const fileExt = extname(originalName).toLowerCase() || '.pdf';
     const key = `manufacturing-plans/${new Date().toISOString().slice(0, 10)}/${randomUUID()}${fileExt}`;
     try {
-      await this.s3.send(
+      await this.s3!.send(
         new PutObjectCommand({
-          Bucket: this.s3Bucket,
+          Bucket: this.s3Bucket!,
           Key: key,
           Body: fileBuffer,
           ContentType: 'application/pdf',
         }),
       );
-      return `https://${this.s3Bucket}.s3.${this.awsRegion}.amazonaws.com/${key}`;
+      return `https://${this.s3Bucket!}.s3.${this.awsRegion!}.amazonaws.com/${key}`;
     } catch {
       throw new InternalServerErrorException('Failed to upload PDF backup to S3');
     }
