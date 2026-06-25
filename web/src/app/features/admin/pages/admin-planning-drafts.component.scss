@@ -1,3 +1,5 @@
+@import './admin-card';
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -248,34 +250,14 @@
 .planning-drafts__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-  gap: 1.1rem;
+  gap: 1.25rem;
 }
 
 .planning-drafts-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  padding: 1.15rem 1.2rem 1.2rem;
-  border-radius: var(--sf-radius);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #fff;
-  box-shadow: var(--sf-shadow-inset);
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
-}
-
-:host-context(html:not(.theme-light)) .planning-drafts-card {
-  background: rgba(30, 41, 59, 0.72);
-  border-color: rgba(248, 250, 252, 0.08);
-  box-shadow: var(--sf-shadow);
-}
-
-.planning-drafts-card:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--sf-blue, #558fc3) 32%, transparent);
-  box-shadow: var(--sf-shadow-inset);
+  @include admin-list-card-shell;
+  @include admin-list-card-shell-dark;
+  gap: 1rem;
+  padding: 1.35rem;
 }
 
 .planning-drafts-card__head {
@@ -373,19 +355,14 @@
 :host ::ng-deep .planning-drafts-card__actions > skyflow-ui-button .sf-ui-btn,
 .planning-drafts-card__actions > .sf-ui-btn,
 .planning-drafts-card__actions > .planning-drafts-card__cta {
+  @include admin-card-action-shell;
   flex: 1 1 0;
   min-width: 0;
   width: 100%;
   min-height: 2.75rem;
   height: 100%;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0.55rem 0.65rem;
   font-size: 0.82rem;
-  line-height: 1.15;
   white-space: nowrap;
-  box-sizing: border-box;
   text-align: center;
 }
 

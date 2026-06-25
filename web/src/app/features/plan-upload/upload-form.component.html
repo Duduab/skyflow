@@ -1,0 +1,328 @@
+<section dir="rtl" class="mx-auto w-full max-w-6xl p-4 text-right md:p-8">
+  <!-- ===== Upload card ===== -->
+  <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-15px_rgba(62,93,136,0.45)]">
+    <!-- gradient accent bar -->
+    <div class="h-1.5 w-full bg-gradient-to-l from-[#558fc3] via-[#4b689d] to-[#3e5d88]"></div>
+
+    <div class="p-6 md:p-8">
+      <div class="mb-7 flex items-start gap-4">
+        <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#558fc3] to-[#3e5d88] text-white shadow-lg shadow-[#3e5d88]/30">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+            <path d="M12 18v-6" />
+            <path d="M9 15l3-3 3 3" />
+          </svg>
+        </span>
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-[#2b3f5c] md:text-3xl">
+            {{ 'UPLOAD_PLAN.TITLE' | translate }}
+          </h1>
+          <p class="mt-1.5 text-sm text-slate-500 md:text-base">
+            {{ 'UPLOAD_PLAN.SUBTITLE' | translate }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Dropzone -->
+      <label
+        class="group relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-[#558fc3] hover:bg-[#558fc3]/5"
+      >
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          class="absolute inset-0 cursor-pointer opacity-0"
+          (change)="onFileSelected($event)"
+        />
+        <span class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#558fc3] shadow-md ring-1 ring-slate-200 transition group-hover:scale-105 group-hover:text-[#3e5d88]">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <path d="M17 8l-5-5-5 5" />
+            <path d="M12 3v12" />
+          </svg>
+        </span>
+        <span class="text-base font-bold text-[#2b3f5c]">
+          {{ 'UPLOAD_PLAN.FILE_LABEL' | translate }}
+        </span>
+        <span class="text-xs text-slate-400">PDF</span>
+
+        @if (selectedFile(); as file) {
+          <span class="mt-1 inline-flex max-w-full items-center gap-2 rounded-full bg-[#558fc3]/10 px-4 py-1.5 text-sm font-semibold text-[#3e5d88]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+            </svg>
+            <span class="truncate">{{ file.name }}</span>
+          </span>
+        }
+      </label>
+
+      <button
+        type="button"
+        class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#558fc3] to-[#4b689d] px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-[#3e5d88]/30 transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
+        [disabled]="analyzing() || !selectedFile()"
+        (click)="submit()"
+      >
+        @if (analyzing()) {
+          <span class="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+          {{ 'UPLOAD_PLAN.ANALYZING' | translate }}
+        } @else {
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 2L11 13" />
+            <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+          </svg>
+          {{ 'UPLOAD_PLAN.SUBMIT' | translate }}
+        }
+      </button>
+
+      @if (error(); as err) {
+        <div class="mt-4 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4" />
+            <path d="M12 16h.01" />
+          </svg>
+          {{ err | translate }}
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ===== Result card ===== -->
+  @if (result(); as analysis) {
+    <div class="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_-15px_rgba(62,93,136,0.45)]">
+      <div class="h-1.5 w-full bg-gradient-to-l from-emerald-400 via-[#558fc3] to-[#3e5d88]"></div>
+
+      <div class="p-6 md:p-8">
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="flex items-center gap-2 text-xl font-extrabold text-[#2b3f5c]">
+              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </span>
+              {{ 'UPLOAD_PLAN.RESULT_TITLE' | translate }}
+            </h2>
+            <p class="mt-2 text-sm text-slate-500">
+              {{ 'UPLOAD_PLAN.PROJECT_NAME' | translate }}:
+              <span class="font-bold text-[#3e5d88]">{{ analysis.projectName }}</span>
+            </p>
+            <p class="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-400">
+              {{ 'UPLOAD_PLAN.EXTRACTION_METHOD' | translate }}:
+              <span class="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">{{ analysis.bomData.extractionMethod }}</span>
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <a
+              [href]="analysis.s3Url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#3e5d88] shadow-sm transition hover:border-[#558fc3] hover:bg-[#558fc3]/5"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <path d="M15 3h6v6" />
+                <path d="M10 14L21 3" />
+              </svg>
+              {{ 'UPLOAD_PLAN.OPEN_BACKUP' | translate }}
+            </a>
+
+            @if (saved()) {
+              <a
+                routerLink="/admin/purchase-orders"
+                class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+                {{ 'UPLOAD_PLAN.SAVE_ORDER_OK' | translate }}
+              </a>
+            } @else {
+              <button
+                type="button"
+                (click)="savePurchaseOrder()"
+                [disabled]="saving()"
+                class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-[#558fc3] to-[#4b689d] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#3e5d88]/30 transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                @if (saving()) {
+                  <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                  {{ 'UPLOAD_PLAN.SAVING_ORDER' | translate }}
+                } @else {
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <path d="M17 21v-8H7v8M7 3v5h8" />
+                  </svg>
+                  {{ 'UPLOAD_PLAN.SAVE_ORDER' | translate }}
+                }
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (saveError(); as serr) {
+          <div class="mb-4 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-600">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4M12 16h.01" />
+            </svg>
+            {{ serr | translate }}
+          </div>
+        }
+
+        <!-- Header info tiles -->
+        <div class="mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-400">{{ 'UPLOAD_PLAN.PART_NUMBER' | translate }}</p>
+            <p class="mt-1 font-bold text-[#2b3f5c]">{{ analysis.bomData.header.partNumber }}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-400">{{ 'UPLOAD_PLAN.SYSTEM_TYPE' | translate }}</p>
+            <p class="mt-1 font-bold text-[#2b3f5c]">{{ analysis.bomData.header.systemType }}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-400">{{ 'UPLOAD_PLAN.ORDER_NUMBER' | translate }}</p>
+            <p class="mt-1 font-bold text-[#2b3f5c]">{{ analysis.bomData.header.orderNumber }}</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-400">{{ 'UPLOAD_PLAN.DATE' | translate }}</p>
+            <p class="mt-1 font-bold text-[#2b3f5c]">{{ analysis.bomData.header.date }}</p>
+          </article>
+        </div>
+
+        <!-- View toggle -->
+        <div class="mb-5 inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+          <button
+            type="button"
+            (click)="setViewMode('table')"
+            class="rounded-lg px-4 py-2 text-sm font-semibold transition"
+            [ngClass]="viewMode() === 'table'
+              ? 'bg-gradient-to-b from-[#558fc3] to-[#4b689d] text-white shadow'
+              : 'text-slate-500 hover:text-[#3e5d88]'"
+          >
+            {{ 'UPLOAD_PLAN.VIEW_TABLE' | translate }}
+          </button>
+          <button
+            type="button"
+            (click)="setViewMode('cards')"
+            class="rounded-lg px-4 py-2 text-sm font-semibold transition"
+            [ngClass]="viewMode() === 'cards'
+              ? 'bg-gradient-to-b from-[#558fc3] to-[#4b689d] text-white shadow'
+              : 'text-slate-500 hover:text-[#3e5d88]'"
+          >
+            {{ 'UPLOAD_PLAN.VIEW_CARDS' | translate }}
+          </button>
+        </div>
+
+        @if (viewMode() === 'table') {
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+          <table class="min-w-[1150px] w-full border-collapse text-sm text-slate-700">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-[#3e5d88]">
+              <tr>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.MATERIAL' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.DRAWING' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.SKU' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.QUANTITY' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.DIMENSIONS' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.SHADE' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.SUPPLIER' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.UNIT_PRICE' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.TOTAL_COST' | translate }}</th>
+                <th class="px-3 py-3.5 text-right">{{ 'UPLOAD_PLAN.INVOICE' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of analysis.bomData.items; track item.description + '-' + $index) {
+                <tr class="border-t border-slate-100 bg-white align-top transition hover:bg-[#558fc3]/5 even:bg-slate-50/60">
+                  <td class="px-3 py-3 font-semibold text-[#2b3f5c]">{{ item.description }}</td>
+                  <td class="px-3 py-3">
+                    @if (item.drawingImageUrl) {
+                      <button
+                        type="button"
+                        (click)="openDrawingPreview(item.drawingImageUrl)"
+                        class="inline-flex items-center gap-1 rounded-md border border-[#558fc3]/40 px-2 py-1 text-xs font-semibold text-[#3e6f9e] transition hover:border-[#558fc3] hover:bg-[#558fc3]/10"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        {{ 'UPLOAD_PLAN.OPEN_DRAWING' | translate }}
+                      </button>
+                    }
+                  </td>
+                  <td class="px-3 py-3">{{ item.sku }}</td>
+                  <td class="px-3 py-3 font-bold text-[#4b689d]">{{ item.units }}</td>
+                  <td class="px-3 py-3">{{ item.meters }}</td>
+                  <td class="px-3 py-3">{{ item.shade }}</td>
+                  <td class="px-3 py-3">{{ item.supplier }}</td>
+                  <td class="px-3 py-3">{{ item.unitPrice }}</td>
+                  <td class="px-3 py-3">{{ item.totalCost }}</td>
+                  <td class="px-3 py-3">{{ item.invoice }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        }
+
+        @if (viewMode() === 'cards') {
+          <div class="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" dir="rtl">
+            @for (item of analysis.bomData.items; track item.description + '-' + $index) {
+              <skyflow-item-card
+                [item]="item"
+                [imageUrl]="cardImageUrls()[$index] || null"
+                (openImage)="openDrawingPreview(item.drawingImageUrl)"
+              />
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ===== Drawing preview modal ===== -->
+  @if (previewUrl(); as imgUrl) {
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0f18]/60 p-4 backdrop-blur-sm"
+      (click)="closePreview()"
+    >
+      <div
+        class="w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+          <h3 class="flex items-center gap-2 text-sm font-bold text-[#2b3f5c]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            {{ 'UPLOAD_PLAN.DRAWING' | translate }}
+          </h3>
+          <button
+            type="button"
+            (click)="closePreview()"
+            class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            {{ 'UI_POPUP.CLOSE' | translate }}
+          </button>
+        </div>
+        <div class="max-h-[80vh] overflow-auto bg-slate-50 p-3">
+          <img
+            [src]="imgUrl"
+            alt="Drawing preview"
+            class="mx-auto h-auto max-h-[76vh] w-auto max-w-full rounded-md bg-white"
+          />
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (previewLoading()) {
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-[#0a0f18]/40 backdrop-blur-sm">
+      <div class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#2b3f5c] shadow-xl">
+        <span class="h-4 w-4 animate-spin rounded-full border-2 border-[#558fc3]/40 border-t-[#558fc3]"></span>
+        {{ 'UPLOAD_PLAN.LOADING_DRAWING' | translate }}
+      </div>
+    </div>
+  }
+</section>

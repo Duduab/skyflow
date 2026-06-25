@@ -21,6 +21,8 @@ import { extname } from 'path';
 import type { Request } from 'express';
 
 import { OrdersService } from '../orders/orders.service';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
 import {
   ensurePackPhotoDir,
   ensureAssemblyPhotoDir,
@@ -31,6 +33,7 @@ import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { SetAssemblyWindowQtyDto } from './dto/set-assembly-window-qty.dto.js';
 import { SetGluingTypeDoneDto } from './dto/set-gluing-type-done.dto.js';
+import { IssueDeliveryNoteDto } from './dto/issue-delivery-note.dto.js';
 
 @Controller('stations')
 @UseGuards(RolesGuard)
@@ -45,6 +48,8 @@ export class StationsController {
   constructor(
     private readonly stationsService: StationsService,
     private readonly ordersService: OrdersService,
+    private readonly deliveryNotes: DeliveryNotesService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get(':stationId/context/:projectId')
@@ -166,7 +171,47 @@ export class StationsController {
     return this.stationsService.createScrapReport(stationId, dto);
   }
 
-  /** Upload תעודת משלוח for station 7 — query ?projectId= */
+  /** Station 6 — preview line items before issuing delivery note */
+  @Get('6/delivery-note/preview')
+  async previewDeliveryNote(@Query('projectId') projectId: string) {
+    if (!projectId?.trim()) {
+      throw new BadRequestException('projectId query parameter is required');
+    }
+    await this.ordersService.findOne(projectId.trim());
+    return this.deliveryNotes.getPreview(projectId.trim());
+  }
+
+  /** Station 6 — issue delivery note (after pack photos complete) */
+  @Post('6/delivery-note/issue')
+  async issueDeliveryNote(
+    @Req() req: { user?: { userId?: string; role?: SkyflowRole } },
+    @Body() dto: IssueDeliveryNoteDto,
+  ) {
+    if (!dto.projectId?.trim()) {
+      throw new BadRequestException('projectId is required');
+    }
+    dto.projectId = dto.projectId.trim();
+    await this.ordersService.findOne(dto.projectId);
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('Authentication required');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, managedStationId: true },
+    });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    return this.deliveryNotes.issue(
+      dto,
+      userId,
+      user.role,
+      user.managedStationId,
+    );
+  }
+
+  /** @deprecated Delivery notes are issued at station 6 — upload disabled */
   @Post(':stationId/delivery-note')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -200,29 +245,13 @@ export class StationsController {
     }),
   )
   async uploadDeliveryNote(
-    @Req() req: { user?: { role?: SkyflowRole } },
     @Param('stationId', ParseIntPipe) stationId: number,
-    @Query('projectId') projectId: string,
-    @UploadedFile() file: Express.Multer.File,
   ) {
     if (stationId !== 7) {
       throw new BadRequestException('Delivery note upload is only for station 7');
     }
-    if (req.user?.role !== SkyflowRole.SITE_MANAGER) {
-      throw new BadRequestException(
-        'Site manager role required for delivery note upload',
-      );
-    }
-    if (!projectId?.trim()) {
-      throw new BadRequestException('projectId query parameter is required');
-    }
-    if (!file?.filename) {
-      throw new BadRequestException('file is required');
-    }
-    await this.ordersService.findOne(projectId.trim());
-    return this.stationsService.ingestSiteDeliveryNote(
-      projectId.trim(),
-      file.filename,
+    throw new BadRequestException(
+      'Delivery notes are issued at station 6 (pack). Upload is no longer supported here.',
     );
   }
 

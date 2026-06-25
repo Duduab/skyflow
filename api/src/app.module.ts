@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
 import { ProjectsModule } from './projects/projects.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
+import { PdfAnalysisModule } from './pdf-analysis/pdf-analysis.module.js';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
     AdminModule,
     ShippingModule,
     ProjectsModule,
+    PdfAnalysisModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

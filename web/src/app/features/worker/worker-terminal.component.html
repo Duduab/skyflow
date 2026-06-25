@@ -223,6 +223,23 @@
       </div>
     </section>
 
+    @if (stationId === 7 && ctx.siteAssembly?.hasNewDeliveryNote) {
+      <section class="site-delivery-alert sf-panel" role="alert">
+        <p class="site-delivery-alert__title">
+          {{ 'WORKER.SITE_NEW_DELIVERY_ALERT' | translate }}
+        </p>
+        <ul class="site-delivery-alert__list" role="list">
+          @for (n of ctx.siteAssembly!.deliveryNotes ?? []; track n.id) {
+            <li>
+              <a [href]="n.documentUrl" target="_blank" rel="noopener noreferrer" dir="ltr">
+                {{ n.noteNumber }}
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
     @if (stationId === 7 && !siteManagerAuthRequired()) {
       <section class="sf-panel md:p-8 site-station-cta">
         <h2 class="site-station-cta__title">
@@ -1126,12 +1143,106 @@
           <p class="pack-report__next-hint">
             {{ 'WORKER.PACK_PHOTOS_NEXT_HINT' | translate }}
           </p>
-        } @else {
+        } @else if (!deliveryNoteAllShipped(ctx) && deliveryNoteCanIssue(ctx)) {
+          <p class="pack-report__next-hint">
+            {{ 'WORKER.DELIVERY_NEXT_HINT' | translate }}
+          </p>
+        } @else if (deliveryNoteAllShipped(ctx)) {
           <p class="pack-report__complete" role="status">
-            {{ 'WORKER.PACK_PHOTOS_COMPLETE' | translate }}
+            {{ 'WORKER.PACK_AND_DELIVERY_COMPLETE' | translate }}
+          </p>
+        } @else if (deliveryNoteHasActive(ctx)) {
+          <p class="pack-report__complete" role="status">
+            {{ 'WORKER.DELIVERY_PARTIAL_COMPLETE' | translate }}
           </p>
         }
       </section>
+
+      @if (packReportComplete(ctx) && ctx.deliveryNote) {
+        <section
+          class="delivery-note"
+          [attr.aria-label]="'WORKER.DELIVERY_TITLE' | translate"
+        >
+          <header class="delivery-note__hero sf-panel">
+            <div class="delivery-note__hero-copy">
+              <p class="delivery-note__eyebrow">
+                {{ 'WORKER.DELIVERY_EYEBROW' | translate }}
+              </p>
+              <h2 class="delivery-note__title">
+                {{ 'WORKER.DELIVERY_TITLE' | translate }}
+              </h2>
+              <p class="delivery-note__hint">
+                @if (deliveryNoteAllShipped(ctx)) {
+                  {{ 'WORKER.DELIVERY_ALL_SHIPPED_HINT' | translate }}
+                } @else if (deliveryNoteHasActive(ctx)) {
+                  {{ 'WORKER.DELIVERY_PARTIAL_HINT' | translate : { remaining: ctx.deliveryNote.remainingItemCount } }}
+                } @else {
+                  {{ 'WORKER.DELIVERY_HINT' | translate }}
+                }
+              </p>
+            </div>
+          </header>
+
+          <div class="delivery-note__body sf-panel">
+            @if ((ctx.deliveryNote.issuedNotes?.length ?? 0) > 0) {
+              <div class="delivery-note__history">
+                <h3 class="delivery-note__preview-title">
+                  {{ 'WORKER.DELIVERY_HISTORY_TITLE' | translate }}
+                </h3>
+                <ul class="delivery-note__history-list" role="list">
+                  @for (n of ctx.deliveryNote.issuedNotes; track n.id) {
+                    <li class="delivery-note__history-item">
+                      <span class="delivery-note__history-num" dir="ltr">{{ n.noteNumber }}</span>
+                      <span>{{ n.lineItemCount }} {{ 'WORKER.DELIVERY_ITEMS_UNIT' | translate }}</span>
+                      @if (n.status === 'CANCELLED') {
+                        <span class="delivery-note__history-cancelled">{{ 'WORKER.DELIVERY_CANCELLED' | translate }}</span>
+                      } @else {
+                        <a
+                          class="delivery-note__doc-link"
+                          [href]="n.documentUrl"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >{{ 'WORKER.DELIVERY_OPEN_DOC' | translate }}</a>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+
+            @if (!canIssueDeliveryNote(ctx)) {
+              <p class="delivery-note__manager-only" role="status">
+                {{ 'WORKER.DELIVERY_MANAGER_ONLY' | translate }}
+              </p>
+            } @else if (deliveryNoteCanIssue(ctx)) {
+              <div class="delivery-note__preview">
+                <h3 class="delivery-note__preview-title">
+                  {{ 'WORKER.DELIVERY_REMAINING_TITLE' | translate }}
+                </h3>
+                <ul class="delivery-note__items" role="list">
+                  @for (li of ctx.deliveryNote.availableLineItems; track li.lineKey) {
+                    <li class="delivery-note__item">
+                      <span class="delivery-note__item-kind">{{ li.kind }}</span>
+                      @if (li.profileCode) {
+                        <span class="delivery-note__item-profile" dir="ltr">{{ li.profileCode }}</span>
+                      }
+                      <span class="delivery-note__item-desc">{{ li.description }}</span>
+                      <span class="delivery-note__item-qty" dir="ltr">×{{ li.remainingQuantity }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+              <button
+                type="button"
+                class="delivery-note__issue-btn"
+                (click)="openDeliveryNoteModal(ctx)"
+              >
+                {{ 'WORKER.DELIVERY_ISSUE_BTN' | translate }}
+              </button>
+            }
+          </div>
+        </section>
+      }
     }
 
     @let prog = stationProgress(ctx);
@@ -2272,6 +2383,99 @@
       </skyflow-ui-popup>
     }
 
+    @if (stationId === 6 && deliveryNoteModalOpen() && ctx.deliveryNote) {
+      <skyflow-ui-popup
+        [open]="true"
+        size="sheet"
+        [hideIcon]="true"
+        (closed)="closeDeliveryNoteModal()"
+        [title]="'WORKER.DELIVERY_MODAL_TITLE' | translate"
+        titleId="delivery-note-modal-title"
+        [zIndex]="87"
+        panelClass="station-report-popup delivery-note-popup"
+        [closeOnScrim]="!issuingDeliveryNote()"
+      >
+        <p popup-header-extra class="station-report-modal__hint">
+          {{ 'WORKER.DELIVERY_MODAL_HINT' | translate }}
+        </p>
+
+        <div class="delivery-note-modal__body">
+          <label class="delivery-note-modal__field">
+            <span>{{ 'WORKER.DELIVERY_SHIPPING_LABEL' | translate }}</span>
+            <skyflow-ui-select
+              class="delivery-note-modal__select"
+              [options]="deliveryShippingSelectOptions()"
+              [value]="deliveryShippingType()"
+              (valueChange)="onDeliveryShippingChange($event)"
+              [panelZIndex]="150"
+            />
+          </label>
+
+          @if (deliveryShippingType() === 'EXTERNAL') {
+            <label class="delivery-note-modal__field">
+              <span>{{ 'WORKER.DELIVERY_PRICE_LABEL' | translate }}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="delivery-note-modal__input"
+                [value]="deliveryExternalPrice()"
+                (input)="deliveryExternalPrice.set($any($event.target).value)"
+                dir="ltr"
+              />
+            </label>
+          }
+
+          <div class="delivery-note-modal__items">
+            <h3>{{ 'WORKER.DELIVERY_PARTIAL_SELECT' | translate }}</h3>
+            <ul class="delivery-note-modal__qty-list" role="list">
+              @for (li of ctx.deliveryNote.availableLineItems; track li.lineKey) {
+                <li class="delivery-note-modal__qty-row">
+                  <div class="delivery-note-modal__qty-desc">
+                    <span>{{ li.kind }}</span>
+                    @if (li.profileCode) {
+                      <span dir="ltr"> · {{ li.profileCode }}</span>
+                    }
+                    <span> · {{ li.description }}</span>
+                    <span class="delivery-note-modal__qty-max" dir="ltr">
+                      ({{ 'WORKER.DELIVERY_MAX_QTY' | translate : { max: li.remainingQuantity } }})
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    class="delivery-note-modal__qty-input"
+                    [min]="0"
+                    [max]="li.remainingQuantity"
+                    [value]="deliveryLineQty(li.lineKey, li.remainingQuantity ?? 0)"
+                    (input)="setDeliveryLineQty(li.lineKey, $any($event.target).value, li.remainingQuantity ?? 0)"
+                    dir="ltr"
+                  />
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+
+        <div popup-actions>
+          <skyflow-ui-button
+            variant="secondary"
+            (click)="closeDeliveryNoteModal()"
+            [disabled]="issuingDeliveryNote()"
+          >
+            {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+          </skyflow-ui-button>
+          <skyflow-ui-button
+            variant="primary"
+            [loading]="issuingDeliveryNote()"
+            [disabled]="issuingDeliveryNote()"
+            (click)="submitDeliveryNote(ctx)"
+          >
+            {{ 'WORKER.DELIVERY_ISSUE_CONFIRM' | translate }}
+          </skyflow-ui-button>
+        </div>
+      </skyflow-ui-popup>
+    }
+
     @if (stationId === 7 && siteReportModalOpen() && form) {
       <skyflow-ui-popup
         [open]="true"
@@ -2287,31 +2491,15 @@
           {{
             ctx.siteAssembly?.deliveryNoteUrl
               ? ('WORKER.SITE_REPORT_MODAL_HINT' | translate)
-              : ('WORKER.SITE_UPLOAD_HINT' | translate)
+              : ('WORKER.SITE_AWAITING_DELIVERY' | translate)
           }}
         </p>
 
         @if (!ctx.siteAssembly?.deliveryNoteUrl) {
           <div class="station-report-modal__body">
             <p class="station-report-modal__hint">
-              {{ 'WORKER.SITE_SCAN_STUB' | translate }}
+              {{ 'WORKER.SITE_AWAITING_DELIVERY' | translate }}
             </p>
-            <input
-              id="site-delivery-input-modal"
-              type="file"
-              accept=".pdf,image/*"
-              class="sr-only"
-              (change)="onDeliveryFileSelected($event)"
-              [disabled]="uploadingDelivery()"
-            />
-            <button
-              type="button"
-              class="station-report-modal__upload-btn"
-              [disabled]="uploadingDelivery()"
-              (click)="triggerSiteDeliveryModalInput()"
-            >
-              {{ 'WORKER.SITE_UPLOAD_BTN' | translate }}
-            </button>
           </div>
 
           <div popup-actions>

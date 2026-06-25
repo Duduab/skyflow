@@ -37,6 +37,7 @@ import type { UploadProjectDocumentDto } from './dto/upload-project-document.dto
 import type { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto.js';
 import { MailService } from '../mail/mail.service.js';
 import { planningDraftWizardMeta } from '../common/planning-draft-progress.util.js';
+import { DailyTargetPlanningService } from '../users/daily-target-planning.service.js';
 
 /** PDFs attached to projects — served as static files from the web app. */
 export function ensureProjectDocsUploadDir(): string {
@@ -76,6 +77,7 @@ export class ProjectsService {
     private readonly prisma: PrismaService,
     private readonly planningUpload: PlanningUploadService,
     private readonly mail: MailService,
+    private readonly dailyTargetPlanning: DailyTargetPlanningService,
   ) {}
 
   async createPlanningDraft(
@@ -422,6 +424,29 @@ export class ProjectsService {
           planningSawsManagerUserId,
         },
       });
+    });
+
+    const syncWorkers = teamMode
+      ? workerIdsOrdered
+      : planningAssigneeUserId
+        ? [planningAssigneeUserId]
+        : [];
+    await this.dailyTargetPlanning.syncFromPlanningApproval({
+      projectId,
+      projectName: order.name,
+      lineMaterial: order.lineMaterial,
+      machiningRoute: order.machiningRoute,
+      stationId: 1,
+      workerUserIds: syncWorkers,
+      managerUserId: teamMode ? planningSawsManagerUserId : null,
+      sawLines: preparedSawLines.map((row) => ({
+        description: row.description,
+        quantity: row.quantity,
+        sawsProfileCode: row.sawsProfileCode,
+        planningCutLengthMm: row.planningCutLengthMm,
+        instructionKind: row.instructionKind,
+        sortOrder: row.sortOrder,
+      })),
     });
 
     const itemsAfter = await this.prisma.productItem.findMany({

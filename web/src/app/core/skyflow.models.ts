@@ -53,6 +53,22 @@ export interface SiteAssemblyContext {
   assembledBeams: number;
   assembledGlazing: number;
   assembledUnitized: number;
+  shippingType?: 'INTERNAL' | 'EXTERNAL' | null;
+  externalPrice?: string | null;
+  noteNumber?: string | null;
+  issuedAt?: string | null;
+  awaitingDeliveryNote?: boolean;
+  hasNewDeliveryNote?: boolean;
+  deliveryNotes?: SiteDeliveryNoteBrief[];
+}
+
+export interface SiteDeliveryNoteBrief {
+  id: string;
+  noteNumber: string;
+  documentUrl: string;
+  shippingType: 'INTERNAL' | 'EXTERNAL';
+  externalPrice: string | null;
+  issuedAt: string;
 }
 
 export interface SawWorkLineDto {
@@ -135,6 +151,8 @@ export interface WorkerContext {
   siteAssembly?: SiteAssemblyContext | null;
   /** Station 6 — תמונות סידור ואריזה */
   packReport?: PackReportContext | null;
+  /** Station 6 — תעודת משלוח */
+  deliveryNote?: DeliveryNoteContext | null;
   /** Station 3 — הרכבה: קו ייצור + הוראות חלונות */
   assemblyStation?: AssemblyStationContextDto | null;
   /** Station 4 — הדבקות לפי TYPE וקודי GL */
@@ -226,6 +244,61 @@ export interface PackReportContext {
   requiredCount: number;
   photos: { slotIndex: number; url: string }[];
   complete: boolean;
+}
+
+export interface DeliveryNoteLineItemDto {
+  lineKey: string;
+  kind: string;
+  profileCode: string | null;
+  description: string;
+  quantity: number;
+  lengthMm: number | null;
+  instructionKind: string | null;
+  totalQuantity?: number;
+  shippedQuantity?: number;
+  remainingQuantity?: number;
+}
+
+export interface DeliveryNoteIssuedBrief {
+  id: string;
+  noteNumber: string;
+  documentUrl: string;
+  shippingType: 'INTERNAL' | 'EXTERNAL';
+  externalPrice: string | null;
+  issuedAt: string;
+  status: 'ACTIVE' | 'CANCELLED';
+  lineItemCount: number;
+}
+
+export interface DeliveryNoteContext {
+  canIssue: boolean;
+  hasActiveNote: boolean;
+  allShipped: boolean;
+  issuedCount: number;
+  remainingItemCount: number;
+  documentUrl: string | null;
+  noteNumber: string | null;
+  shippingType: 'INTERNAL' | 'EXTERNAL' | null;
+  externalPrice: string | null;
+  issuedAt: string | null;
+  availableLineItems: DeliveryNoteLineItemDto[];
+  issuedNotes: DeliveryNoteIssuedBrief[];
+}
+
+export interface AdminDeliveryNoteRow {
+  id: string;
+  projectId: string;
+  projectName: string;
+  noteNumber: string;
+  shippingType: 'INTERNAL' | 'EXTERNAL';
+  status: 'ACTIVE' | 'CANCELLED';
+  externalPrice: string | null;
+  documentUrl: string;
+  issuedAt: string;
+  cancelledAt: string | null;
+  emailNotifiedAt: string | null;
+  issuedByName: string | null;
+  lineItemCount: number;
 }
 
 export interface ChartDataset {
@@ -486,6 +559,69 @@ export interface UserPerformanceResponse {
   byStation: UserPerformanceStationRow[];
   dailyActivity: UserPerformanceDayRow[];
   recentActivity: UserPerformanceActivityRow[];
+}
+
+export interface UserDailyTargetDayRow {
+  date: string;
+  description: string | null;
+  targetMinutes: number | null;
+  targetQty: number | null;
+  actualMinutes: number;
+  actualQty: number;
+  achievementPct: number | null;
+  reports: number;
+  processedQty: number;
+  hasTarget: boolean;
+  items: UserDailyTargetItemRow[];
+}
+
+export interface UserDailyTargetItemRow {
+  id: string;
+  source: 'MANUAL' | 'PLANNING';
+  description: string;
+  targetMinutes: number;
+  targetQty: number | null;
+  actualQty: number;
+  achievementPct: number | null;
+  projectId: string | null;
+  projectName: string | null;
+  stationId: number | null;
+  stationName: string | null;
+  lineItems: UserDailyTargetLineItemRow[];
+}
+
+export interface UserDailyTargetLineItemRow {
+  sortOrder: number;
+  description: string;
+  profileCode: string | null;
+  cutLengthMm: number | null;
+  instructionKind: string;
+  targetQty: number;
+}
+
+export interface UserDailyTargetsResponse {
+  user: UserDto;
+  todayKey: string;
+  today: UserDailyTargetDayRow | null;
+  history: UserDailyTargetDayRow[];
+}
+
+export type UserDailyTargetAlertLevel = 'warning' | 'missed';
+
+export interface UserDailyTargetAlertRow {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  description: string;
+  targetMinutes: number;
+  actualMinutes: number;
+  achievementPct: number;
+  level: UserDailyTargetAlertLevel;
+}
+
+export interface UserDailyTargetAlertsResponse {
+  todayKey: string;
+  alerts: UserDailyTargetAlertRow[];
 }
 
 export interface ScrapOverviewRow {

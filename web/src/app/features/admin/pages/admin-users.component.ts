@@ -24,9 +24,18 @@ import { ThemeService } from '../../../core/theme.service';
 import {
   SkyflowRole,
   UserDto,
+  UserDailyTargetDayRow,
+  UserDailyTargetLineItemRow,
+  UserDailyTargetsResponse,
+  UserDailyTargetAlertRow,
+  UserDailyTargetAlertLevel,
   UserPerformanceResponse,
   UserPerformanceStationRow,
 } from '../../../core/skyflow.models';
+import {
+  PROGRESS_RING_C,
+  progressDashOffset,
+} from '../../worker/station-progress';
 
 const ROLE_OPTIONS: SkyflowRole[] = [
   'WORKER',
@@ -74,6 +83,20 @@ export class AdminUsersComponent implements OnInit {
   readonly performanceLoading = signal(false);
   readonly performanceError = signal(false);
 
+  readonly dailyTargetUser = signal<UserDto | null>(null);
+  readonly dailyTargets = signal<UserDailyTargetsResponse | null>(null);
+  readonly dailyTargetLoading = signal(false);
+  readonly dailyTargetError = signal(false);
+  readonly dailyTargetSaving = signal(false);
+  readonly dailyTargetFormError = signal<string | null>(null);
+  readonly dailyTargetAddOpen = signal(false);
+  readonly dailyTargetSelectedDate = signal<string | null>(null);
+
+  readonly targetAlerts = signal<UserDailyTargetAlertRow[]>([]);
+
+  readonly progressCircumference = PROGRESS_RING_C;
+  readonly progressDashOffset = progressDashOffset;
+
   readonly roleOptions = ROLE_OPTIONS;
   readonly roleFilterOptions: { value: RoleFilter; labelKey: string }[] = [
     { value: '', labelKey: 'ADMIN_USERS_PAGE.FILTER_ALL' },
@@ -104,6 +127,47 @@ export class AdminUsersComponent implements OnInit {
     return Math.max(1, ...rows.map((r) => r.reports));
   });
 
+  readonly dailyTargetFocusRow = computed(() => {
+    const data = this.dailyTargets();
+    if (!data) return null;
+    const selected = this.dailyTargetSelectedDate();
+    if (selected) {
+      return (
+        data.history.find((r) => r.date === selected) ??
+        (data.today?.date === selected ? data.today : null)
+      );
+    }
+    return data.today;
+  });
+
+  readonly dailyTargetRingPct = computed(() => {
+    const row = this.dailyTargetFocusRow();
+    if (!row?.hasTarget || row.achievementPct == null) return 0;
+    return Math.min(100, row.achievementPct);
+  });
+
+  readonly dailyTargetRingLabel = computed(() => {
+    const row = this.dailyTargetFocusRow();
+    if (!row?.hasTarget) return '—';
+    if (row.achievementPct == null) return '0';
+    return String(Math.round(row.achievementPct));
+  });
+
+  readonly targetAlertByUserId = computed(() => {
+    const map = new Map<string, UserDailyTargetAlertRow>();
+    for (const alert of this.targetAlerts()) {
+      map.set(alert.userId, alert);
+    }
+    return map;
+  });
+
+  readonly dailyTargetFocusAlert = computed(() => {
+    const row = this.dailyTargetFocusRow();
+    const todayKey = this.dailyTargets()?.todayKey ?? this.todayDateKey();
+    if (!row) return null;
+    return this.resolveTargetAlertLevel(row, todayKey);
+  });
+
   newEmail = '';
   newPassword = '';
   newFirstName = '';
@@ -119,8 +183,38 @@ export class AdminUsersComponent implements OnInit {
   editRole: SkyflowRole = 'WORKER';
   editManagedStationId: number | null = null;
 
+  targetDate = '';
+  targetDescription = '';
+  targetHours = 8;
+
   ngOnInit(): void {
     this.reloadUsers();
+    this.reloadTargetAlerts();
+  }
+
+  userTargetAlert(u: UserDto): UserDailyTargetAlertRow | undefined {
+    return this.targetAlertByUserId().get(u.id);
+  }
+
+  resolveTargetAlertLevel(
+    row: UserDailyTargetDayRow,
+    todayKey: string,
+  ): UserDailyTargetAlertLevel | null {
+    if (!row.hasTarget || row.achievementPct == null || row.achievementPct >= 100) {
+      return null;
+    }
+    if (row.date < todayKey) return 'missed';
+    if (row.date > todayKey) return null;
+    const hour = new Date().getHours();
+    if (row.achievementPct < 80) return 'warning';
+    if (hour >= 16) return 'missed';
+    return null;
+  }
+
+  targetAlertLabelKey(level: UserDailyTargetAlertLevel): string {
+    return level === 'missed'
+      ? 'ADMIN_USERS_PAGE.TARGET_ALERT_MISSED'
+      : 'ADMIN_USERS_PAGE.TARGET_ALERT_WARNING';
   }
 
   dateLocale(): string {
@@ -166,6 +260,57 @@ export class AdminUsersComponent implements OnInit {
       day: 'numeric',
       month: 'short',
     });
+  }
+
+  formatDayFull(dateKey: string): string {
+    const dt = new Date(`${dateKey}T12:00:00`);
+    return dt.toLocaleDateString(this.dateLocale(), {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  formatMinutes(m: number): string {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    if (h <= 0) return `${min}${this.translate.instant('ADMIN_USERS_PAGE.TARGET_MINUTES_SHORT')}`;
+    if (min === 0) return `${h}${this.translate.instant('ADMIN_USERS_PAGE.TARGET_HOURS_SHORT')}`;
+    return `${h}${this.translate.instant('ADMIN_USERS_PAGE.TARGET_HOURS_SHORT')} ${min}${this.translate.instant('ADMIN_USERS_PAGE.TARGET_MINUTES_SHORT')}`;
+  }
+
+  formatTargetLineItem(line: UserDailyTargetLineItemRow): string {
+    const parts: string[] = [];
+    if (line.profileCode) parts.push(line.profileCode);
+    if (line.cutLengthMm != null) {
+      parts.push(
+        `${line.cutLengthMm}${this.translate.instant('ADMIN_USERS_PAGE.TARGET_MM')}`,
+      );
+    }
+    parts.push(
+      `${line.targetQty} ${this.translate.instant('ADMIN_USERS_PAGE.TARGET_QTY_UNIT')}`,
+    );
+    const head = parts.join(' · ');
+    const desc = line.description.trim();
+    if (!desc) return head;
+    const short =
+      desc.length > 72 ? `${desc.slice(0, 69).trim()}…` : desc;
+    return `${head} — ${short}`;
+  }
+
+  dayLineItems(row: UserDailyTargetDayRow): UserDailyTargetLineItemRow[] {
+    return row.items.flatMap((item) => item.lineItems ?? []);
+  }
+
+  isTodayDate(dateKey: string): boolean {
+    return dateKey === this.dailyTargets()?.todayKey;
+  }
+
+  isSelectedDailyTargetDay(dateKey: string): boolean {
+    const selected = this.dailyTargetSelectedDate();
+    if (selected) return selected === dateKey;
+    return this.dailyTargets()?.today?.date === dateKey;
   }
 
   openCreateModal(): void {
@@ -216,6 +361,86 @@ export class AdminUsersComponent implements OnInit {
     this.detailUser.set(null);
     this.performance.set(null);
     this.performanceError.set(false);
+  }
+
+  openDailyTarget(u: UserDto, event?: Event): void {
+    event?.stopPropagation();
+    this.openDailyTargetForUser(u);
+  }
+
+  openDailyTargetById(userId: string): void {
+    const u = this.users().find((x) => x.id === userId);
+    if (u) this.openDailyTargetForUser(u);
+  }
+
+  closeDailyTarget(): void {
+    this.dailyTargetUser.set(null);
+    this.dailyTargets.set(null);
+    this.dailyTargetError.set(false);
+    this.dailyTargetFormError.set(null);
+    this.dailyTargetAddOpen.set(false);
+    this.dailyTargetSelectedDate.set(null);
+  }
+
+  selectDailyTargetDay(row: UserDailyTargetDayRow): void {
+    this.dailyTargetSelectedDate.set(row.date);
+  }
+
+  toggleAddDailyTarget(): void {
+    const next = !this.dailyTargetAddOpen();
+    this.dailyTargetAddOpen.set(next);
+    this.dailyTargetFormError.set(null);
+    if (next) {
+      const focus = this.dailyTargetFocusRow();
+      this.targetDate = focus?.date ?? this.todayDateKey();
+      if (focus?.hasTarget && focus.description) {
+        this.targetDescription = focus.description;
+        this.targetHours =
+          focus.targetMinutes != null
+            ? Math.round((focus.targetMinutes / 60) * 10) / 10
+            : 8;
+      }
+    }
+  }
+
+  submitDailyTarget(): void {
+    const u = this.dailyTargetUser();
+    if (!u) return;
+    this.dailyTargetFormError.set(null);
+    const description = this.targetDescription.trim();
+    const targetDate = this.targetDate.trim();
+    const hours = Number(this.targetHours);
+    if (!description || !targetDate) {
+      this.dailyTargetFormError.set('ADMIN_USERS_PAGE.TARGET_FORM_REQUIRED');
+      return;
+    }
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+      this.dailyTargetFormError.set('ADMIN_USERS_PAGE.TARGET_HOURS_INVALID');
+      return;
+    }
+    const targetMinutes = Math.round(hours * 60);
+    this.dailyTargetSaving.set(true);
+    this.api
+      .upsertUserDailyTarget(u.id, {
+        targetDate,
+        description,
+        targetMinutes,
+      })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.dailyTargetSaving.set(false)),
+      )
+      .subscribe({
+        next: (res) => {
+          this.dailyTargets.set(res);
+          this.dailyTargetSelectedDate.set(targetDate);
+          this.dailyTargetAddOpen.set(false);
+          this.resetTargetForm();
+          this.reloadTargetAlerts();
+        },
+        error: () =>
+          this.dailyTargetFormError.set('ADMIN_USERS_PAGE.TARGET_FORM_ERROR'),
+      });
   }
 
   openEditFromDetail(): void {
@@ -484,6 +709,116 @@ export class AdminUsersComponent implements OnInit {
     );
   }
 
+  exportDailyTargetExcel(): void {
+    const u = this.dailyTargetUser();
+    const data = this.dailyTargets();
+    if (!u || !data) return;
+    const tr = (key: string) => this.translate.instant(key);
+    const wb = XLSX.utils.book_new();
+
+    const summaryAoa: (string | number)[][] = [
+      [tr('ADMIN_USERS_PAGE.EXPORT_METRIC'), tr('ADMIN_USERS_PAGE.EXPORT_VALUE')],
+      [tr('ADMIN_USERS_PAGE.NAME'), `${u.firstName} ${u.lastName}`.trim()],
+      [tr('ADMIN_USERS_PAGE.EMAIL'), u.email],
+      [tr('ADMIN_USERS_PAGE.ROLE'), tr(`ADMIN_USERS_PAGE.ROLE_${u.role}`)],
+    ];
+    if (data.today) {
+      summaryAoa.push(
+        [tr('ADMIN_USERS_PAGE.TARGET_TODAY'), data.today.date],
+        [
+          tr('ADMIN_USERS_PAGE.TARGET_DESC'),
+          data.today.description ?? '—',
+        ],
+        [
+          tr('ADMIN_USERS_PAGE.TARGET_GOAL'),
+          data.today.targetMinutes != null
+            ? this.formatMinutes(data.today.targetMinutes)
+            : '—',
+        ],
+        [
+          tr('ADMIN_USERS_PAGE.TARGET_ACTUAL'),
+          this.formatMinutes(data.today.actualMinutes),
+        ],
+        [
+          tr('ADMIN_USERS_PAGE.TARGET_ACHIEVEMENT'),
+          data.today.achievementPct != null ? `${data.today.achievementPct}%` : '—',
+        ],
+      );
+    }
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet(summaryAoa),
+      this.clipSheetName(tr('ADMIN_USERS_PAGE.SHEET_SUMMARY')),
+    );
+
+    if (data.history.length) {
+      const historyAoa: (string | number)[][] = [
+        [
+          tr('ADMIN_USERS_PAGE.COL_DATE'),
+          tr('ADMIN_USERS_PAGE.TARGET_DESC'),
+          tr('ADMIN_USERS_PAGE.TARGET_GOAL'),
+          tr('ADMIN_USERS_PAGE.TARGET_ACTUAL'),
+          tr('ADMIN_USERS_PAGE.KPI_REPORTS'),
+          tr('ADMIN_USERS_PAGE.KPI_UNITS'),
+          tr('ADMIN_USERS_PAGE.TARGET_ACHIEVEMENT'),
+        ],
+        ...data.history.map((row) => [
+          row.date,
+          row.description ?? '—',
+          row.targetMinutes != null ? this.formatMinutes(row.targetMinutes) : '—',
+          this.formatMinutes(row.actualMinutes),
+          row.reports,
+          row.processedQty,
+          row.achievementPct != null ? `${row.achievementPct}%` : '—',
+        ]),
+      ];
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet(historyAoa),
+        this.clipSheetName(tr('ADMIN_USERS_PAGE.TARGET_HISTORY')),
+      );
+    }
+
+    const allItems = data.history.flatMap((row) =>
+      row.items.flatMap((item) =>
+        (item.lineItems?.length
+          ? item.lineItems.map((line) => ({
+              date: row.date,
+              project: item.projectName ?? item.description,
+              ...line,
+            }))
+          : [{ date: row.date, project: item.projectName ?? item.description, description: item.description, profileCode: null, cutLengthMm: null, instructionKind: '', targetQty: item.targetQty ?? 0, sortOrder: 0 }]),
+      ),
+    );
+    if (allItems.length) {
+      const itemsAoa: (string | number)[][] = [
+        [
+          tr('ADMIN_USERS_PAGE.COL_DATE'),
+          tr('ADMIN_USERS_PAGE.COL_PROJECT'),
+          tr('ADMIN_USERS_PAGE.TARGET_DESC'),
+          tr('ADMIN_USERS_PAGE.TARGET_QTY_GOAL'),
+        ],
+        ...allItems.map((item) => [
+          item.date,
+          item.project,
+          this.formatTargetLineItem(item as UserDailyTargetLineItemRow),
+          item.targetQty,
+        ]),
+      ];
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet(itemsAoa),
+        this.clipSheetName(tr('ADMIN_USERS_PAGE.TARGET_ITEMS_SHEET')),
+      );
+    }
+
+    const slug = this.safeFileSegment(`${u.lastName}-${u.firstName}`);
+    XLSX.writeFile(
+      wb,
+      `skyflow-daily-target-${slug}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  }
+
   private resetCreateForm(): void {
     this.newEmail = '';
     this.newPassword = '';
@@ -517,6 +852,55 @@ export class AdminUsersComponent implements OnInit {
         },
         error: () => this.loading.set(false),
       });
+  }
+
+  private reloadTargetAlerts(): void {
+    this.api
+      .getTodayTargetAlerts()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => this.targetAlerts.set(res.alerts),
+        error: () => this.targetAlerts.set([]),
+      });
+  }
+
+  private openDailyTargetForUser(u: UserDto): void {
+    this.dailyTargetUser.set(u);
+    this.dailyTargets.set(null);
+    this.dailyTargetError.set(false);
+    this.dailyTargetFormError.set(null);
+    this.dailyTargetAddOpen.set(false);
+    this.dailyTargetSelectedDate.set(null);
+    this.resetTargetForm();
+    this.loadDailyTargets(u.id);
+  }
+
+  private loadDailyTargets(userId: string): void {
+    this.dailyTargetLoading.set(true);
+    this.api
+      .getUserDailyTargets(userId)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.dailyTargetLoading.set(false)),
+      )
+      .subscribe({
+        next: (res) => this.dailyTargets.set(res),
+        error: () => this.dailyTargetError.set(true),
+      });
+  }
+
+  private resetTargetForm(): void {
+    this.targetDate = this.todayDateKey();
+    this.targetDescription = '';
+    this.targetHours = 8;
+  }
+
+  private todayDateKey(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   private clipSheetName(name: string): string {

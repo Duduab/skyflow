@@ -32,6 +32,35 @@
     </div>
   </header>
 
+  @if (targetAlerts().length) {
+    <section class="admin-users-target-banner" role="status" aria-live="polite">
+      <div class="admin-users-target-banner__copy">
+        <skyflow-mat-icon icon="warning" [size]="20" [weight]="400" />
+        <p>
+          {{
+            'ADMIN_USERS_PAGE.TARGET_ALERTS_BANNER'
+              | translate: { count: targetAlerts().length }
+          }}
+        </p>
+      </div>
+      <ul class="admin-users-target-banner__list">
+        @for (alert of targetAlerts(); track alert.userId) {
+          <li>
+            <button
+              type="button"
+              class="admin-users-target-banner__chip"
+              [class.admin-users-target-banner__chip--missed]="alert.level === 'missed'"
+              (click)="openDailyTargetById(alert.userId)"
+            >
+              {{ alert.firstName }} {{ alert.lastName }}
+              <span dir="ltr">{{ alert.achievementPct }}%</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
   @if (users().length) {
     <div class="admin-users__filters" role="toolbar" [attr.aria-label]="'ADMIN_USERS_PAGE.FILTER_TOOLBAR' | translate">
       @for (opt of roleFilterOptions; track opt.value) {
@@ -94,6 +123,25 @@
             >
               {{ 'ADMIN_USERS_PAGE.VIEW_PERFORMANCE' | translate }}
             </skyflow-ui-button>
+            <button
+              type="button"
+              class="admin-users__card-target"
+              [class.admin-users__card-target--alert]="userTargetAlert(u)"
+              [class.admin-users__card-target--missed]="userTargetAlert(u)?.level === 'missed'"
+              (click)="openDailyTarget(u, $event)"
+            >
+              <span class="admin-users__card-btn-inner">
+                <skyflow-mat-icon icon="track_changes" [size]="18" [weight]="400" />
+                {{ 'ADMIN_USERS_PAGE.DAILY_TARGET' | translate }}
+                @if (userTargetAlert(u); as alert) {
+                  <span
+                    class="admin-users__target-alert-dot"
+                    [class.admin-users__target-alert-dot--missed]="alert.level === 'missed'"
+                    [attr.title]="targetAlertLabelKey(alert.level) | translate"
+                  ></span>
+                }
+              </span>
+            </button>
             <button
               type="button"
               class="admin-users__card-edit"
@@ -491,5 +539,356 @@
           }
         </section>
       }
+  </skyflow-ui-popup>
+}
+
+@if (dailyTargetUser(); as u) {
+  <skyflow-ui-popup
+    [open]="true"
+    (closed)="closeDailyTarget()"
+    size="wide"
+    [title]="('ADMIN_USERS_PAGE.DAILY_TARGET_TITLE' | translate) + ' — ' + u.firstName + ' ' + u.lastName"
+    [subtitle]="'ADMIN_USERS_PAGE.DAILY_TARGET_SUB' | translate"
+    [titleId]="'admin-users-target-' + u.id"
+  >
+    @if (dailyTargetLoading()) {
+      <p class="admin-users-detail__loading">{{ 'ADMIN_USERS_PAGE.TARGET_LOADING' | translate }}</p>
+    } @else if (dailyTargetError()) {
+      <p class="admin-users-detail__error" role="alert">
+        {{ 'ADMIN_USERS_PAGE.TARGET_ERROR' | translate }}
+      </p>
+    } @else if (dailyTargets(); as data) {
+      @let focus = dailyTargetFocusRow();
+      @if (dailyTargetFocusAlert(); as alertLevel) {
+        <div
+          class="admin-users-target__alert"
+          [class.admin-users-target__alert--missed]="alertLevel === 'missed'"
+          role="alert"
+        >
+          <skyflow-mat-icon icon="warning" [size]="20" [weight]="400" />
+          <p>{{ targetAlertLabelKey(alertLevel) | translate }}</p>
+        </div>
+      }
+      <div class="admin-users-target">
+        <section class="admin-users-target__hero">
+          <div class="admin-users-target__ring-wrap" aria-hidden="true">
+            <svg class="admin-users-target__ring-svg" viewBox="0 0 100 100">
+              <circle class="admin-users-target__ring-track" cx="50" cy="50" r="42" />
+              @if (focus?.hasTarget) {
+                <circle
+                  class="admin-users-target__ring-arc"
+                  [class.admin-users-target__ring-arc--done]="dailyTargetRingPct() >= 100"
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  [attr.stroke-dasharray]="progressCircumference"
+                  [attr.stroke-dashoffset]="progressDashOffset(dailyTargetRingPct())"
+                  transform="rotate(-90 50 50)"
+                />
+              }
+            </svg>
+            <div class="admin-users-target__ring-label" dir="ltr">
+              @if (focus?.hasTarget && dailyTargetRingPct() >= 100) {
+                <span class="admin-users-target__ring-check">✓</span>
+              } @else {
+                <span class="admin-users-target__ring-value">{{ dailyTargetRingLabel() }}</span>
+                @if (focus?.hasTarget) {
+                  <span class="admin-users-target__ring-sign">%</span>
+                }
+              }
+            </div>
+          </div>
+
+          <div class="admin-users-target__summary">
+            @if (focus; as row) {
+              <p class="admin-users-target__date">
+                {{ formatDayFull(row.date) }}
+                @if (isTodayDate(row.date)) {
+                  <span class="admin-users-target__today-badge">
+                    {{ 'ADMIN_USERS_PAGE.TARGET_TODAY' | translate }}
+                  </span>
+                }
+              </p>
+              @if (row.hasTarget) {
+                @if (row.items.length === 1) {
+                  <p class="admin-users-target__desc">{{ row.items[0].description }}</p>
+                } @else if (row.description) {
+                  <p class="admin-users-target__desc">{{ row.description }}</p>
+                }
+                <dl class="admin-users-target__stats">
+                  @if (row.targetQty != null && row.targetQty > 0) {
+                    <div>
+                      <dt>{{ 'ADMIN_USERS_PAGE.TARGET_QTY_GOAL' | translate }}</dt>
+                      <dd>{{ row.targetQty | number: '1.0-0' }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'ADMIN_USERS_PAGE.TARGET_QTY_ACTUAL' | translate }}</dt>
+                      <dd>{{ row.actualQty | number: '1.0-0' }}</dd>
+                    </div>
+                  }
+                  @if (row.targetMinutes != null && row.targetMinutes > 0) {
+                    <div>
+                      <dt>{{ 'ADMIN_USERS_PAGE.TARGET_GOAL' | translate }}</dt>
+                      <dd>{{ formatMinutes(row.targetMinutes) }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'ADMIN_USERS_PAGE.TARGET_ACTUAL' | translate }}</dt>
+                      <dd>{{ formatMinutes(row.actualMinutes) }}</dd>
+                    </div>
+                  }
+                  <div>
+                    <dt>{{ 'ADMIN_USERS_PAGE.KPI_REPORTS' | translate }}</dt>
+                    <dd>{{ row.reports }}</dd>
+                  </div>
+                </dl>
+                @if (dayLineItems(row).length) {
+                  <div class="admin-users-target__lines-section">
+                    <h4 class="admin-users-target__lines-title">
+                      {{ 'ADMIN_USERS_PAGE.TARGET_LINES_TITLE' | translate }}
+                    </h4>
+                    <ul class="admin-users-target__lines">
+                      @for (line of dayLineItems(row); track line.sortOrder + line.description) {
+                        <li>{{ formatTargetLineItem(line) }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+                @if (row.items.length) {
+                  <ul class="admin-users-target__items">
+                    @for (item of row.items; track item.id) {
+                      <li class="admin-users-target__item">
+                        <div class="admin-users-target__item-head">
+                          <span
+                            class="admin-users-target__item-source"
+                            [class.admin-users-target__item-source--planning]="item.source === 'PLANNING'"
+                          >
+                            {{
+                              (item.source === 'PLANNING'
+                                ? 'ADMIN_USERS_PAGE.TARGET_SOURCE_PLANNING'
+                                : 'ADMIN_USERS_PAGE.TARGET_SOURCE_MANUAL') | translate
+                            }}
+                          </span>
+                          @if (item.achievementPct != null) {
+                            <span
+                              class="admin-users-target__pct"
+                              [class.admin-users-target__pct--good]="item.achievementPct >= 100"
+                              [class.admin-users-target__pct--low]="item.achievementPct < 80"
+                            >
+                              {{ item.achievementPct }}%
+                            </span>
+                          }
+                        </div>
+                        <p class="admin-users-target__item-desc">{{ item.description }}</p>
+                        @if (item.lineItems.length) {
+                          <ul class="admin-users-target__lines">
+                            @for (line of item.lineItems; track line.sortOrder + line.description) {
+                              <li>{{ formatTargetLineItem(line) }}</li>
+                            }
+                          </ul>
+                        } @else if (item.targetQty != null) {
+                          <p class="admin-users-target__item-meta">
+                            {{ item.actualQty | number: '1.0-0' }} / {{ item.targetQty | number: '1.0-0' }}
+                            {{ 'ADMIN_USERS_PAGE.KPI_UNITS' | translate }}
+                          </p>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              } @else {
+                <p class="admin-users-target__empty-day">
+                  {{ 'ADMIN_USERS_PAGE.TARGET_NO_GOAL_DAY' | translate }}
+                </p>
+                @if (row.reports > 0) {
+                  <dl class="admin-users-target__stats">
+                    <div>
+                      <dt>{{ 'ADMIN_USERS_PAGE.TARGET_ACTUAL' | translate }}</dt>
+                      <dd>{{ formatMinutes(row.actualMinutes) }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'ADMIN_USERS_PAGE.KPI_REPORTS' | translate }}</dt>
+                      <dd>{{ row.reports }}</dd>
+                    </div>
+                  </dl>
+                }
+              }
+            } @else {
+              <p class="admin-users-target__empty-day">
+                {{ 'ADMIN_USERS_PAGE.TARGET_NO_DATA' | translate }}
+              </p>
+            }
+          </div>
+        </section>
+
+        <div class="admin-users-target__toolbar">
+          <skyflow-ui-button
+            variant="secondary"
+            btnClass="admin-users-detail__tool"
+            (click)="toggleAddDailyTarget()"
+          >
+            <skyflow-mat-icon icon="add" [size]="18" [weight]="400" />
+            {{ 'ADMIN_USERS_PAGE.TARGET_ADD' | translate }}
+          </skyflow-ui-button>
+          <skyflow-ui-button
+            variant="secondary"
+            btnClass="admin-users-detail__tool"
+            (click)="exportDailyTargetExcel()"
+            [disabled]="!data.history.length"
+          >
+            <svg class="admin-users__export-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#217346" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+              <path fill="#33a867" d="M14 2v6h6" />
+              <path fill="#fff" d="M7.5 11h1.8l1.1 2.7 1.1-2.7H13l-1.9 4.8h-1.4L7.5 11zm6.2 0h4.8v1.2h-3.1v.9h2.9v1.2h-2.9v1.1h3.2v1.2h-4.9V11z" />
+            </svg>
+            {{ 'ADMIN_USERS_PAGE.EXPORT_TARGET' | translate }}
+          </skyflow-ui-button>
+        </div>
+
+        @if (dailyTargetAddOpen()) {
+          <form
+            class="admin-users-target__form"
+            id="admin-users-target-form"
+            (ngSubmit)="submitDailyTarget()"
+          >
+            <div class="admin-users__row">
+              <label class="admin-users__field">
+                <span>{{ 'ADMIN_USERS_PAGE.TARGET_DATE' | translate }}</span>
+                <input
+                  type="date"
+                  name="targetDate"
+                  class="admin-users__input"
+                  [(ngModel)]="targetDate"
+                  required
+                />
+              </label>
+              <label class="admin-users__field">
+                <span>{{ 'ADMIN_USERS_PAGE.TARGET_HOURS' | translate }}</span>
+                <input
+                  type="number"
+                  name="targetHours"
+                  class="admin-users__input"
+                  [(ngModel)]="targetHours"
+                  min="0.25"
+                  max="24"
+                  step="0.25"
+                  required
+                />
+              </label>
+            </div>
+            <label class="admin-users__field admin-users__field--full">
+              <span>{{ 'ADMIN_USERS_PAGE.TARGET_DESC' | translate }}</span>
+              <textarea
+                name="targetDescription"
+                class="admin-users__input admin-users__textarea"
+                [(ngModel)]="targetDescription"
+                rows="2"
+                required
+              ></textarea>
+            </label>
+            @if (dailyTargetFormError(); as fe) {
+              <p class="admin-users__err" role="alert">{{ fe | translate }}</p>
+            }
+            <div class="admin-users-target__form-actions">
+              <skyflow-ui-button variant="secondary" type="button" (click)="dailyTargetAddOpen.set(false)">
+                {{ 'ADMIN_USERS_PAGE.MODAL_CANCEL' | translate }}
+              </skyflow-ui-button>
+              <skyflow-ui-button type="submit" variant="primary" [loading]="dailyTargetSaving()">
+                {{ 'ADMIN_USERS_PAGE.TARGET_SAVE' | translate }}
+              </skyflow-ui-button>
+            </div>
+          </form>
+        }
+
+        <section class="admin-users-panel admin-users-panel--activity">
+          <h3>{{ 'ADMIN_USERS_PAGE.TARGET_HISTORY' | translate }}</h3>
+          @if (!data.history.length) {
+            <p class="admin-users-detail__empty-act">
+              {{ 'ADMIN_USERS_PAGE.TARGET_HISTORY_EMPTY' | translate }}
+            </p>
+          } @else {
+            <div class="admin-table-wrap">
+              <table class="admin-table admin-table--compact admin-users-target__history">
+                <thead>
+                  <tr>
+                    <th>{{ 'ADMIN_USERS_PAGE.COL_DATE' | translate }}</th>
+                    <th>{{ 'ADMIN_USERS_PAGE.TARGET_DESC' | translate }}</th>
+                    <th>{{ 'ADMIN_USERS_PAGE.TARGET_GOAL' | translate }}</th>
+                    <th>{{ 'ADMIN_USERS_PAGE.TARGET_ACTUAL' | translate }}</th>
+                    <th>{{ 'ADMIN_USERS_PAGE.TARGET_ACHIEVEMENT' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of data.history; track row.date) {
+                    <tr
+                      class="admin-users-target__history-row"
+                      [class.admin-users-target__history-row--active]="isSelectedDailyTargetDay(row.date)"
+                      [class.admin-users-target__history-row--clickable]="true"
+                      (click)="selectDailyTargetDay(row)"
+                    >
+                      <td>
+                        {{ formatDayFull(row.date) }}
+                        @if (isTodayDate(row.date)) {
+                          <span class="admin-users-target__today-inline">
+                            {{ 'ADMIN_USERS_PAGE.TARGET_TODAY' | translate }}
+                          </span>
+                        }
+                      </td>
+                      <td class="admin-users-target__history-desc">
+                        @if (row.hasTarget) {
+                          @for (item of row.items; track item.id) {
+                            <div class="admin-users-target__history-block">
+                              <p class="admin-users-target__history-head">
+                                {{ item.description }}
+                              </p>
+                              @if (item.lineItems.length) {
+                                <ul class="admin-users-target__lines admin-users-target__lines--compact">
+                                  @for (line of item.lineItems; track line.sortOrder + line.description) {
+                                    <li>{{ formatTargetLineItem(line) }}</li>
+                                  }
+                                </ul>
+                              }
+                            </div>
+                          }
+                        } @else {
+                          <span class="admin-users-target__muted">—</span>
+                        }
+                      </td>
+                      <td>
+                        @if (row.hasTarget) {
+                          @if (row.targetQty != null && row.targetQty > 0) {
+                            {{ row.targetQty | number: '1.0-0' }}
+                            {{ 'ADMIN_USERS_PAGE.TARGET_QTY_UNIT' | translate }}
+                          } @else if (row.targetMinutes != null) {
+                            {{ formatMinutes(row.targetMinutes) }}
+                          } @else {
+                            <span class="admin-users-target__muted">—</span>
+                          }
+                        } @else {
+                          <span class="admin-users-target__muted">—</span>
+                        }
+                      </td>
+                      <td>{{ formatMinutes(row.actualMinutes) }}</td>
+                      <td>
+                        @if (row.achievementPct != null) {
+                          <span
+                            class="admin-users-target__pct"
+                            [class.admin-users-target__pct--good]="row.achievementPct >= 100"
+                            [class.admin-users-target__pct--low]="row.achievementPct < 80"
+                          >
+                            {{ row.achievementPct }}%
+                          </span>
+                        } @else {
+                          <span class="admin-users-target__muted">—</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+      </div>
+    }
   </skyflow-ui-popup>
 }

@@ -1,3 +1,5 @@
+@import './admin-card';
+
 .admin-page__loading {
   padding: 2rem;
   text-align: center;
@@ -141,34 +143,18 @@
 .admin-sim__project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  gap: 0.65rem;
+  gap: 1.25rem;
 }
 
 .admin-sim__project-card {
-  display: flex;
-  flex-direction: column;
+  @include admin-list-card-shell;
+  @include admin-list-card-shell-dark;
   gap: 0.25rem;
-  padding: 0.85rem 0.95rem;
-  border-radius: var(--sf-radius);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #fff;
-  box-shadow: var(--sf-shadow);
-  cursor: pointer;
+  padding: 1.35rem;
   text-align: start;
   font: inherit;
   color: inherit;
-  transition:
-    border-color 0.15s ease,
-    transform 0.15s ease;
-}
-
-:host-context(html:not(.theme-light)) .admin-sim__project-card {
-  background: #1e293b;
-}
-
-.admin-sim__project-card:hover {
-  border-color: rgba(37, 99, 235, 0.35);
-  transform: translateY(-1px);
+  cursor: pointer;
 }
 
 .admin-sim__project-name {

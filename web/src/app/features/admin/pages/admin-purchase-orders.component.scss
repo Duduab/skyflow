@@ -1,0 +1,138 @@
+@import './admin-card';
+
+.po-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.po-card {
+  @include admin-list-card-shell;
+  @include admin-list-card-shell-dark;
+}
+
+.po-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.35rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+:host-context(html:not(.theme-light)) .po-card__head {
+  border-bottom-color: rgba(248, 250, 252, 0.08);
+}
+
+.po-card__title-wrap {
+  min-width: 0;
+}
+
+.po-card__title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--admin-fg, #0f172a);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.po-card__date {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--admin-muted, #64748b);
+}
+
+.po-card__icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: calc(var(--sf-radius) * 0.85);
+  color: var(--sf-navy, #3e5d88);
+  background: rgba(85, 143, 195, 0.1);
+}
+
+.po-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem 1.35rem;
+}
+
+.po-card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.po-card__tag--items {
+  color: var(--sf-indigo, #4b689d);
+  background: rgba(75, 104, 157, 0.1);
+}
+
+.po-card__tag--method {
+  color: var(--admin-muted, #64748b);
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.po-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding: 1rem 1.35rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+:host-context(html:not(.theme-light)) .po-card__actions {
+  border-top-color: rgba(248, 250, 252, 0.08);
+}
+
+.po-card__view {
+  @include admin-card-action-shell;
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #fff;
+  background: linear-gradient(180deg, var(--sf-blue, #558fc3), var(--sf-indigo, #4b689d));
+  border: 1px solid rgba(85, 143, 195, 0.45);
+  box-shadow: var(--sf-shadow);
+}
+
+.po-card__view:hover {
+  filter: brightness(1.06);
+}
+
+.po-card__pdf {
+  @include admin-card-action-shell;
+  gap: 0.35rem;
+  padding-inline: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--sf-navy, #3e5d88);
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+:host-context(html:not(.theme-light)) .po-card__pdf {
+  background: rgba(15, 23, 42, 0.35);
+  border-color: rgba(248, 250, 252, 0.12);
+  color: #e2e8f0;
+}
+
+.po-card__pdf:hover {
+  border-color: rgba(85, 143, 195, 0.45);
+  background: rgba(85, 143, 195, 0.08);
+}

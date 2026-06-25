@@ -261,6 +261,11 @@ export function isStationUnlockedInChain(
       if (!hasAnySawStationReport(ctx)) return false;
       continue;
     }
+    if (i === 6) {
+      if (computeStationProgress(i, ctx).percent < 100) return false;
+      if (!ctx.deliveryNote?.hasActiveNote) return false;
+      continue;
+    }
     if (computeStationProgress(i, ctx).percent < 100) return false;
   }
   return true;

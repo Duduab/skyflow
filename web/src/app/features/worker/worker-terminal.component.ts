@@ -19,7 +19,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -132,6 +132,7 @@ function allCheckedValidator(): ValidatorFn {
 })
 export class WorkerTerminalComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly currentUser = inject(CurrentUserService);
@@ -189,6 +190,12 @@ export class WorkerTerminalComponent implements OnInit {
   readonly gluingTypeModalGroup = signal<GluingTypeGroupDto | null>(null);
   readonly packPhotoModalSlot = signal<number | null>(null);
   readonly siteReportModalOpen = signal(false);
+  readonly deliveryNoteModalOpen = signal(false);
+  readonly issuingDeliveryNote = signal(false);
+  readonly deliveryShippingType = signal<'INTERNAL' | 'EXTERNAL'>('INTERNAL');
+  readonly deliveryExternalPrice = signal('');
+  /** כמויות לבחירה במשלוח חלקי — lineKey → qty */
+  readonly deliveryLineQtys = signal<Map<string, number>>(new Map());
 
   readonly sawTypeModalSaving = signal(false);
 
@@ -315,7 +322,10 @@ export class WorkerTerminalComponent implements OnInit {
   canMoveToNextStation(ctx: WorkerContext): boolean {
     if (this.nextStationId() === null) return false;
     if (this.stationId === 6) {
-      return ctx.packReport?.complete === true;
+      return (
+        ctx.packReport?.complete === true &&
+        ctx.deliveryNote?.hasActiveNote === true
+      );
     }
     if (this.stationId === 1) {
       return hasAnySawStationReport(ctx);
@@ -1518,6 +1528,125 @@ export class WorkerTerminalComponent implements OnInit {
     return ringStrokeDashOffset(percent);
   }
 
+  deliveryNoteHasActive(ctx: WorkerContext): boolean {
+    return ctx.deliveryNote?.hasActiveNote === true;
+  }
+
+  deliveryNoteAllShipped(ctx: WorkerContext): boolean {
+    return ctx.deliveryNote?.allShipped === true;
+  }
+
+  canIssueDeliveryNote(ctx: WorkerContext): boolean {
+    return (
+      this.currentUser.isManagerOfStation(6) ||
+      this.currentUser.isAdmin()
+    );
+  }
+
+  deliveryNoteCanIssue(ctx: WorkerContext): boolean {
+    return (
+      this.packReportComplete(ctx) &&
+      ctx.deliveryNote?.canIssue === true &&
+      this.canIssueDeliveryNote(ctx)
+    );
+  }
+
+  deliveryLineQty(lineKey: string, fallback: number): number {
+    const v = this.deliveryLineQtys().get(lineKey);
+    return v != null && Number.isFinite(v) ? v : fallback;
+  }
+
+  setDeliveryLineQty(lineKey: string, raw: string, max: number): void {
+    const n = Math.floor(Number(raw.replace(',', '.')));
+    const qty = Number.isFinite(n)
+      ? Math.min(max, Math.max(0, n))
+      : 0;
+    const next = new Map(this.deliveryLineQtys());
+    next.set(lineKey, qty);
+    this.deliveryLineQtys.set(next);
+  }
+
+  openDeliveryNoteModal(ctx: WorkerContext): void {
+    this.deliveryShippingType.set('INTERNAL');
+    this.deliveryExternalPrice.set('');
+    const next = new Map<string, number>();
+    for (const li of ctx.deliveryNote?.availableLineItems ?? []) {
+      next.set(li.lineKey, li.remainingQuantity ?? li.quantity);
+    }
+    this.deliveryLineQtys.set(next);
+    this.deliveryNoteModalOpen.set(true);
+  }
+
+  closeDeliveryNoteModal(): void {
+    if (this.issuingDeliveryNote()) return;
+    this.deliveryNoteModalOpen.set(false);
+  }
+
+  onDeliveryShippingChange(value: string | number | null): void {
+    const v = value == null ? 'INTERNAL' : String(value);
+    this.deliveryShippingType.set(v === 'EXTERNAL' ? 'EXTERNAL' : 'INTERNAL');
+  }
+
+  deliveryShippingSelectOptions(): UiSelectOption[] {
+    return [
+      {
+        value: 'INTERNAL',
+        label: this.translate.instant('WORKER.DELIVERY_SHIPPING_INTERNAL'),
+      },
+      {
+        value: 'EXTERNAL',
+        label: this.translate.instant('WORKER.DELIVERY_SHIPPING_EXTERNAL'),
+      },
+    ];
+  }
+
+  async submitDeliveryNote(ctx: WorkerContext): Promise<void> {
+    const pid = this.projectSelection.selectedProjectId();
+    if (!pid || this.stationId !== 6) return;
+    const shippingType = this.deliveryShippingType();
+    let externalPrice: number | undefined;
+    if (shippingType === 'EXTERNAL') {
+      const raw = this.deliveryExternalPrice().trim().replace(',', '.');
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0) {
+        this.error.set('WORKER.DELIVERY_ERR_PRICE');
+        return;
+      }
+      externalPrice = n;
+    }
+    const lineItems = (ctx.deliveryNote?.availableLineItems ?? [])
+      .map((li) => ({
+        lineKey: li.lineKey,
+        quantity: this.deliveryLineQty(
+          li.lineKey,
+          li.remainingQuantity ?? li.quantity,
+        ),
+      }))
+      .filter((x) => x.quantity > 0);
+    if (!lineItems.length) {
+      this.error.set('WORKER.DELIVERY_ERR_NO_ITEMS');
+      return;
+    }
+    this.issuingDeliveryNote.set(true);
+    this.error.set(null);
+    try {
+      const res = await firstValueFrom(
+        this.api.issueDeliveryNote(pid, shippingType, lineItems, externalPrice),
+      );
+      this.deliveryNoteModalOpen.set(false);
+      this.tryLoadContext();
+      if (res.isPartial) {
+        this.showSaveToast();
+      } else {
+        this.showStationCompleteToast();
+      }
+    } catch {
+      this.error.set('WORKER.DELIVERY_ERR_ISSUE');
+    } finally {
+      this.issuingDeliveryNote.set(false);
+    }
+  }
+
   async onDeliveryFileSelected(ev: Event): Promise<void> {
     const input = ev.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -1554,7 +1683,10 @@ export class WorkerTerminalComponent implements OnInit {
 
   private isStationComplete(ctx: WorkerContext): boolean {
     if (this.stationId === 6) {
-      return ctx.packReport?.complete === true;
+      return (
+        ctx.packReport?.complete === true &&
+        ctx.deliveryNote?.allShipped === true
+      );
     }
     return this.stationProgress(ctx).percent >= 100;
   }

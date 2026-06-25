@@ -640,4 +640,39 @@ export class AdminService {
       })),
     };
   }
+
+  async getDeliveryNotes(projectId?: string) {
+    const where = projectId?.trim() ? { projectId: projectId.trim() } : {};
+    const rows = await this.prisma.projectDeliveryNote.findMany({
+      where,
+      orderBy: { issuedAt: 'desc' },
+      include: {
+        project: { select: { id: true, name: true } },
+        issuedBy: {
+          select: { firstName: true, lastName: true },
+        },
+      },
+    });
+    return rows.map((r) => {
+      const items = r.lineItems as { quantity?: number }[];
+      const lineItemCount = Array.isArray(items)
+        ? items.reduce((s, li) => s + (Number(li.quantity) || 0), 0)
+        : 0;
+      const issuer = r.issuedBy
+        ? `${r.issuedBy.firstName} ${r.issuedBy.lastName}`.trim()
+        : null;
+      return {
+        id: r.id,
+        projectId: r.projectId,
+        projectName: r.project.name,
+        noteNumber: r.noteNumber,
+        shippingType: r.shippingType,
+        externalPrice: r.externalPrice?.toString() ?? null,
+        documentUrl: r.documentPath,
+        issuedAt: r.issuedAt.toISOString(),
+        issuedByName: issuer,
+        lineItemCount,
+      };
+    });
+  }
 }

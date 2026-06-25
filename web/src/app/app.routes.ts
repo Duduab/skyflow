@@ -97,6 +97,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'delivery-notes',
+        canActivate: [adminOnlyGuard],
+        loadComponent: () =>
+          import('./features/admin/pages/admin-delivery-notes.component').then(
+            (m) => m.AdminDeliveryNotesComponent,
+          ),
+      },
+      {
         path: 'users',
         canActivate: [adminOnlyGuard],
         loadComponent: () =>
@@ -118,6 +126,30 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/admin/pages/admin-files.component').then(
             (m) => m.AdminFilesComponent,
+          ),
+      },
+      {
+        path: 'plan-upload',
+        canActivate: [adminOrPlanningGuard],
+        loadComponent: () =>
+          import('./features/plan-upload/upload-form.component').then(
+            (m) => m.UploadFormComponent,
+          ),
+      },
+      {
+        path: 'purchase-orders',
+        canActivate: [adminOrPlanningGuard],
+        loadComponent: () =>
+          import('./features/admin/pages/admin-purchase-orders.component').then(
+            (m) => m.AdminPurchaseOrdersComponent,
+          ),
+      },
+      {
+        path: 'card-demo',
+        canActivate: [adminOrPlanningGuard],
+        loadComponent: () =>
+          import('./features/card-demo/card-demo.component').then(
+            (m) => m.CardDemoComponent,
           ),
       },
       {

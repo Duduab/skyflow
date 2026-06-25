@@ -19,6 +19,17 @@ export class CurrentUserService {
   readonly lastName = computed(() => this.sessionUser()?.lastName?.trim() ?? '');
   readonly photoUrl = computed(() => this.sessionUser()?.photoUrl ?? null);
 
+  readonly isStationManager = computed(
+    () => this.sessionUser()?.role === 'STATION_MANAGER',
+  );
+
+  isManagerOfStation(stationId: number): boolean {
+    const u = this.sessionUser();
+    return (
+      u?.role === 'STATION_MANAGER' && u.managedStationId === stationId
+    );
+  }
+
   readonly isSiteManager = computed(
     () => this.sessionUser()?.role === 'SITE_MANAGER',
   );

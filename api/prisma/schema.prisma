@@ -35,6 +35,16 @@ enum ProductComponentKind {
   SASH
 }
 
+enum DeliveryNoteShippingType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum DeliveryNoteStatus {
+  ACTIVE
+  CANCELLED
+}
+
 enum SkyflowRole {
   WORKER
   ADMIN
@@ -73,9 +83,42 @@ model User {
   planningSawsManagerOfProjects ProjectOrder[] @relation("PlanningSawsManager")
   createdProjects          ProjectOrder[] @relation("ProjectCreator")
   projectSawsPlanningWorkers    ProjectPlanningSawsWorker[]
+  dailyTargets             UserDailyTarget[]
+  issuedDeliveryNotes      ProjectDeliveryNote[]
 
   @@index([role])
   @@index([managedStationId])
+}
+
+enum DailyTargetSource {
+  MANUAL
+  PLANNING
+}
+
+/// יעד יומי לעובד — תיאור + זמן יעד; ביצוע מחושב מדיווחי עמדות
+model UserDailyTarget {
+  id            String             @id @default(uuid())
+  userId        String
+  /// YYYY-MM-DD (local calendar day)
+  targetDate    String             @db.VarChar(10)
+  source        DailyTargetSource  @default(MANUAL)
+  projectId     String?
+  stationId     Int?
+  description   String             @db.Text
+  targetMinutes Int                @default(0)
+  /// כמות יחידות לביצוע (יעדי תפ״י)
+  targetQty     Int?
+  /// פירוט שורות חיתוך / משימות מתפ״י (מערך JSON)
+  lineItems     Json?
+  dedupeKey     String             @unique
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project ProjectOrder? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, targetDate(sort: Desc)])
+  @@index([projectId])
 }
 
 /// Production order (project) — ERP + תכנון תפ״י
@@ -118,6 +161,8 @@ model ProjectOrder {
   sawStationWorkLines SawStationWorkLine[]
   planningSawsWorkers ProjectPlanningSawsWorker[]
   packReportPhotos    PackReportPhoto[]
+  dailyTargets        UserDailyTarget[]
+  deliveryNotes       ProjectDeliveryNote[]
 
   @@index([planningAssigneeUserId])
   @@index([planningSawsManagerUserId])
@@ -273,4 +318,40 @@ model PackReportPhoto {
 
   @@unique([projectId, slotIndex])
   @@index([projectId])
+}
+
+/// Station 6 — תעודת משלוח שהופקה בסידור ואריזה
+model ProjectDeliveryNote {
+  id             String                   @id @default(uuid())
+  projectId      String
+  noteNumber     String                   @db.VarChar(32)
+  shippingType   DeliveryNoteShippingType
+  status         DeliveryNoteStatus       @default(ACTIVE)
+  /// מחיר משלוח חיצוני (₪) — רק כש-shippingType = EXTERNAL
+  externalPrice  Decimal?                 @db.Decimal(14, 2)
+  /// נתיב ציבורי למסמך PDF
+  documentPath   String
+  /// פריטים שכללו בתעודה (פרופילים, קורות, רכיבים)
+  lineItems      Json
+  issuedAt       DateTime                 @default(now())
+  cancelledAt    DateTime?
+  emailNotifiedAt DateTime?
+  issuedByUserId String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  project  ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issuedBy User?        @relation(fields: [issuedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, issuedAt(sort: Desc)])
+  @@index([projectId, status])
+  @@index([issuedByUserId])
+}
+
+model ManufacturingPlan {
+  id          String   @id @default(uuid())
+  projectName String
+  s3Url       String
+  bomData     Json
+  createdAt   DateTime @default(now())
 }

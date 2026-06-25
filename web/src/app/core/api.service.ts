@@ -19,6 +19,9 @@ import {
   ProjectActivityResponse,
   UserDto,
   UserPerformanceResponse,
+  UserDailyTargetsResponse,
+  UserDailyTargetAlertsResponse,
+  UserDailyTargetAlertRow,
   StationManagersResponse,
   SkyflowRole,
 } from './skyflow.models';
@@ -106,7 +109,7 @@ export class ApiService {
     });
   }
 
-  /** Station 7 — upload תעודת משלוח (multipart). */
+  /** Station 7 — upload תעודת משלוח (deprecated — issued at station 6). */
   postSiteDeliveryNote(projectId: string, file: File) {
     const fd = new FormData();
     fd.append('file', file);
@@ -118,6 +121,80 @@ export class ApiService {
       `${this.base}/stations/7/delivery-note?projectId=${encodeURIComponent(projectId)}`,
       fd,
     );
+  }
+
+  /** Station 6 — preview delivery note line items */
+  getDeliveryNotePreview(projectId: string) {
+    return this.http.get<{
+      issued: boolean;
+      canIssue: boolean;
+      packComplete: boolean;
+      noteNumber: string | null;
+      shippingType: 'INTERNAL' | 'EXTERNAL' | null;
+      externalPrice: string | null;
+      documentUrl: string | null;
+      issuedAt: string | null;
+      lineItems: import('./skyflow.models').DeliveryNoteLineItemDto[];
+    }>(
+      `${this.base}/stations/6/delivery-note/preview?projectId=${encodeURIComponent(projectId)}`,
+    );
+  }
+
+  /** Station 6 — issue delivery note */
+  issueDeliveryNote(
+    projectId: string,
+    shippingType: 'INTERNAL' | 'EXTERNAL',
+    lineItems: { lineKey: string; quantity: number }[],
+    externalPrice?: number | null,
+  ) {
+    return this.http.post<{
+      ok: boolean;
+      noteNumber: string;
+      shippingType: 'INTERNAL' | 'EXTERNAL';
+      externalPrice: string | null;
+      documentUrl: string;
+      issuedAt: string;
+      isPartial: boolean;
+      lineItems: import('./skyflow.models').DeliveryNoteLineItemDto[];
+      expected: { beams: number; glazing: number; unitized: number };
+    }>(`${this.base}/stations/6/delivery-note/issue`, {
+      projectId,
+      shippingType,
+      lineItems,
+      externalPrice: externalPrice ?? undefined,
+    });
+  }
+
+  updateAdminDeliveryNote(
+    id: string,
+    body: {
+      shippingType?: 'INTERNAL' | 'EXTERNAL';
+      externalPrice?: number | null;
+    },
+  ) {
+    return this.http.patch<{
+      ok: boolean;
+      id: string;
+      noteNumber: string;
+      shippingType: 'INTERNAL' | 'EXTERNAL';
+      externalPrice: string | null;
+      documentUrl: string;
+    }>(`${this.base}/admin/delivery-notes/${encodeURIComponent(id)}`, body);
+  }
+
+  cancelAdminDeliveryNote(id: string) {
+    return this.http.post<{ ok: boolean; id: string; status: string }>(
+      `${this.base}/admin/delivery-notes/${encodeURIComponent(id)}/cancel`,
+      {},
+    );
+  }
+
+  getAdminDeliveryNotes(projectId?: string | null) {
+    let url = `${this.base}/admin/delivery-notes`;
+    if (projectId) {
+      url += `?projectId=${encodeURIComponent(projectId)}`;
+    }
+    return this.http.get<import('./skyflow.models').AdminDeliveryNoteRow[]>(url);
   }
 
   /** Station 6 — upload pack report photo (multipart). */
@@ -189,6 +266,32 @@ export class ApiService {
   getUserPerformance(userId: string): Observable<UserPerformanceResponse> {
     return this.http.get<UserPerformanceResponse>(
       `${this.base}/users/${userId}/performance`,
+    );
+  }
+
+  getUserDailyTargets(userId: string): Observable<UserDailyTargetsResponse> {
+    return this.http.get<UserDailyTargetsResponse>(
+      `${this.base}/users/${encodeURIComponent(userId)}/daily-targets`,
+    );
+  }
+
+  upsertUserDailyTarget(
+    userId: string,
+    body: {
+      targetDate?: string;
+      description: string;
+      targetMinutes: number;
+    },
+  ): Observable<UserDailyTargetsResponse> {
+    return this.http.post<UserDailyTargetsResponse>(
+      `${this.base}/users/${encodeURIComponent(userId)}/daily-targets`,
+      body,
+    );
+  }
+
+  getTodayTargetAlerts(): Observable<UserDailyTargetAlertsResponse> {
+    return this.http.get<UserDailyTargetAlertsResponse>(
+      `${this.base}/users/daily-targets/today-alerts`,
     );
   }
 

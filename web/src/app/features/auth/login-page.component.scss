@@ -3,7 +3,7 @@
     radial-gradient(120% 80% at 100% 0%, rgba(85, 143, 195, 0.35), transparent),
     radial-gradient(90% 60% at 0% 100%, rgba(75, 104, 157, 0.28), transparent),
     linear-gradient(165deg, #3e5d88 0%, #243652 42%, #0a0f18 100%);
-  --login-flow-gradient: linear-gradient(135deg, #7dd3fc 0%, #38bdf8 48%, #0ea5e9 100%);
+  --login-flow-gradient: linear-gradient( 145deg, var(--sf-blue, #558fc3), var(--sf-indigo, #4b689d))
 }
 
 :host-context(html.theme-light) {
@@ -11,7 +11,7 @@
     radial-gradient(120% 80% at 100% 0%, rgba(85, 143, 195, 0.14), transparent),
     radial-gradient(90% 60% at 0% 100%, rgba(75, 104, 157, 0.1), transparent),
     linear-gradient(165deg, #f8fafc 0%, #e2e8f0 42%, #cbd5e1 100%);
-  --login-flow-gradient: linear-gradient(135deg, #7dd3fc 0%, #38bdf8 48%, #0ea5e9 100%);
+  --login-flow-gradient: linear-gradient( 145deg, var(--sf-blue, #558fc3), var(--sf-indigo, #4b689d))
 }
 
 .login-page {

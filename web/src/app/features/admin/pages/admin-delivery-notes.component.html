@@ -1,0 +1,202 @@
+@if (loading()) {
+  <p class="admin-page__loading">…</p>
+} @else if (error(); as errKey) {
+  <section class="admin-dn__empty">
+    <p>{{ errKey | translate }}</p>
+    <skyflow-ui-button variant="primary" (click)="load()">
+      {{ 'ADMIN_DELIVERY_NOTES.RETRY' | translate }}
+    </skyflow-ui-button>
+  </section>
+} @else {
+  @let s = stats();
+
+  <header class="admin-dn__hero">
+    <div class="admin-dn__hero-copy">
+      <p class="admin-dn__eyebrow">{{ 'ADMIN_DELIVERY_NOTES.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">{{ 'ADMIN_DELIVERY_NOTES.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_DELIVERY_NOTES.SUB' | translate }}</p>
+    </div>
+  </header>
+
+  <section class="admin-dn__kpis" aria-label="delivery notes summary">
+    <article class="admin-dn-kpi">
+      <span class="admin-dn-kpi__label">{{ 'ADMIN_DELIVERY_NOTES.KPI_TOTAL' | translate }}</span>
+      <span class="admin-dn-kpi__value">{{ s.total }}</span>
+    </article>
+    <article class="admin-dn-kpi">
+      <span class="admin-dn-kpi__label">{{ 'ADMIN_DELIVERY_NOTES.KPI_INTERNAL' | translate }}</span>
+      <span class="admin-dn-kpi__value">{{ s.internal }}</span>
+    </article>
+    <article class="admin-dn-kpi admin-dn-kpi--accent">
+      <span class="admin-dn-kpi__label">{{ 'ADMIN_DELIVERY_NOTES.KPI_EXTERNAL' | translate }}</span>
+      <span class="admin-dn-kpi__value">{{ s.external }}</span>
+    </article>
+  </section>
+
+  @if (notes().length) {
+    <div class="admin-dn__toolbar">
+      <label class="admin-dn__filter">
+        <span class="admin-dn__filter-label">{{ 'ADMIN_DELIVERY_NOTES.FILTER_PROJECT' | translate }}</span>
+        <skyflow-ui-select
+          class="admin-dn__filter-select"
+          [options]="projectOptions()"
+          [value]="projectFilter()"
+          (valueChange)="onProjectFilterChange($event)"
+        />
+      </label>
+    </div>
+  }
+
+  @if (!notes().length) {
+    <section class="admin-dn__empty">
+      <p>{{ 'ADMIN_DELIVERY_NOTES.EMPTY' | translate }}</p>
+    </section>
+  } @else if (!filteredNotes().length) {
+    <section class="admin-dn__empty">
+      <p>{{ 'ADMIN_DELIVERY_NOTES.FILTER_EMPTY' | translate }}</p>
+    </section>
+  } @else {
+    <ul class="admin-dn__grid">
+      @for (n of filteredNotes(); track n.id) {
+        <li>
+          <button type="button" class="admin-dn-card" (click)="openNote(n)">
+            <span class="admin-dn-card__top">
+              <span class="admin-dn-card__badge" [class.admin-dn-card__badge--ext]="n.shippingType === 'EXTERNAL'" [class.admin-dn-card__badge--cancelled]="n.status === 'CANCELLED'">
+                @if (n.status === 'CANCELLED') {
+                  {{ 'ADMIN_DELIVERY_NOTES.STATUS_CANCELLED' | translate }}
+                } @else {
+                  {{ shippingLabelKey(n.shippingType) | translate }}
+                }
+              </span>
+              <time
+                class="admin-dn-card__date"
+                [attr.datetime]="n.issuedAt"
+                [attr.title]="n.issuedAt | date: 'full' : undefined : dateLocale()"
+              >
+                {{ n.issuedAt | date: 'dd/MM/yy' : undefined : dateLocale() }}
+              </time>
+            </span>
+            <span class="admin-dn-card__main">
+              <span class="admin-dn-card__number" dir="ltr">{{ n.noteNumber }}</span>
+              <span class="admin-dn-card__project">{{ n.projectName }}</span>
+              <span class="admin-dn-card__meta">
+                {{ 'ADMIN_DELIVERY_NOTES.ITEMS' | translate: { count: n.lineItemCount } }}
+                @if (n.issuedByName) {
+                  <span class="admin-dn-card__dot" aria-hidden="true">·</span>
+                  {{ n.issuedByName }}
+                }
+              </span>
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+}
+
+@if (selected(); as n) {
+  <skyflow-ui-popup
+    [open]="true"
+    size="wide"
+    [hideIcon]="true"
+    (closed)="closeNote()"
+    [title]="n.noteNumber"
+    titleId="admin-dn-detail-title"
+    [zIndex]="85"
+  >
+    <p popup-header-extra class="admin-dn-detail__sub">
+      <span>{{ n.projectName }}</span>
+      <span class="admin-dn-card__dot" aria-hidden="true">·</span>
+      <span>{{ shippingLabelKey(n.shippingType) | translate }}</span>
+      @if (n.externalPrice) {
+        <span class="admin-dn-card__dot" aria-hidden="true">·</span>
+        <span dir="ltr">₪ {{ n.externalPrice | number: '1.2-2' }}</span>
+      }
+    </p>
+
+    <div class="admin-dn-detail__meta">
+      <p>
+        <strong>{{ 'ADMIN_DELIVERY_NOTES.ISSUED_AT' | translate }}:</strong>
+        {{ n.issuedAt | date: 'medium' : undefined : dateLocale() }}
+      </p>
+      @if (n.issuedByName) {
+        <p>
+          <strong>{{ 'ADMIN_DELIVERY_NOTES.ISSUED_BY' | translate }}:</strong>
+          {{ n.issuedByName }}
+        </p>
+      }
+      @if (n.emailNotifiedAt) {
+        <p>
+          <strong>{{ 'ADMIN_DELIVERY_NOTES.EMAIL_SENT' | translate }}:</strong>
+          {{ n.emailNotifiedAt | date: 'medium' : undefined : dateLocale() }}
+        </p>
+      }
+      <p>
+        <strong>{{ 'ADMIN_DELIVERY_NOTES.ITEMS' | translate: { count: n.lineItemCount } }}</strong>
+      </p>
+
+      @if (editing() && n.status === 'ACTIVE') {
+        <div class="admin-dn-edit">
+          <label class="admin-dn-edit__field">
+            <span>{{ 'ADMIN_DELIVERY_NOTES.EDIT_SHIPPING' | translate }}</span>
+            <skyflow-ui-select
+              [options]="editShippingOptions()"
+              [value]="editShippingType()"
+              (valueChange)="onEditShippingChange($event)"
+            />
+          </label>
+          @if (editShippingType() === 'EXTERNAL') {
+            <label class="admin-dn-edit__field">
+              <span>{{ 'ADMIN_DELIVERY_NOTES.EDIT_PRICE' | translate }}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="admin-dn-edit__input"
+                [value]="editExternalPrice()"
+                (input)="editExternalPrice.set($any($event.target).value)"
+                dir="ltr"
+              />
+            </label>
+          }
+          @if (actionError(); as errKey) {
+            <p class="admin-dn-edit__err" role="alert">{{ errKey | translate }}</p>
+          }
+        </div>
+      }
+    </div>
+
+    <div popup-actions>
+      <skyflow-ui-button variant="secondary" (click)="closeNote()" [disabled]="actionBusy()">
+        {{ 'ADMIN_DELIVERY_NOTES.CLOSE' | translate }}
+      </skyflow-ui-button>
+      @if (n.status === 'ACTIVE') {
+        @if (editing()) {
+          <skyflow-ui-button variant="secondary" (click)="cancelEdit()" [disabled]="actionBusy()">
+            {{ 'ADMIN_DELIVERY_NOTES.EDIT_CANCEL' | translate }}
+          </skyflow-ui-button>
+          <skyflow-ui-button variant="primary" (click)="saveEdit()" [loading]="actionBusy()" [disabled]="actionBusy()">
+            {{ 'ADMIN_DELIVERY_NOTES.EDIT_SAVE' | translate }}
+          </skyflow-ui-button>
+        } @else {
+          <skyflow-ui-button variant="secondary" (click)="startEdit(n)">
+            {{ 'ADMIN_DELIVERY_NOTES.EDIT' | translate }}
+          </skyflow-ui-button>
+          <skyflow-ui-button variant="secondary" (click)="cancelNote()" [disabled]="actionBusy()">
+            {{ 'ADMIN_DELIVERY_NOTES.CANCEL_NOTE' | translate }}
+          </skyflow-ui-button>
+        }
+      }
+      <skyflow-ui-button variant="primary" (click)="openDocument(n.documentUrl)">
+        {{ 'ADMIN_DELIVERY_NOTES.OPEN_DOC' | translate }}
+      </skyflow-ui-button>
+      <a
+        class="admin-dn-detail__link"
+        [routerLink]="['/admin/projects', n.projectId, 'live']"
+        (click)="closeNote()"
+      >
+        {{ 'ADMIN_DELIVERY_NOTES.VIEW_PROJECT' | translate }}
+      </a>
+    </div>
+  </skyflow-ui-popup>
+}

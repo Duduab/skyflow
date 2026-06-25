@@ -15,6 +15,7 @@ import {
   computeSiteAssemblyPercent,
 } from '../common/site-assembly.util';
 import { packPhotoRequiredCount, MAX_PACK_PHOTO_SLOTS } from '../common/pack-photo.util';
+import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
@@ -72,6 +73,7 @@ export class StationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
+    private readonly deliveryNotes: DeliveryNotesService,
   ) {}
 
   private assertStation(stationId: number): void {
@@ -574,14 +576,31 @@ export class StationsService {
         orderBy: { createdAt: 'desc' },
       });
       const ep = assembledFromLogPayload(latest?.extraPayload);
+      const latestActiveNote = await this.prisma.projectDeliveryNote.findFirst({
+        where: { projectId, status: 'ACTIVE' },
+        orderBy: { issuedAt: 'desc' },
+      });
+      const deliveryUrl =
+        latestActiveNote?.documentPath ?? order.siteDeliveryNotePath ?? null;
+      const siteNotes = await this.deliveryNotes.buildSiteAssemblyNotes(
+        projectId,
+        latest?.createdAt ?? null,
+      );
       siteAssembly = {
-        deliveryNoteUrl: order.siteDeliveryNotePath ?? null,
+        deliveryNoteUrl: deliveryUrl,
         expectedBeams: order.siteExpectedBeams ?? 0,
         expectedGlazing: order.siteExpectedGlazing ?? 0,
         expectedUnitized: order.siteExpectedUnitized ?? 0,
         assembledBeams: ep.beams,
         assembledGlazing: ep.glazing,
         assembledUnitized: ep.unitized,
+        shippingType: latestActiveNote?.shippingType ?? null,
+        externalPrice: latestActiveNote?.externalPrice?.toString() ?? null,
+        noteNumber: latestActiveNote?.noteNumber ?? null,
+        issuedAt: latestActiveNote?.issuedAt?.toISOString() ?? null,
+        awaitingDeliveryNote: siteNotes.notes.length === 0,
+        hasNewDeliveryNote: siteNotes.hasNewDeliveryNote,
+        deliveryNotes: siteNotes.notes,
       };
     }
 
@@ -625,10 +644,17 @@ export class StationsService {
           complete: boolean;
         }
       | undefined;
+    let deliveryNote: Awaited<
+      ReturnType<DeliveryNotesService['buildWorkerContext']>
+    > | undefined;
     if (stationId === 6) {
       packReport = await this.buildPackReportContext(
         projectId,
         order.totalItems,
+      );
+      deliveryNote = await this.deliveryNotes.buildWorkerContext(
+        projectId,
+        packReport.complete,
       );
     }
 
@@ -710,6 +736,7 @@ export class StationsService {
         : {}),
       ...(siteAssembly ? { siteAssembly } : {}),
       ...(packReport ? { packReport } : {}),
+      ...(deliveryNote ? { deliveryNote } : {}),
       ...(assemblyStation ? { assemblyStation } : {}),
       ...(gluingStation ? { gluingStation } : {}),
     };
@@ -1223,9 +1250,12 @@ export class StationsService {
     }
 
     if (stationId === 7) {
-      if (!orderRow.siteDeliveryNotePath) {
+      const activeNote = await this.prisma.projectDeliveryNote.findFirst({
+        where: { projectId: dto.projectId, status: 'ACTIVE' },
+      });
+      if (!activeNote) {
         throw new BadRequestException(
-          'Upload the delivery note (תעודת משלוח) before reporting assembly.',
+          'A delivery note must be issued from pack station before reporting assembly.',
         );
       }
       const ep = dto.extraPayload as

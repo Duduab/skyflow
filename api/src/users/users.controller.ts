@@ -13,6 +13,7 @@ import { Roles } from '../auth/roles.decorator.js';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { CreateUserDailyTargetDto } from './dto/create-user-daily-target.dto.js';
 
 @Controller('users')
 @UseGuards(RolesGuard)
@@ -43,9 +44,27 @@ export class UsersController {
     return this.users.planningAssignees();
   }
 
+  @Get('daily-targets/today-alerts')
+  todayTargetAlerts() {
+    return this.users.getTodayTargetAlerts();
+  }
+
   @Get(':id/performance')
   performance(@Param('id') id: string) {
     return this.users.getPerformance(id);
+  }
+
+  @Get(':id/daily-targets')
+  dailyTargets(@Param('id') id: string) {
+    return this.users.getDailyTargets(id);
+  }
+
+  @Post(':id/daily-targets')
+  upsertDailyTarget(
+    @Param('id') id: string,
+    @Body() dto: CreateUserDailyTargetDto,
+  ) {
+    return this.users.upsertDailyTarget(id, dto);
   }
 
   @Post()
