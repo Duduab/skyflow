@@ -327,11 +327,10 @@
   .station-next-cta,
   .station-complete-toast__cta,
   .admin-proj-card__live,
-  .admin-proj-card__quick,
+  .sf-ui-card-action,
   .admin-users__filter-chip,
   .admin-files__chip,
   .admin-sim__scenario-chip,
-  .planning-drafts-card__cta,
   .planning-wizard__resume-chip {
     border-radius: var(--sf-ui-btn-radius);
   }
@@ -391,7 +390,7 @@
   .sf-lang-btn:focus-visible,
   .sf-theme-toggle:focus-visible,
   .admin-proj-card__live:focus-visible,
-  .admin-proj-card__quick:focus-visible {
+  .sf-ui-card-action:focus-visible {
     outline: none;
   }
 
@@ -411,10 +410,6 @@
 
   .admin-proj-card__live:focus-visible {
     box-shadow: var(--sf-shadow), 0 0 0 4px rgba(34, 197, 94, 0.35);
-  }
-
-  .admin-proj-card__quick:focus-visible {
-    box-shadow: var(--sf-shadow), 0 0 0 4px rgba(85, 143, 195, 0.35);
   }
 
   .sf-lang-bar {
@@ -1125,3 +1120,22 @@ a.sf-ui-btn {
 body > .sf-ui-select__panel {
   z-index: 250 !important;
 }
+
+/* Admin toolbars — radius אחיד לשדות חיפוש ו-select */
+.admin-proj-search__input,
+.admin-users__search-input,
+.admin-proj-filter__select .sf-ui-select__trigger,
+.admin-users__filter-select .sf-ui-select__trigger,
+.admin-dn__filter-select .sf-ui-select__trigger,
+.admin-files__filter-select .sf-ui-select__trigger {
+  border-radius: var(--sf-radius) !important;
+}
+
+.admin-proj-filter__select,
+.admin-users__filter-select,
+.admin-dn__filter-select,
+.admin-files__filter-select {
+  --sf-ui-select-radius: var(--sf-radius);
+}
+
+@import './app/features/admin/pages/admin-users-toolbar';

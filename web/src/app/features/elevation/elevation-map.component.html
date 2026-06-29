@@ -1,0 +1,232 @@
+<section class="elev">
+  <header class="elev__head">
+    <div class="elev__title">
+      <a [routerLink]="backRoute()" class="elev__back">←</a>
+      <h1>{{ 'ELEVATION_MAP.TITLE' | translate }}</h1>
+      @if (map(); as m) {
+        <span class="elev__doc">{{ m.title }}</span>
+      }
+    </div>
+
+    @if (progress(); as p) {
+      <div class="elev__progress">
+        <div class="elev__bar" [attr.aria-valuenow]="p.pct">
+          <span class="elev__bar-fill" [style.width.%]="p.pct"></span>
+        </div>
+        <div class="elev__stats">
+          <strong>{{ p.pct }}%</strong>
+          <span>{{ p.done }}/{{ p.total }} {{ 'ELEVATION_MAP.CELLS' | translate }}</span>
+          <span class="elev__chip elev__chip--unit">
+            {{ 'ELEVATION_MAP.UNITS' | translate }}: {{ p.unit.done }}/{{ p.unit.total }}
+          </span>
+          <span class="elev__chip elev__chip--spandrel">
+            {{ 'ELEVATION_MAP.SPANDRELS' | translate }}: {{ p.spandrel.done }}/{{ p.spandrel.total }}
+          </span>
+        </div>
+      </div>
+    }
+  </header>
+
+  @if (loading()) {
+    <div class="elev__state">{{ 'COMMON.LOADING' | translate }}…</div>
+  } @else if (error()) {
+    <div class="elev__state elev__state--error">
+      {{ 'ELEVATION_MAP.LOAD_FAILED' | translate }}
+    </div>
+  } @else if (!map()) {
+    <div class="elev__state">{{ 'ELEVATION_MAP.NO_MAP' | translate }}</div>
+  } @else if (map()?.status === 'PROCESSING') {
+    <div class="elev__state">{{ 'ELEVATION_MAP.PROCESSING' | translate }}…</div>
+  } @else if (map()?.status === 'FAILED') {
+    <div class="elev__state elev__state--error">
+      {{ 'ELEVATION_MAP.FAILED' | translate }}
+    </div>
+  } @else {
+    <!-- toolbar -->
+    <div class="elev__toolbar">
+      <div class="elev__floors">
+        <button
+          class="elev__floor"
+          [ngClass]="{ 'is-active': floorFilter() === '' }"
+          (click)="setFloor('')"
+        >
+          {{ 'ELEVATION_MAP.ALL_FLOORS' | translate }}
+        </button>
+        @for (f of floors(); track f) {
+          <button
+            class="elev__floor"
+            [ngClass]="{ 'is-active': floorFilter() === f }"
+            (click)="setFloor(f)"
+          >
+            {{ f }}
+          </button>
+        }
+      </div>
+
+      <div class="elev__legend">
+        <span class="elev__lg elev__lg--unit">{{ 'ELEVATION_MAP.UNIT' | translate }}</span>
+        <span class="elev__lg elev__lg--spandrel">{{ 'ELEVATION_MAP.SPANDREL' | translate }}</span>
+        <span class="elev__lg elev__lg--done">{{ 'ELEVATION_MAP.DONE' | translate }}</span>
+      </div>
+
+      <div class="elev__zoom">
+        <button (click)="zoomOut()" aria-label="zoom out">−</button>
+        <button (click)="zoomReset()">{{ zoom() * 100 }}%</button>
+        <button (click)="zoomIn()" aria-label="zoom in">+</button>
+      </div>
+    </div>
+
+    @if (sections().length > 1) {
+      <div class="elev__sections">
+        <button
+          class="elev__section elev__section--all"
+          [ngClass]="{ 'is-active': sectionFilter() === '' }"
+          (click)="setSection('')"
+        >
+          {{ 'ELEVATION_MAP.VIEW_ALL' | translate }}
+        </button>
+        @for (s of sections(); track s.label) {
+          <button
+            class="elev__section"
+            [ngClass]="{ 'is-active': sectionFilter() === s.label }"
+            (click)="setSection(s.label)"
+          >
+            {{ s.label }}
+          </button>
+        }
+      </div>
+    }
+
+    @if (map()!.pageCount > 1) {
+      <div class="elev__pages">
+        @for (pg of map()!.pages; track pg.pageIndex) {
+          <button
+            class="elev__page"
+            [ngClass]="{ 'is-active': pageIndex() === pg.pageIndex }"
+            (click)="setPage(pg.pageIndex)"
+          >
+            {{ 'ELEVATION_MAP.PAGE' | translate }} {{ pg.pageIndex + 1 }}
+          </button>
+        }
+      </div>
+    }
+
+    <!-- selection action bar -->
+    @if (canEdit() && selectedCount() > 0) {
+      <div class="elev__actions">
+        <span>{{ selectedCount() }} {{ 'ELEVATION_MAP.SELECTED' | translate }}</span>
+        <skyflow-ui-button variant="primary" [loading]="busy()" (click)="markSelected(true)">
+          {{ 'ELEVATION_MAP.MARK_DONE' | translate }}
+        </skyflow-ui-button>
+        <skyflow-ui-button variant="secondary" [loading]="busy()" (click)="markSelected(false)">
+          {{ 'ELEVATION_MAP.MARK_PENDING' | translate }}
+        </skyflow-ui-button>
+        <skyflow-ui-button variant="ghost" (click)="clearSelection()">
+          {{ 'ELEVATION_MAP.CLEAR' | translate }}
+        </skyflow-ui-button>
+        <skyflow-ui-button variant="ghost" (click)="selectAllVisible()">
+          {{ 'ELEVATION_MAP.SELECT_ALL' | translate }}
+        </skyflow-ui-button>
+      </div>
+    }
+
+    <div class="elev__body">
+      <!-- map canvas -->
+      <div class="elev__canvas" #canvas>
+        @if (currentPage(); as page) {
+          <div
+            class="elev__stage"
+            [style.width.%]="zoom() * 100"
+          >
+            <img class="elev__img" [src]="page.imageUrl" alt="elevation" />
+            <div class="elev__overlay">
+              @for (cell of visibleCells(); track cell.id) {
+                <button
+                  class="elev__cell"
+                  [ngClass]="{
+                    'elev__cell--unit': cell.kind === 'UNIT',
+                    'elev__cell--spandrel': cell.kind === 'SPANDREL',
+                    'elev__cell--done': cell.status === 'DONE',
+                    'elev__cell--selected': isSelected(cell.id),
+                    'elev__cell--active': activeCell()?.id === cell.id
+                  }"
+                  [style.left.%]="cell.bbox.x * 100"
+                  [style.top.%]="cell.bbox.y * 100"
+                  [style.width.%]="cell.bbox.w * 100"
+                  [style.height.%]="cell.bbox.h * 100"
+                  (mouseenter)="hoveredCell.set(cell)"
+                  (mouseleave)="hoveredCell.set(null)"
+                  (click)="onCellClick(cell)"
+                ></button>
+              }
+
+              @if (hoveredCell(); as hc) {
+                <div
+                  class="elev__tip"
+                  [ngClass]="hc.kind === 'UNIT' ? 'is-unit' : 'is-spandrel'"
+                  [style.left.%]="(hc.bbox.x + hc.bbox.w / 2) * 100"
+                  [style.top.%]="hc.bbox.y * 100"
+                >
+                  <div class="elev__tip-head">
+                    <span class="elev__tip-kind">
+                      {{ (hc.kind === 'UNIT' ? 'ELEVATION_MAP.UNIT' : 'ELEVATION_MAP.SPANDREL') | translate }}
+                    </span>
+                    <strong>{{ hc.code }}</strong>
+                    @if (hc.floor) { <span class="elev__tip-floor">{{ hc.floor }}</span> }
+                    @if (hc.status === 'DONE') { <span class="elev__tip-done">✓</span> }
+                  </div>
+                  <ul class="elev__tip-items">
+                    @for (it of hc.items; track $index) {
+                      <li>{{ it }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- details panel -->
+      @if (activeCell(); as cell) {
+        <aside class="elev__detail">
+          <div class="elev__detail-head">
+            <span
+              class="elev__detail-kind"
+              [ngClass]="cell.kind === 'UNIT' ? 'is-unit' : 'is-spandrel'"
+            >
+              {{ (cell.kind === 'UNIT' ? 'ELEVATION_MAP.UNIT' : 'ELEVATION_MAP.SPANDREL') | translate }}
+            </span>
+            <strong>{{ cell.code }}</strong>
+            @if (cell.floor) { <span class="elev__detail-floor">{{ cell.floor }}</span> }
+          </div>
+
+          <div class="elev__detail-status" [ngClass]="cell.status === 'DONE' ? 'is-done' : 'is-pending'">
+            {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.STATUS_DONE' : 'ELEVATION_MAP.STATUS_PENDING') | translate }}
+            @if (cell.status === 'DONE' && cell.doneBy) {
+              <small>{{ cell.doneBy }}</small>
+            }
+          </div>
+
+          <h3>{{ 'ELEVATION_MAP.ITEMS' | translate }} ({{ cell.items.length }})</h3>
+          <ul class="elev__items">
+            @for (it of cell.items; track $index) {
+              <li>{{ it }}</li>
+            }
+          </ul>
+
+          @if (canEdit()) {
+            <skyflow-ui-button
+              [variant]="cell.status === 'DONE' ? 'secondary' : 'primary'"
+              [loading]="busy()"
+              [block]="true"
+              (click)="toggleActiveCell()"
+            >
+              {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.UNMARK' : 'ELEVATION_MAP.MARK_THIS_DONE') | translate }}
+            </skyflow-ui-button>
+          }
+        </aside>
+      }
+    </div>
+  }
+</section>

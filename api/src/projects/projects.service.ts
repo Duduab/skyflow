@@ -38,6 +38,8 @@ import type { SendProjectDocumentEmailDto } from './dto/send-project-document-em
 import { MailService } from '../mail/mail.service.js';
 import { planningDraftWizardMeta } from '../common/planning-draft-progress.util.js';
 import { DailyTargetPlanningService } from '../users/daily-target-planning.service.js';
+import { ElevationService } from '../elevation/elevation.service.js';
+import { readFileSync } from 'fs';
 
 /** PDFs attached to projects — served as static files from the web app. */
 export function ensureProjectDocsUploadDir(): string {
@@ -78,6 +80,7 @@ export class ProjectsService {
     private readonly planningUpload: PlanningUploadService,
     private readonly mail: MailService,
     private readonly dailyTargetPlanning: DailyTargetPlanningService,
+    private readonly elevation: ElevationService,
   ) {}
 
   async createPlanningDraft(
@@ -563,8 +566,27 @@ export class ProjectsService {
         ? dto.reference.trim().slice(0, 120)
         : null;
 
+    // Read the uploaded PDF once for content-based detection + analysis.
+    let buffer: Buffer | null = null;
+    try {
+      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+    } catch {
+      buffer = null;
+    }
+
+    // Auto-detect elevation maps by PDF content (gray spandrel + cyan unit
+    // cells) — independent of file name or the chosen document kind.
+    let kind = dto.kind;
+    if (
+      kind !== ProjectDocumentKind.ELEVATION_MAP &&
+      buffer &&
+      (await this.elevation.looksLikeElevation(buffer))
+    ) {
+      kind = ProjectDocumentKind.ELEVATION_MAP;
+    }
+
     const agg = await this.prisma.projectDocument.aggregate({
-      where: { projectId, kind: dto.kind },
+      where: { projectId, kind },
       _max: { sortOrder: true },
     });
     const sortOrder = (agg._max.sortOrder ?? -1) + 1;
@@ -573,13 +595,29 @@ export class ProjectsService {
     const doc = await this.prisma.projectDocument.create({
       data: {
         projectId,
-        kind: dto.kind,
+        kind,
         title,
         reference,
         pdfPath,
         sortOrder,
       },
     });
+
+    // Elevation install map: analyze the PDF into clickable cells.
+    if (kind === ProjectDocumentKind.ELEVATION_MAP && buffer) {
+      try {
+        await this.elevation.analyzeDocument({
+          projectId,
+          documentId: doc.id,
+          title,
+          fileBuffer: buffer,
+        });
+      } catch (err) {
+        // analysis failures are recorded on the map; never block the upload
+        // eslint-disable-next-line no-console
+        console.error('Elevation analysis trigger failed', err);
+      }
+    }
 
     return {
       ok: true as const,

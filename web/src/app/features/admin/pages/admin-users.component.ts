@@ -46,6 +46,10 @@ const ROLE_OPTIONS: SkyflowRole[] = [
 ];
 
 type RoleFilter = SkyflowRole | '';
+type UsersStationFilter = '' | 'any' | 'none' | '1' | '2' | '3' | '4' | '5' | '6' | '7';
+type UsersTargetFilter = '' | 'alert' | 'warning' | 'missed' | 'ok';
+type UsersTeamFilter = '' | 'field' | 'management' | 'planning';
+type UsersAssignmentFilter = '' | 'assigned' | 'missing_station';
 
 @Component({
   selector: 'skyflow-admin-users',
@@ -77,6 +81,11 @@ export class AdminUsersComponent implements OnInit {
   readonly editModalOpen = signal(false);
 
   readonly roleFilter = signal<RoleFilter>('');
+  readonly searchQuery = signal('');
+  readonly stationFilter = signal<UsersStationFilter>('');
+  readonly targetFilter = signal<UsersTargetFilter>('');
+  readonly teamFilter = signal<UsersTeamFilter>('');
+  readonly assignmentFilter = signal<UsersAssignmentFilter>('');
 
   readonly detailUser = signal<UserDto | null>(null);
   readonly performance = signal<UserPerformanceResponse | null>(null);
@@ -108,10 +117,112 @@ export class AdminUsersComponent implements OnInit {
 
   readonly filteredUsers = computed(() => {
     const role = this.roleFilter();
-    const list = this.users();
-    if (!role) return list;
-    return list.filter((u) => u.role === role);
+    const q = this.searchQuery().trim().toLowerCase();
+    const station = this.stationFilter();
+    const target = this.targetFilter();
+    const team = this.teamFilter();
+    const assignment = this.assignmentFilter();
+    const alerts = this.targetAlertByUserId();
+    let list = this.users();
+
+    if (role) {
+      list = list.filter((u) => u.role === role);
+    }
+
+    if (q) {
+      list = list.filter((u) => this.userMatchesSearch(u, q));
+    }
+
+    if (station === 'any') {
+      list = list.filter((u) => u.managedStationId != null);
+    } else if (station === 'none') {
+      list = list.filter((u) => u.managedStationId == null);
+    } else if (station) {
+      list = list.filter((u) => u.managedStationId === Number(station));
+    }
+
+    if (target === 'alert') {
+      list = list.filter((u) => alerts.has(u.id));
+    } else if (target === 'warning') {
+      list = list.filter((u) => alerts.get(u.id)?.level === 'warning');
+    } else if (target === 'missed') {
+      list = list.filter((u) => alerts.get(u.id)?.level === 'missed');
+    } else if (target === 'ok') {
+      list = list.filter((u) => !alerts.has(u.id));
+    }
+
+    if (team === 'field') {
+      list = list.filter((u) => u.role === 'WORKER');
+    } else if (team === 'management') {
+      list = list.filter((u) =>
+        u.role === 'ADMIN' || u.role === 'STATION_MANAGER' || u.role === 'SITE_MANAGER',
+      );
+    } else if (team === 'planning') {
+      list = list.filter((u) => u.role === 'PLANNING');
+    }
+
+    if (assignment === 'assigned') {
+      list = list.filter((u) => u.managedStationId != null);
+    } else if (assignment === 'missing_station') {
+      list = list.filter(
+        (u) => this.needsStationForRole(u.role) && u.managedStationId == null,
+      );
+    }
+
+    return list;
   });
+
+  readonly hasActiveFilters = computed(
+    () =>
+      !!this.searchQuery().trim() ||
+      !!this.roleFilter() ||
+      !!this.stationFilter() ||
+      !!this.targetFilter() ||
+      !!this.teamFilter() ||
+      !!this.assignmentFilter(),
+  );
+
+  readonly activeFilterCount = computed(() => {
+    let n = 0;
+    if (this.searchQuery().trim()) n++;
+    if (this.roleFilter()) n++;
+    if (this.stationFilter()) n++;
+    if (this.targetFilter()) n++;
+    if (this.teamFilter()) n++;
+    if (this.assignmentFilter()) n++;
+    return n;
+  });
+
+  readonly stationFilterOptions = computed((): UiSelectOption<UsersStationFilter>[] => [
+    { value: '', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_ALL') },
+    { value: 'any', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_STATION_ANY') },
+    { value: 'none', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_STATION_NONE') },
+    ...([1, 2, 3, 4, 5, 6, 7] as const).map((n) => ({
+      value: String(n) as UsersStationFilter,
+      label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_STATION_N', { n }),
+    })),
+  ]);
+
+  readonly targetFilterOptions = computed((): UiSelectOption<UsersTargetFilter>[] => [
+    { value: '', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_ALL') },
+    { value: 'alert', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_TARGET_ALERT') },
+    { value: 'warning', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_TARGET_WARNING') },
+    { value: 'missed', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_TARGET_MISSED') },
+    { value: 'ok', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_TARGET_OK') },
+  ]);
+
+  readonly teamFilterOptions = computed((): UiSelectOption<UsersTeamFilter>[] => [
+    { value: '', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_ALL') },
+    { value: 'field', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_TEAM_FIELD') },
+    { value: 'management', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_TEAM_MANAGEMENT') },
+    { value: 'planning', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_TEAM_PLANNING') },
+  ]);
+
+  readonly assignmentFilterOptions = computed((): UiSelectOption<UsersAssignmentFilter>[] => [
+    { value: '', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_ALL') },
+    { value: 'assigned', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_ASSIGNMENT_ASSIGNED') },
+    { value: 'missing_station', label: this.translate.instant('ADMIN_USERS_PAGE.FILTER_ASSIGNMENT_MISSING') },
+  ]);
 
   readonly filterEmpty = computed(
     () => this.users().length > 0 && this.filteredUsers().length === 0,
@@ -244,6 +355,53 @@ export class AdminUsersComponent implements OnInit {
 
   setRoleFilter(value: RoleFilter): void {
     this.roleFilter.set(value);
+  }
+
+  setSearch(value: string): void {
+    this.searchQuery.set(value);
+  }
+
+  setStationFilter(value: string | number | null): void {
+    this.stationFilter.set((value ?? '') as UsersStationFilter);
+  }
+
+  setTargetFilter(value: string | number | null): void {
+    this.targetFilter.set((value ?? '') as UsersTargetFilter);
+  }
+
+  setTeamFilter(value: string | number | null): void {
+    this.teamFilter.set((value ?? '') as UsersTeamFilter);
+  }
+
+  setAssignmentFilter(value: string | number | null): void {
+    this.assignmentFilter.set((value ?? '') as UsersAssignmentFilter);
+  }
+
+  clearAllFilters(): void {
+    this.searchQuery.set('');
+    this.roleFilter.set('');
+    this.stationFilter.set('');
+    this.targetFilter.set('');
+    this.teamFilter.set('');
+    this.assignmentFilter.set('');
+  }
+
+  private userMatchesSearch(u: UserDto, q: string): boolean {
+    const roleLabel = this.translate.instant(`ADMIN_USERS_PAGE.ROLE_${u.role}`).toLowerCase();
+    const haystack = [
+      u.firstName,
+      u.lastName,
+      `${u.firstName} ${u.lastName}`,
+      `${u.lastName} ${u.firstName}`,
+      u.email,
+      u.email.split('@')[0],
+      this.initials(u),
+      roleLabel,
+      u.managedStationId != null ? String(u.managedStationId) : '',
+    ]
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(q);
   }
 
   stationBarPct(row: UserPerformanceStationRow): number {

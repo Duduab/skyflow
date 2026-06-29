@@ -225,36 +225,153 @@
 
     @if (stationId === 7 && ctx.siteAssembly?.hasNewDeliveryNote) {
       <section class="site-delivery-alert sf-panel" role="alert">
-        <p class="site-delivery-alert__title">
-          {{ 'WORKER.SITE_NEW_DELIVERY_ALERT' | translate }}
-        </p>
-        <ul class="site-delivery-alert__list" role="list">
-          @for (n of ctx.siteAssembly!.deliveryNotes ?? []; track n.id) {
-            <li>
-              <a [href]="n.documentUrl" target="_blank" rel="noopener noreferrer" dir="ltr">
-                {{ n.noteNumber }}
-              </a>
-            </li>
-          }
-        </ul>
+        <div class="site-delivery-alert__inner">
+          <div class="site-delivery-alert__icon-wrap" aria-hidden="true">
+            <span class="site-delivery-alert__icon-ring"></span>
+            <svg class="site-delivery-alert__icon-svg" viewBox="0 0 48 48" fill="none">
+              <path
+                d="M8 32V14a2 2 0 012-2h18a2 2 0 012 2v18"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M30 20h8l6 7v5H30V20z"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M14 32h20"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              />
+              <circle cx="16" cy="34" r="3" fill="currentColor" />
+              <circle cx="36" cy="34" r="3" fill="currentColor" />
+              <path
+                d="M18 22h8M18 26h5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                opacity="0.72"
+              />
+              <path
+                d="M34 12l4 4"
+                stroke="#7dd3fc"
+                stroke-width="2.4"
+                stroke-linecap="round"
+              />
+              <circle cx="38" cy="10" r="2.5" fill="#7dd3fc" />
+            </svg>
+          </div>
+          <div class="site-delivery-alert__copy">
+            <p class="site-delivery-alert__eyebrow">
+              {{ 'WORKER.SITE_DELIVERY_ALERT_EYEBROW' | translate }}
+            </p>
+            <p class="site-delivery-alert__title">
+              {{ 'WORKER.SITE_NEW_DELIVERY_ALERT' | translate }}
+            </p>
+            <ul class="site-delivery-alert__list" role="list">
+              @for (n of ctx.siteAssembly!.deliveryNotes ?? []; track n.id) {
+                <li>
+                  <a
+                    class="site-delivery-alert__doc"
+                    [href]="n.documentUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    dir="ltr"
+                  >
+                    <span class="site-delivery-alert__doc-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path
+                          d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                        <path d="M14 2v6h6M9 13h6M9 17h4" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <span class="site-delivery-alert__doc-num">{{ n.noteNumber }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
       </section>
     }
 
     @if (stationId === 7 && !siteManagerAuthRequired()) {
-      <section class="sf-panel md:p-8 site-station-cta">
-        <h2 class="site-station-cta__title">
-          {{ 'WORKER.SITE_REPORT_CTA_TITLE' | translate }}
-        </h2>
-        <p class="site-station-cta__hint">
-          {{ 'WORKER.SITE_REPORT_CTA_HINT' | translate }}
-        </p>
-        <button
-          type="button"
-          class="site-station-cta__btn"
-          (click)="openSiteReportModal()"
-        >
-          {{ 'WORKER.ASSEMBLY_TYPE_REPORT_BTN' | translate }}
-        </button>
+      <section class="site-station-cta sf-panel">
+        <div class="site-station-cta__inner">
+          <div class="site-station-cta__badge">
+            <span class="site-station-cta__badge-ring" aria-hidden="true"></span>
+            @if (!managerPhotoFailed()) {
+              <img
+                class="site-station-cta__badge-img"
+                [src]="managerAvatarSrc()"
+                (error)="onManagerPhotoError()"
+                [alt]="('WORKER.STATION_MANAGER_NAME_' + stationId) | translate"
+              />
+            } @else {
+              <div class="site-station-cta__badge-fallback" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+            }
+          </div>
+          <p class="site-station-cta__eyebrow">
+            {{ 'WORKER.SITE_REPORT_CTA_EYEBROW' | translate }}
+          </p>
+          <h2 class="site-station-cta__title">
+            {{ 'WORKER.SITE_REPORT_CTA_TITLE' | translate }}
+          </h2>
+          <p class="site-station-cta__hint">
+            {{ 'WORKER.SITE_REPORT_CTA_HINT' | translate }}
+          </p>
+          <div class="site-station-cta__actions">
+            <button
+              type="button"
+              class="site-station-cta__btn"
+              (click)="openSiteReportModal()"
+            >
+              <span class="site-station-cta__btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <rect x="9" y="3" width="6" height="4" rx="1" />
+                  <path d="M9 12h6M9 16h4" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span>{{ 'WORKER.ASSEMBLY_TYPE_REPORT_BTN' | translate }}</span>
+            </button>
+            @if (projectSelection.selectedProjectId()) {
+              <a
+                class="site-station-cta__btn site-station-cta__btn--map"
+                [routerLink]="['/projects', projectSelection.selectedProjectId(), 'elevation-map']"
+              >
+                <span class="site-station-cta__btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>{{ 'WORKER.OPEN_ELEVATION_MAP' | translate }}</span>
+              </a>
+            }
+          </div>
+        </div>
       </section>
     }
 
@@ -2201,7 +2318,19 @@
         titleId="finish-verify-modal-title"
         [zIndex]="85"
         panelClass="station-report-popup station-report-popup--fin"
+        [panelStyle]="{ '--sr-accent': step.accent }"
       >
+        <span popup-icon class="station-report-popup__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <rect x="9" y="3" width="6" height="4" rx="1" />
+            <path d="M9 12h6M9 16h4" stroke-linecap="round" />
+          </svg>
+        </span>
         <p popup-header-extra class="finish-verify-modal__eyebrow">
           {{ 'WORKER.FINISH_VERIFY_MODAL_EYEBROW' | translate }}
         </p>
@@ -2218,24 +2347,38 @@
                 track entry.id
               ) {
                 <li class="finish-verify-modal__log-item" role="listitem">
-                  <div class="finish-verify-modal__log-head">
-                    <time
-                      class="finish-verify-modal__log-time"
-                      [attr.datetime]="entry.createdAt"
-                      >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time
-                    >
-                    @if (entry.reporterName) {
-                      <span class="finish-verify-modal__log-reporter">{{
-                        entry.reporterName
-                      }}</span>
+                  <span class="finish-verify-modal__log-accent" aria-hidden="true"></span>
+                  <span class="finish-verify-modal__log-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <rect x="9" y="3" width="6" height="4" rx="1" />
+                      <path d="M9 12h6M9 16h4" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <div class="finish-verify-modal__log-body">
+                    <div class="finish-verify-modal__log-head">
+                      <time
+                        class="finish-verify-modal__log-time"
+                        [attr.datetime]="entry.createdAt"
+                        >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time
+                      >
+                      @if (entry.reporterName) {
+                        <span class="finish-verify-modal__log-reporter">{{
+                          entry.reporterName
+                        }}</span>
+                      }
+                    </div>
+                    <p class="finish-verify-modal__log-summary">
+                      {{ entry.summaryKey | translate: entry.summaryParams }}
+                    </p>
+                    @if (entry.issues) {
+                      <p class="finish-verify-modal__log-issues">{{ entry.issues }}</p>
                     }
                   </div>
-                  <p class="finish-verify-modal__log-summary">
-                    {{ entry.summaryKey | translate: entry.summaryParams }}
-                  </p>
-                  @if (entry.issues) {
-                    <p class="finish-verify-modal__log-issues">{{ entry.issues }}</p>
-                  }
                 </li>
               }
             </ul>

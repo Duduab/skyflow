@@ -254,6 +254,14 @@
   background: transparent;
 }
 
+.admin-shell__main:has(skyflow-elevation-map) {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 @media (min-width: 1024px) {
   .admin-shell__sidebar {
     grid-column: 1;

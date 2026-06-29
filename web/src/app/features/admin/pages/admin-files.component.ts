@@ -22,6 +22,7 @@ import {
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { MatIconComponent } from '../../../shared/mat-icon/mat-icon.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
 import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
@@ -41,7 +42,7 @@ export interface AdminFileListItem {
 
 @Component({
   selector: 'skyflow-admin-files',
-  imports: [TranslateModule, DatePipe, UiButtonComponent, UiPopupComponent, UiSelectComponent],
+  imports: [TranslateModule, DatePipe, UiButtonComponent, MatIconComponent, UiPopupComponent, UiSelectComponent],
   templateUrl: './admin-files.component.html',
   styleUrl: './admin-files.component.scss',
 })
@@ -196,6 +197,10 @@ export class AdminFilesComponent implements OnInit {
       {
         value: 'PURCHASE_ORDER',
         label: this.translate.instant('ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER'),
+      },
+      {
+        value: 'ELEVATION_MAP',
+        label: this.translate.instant('ADMIN_FILES_PAGE.KIND_ELEVATION_MAP'),
       },
     ];
   }
@@ -381,9 +386,9 @@ export class AdminFilesComponent implements OnInit {
   }
 
   kindLabelKey(kind: ProjectDocumentKind): string {
-    return kind === 'PURCHASE_ORDER'
-      ? 'ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER'
-      : 'ADMIN_FILES_PAGE.KIND_WORK_ORDER';
+    if (kind === 'PURCHASE_ORDER') return 'ADMIN_FILES_PAGE.KIND_PURCHASE_ORDER';
+    if (kind === 'ELEVATION_MAP') return 'ADMIN_FILES_PAGE.KIND_ELEVATION_MAP';
+    return 'ADMIN_FILES_PAGE.KIND_WORK_ORDER';
   }
 
   private downloadFileName(file: AdminFileListItem): string {

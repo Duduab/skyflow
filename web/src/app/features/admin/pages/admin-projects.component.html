@@ -112,13 +112,23 @@
             </a>
           }
 
-          <a
+          <skyflow-ui-card-action
+            color="blue"
             [routerLink]="['/admin/projects', p.id, 'stations']"
-            class="admin-proj-card__quick"
             (click)="$event.stopPropagation()"
           >
+            <skyflow-stations-icon [size]="18" />
             {{ 'ADMIN_PROJECTS.QUICK_STATIONS' | translate }}
-          </a>
+          </skyflow-ui-card-action>
+
+          <skyflow-ui-card-action
+            color="primary"
+            [routerLink]="['/admin/projects', p.id, 'elevation-map']"
+            (click)="$event.stopPropagation()"
+          >
+            <skyflow-mat-icon icon="map" [size]="18" [weight]="400" />
+            {{ 'ADMIN_PROJECTS.QUICK_ELEVATION_MAP' | translate }}
+          </skyflow-ui-card-action>
         </article>
       }
     </div>

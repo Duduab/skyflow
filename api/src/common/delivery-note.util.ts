@@ -1,4 +1,4 @@
-import { createWriteStream, mkdirSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import PDFDocument from 'pdfkit';
 import {
@@ -262,12 +262,77 @@ export function ensureDeliveryNoteDir(): string {
   return dir;
 }
 
-export function deliveryNoteFontPath(): string {
+const HEBREW_FONT_FILE = 'NotoSansHebrew-Regular.ttf';
+const DN_MISSING = '-';
+
+const DELIVERY_NOTE_KIND_LABELS: Record<string, string> = {
+  BEAM: 'קורה',
+  FRAME: 'משקוף',
+  SASH: 'כנף',
+  GLASS_SINGLE: 'זכוכית יחיד',
+  GLASS_DOUBLE: 'זכוכית כפולה',
+  WINDOW_UNIT: 'יחידת חלון',
+};
+
+export function deliveryNoteKindLabel(kind: string): string {
+  return DELIVERY_NOTE_KIND_LABELS[kind.toUpperCase()] ?? kind;
+}
+
+export function deliveryNoteFontPath(): string | null {
   const candidates = [
-    join(process.cwd(), 'assets', 'fonts', 'NotoSansHebrew-Regular.ttf'),
-    join(process.cwd(), 'dist', 'assets', 'fonts', 'NotoSansHebrew-Regular.ttf'),
+    join(process.cwd(), 'assets', 'fonts', HEBREW_FONT_FILE),
+    join(process.cwd(), 'dist', 'assets', 'fonts', HEBREW_FONT_FILE),
   ];
-  return candidates[0]!;
+  return candidates.find((p) => existsSync(p)) ?? null;
+}
+
+function containsHebrew(text: string): boolean {
+  return /[\u0590-\u05FF]/.test(text);
+}
+
+type PdfFontName = 'Hebrew' | 'Helvetica';
+
+function pickPdfFont(text: string): PdfFontName {
+  return containsHebrew(text) ? 'Hebrew' : 'Helvetica';
+}
+
+function registerDeliveryNoteFonts(doc: PDFKit.PDFDocument): PdfFontName {
+  const fontPath = deliveryNoteFontPath();
+  if (fontPath) {
+    doc.registerFont('Hebrew', fontPath);
+    return 'Hebrew';
+  }
+  return 'Helvetica';
+}
+
+function setPdfFont(doc: PDFKit.PDFDocument, name: PdfFontName): void {
+  doc.font(name);
+}
+
+function writePdfTextLine(
+  doc: PDFKit.PDFDocument,
+  x: number,
+  y: number,
+  width: number,
+  align: 'left' | 'center' | 'right',
+  parts: { text: string; font: PdfFontName }[],
+): void {
+  if (!parts.length) return;
+  if (parts.length === 1) {
+    setPdfFont(doc, parts[0]!.font);
+    doc.text(parts[0]!.text, x, y, { width, align });
+    return;
+  }
+  setPdfFont(doc, parts[0]!.font);
+  doc.text(parts[0]!.text, x, y, { width, align, lineBreak: false, continued: true });
+  for (let i = 1; i < parts.length - 1; i++) {
+    const part = parts[i]!;
+    setPdfFont(doc, part.font);
+    doc.text(part.text, { lineBreak: false, continued: true });
+  }
+  const last = parts[parts.length - 1]!;
+  setPdfFont(doc, last.font);
+  doc.text(last.text, { lineBreak: true });
 }
 
 export function deliveryNoteAbsolutePath(publicPath: string): string {
@@ -299,7 +364,6 @@ export function writeDeliveryNotePdf(
   const filename = `${opts.projectId}-${Date.now()}.pdf`;
   const absolutePath = join(dir, filename);
   const publicPath = `/assets/delivery-notes/${filename}`;
-  const fontPath = deliveryNoteFontPath();
 
   const shippingLabel =
     opts.shippingType === DeliveryNoteShippingType.EXTERNAL
@@ -311,22 +375,24 @@ export function writeDeliveryNotePdf(
     const stream = createWriteStream(absolutePath);
     doc.pipe(stream);
 
-    try {
-      doc.registerFont('Hebrew', fontPath);
-      doc.font('Hebrew');
-    } catch {
-      doc.font('Helvetica');
-    }
+    const defaultFont = registerDeliveryNoteFonts(doc);
+    setPdfFont(doc, defaultFont);
 
     const pageW = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const rightX = doc.page.margins.left + pageW;
 
+    const ensureHebrewFont = () => {
+      if (defaultFont === 'Hebrew') setPdfFont(doc, 'Hebrew');
+    };
+
+    ensureHebrewFont();
     doc.fontSize(22).text('תעודת משלוח', rightX, doc.y, { align: 'right', width: pageW });
     doc.moveDown(0.3);
-    doc.fontSize(11).fillColor('#64748b').text(`SkyFlow · ${opts.projectName}`, rightX, doc.y, {
-      align: 'right',
-      width: pageW,
-    });
+    doc.fontSize(11).fillColor('#64748b');
+    writePdfTextLine(doc, rightX, doc.y, pageW, 'right', [
+      { text: 'SkyFlow · ', font: 'Helvetica' },
+      { text: opts.projectName, font: pickPdfFont(opts.projectName) },
+    ]);
     doc.fillColor('#0f172a');
     doc.moveDown(1);
 
@@ -346,14 +412,17 @@ export function writeDeliveryNotePdf(
     }
     metaRows.push(['תאריך הפקה', opts.issuedAt.toLocaleString('he-IL')]);
 
+    doc.fontSize(10);
     for (const [label, value] of metaRows) {
-      doc.fontSize(10).text(`${label}: ${value}`, rightX, doc.y, {
-        align: 'right',
-        width: pageW,
-      });
+      writePdfTextLine(doc, rightX, doc.y, pageW, 'right', [
+        { text: `${label}: `, font: 'Hebrew' },
+        { text: value, font: pickPdfFont(value) },
+      ]);
+      doc.moveDown(0.2);
     }
 
-    doc.moveDown(1.2);
+    doc.moveDown(1);
+    ensureHebrewFont();
     doc.fontSize(13).text('פריטים', rightX, doc.y, { align: 'right', width: pageW });
     doc.moveDown(0.5);
 
@@ -361,6 +430,7 @@ export function writeDeliveryNotePdf(
     const headers = ['כמות', 'אורך', 'תיאור', 'פרופיל', 'סוג'];
     let x = doc.page.margins.left;
     doc.fontSize(9).fillColor('#475569');
+    ensureHebrewFont();
     for (let i = 0; i < headers.length; i++) {
       doc.text(headers[i]!, x, doc.y, { width: colWidths[i]!, align: 'center' });
       x += colWidths[i]!;
@@ -369,20 +439,38 @@ export function writeDeliveryNotePdf(
     doc.fillColor('#0f172a');
 
     for (const li of opts.lineItems) {
-      if (doc.y > doc.page.height - 80) doc.addPage();
+      if (doc.y > doc.page.height - 80) {
+        doc.addPage();
+        ensureHebrewFont();
+      }
       x = doc.page.margins.left;
       const rowY = doc.y;
-      const cells = [
-        String(li.quantity),
-        li.lengthMm != null ? String(li.lengthMm) : '—',
-        li.description,
-        li.profileCode ?? '—',
-        li.kind,
+      const cells: { text: string; font: PdfFontName; align: 'center' | 'right' }[] = [
+        { text: String(li.quantity), font: 'Helvetica', align: 'center' },
+        {
+          text: li.lengthMm != null ? String(li.lengthMm) : DN_MISSING,
+          font: 'Helvetica',
+          align: 'center',
+        },
+        { text: li.description, font: pickPdfFont(li.description), align: 'right' },
+        {
+          text: li.profileCode ?? DN_MISSING,
+          font: pickPdfFont(li.profileCode ?? DN_MISSING),
+          align: 'center',
+        },
+        {
+          text: deliveryNoteKindLabel(li.kind),
+          font: 'Hebrew',
+          align: 'center',
+        },
       ];
+      doc.fontSize(8.5);
       for (let i = 0; i < cells.length; i++) {
-        doc.fontSize(8.5).text(cells[i]!, x, rowY, {
+        const cell = cells[i]!;
+        setPdfFont(doc, cell.font);
+        doc.text(cell.text, x, rowY, {
           width: colWidths[i]!,
-          align: i === 2 ? 'right' : 'center',
+          align: cell.align,
         });
         x += colWidths[i]!;
       }

@@ -15,6 +15,7 @@
 
     <div
       [class]="'sf-ui-popup__panel ' + panelClass()"
+      [ngStyle]="panelStyle()"
       role="dialog"
       aria-modal="true"
       [attr.aria-labelledby]="titleId() || null"

@@ -1,0 +1,153 @@
+:host {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+:host(.sf-ui-card-action-host--block) {
+  display: block;
+  width: 100%;
+}
+
+:host(.sf-ui-card-action-host--push) {
+  margin-top: auto;
+}
+
+.sf-ui-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--sf-ui-btn-radius, var(--sf-radius));
+  border: 1px solid var(--sf-card-action-border);
+  font-family: var(--sf-font, inherit);
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1.15;
+  text-decoration: none;
+  text-align: center;
+  color: var(--sf-card-action-fg);
+  background: var(--sf-card-action-bg);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    filter 0.15s ease,
+    opacity 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--sf-card-action-bg-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--sf-shadow);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--sf-shadow), 0 0 0 4px var(--sf-card-action-ring);
+  }
+
+  &:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none;
+  }
+}
+
+.sf-ui-card-action__inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.sf-ui-card-action--blue {
+  --sf-card-action-fg: #2563eb;
+  --sf-card-action-bg: rgba(85, 143, 195, 0.12);
+  --sf-card-action-border: rgba(85, 143, 195, 0.25);
+  --sf-card-action-bg-hover: rgba(85, 143, 195, 0.2);
+  --sf-card-action-ring: rgba(85, 143, 195, 0.35);
+}
+
+.sf-ui-card-action--purple {
+  --sf-card-action-fg: var(--sf-indigo, #4b689d);
+  --sf-card-action-bg: color-mix(in srgb, var(--sf-indigo, #4b689d) 12%, transparent);
+  --sf-card-action-border: color-mix(in srgb, var(--sf-indigo, #4b689d) 25%, transparent);
+  --sf-card-action-bg-hover: color-mix(in srgb, var(--sf-indigo, #4b689d) 20%, transparent);
+  --sf-card-action-ring: rgba(75, 104, 157, 0.35);
+}
+
+.sf-ui-card-action--primary {
+  --sf-card-action-fg: #fff;
+  --sf-card-action-bg: linear-gradient(
+    180deg,
+    var(--sf-ui-primary-from, #897fff) 0%,
+    var(--sf-ui-primary-to, #4a3aff) 100%
+  );
+  --sf-card-action-border: var(--sf-ui-primary-border, #897fff);
+  --sf-card-action-bg-hover: linear-gradient(
+    180deg,
+    var(--sf-ui-primary-from, #897fff) 0%,
+    var(--sf-ui-primary-to, #4a3aff) 100%
+  );
+  --sf-card-action-ring: var(--sf-ui-ring-primary, rgba(137, 127, 255, 0.55));
+  box-shadow: var(--sf-ui-primary-shadow);
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.06);
+    background: var(--sf-card-action-bg-hover);
+  }
+
+  &:focus-visible {
+    box-shadow:
+      var(--sf-ui-primary-shadow),
+      0 0 0 4px var(--sf-card-action-ring);
+  }
+}
+
+.sf-ui-card-action--red {
+  --sf-card-action-fg: #b91c1c;
+  --sf-card-action-bg: rgba(239, 68, 68, 0.12);
+  --sf-card-action-border: rgba(239, 68, 68, 0.25);
+  --sf-card-action-bg-hover: rgba(239, 68, 68, 0.2);
+  --sf-card-action-ring: rgba(239, 68, 68, 0.35);
+}
+
+.sf-ui-card-action--green {
+  --sf-card-action-fg: #15803d;
+  --sf-card-action-bg: rgba(34, 197, 94, 0.12);
+  --sf-card-action-border: rgba(34, 197, 94, 0.28);
+  --sf-card-action-bg-hover: rgba(34, 197, 94, 0.2);
+  --sf-card-action-ring: rgba(34, 197, 94, 0.35);
+}
+
+:host-context(html:not(.theme-light)) .sf-ui-card-action--purple {
+  --sf-card-action-fg: #c4b5fd;
+  --sf-card-action-bg: color-mix(in srgb, var(--sf-indigo, #4b689d) 22%, transparent);
+  --sf-card-action-border: color-mix(in srgb, var(--sf-indigo, #4b689d) 35%, transparent);
+  --sf-card-action-bg-hover: color-mix(in srgb, var(--sf-indigo, #4b689d) 30%, transparent);
+}
+
+:host-context(html:not(.theme-light)) .sf-ui-card-action--red {
+  --sf-card-action-fg: #fca5a5;
+  --sf-card-action-bg: rgba(239, 68, 68, 0.18);
+  --sf-card-action-border: rgba(248, 113, 113, 0.32);
+  --sf-card-action-bg-hover: rgba(239, 68, 68, 0.28);
+}
+
+:host-context(html:not(.theme-light)) .sf-ui-card-action--green {
+  --sf-card-action-fg: #86efac;
+  --sf-card-action-bg: rgba(34, 197, 94, 0.18);
+  --sf-card-action-border: rgba(74, 222, 128, 0.32);
+  --sf-card-action-bg-hover: rgba(34, 197, 94, 0.28);
+}

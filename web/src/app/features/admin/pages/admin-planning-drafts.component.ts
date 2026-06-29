@@ -3,6 +3,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatIconComponent } from '../../../shared/mat-icon/mat-icon.component';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
+import { UiCardActionComponent } from '../../../shared/ui-card-action/ui-card-action.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { finalize, take } from 'rxjs/operators';
@@ -17,7 +18,7 @@ import {
 @Component({
   selector: 'skyflow-admin-planning-drafts',
   standalone: true,
-  imports: [TranslateModule, RouterLink, DatePipe, DecimalPipe, UiButtonComponent, UiPopupComponent, MatIconComponent],
+  imports: [TranslateModule, RouterLink, DatePipe, DecimalPipe, UiButtonComponent, UiPopupComponent, MatIconComponent, UiCardActionComponent],
   templateUrl: './admin-planning-drafts.component.html',
   styleUrl: './admin-planning-drafts.component.scss',
 })

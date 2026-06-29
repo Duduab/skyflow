@@ -45,6 +45,23 @@ enum DeliveryNoteStatus {
   CANCELLED
 }
 
+/// מפת חזיתות — סוג קובייה לפי צבע בשרטוט (אפור=ספנדרל, תכלת=יחידה)
+enum ElevationCellKind {
+  SPANDREL
+  UNIT
+}
+
+enum ElevationCellStatus {
+  PENDING
+  DONE
+}
+
+enum ElevationMapStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
 enum SkyflowRole {
   WORKER
   ADMIN
@@ -79,12 +96,13 @@ model User {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  planningAssignedProjects ProjectOrder[] @relation("PlanningAssignee")
-  planningSawsManagerOfProjects ProjectOrder[] @relation("PlanningSawsManager")
-  createdProjects          ProjectOrder[] @relation("ProjectCreator")
+  planningAssignedProjects      ProjectOrder[]              @relation("PlanningAssignee")
+  planningSawsManagerOfProjects ProjectOrder[]              @relation("PlanningSawsManager")
+  createdProjects               ProjectOrder[]              @relation("ProjectCreator")
   projectSawsPlanningWorkers    ProjectPlanningSawsWorker[]
-  dailyTargets             UserDailyTarget[]
-  issuedDeliveryNotes      ProjectDeliveryNote[]
+  dailyTargets                  UserDailyTarget[]
+  issuedDeliveryNotes           ProjectDeliveryNote[]
+  completedElevationCells       ElevationCell[]
 
   @@index([role])
   @@index([managedStationId])
@@ -97,22 +115,22 @@ enum DailyTargetSource {
 
 /// יעד יומי לעובד — תיאור + זמן יעד; ביצוע מחושב מדיווחי עמדות
 model UserDailyTarget {
-  id            String             @id @default(uuid())
+  id            String            @id @default(uuid())
   userId        String
   /// YYYY-MM-DD (local calendar day)
-  targetDate    String             @db.VarChar(10)
-  source        DailyTargetSource  @default(MANUAL)
+  targetDate    String            @db.VarChar(10)
+  source        DailyTargetSource @default(MANUAL)
   projectId     String?
   stationId     Int?
-  description   String             @db.Text
-  targetMinutes Int                @default(0)
+  description   String            @db.Text
+  targetMinutes Int               @default(0)
   /// כמות יחידות לביצוע (יעדי תפ״י)
   targetQty     Int?
   /// פירוט שורות חיתוך / משימות מתפ״י (מערך JSON)
   lineItems     Json?
-  dedupeKey     String             @unique
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  dedupeKey     String            @unique
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   project ProjectOrder? @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -123,36 +141,36 @@ model UserDailyTarget {
 
 /// Production order (project) — ERP + תכנון תפ״י
 model ProjectOrder {
-  id                   String            @id @default(uuid())
-  name                 String
-  totalItems           Int
-  requirements         String            @db.Text
-  status               OrderStatus       @default(PENDING)
+  id                        String                @id @default(uuid())
+  name                      String
+  totalItems                Int
+  requirements              String                @db.Text
+  status                    OrderStatus           @default(PENDING)
   /// זרימת תכנון: לפני אישור — כל התחנות נעולות; אחרי אישור — מסורים ואז השרשרת הקיימת
-  flowStatus           ProjectFlowStatus @default(PENDING_PLANNING)
+  flowStatus                ProjectFlowStatus     @default(PENDING_PLANNING)
   /// Reference length for Station 1 scrap formula (mm per unit from BOM)
-  originalLength       Decimal           @db.Decimal(14, 4)
+  originalLength            Decimal               @db.Decimal(14, 4)
   /// Station 7 — תעודת משלוח שהועלתה לצורך הרכבה באתר (נתיב ציבורי באפליקציית הוויב)
-  siteDeliveryNotePath String?
+  siteDeliveryNotePath      String?
   /// יעדים מהתעודה (סריקה / OCR — כרגע נטען סטאב אחרי העלאה)
-  siteExpectedBeams    Int?
-  siteExpectedGlazing  Int?
-  siteExpectedUnitized Int?
+  siteExpectedBeams         Int?
+  siteExpectedGlazing       Int?
+  siteExpectedUnitized      Int?
   /// עובד ראשון לשיבוץ — תאימות לאחור / תצוגה
-  planningAssigneeUserId String?
-  planningAssignee       User?   @relation("PlanningAssignee", fields: [planningAssigneeUserId], references: [id], onDelete: SetNull)
+  planningAssigneeUserId    String?
+  planningAssignee          User?                 @relation("PlanningAssignee", fields: [planningAssigneeUserId], references: [id], onDelete: SetNull)
   /// מנהל עמדת מסורים (1) משובץ מתכנון — נפרד מעובדים
   planningSawsManagerUserId String?
-  planningSawsManager       User?   @relation("PlanningSawsManager", fields: [planningSawsManagerUserId], references: [id], onDelete: SetNull)
+  planningSawsManager       User?                 @relation("PlanningSawsManager", fields: [planningSawsManagerUserId], references: [id], onDelete: SetNull)
   /// משתמש שיצר/פתח את הפרויקט (טיוטת תכנון)
-  createdByUserId        String?
-  createdBy              User?   @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId           String?
+  createdBy                 User?                 @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   /// אלומיניום → מסורים; פלדה → מסגריה (תחנה 1 — אותו stationId)
-  lineMaterial           ProjectLineMaterial     @default(ALUMINUM)
+  lineMaterial              ProjectLineMaterial   @default(ALUMINUM)
   /// זכוכית → CNC; Alu Ranger → תחנה 2 וריאנט (אותו stationId)
-  machiningRoute         ProjectMachiningRoute   @default(GLASS)
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  machiningRoute            ProjectMachiningRoute @default(GLASS)
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
 
   stationLogs         StationLog[]
   scrapReports        ScrapReport[]
@@ -163,6 +181,7 @@ model ProjectOrder {
   packReportPhotos    PackReportPhoto[]
   dailyTargets        UserDailyTarget[]
   deliveryNotes       ProjectDeliveryNote[]
+  elevationMaps       ElevationMap[]
 
   @@index([planningAssigneeUserId])
   @@index([planningSawsManagerUserId])
@@ -186,18 +205,18 @@ model ProjectPlanningSawsWorker {
 
 /// שורת תכנון (יחידה / הוראת חלון) מתוך קובץ תפ״י
 model ProductItem {
-  id              String      @id @default(uuid())
-  projectId       String
-  productType     ProductType
+  id                     String      @id @default(uuid())
+  projectId              String
+  productType            ProductType
   /// e.g. TYPE_2, TYPE_4, WINDOW_INSTRUCTION
-  instructionKind String
-  label           String
-  sortOrder       Int         @default(0)
+  instructionKind        String
+  label                  String
+  sortOrder              Int         @default(0)
   /// שורת התחלה בגליון Excel (0-based, כמו SheetJS) לבלוק היחידה — לשיוך תמונות מוטמעות
   planningBlockStartRow0 Int?
   /// שורת סיום (כולל) לאותו בלוק
   planningBlockEndRow0   Int?
-  createdAt       DateTime    @default(now())
+  createdAt              DateTime    @default(now())
 
   project    ProjectOrder       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   components ProductComponent[]
@@ -206,17 +225,17 @@ model ProductItem {
 }
 
 model ProductComponent {
-  id            String               @id @default(uuid())
-  productItemId String
-  kind          ProductComponentKind
-  description   String               @db.Text
-  quantity      Int                  @default(1)
-  spec          String?
+  id                 String               @id @default(uuid())
+  productItemId      String
+  kind               ProductComponentKind
+  description        String               @db.Text
+  quantity           Int                  @default(1)
+  spec               String?
   /// עמודת גליון Excel (0-based) למדידה — לשיוך תמונות לעמדת מסורים
   planningSourceCol0 Int?
   /// MPS-X | MPS-Y | MPB-X | MPB-Y בלבד כשמגיע למסורים; null לשאר רכיבים
-  sawsProfileCode      String? @db.VarChar(32)
-  createdAt     DateTime             @default(now())
+  sawsProfileCode    String?              @db.VarChar(32)
+  createdAt          DateTime             @default(now())
 
   productItem ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
 
@@ -225,21 +244,21 @@ model ProductComponent {
 
 /// צורף לאישור תכנון — חיתוך במסורים (פרופילי MPS/MPB X2 מהתכנון)
 model SawStationWorkLine {
-  id            String               @id @default(uuid())
-  projectId     String
-  componentKind ProductComponentKind
-  description   String               @db.Text
-  quantity      Int                  @default(1)
-  sortOrder     Int                  @default(0)
+  id                  String               @id @default(uuid())
+  projectId           String
+  componentKind       ProductComponentKind
+  description         String               @db.Text
+  quantity            Int                  @default(1)
+  sortOrder           Int                  @default(0)
   /// נתיבים ציבוריים (למשל /planning-saws/{projectId}/...) אחרי העתקה מאישור תפ״י
-  imagePaths    String[]             @default([])
+  imagePaths          String[]             @default([])
   /// TYPE_2, TYPE_4, … מתוך ProductItem (לא WINDOW_INSTRUCTION)
-  instructionKind String             @default("") @db.VarChar(32)
+  instructionKind     String               @default("") @db.VarChar(32)
   /// אורך חיתוך מהתכנון (מ״מ) — מתא בעמודת הפרופיל (MPS/MPB); מקור למטרים לניסור
   planningCutLengthMm Int?
   /// MPS-X | MPS-Y | MPB-X | MPB-Y when from planning Excel
-  sawsProfileCode     String? @db.VarChar(32)
-  createdAt     DateTime             @default(now())
+  sawsProfileCode     String?              @db.VarChar(32)
+  createdAt           DateTime             @default(now())
 
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -249,6 +268,7 @@ model SawStationWorkLine {
 enum ProjectDocumentKind {
   PURCHASE_ORDER
   WORK_ORDER
+  ELEVATION_MAP
 }
 
 /// Purchase orders & work instructions (PDF) attached to a project
@@ -263,7 +283,8 @@ model ProjectDocument {
   sortOrder Int                 @default(0)
   createdAt DateTime            @default(now())
 
-  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project      ProjectOrder  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  elevationMap ElevationMap?
 
   @@index([projectId, kind])
 }
@@ -288,17 +309,17 @@ model StationLog {
 }
 
 model ScrapReport {
-  id         String   @id @default(uuid())
-  projectId  String
-  stationId  Int
+  id          String   @id @default(uuid())
+  projectId   String
+  stationId   Int
   /// Per-piece length in mm
-  itemLength Decimal  @db.Decimal(14, 4)
-  scrapQty   Int
+  itemLength  Decimal  @db.Decimal(14, 4)
+  scrapQty    Int
   /// CATALOG = MPS/MPB X2 from planning; DRAWN = custom / template profile
-  profileKind String  @default("CATALOG") @db.VarChar(16)
+  profileKind String   @default("CATALOG") @db.VarChar(16)
   /// MPS-X, MPB-Y, … or drawn profile label / instruction kind
-  profileCode String  @default("LEGACY") @db.VarChar(32)
-  createdAt  DateTime @default(now())
+  profileCode String   @default("LEGACY") @db.VarChar(32)
+  createdAt   DateTime @default(now())
 
   project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -322,23 +343,23 @@ model PackReportPhoto {
 
 /// Station 6 — תעודת משלוח שהופקה בסידור ואריזה
 model ProjectDeliveryNote {
-  id             String                   @id @default(uuid())
-  projectId      String
-  noteNumber     String                   @db.VarChar(32)
-  shippingType   DeliveryNoteShippingType
-  status         DeliveryNoteStatus       @default(ACTIVE)
+  id              String                   @id @default(uuid())
+  projectId       String
+  noteNumber      String                   @db.VarChar(32)
+  shippingType    DeliveryNoteShippingType
+  status          DeliveryNoteStatus       @default(ACTIVE)
   /// מחיר משלוח חיצוני (₪) — רק כש-shippingType = EXTERNAL
-  externalPrice  Decimal?                 @db.Decimal(14, 2)
+  externalPrice   Decimal?                 @db.Decimal(14, 2)
   /// נתיב ציבורי למסמך PDF
-  documentPath   String
+  documentPath    String
   /// פריטים שכללו בתעודה (פרופילים, קורות, רכיבים)
-  lineItems      Json
-  issuedAt       DateTime                 @default(now())
-  cancelledAt    DateTime?
+  lineItems       Json
+  issuedAt        DateTime                 @default(now())
+  cancelledAt     DateTime?
   emailNotifiedAt DateTime?
-  issuedByUserId String?
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
+  issuedByUserId  String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   project  ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issuedBy User?        @relation(fields: [issuedByUserId], references: [id], onDelete: SetNull)
@@ -346,6 +367,58 @@ model ProjectDeliveryNote {
   @@index([projectId, issuedAt(sort: Desc)])
   @@index([projectId, status])
   @@index([issuedByUserId])
+}
+
+/// מפת חזיתות להתקנה באתר — נגזרת מ-PDF (ELEVATION_MAP) שהתפ״י מעלה
+model ElevationMap {
+  id         String             @id @default(uuid())
+  projectId  String
+  /// מסמך המקור (ProjectDocument מסוג ELEVATION_MAP)
+  documentId String?            @unique
+  title      String
+  status     ElevationMapStatus @default(PROCESSING)
+  /// מספר עמודים בקובץ המקור
+  pageCount  Int                @default(1)
+  /// מטא לכל עמוד: [{ pageIndex, imageUrl, width, height }] — תמונות רקע ל-overlay
+  pages      Json
+  /// הודעת שגיאה אם status=FAILED
+  error      String?            @db.Text
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  project  ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  cells    ElevationCell[]
+
+  @@index([projectId])
+}
+
+/// קובייה בודדת במפת החזיתות (פאנל / ספנדרל) — ניתנת לסימון כבוצע
+model ElevationCell {
+  id           String              @id @default(uuid())
+  mapId        String
+  pageIndex    Int                 @default(0)
+  /// קוד ראשי של הקובייה (לרוב הזקף, e.g. A7-F5-M56)
+  code         String              @db.VarChar(64)
+  /// קומה שחולצה מהקוד (e.g. F5) — לסינון
+  floor        String?             @db.VarChar(16)
+  kind         ElevationCellKind
+  /// כל הפריטים/קודים על הקובייה (מערך מחרוזות JSON)
+  items        Json
+  /// מיקום יחסי 0..1 בתוך עמוד הרקע: { x, y, w, h }
+  bbox         Json
+  status       ElevationCellStatus @default(PENDING)
+  doneAt       DateTime?
+  doneByUserId String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  map    ElevationMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  doneBy User?        @relation(fields: [doneByUserId], references: [id], onDelete: SetNull)
+
+  @@index([mapId, pageIndex])
+  @@index([mapId, status])
+  @@index([doneByUserId])
 }
 
 model ManufacturingPlan {

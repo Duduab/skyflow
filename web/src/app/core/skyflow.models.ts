@@ -324,7 +324,64 @@ export interface AdminCharts {
   };
 }
 
-export type ProjectDocumentKind = 'PURCHASE_ORDER' | 'WORK_ORDER';
+export type ProjectDocumentKind =
+  | 'PURCHASE_ORDER'
+  | 'WORK_ORDER'
+  | 'ELEVATION_MAP';
+
+export type ElevationCellKind = 'SPANDREL' | 'UNIT';
+export type ElevationCellStatus = 'PENDING' | 'DONE';
+export type ElevationMapStatus = 'PROCESSING' | 'READY' | 'FAILED';
+
+export interface ElevationSectionDto {
+  label: string;
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+export interface ElevationPageDto {
+  pageIndex: number;
+  imageUrl: string;
+  width: number;
+  height: number;
+  sections?: ElevationSectionDto[];
+}
+
+export interface ElevationCellDto {
+  id: string;
+  pageIndex: number;
+  code: string;
+  floor: string | null;
+  kind: ElevationCellKind;
+  items: string[];
+  bbox: { x: number; y: number; w: number; h: number };
+  status: ElevationCellStatus;
+  doneAt: string | null;
+  doneBy: string | null;
+}
+
+export interface ElevationProgressDto {
+  total: number;
+  done: number;
+  pct: number;
+  spandrel: { total: number; done: number };
+  unit: { total: number; done: number };
+}
+
+export interface ElevationMapResponse {
+  map: {
+    id: string;
+    title: string;
+    status: ElevationMapStatus;
+    pageCount: number;
+    pages: ElevationPageDto[];
+    error: string | null;
+  } | null;
+  cells?: ElevationCellDto[];
+  progress?: ElevationProgressDto;
+}
 
 export interface ProjectDocumentDto {
   id: string;

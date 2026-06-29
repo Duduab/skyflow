@@ -8,17 +8,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter } from 'rxjs/operators';
 import { NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { forkJoin, of } from 'rxjs';
-import { catchError, finalize, take } from 'rxjs/operators';
+import { catchError, filter } from 'rxjs/operators';
 
 import { ApiService } from '../../core/api.service';
 import { ProjectOrder, WorkerContext } from '../../core/skyflow.models';
-import { loadOrderPickerPreviews } from '../../shared/order-picker-modal/order-picker-preview.loader';
-import { OrderPickerModalComponent } from '../../shared/order-picker-modal/order-picker-modal.component';
-import { OrderPickerPreview } from '../../shared/order-picker-modal/order-picker.types';
 import { WorkerProjectSelectionService } from './worker-project-selection.service';
 import {
   computeStationProgress,
@@ -27,7 +23,8 @@ import {
   PROGRESS_RING_C,
   StationProgressVm,
 } from './station-progress';
-import { UiButtonComponent } from '../../shared/ui-button.component';
+import { UiSelectComponent } from '../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../shared/ui-select/ui-select.types';
 import { StationLabelPipe } from '../../shared/station-label.pipe';
 import {
   stationDescKey,
@@ -35,17 +32,13 @@ import {
   stationVisualStyle,
 } from '../../core/station-presentation';
 
-/** @deprecated השתמשו ב-OrderPickerPreview; נשאר לתאימות */
-export type OrderHubPreview = OrderPickerPreview;
-
 @Component({
   selector: 'skyflow-worker-hub',
   imports: [
     RouterLink,
     TranslateModule,
     NgStyle,
-    OrderPickerModalComponent,
-    UiButtonComponent,
+    UiSelectComponent,
     StationLabelPipe,
   ],
   templateUrl: './worker-hub.component.html',
@@ -58,10 +51,6 @@ export class WorkerHubComponent implements OnInit {
   readonly projectSelection = inject(WorkerProjectSelectionService);
 
   readonly orders = signal<ProjectOrder[]>([]);
-
-  readonly ordersModalOpen = signal(false);
-  readonly orderPreviews = signal<Map<string, OrderPickerPreview>>(new Map());
-  readonly loadingOrderPreviews = signal(false);
 
   /** מנהלי תחנה — תצוגה בלבד (שם על כרטיס) */
   readonly stationManagers = signal<
@@ -107,9 +96,9 @@ export class WorkerHubComponent implements OnInit {
     return (id ? list.find((o) => o.id === id) : undefined) ?? list[0];
   });
 
-  readonly selectedOrderDisplayName = computed(() => {
-    return this.selectedOrder()?.name ?? '';
-  });
+  readonly projectOptions = computed((): UiSelectOption[] =>
+    this.orders().map((o) => ({ value: o.id, label: o.name })),
+  );
 
   stationDescKeyFor(stationId: number): string {
     return stationDescKey(this.selectedOrder(), stationId);
@@ -167,38 +156,11 @@ export class WorkerHubComponent implements OnInit {
       });
   }
 
-  openOrdersModal(): void {
-    this.ordersModalOpen.set(true);
-    this.refreshOrderPreviews();
-  }
-
-  closeOrdersModal(): void {
-    this.ordersModalOpen.set(false);
-  }
-
-  onOrderPickedFromModal(projectId: string | null): void {
-    if (!projectId) return;
-    this.projectSelection.select(projectId);
-    this.loadAllContexts(projectId);
-    this.closeOrdersModal();
-  }
-
-  private refreshOrderPreviews(): void {
-    const list = this.orders();
-    if (!list.length) {
-      this.orderPreviews.set(new Map());
-      return;
-    }
-    this.loadingOrderPreviews.set(true);
-    loadOrderPickerPreviews(this.api, list)
-      .pipe(
-        take(1),
-        finalize(() => this.loadingOrderPreviews.set(false)),
-      )
-      .subscribe({
-        next: (m) => this.orderPreviews.set(m),
-        error: () => this.loadingOrderPreviews.set(false),
-      });
+  onProjectChange(value: string | number | null): void {
+    const id = value == null ? '' : String(value);
+    if (!id) return;
+    this.projectSelection.select(id);
+    this.loadAllContexts(id);
   }
 
   private loadAllContexts(projectId: string): void {

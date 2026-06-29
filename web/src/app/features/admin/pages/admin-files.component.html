@@ -11,7 +11,10 @@
     </div>
     <div class="admin-files__hero-actions">
       <skyflow-ui-button variant="primary" btnClass="admin-files__upload" (click)="openUploadModal()">
-        {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
+        <span class="admin-files__upload-inner">
+          <skyflow-mat-icon icon="upload" [size]="18" [weight]="400" />
+          {{ 'ADMIN_FILES_PAGE.UPLOAD_BTN' | translate }}
+        </span>
       </skyflow-ui-button>
     </div>
   </header>

@@ -80,16 +80,19 @@
   flex-shrink: 0;
 }
 
-.admin-users__filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-bottom: 1.25rem;
+.admin-users__add-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
+
 .admin-users__filter-chip {
-  padding: 0.4rem 0.75rem;
+  padding: 0.45rem 0.8rem;
   border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: var(--sf-radius);
   background: #fff;
   font-size: 0.78rem;
   font-weight: 700;
@@ -98,7 +101,8 @@
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 :host-context(html:not(.theme-light)) .admin-users__filter-chip {
@@ -153,10 +157,10 @@
 .admin-users__card-top {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem 0.85rem;
   width: 100%;
-  padding: 1rem 1.05rem 0.75rem;
+  padding: 0.85rem 1.05rem 0.75rem;
 }
 
 .admin-users__card-actions {
@@ -181,8 +185,8 @@
   width: 100%;
   min-height: var(--admin-users-card-action-h);
   height: 100%;
-  padding-inline: 0.55rem;
-  font-size: 0.8rem;
+  padding-inline: 0.45rem;
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
@@ -346,9 +350,11 @@
 
 .admin-users__avatar {
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: -0.15rem;
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: var(--sf-radius);
+  border-radius: 50%;
   display: grid;
   place-items: center;
   font-size: 0.95rem;
@@ -356,6 +362,8 @@
   color: #fff;
   background: linear-gradient(145deg, #2563eb, #38bdf8);
   overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: var(--sf-shadow);
 }
 
 .admin-users__avatar img {
@@ -368,7 +376,7 @@
   width: 3.5rem;
   height: 3.5rem;
   font-size: 1.1rem;
-  border-radius: var(--sf-radius);
+  border-radius: 50%;
 }
 
 .admin-users__card-body {
@@ -435,6 +443,29 @@
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--admin-muted, #64748b);
+}
+
+:host ::ng-deep .sf-ui-popup__icon:has(.admin-users-detail__popup-icon) {
+  padding: 0;
+  overflow: hidden;
+  background: linear-gradient(145deg, #2563eb, #38bdf8);
+  box-shadow: var(--sf-shadow);
+}
+
+.admin-users-detail__popup-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.admin-users-detail__popup-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .admin-users-detail__toolbar {

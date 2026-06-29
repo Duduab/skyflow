@@ -41,6 +41,14 @@
   box-shadow: var(--sf-shadow);
 }
 
+.admin-files__upload-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
 .admin-files__kpis {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -121,6 +129,7 @@
 }
 
 .admin-files__filter-select {
+  --sf-ui-select-radius: var(--sf-radius);
   cursor: pointer;
   min-width: min(100%, 14rem);
   padding: 0;
@@ -133,7 +142,7 @@
   padding-block: 0.4rem;
   padding-inline: 0.65rem 0.55rem;
   border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: var(--sf-radius);
+  border-radius: var(--sf-radius) !important;
   font-size: 0.88rem;
   font-weight: 500;
   letter-spacing: normal;

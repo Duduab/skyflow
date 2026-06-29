@@ -8,6 +8,7 @@ import {
   PlanningParsePreviewDto,
   ProjectDocumentDto,
   ProjectDocumentKind,
+  ElevationMapResponse,
   SendProjectDocumentEmailResponse,
   ProjectLineMaterial,
   ProjectMachiningRoute,
@@ -395,6 +396,23 @@ export class ApiService {
     return this.http.post<{ ok: true; document: ProjectDocumentDto }>(
       `${this.base}/projects/${encodeURIComponent(projectId)}/documents`,
       fd,
+    );
+  }
+
+  getElevationMap(projectId: string): Observable<ElevationMapResponse> {
+    return this.http.get<ElevationMapResponse>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/elevation-map`,
+    );
+  }
+
+  markElevationCells(
+    projectId: string,
+    cellIds: string[],
+    done: boolean,
+  ): Observable<{ updated: number }> {
+    return this.http.post<{ updated: number }>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/elevation-map/cells/mark`,
+      { cellIds, done },
     );
   }
 

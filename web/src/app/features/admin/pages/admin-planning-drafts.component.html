@@ -132,28 +132,18 @@
             </div>
           </dl>
 
-          <div class="planning-drafts-card__actions">
-            <a
-              [routerLink]="['/admin/planning-new']"
-              [queryParams]="{ draftId: d.id }"
-              class="planning-drafts-card__cta sf-ui-btn sf-ui-btn--primary"
-            >
-              <span class="planning-drafts-card__btn-inner">
-                <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
-                {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
-              </span>
-            </a>
-            <skyflow-ui-button
-              variant="danger"
-              btnClass="planning-drafts-card__delete"
-              (click)="openDeleteConfirm(d, $event)"
-            >
-              <span class="planning-drafts-card__btn-inner">
-                <skyflow-mat-icon icon="delete" [size]="18" [weight]="400" />
-                {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
-              </span>
-            </skyflow-ui-button>
-          </div>
+          <skyflow-ui-card-action
+            color="purple"
+            [routerLink]="['/admin/planning-new']"
+            [queryParams]="{ draftId: d.id }"
+          >
+            <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
+            {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+          </skyflow-ui-card-action>
+          <skyflow-ui-card-action color="red" (action)="openDeleteConfirm(d, $event)">
+            <skyflow-mat-icon icon="delete" [size]="18" [weight]="400" />
+            {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
+          </skyflow-ui-card-action>
         </article>
       }
     </div>
@@ -200,26 +190,25 @@
               <td>{{ d.updatedAt | date: 'dd/MM/yy HH:mm' }}</td>
               <td>
                 <div class="planning-drafts-table__actions">
-                  <a
+                  <skyflow-ui-card-action
+                    color="purple"
+                    [pushBottom]="false"
+                    [block]="false"
                     [routerLink]="['/admin/planning-new']"
                     [queryParams]="{ draftId: d.id }"
-                    class="sf-ui-btn sf-ui-btn--primary"
                   >
-                    <span class="planning-drafts-card__btn-inner">
-                      <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
-                      {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
-                    </span>
-                  </a>
-                  <skyflow-ui-button
-                    variant="danger"
-                    btnClass="planning-drafts-table__delete"
-                    (click)="openDeleteConfirm(d)"
+                    <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
+                    {{ 'ADMIN_PLANNING_DRAFTS.CONTINUE' | translate }}
+                  </skyflow-ui-card-action>
+                  <skyflow-ui-card-action
+                    color="red"
+                    [pushBottom]="false"
+                    [block]="false"
+                    (action)="openDeleteConfirm(d)"
                   >
-                    <span class="planning-drafts-card__btn-inner">
-                      <skyflow-mat-icon icon="delete" [size]="18" [weight]="400" />
-                      {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
-                    </span>
-                  </skyflow-ui-button>
+                    <skyflow-mat-icon icon="delete" [size]="18" [weight]="400" />
+                    {{ 'ADMIN_PLANNING_DRAFTS.DELETE' | translate }}
+                  </skyflow-ui-card-action>
                 </div>
               </td>
             </tr>

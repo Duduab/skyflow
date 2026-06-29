@@ -27,7 +27,10 @@
         btnClass="admin-users__add"
         (click)="openCreateModal()"
       >
-        {{ 'ADMIN_USERS_PAGE.ADD_USER' | translate }}
+        <span class="admin-users__add-inner">
+          <skyflow-mat-icon icon="add" [size]="18" [weight]="400" />
+          {{ 'ADMIN_USERS_PAGE.ADD_USER' | translate }}
+        </span>
       </skyflow-ui-button>
     </div>
   </header>
@@ -62,18 +65,128 @@
   }
 
   @if (users().length) {
-    <div class="admin-users__filters" role="toolbar" [attr.aria-label]="'ADMIN_USERS_PAGE.FILTER_TOOLBAR' | translate">
-      @for (opt of roleFilterOptions; track opt.value) {
-        <button
-          type="button"
-          class="admin-users__filter-chip"
-          [class.admin-users__filter-chip--active]="isRoleFilterActive(opt.value)"
-          (click)="setRoleFilter(opt.value)"
-        >
-          {{ opt.labelKey | translate }}
-        </button>
-      }
-    </div>
+    <section
+      class="admin-users__toolbar"
+      [attr.aria-label]="'ADMIN_USERS_PAGE.FILTER_PANEL_ARIA' | translate"
+    >
+      <div class="admin-users__toolbar-head">
+        <label class="admin-users__search">
+          <span class="admin-users__search-label">{{
+            'ADMIN_USERS_PAGE.SEARCH_LABEL' | translate
+          }}</span>
+          <span class="admin-users__search-wrap">
+            <skyflow-mat-icon
+              class="admin-users__search-ico"
+              icon="search"
+              [size]="20"
+              [weight]="400"
+            />
+            <input
+              type="search"
+              class="admin-users__search-input"
+              [value]="searchQuery()"
+              (input)="setSearch($any($event.target).value)"
+              [placeholder]="'ADMIN_USERS_PAGE.SEARCH_PLACEHOLDER' | translate"
+              autocomplete="off"
+            />
+          </span>
+        </label>
+
+        <div class="admin-users__toolbar-meta">
+          <p class="admin-users__results">
+            {{
+              'ADMIN_USERS_PAGE.RESULTS_COUNT'
+                | translate: { shown: filteredUsers().length, total: users().length }
+            }}
+          </p>
+          @if (hasActiveFilters()) {
+            <button
+              type="button"
+              class="admin-users__clear-filters"
+              (click)="clearAllFilters()"
+            >
+              <skyflow-mat-icon icon="filter_alt_off" [size]="18" [weight]="400" />
+              {{ 'ADMIN_USERS_PAGE.CLEAR_FILTERS' | translate }}
+              <span class="admin-users__filter-badge" aria-hidden="true">{{
+                activeFilterCount()
+              }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="admin-users__toolbar-filters">
+        <div class="admin-users__filter-group admin-users__filter-group--roles">
+          <span class="admin-users__filter-group-label">{{
+            'ADMIN_USERS_PAGE.FILTER_ROLE_LABEL' | translate
+          }}</span>
+          <div
+            class="admin-users__filters"
+            role="group"
+            [attr.aria-label]="'ADMIN_USERS_PAGE.FILTER_TOOLBAR' | translate"
+          >
+            @for (opt of roleFilterOptions; track opt.value) {
+              <button
+                type="button"
+                class="admin-users__filter-chip"
+                [class.admin-users__filter-chip--active]="isRoleFilterActive(opt.value)"
+                (click)="setRoleFilter(opt.value)"
+              >
+                {{ opt.labelKey | translate }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <label class="admin-users__filter-field">
+          <span class="admin-users__filter-field-label">{{
+            'ADMIN_USERS_PAGE.FILTER_STATION_LABEL' | translate
+          }}</span>
+          <skyflow-ui-select
+            class="admin-users__filter-select"
+            [options]="stationFilterOptions()"
+            [value]="stationFilter()"
+            (valueChange)="setStationFilter($event)"
+          />
+        </label>
+
+        <label class="admin-users__filter-field">
+          <span class="admin-users__filter-field-label">{{
+            'ADMIN_USERS_PAGE.FILTER_TARGET_LABEL' | translate
+          }}</span>
+          <skyflow-ui-select
+            class="admin-users__filter-select"
+            [options]="targetFilterOptions()"
+            [value]="targetFilter()"
+            (valueChange)="setTargetFilter($event)"
+          />
+        </label>
+
+        <label class="admin-users__filter-field">
+          <span class="admin-users__filter-field-label">{{
+            'ADMIN_USERS_PAGE.FILTER_TEAM_LABEL' | translate
+          }}</span>
+          <skyflow-ui-select
+            class="admin-users__filter-select"
+            [options]="teamFilterOptions()"
+            [value]="teamFilter()"
+            (valueChange)="setTeamFilter($event)"
+          />
+        </label>
+
+        <label class="admin-users__filter-field">
+          <span class="admin-users__filter-field-label">{{
+            'ADMIN_USERS_PAGE.FILTER_ASSIGNMENT_LABEL' | translate
+          }}</span>
+          <skyflow-ui-select
+            class="admin-users__filter-select"
+            [options]="assignmentFilterOptions()"
+            [value]="assignmentFilter()"
+            (valueChange)="setAssignmentFilter($event)"
+          />
+        </label>
+      </div>
+    </section>
   }
 
   @if (!users().length) {
@@ -86,8 +199,9 @@
   } @else if (filterEmpty()) {
     <section class="admin-users__empty admin-users__empty--filter">
       <p>{{ 'ADMIN_USERS_PAGE.FILTER_EMPTY' | translate }}</p>
-      <button type="button" class="admin-users__filter-chip" (click)="setRoleFilter('')">
-        {{ 'ADMIN_USERS_PAGE.FILTER_ALL' | translate }}
+      <button type="button" class="admin-users__clear-filters admin-users__clear-filters--empty" (click)="clearAllFilters()">
+        <skyflow-mat-icon icon="filter_alt_off" [size]="18" [weight]="400" />
+        {{ 'ADMIN_USERS_PAGE.CLEAR_FILTERS' | translate }}
       </button>
     </section>
   } @else {
@@ -121,7 +235,10 @@
               btnClass="admin-users__card-perf"
               (click)="openUserDetail(u)"
             >
-              {{ 'ADMIN_USERS_PAGE.VIEW_PERFORMANCE' | translate }}
+              <span class="admin-users__card-btn-inner">
+                <skyflow-mat-icon icon="monitoring" [size]="18" [weight]="400" />
+                {{ 'ADMIN_USERS_PAGE.VIEW_PERFORMANCE' | translate }}
+              </span>
             </skyflow-ui-button>
             <button
               type="button"
@@ -373,6 +490,13 @@
     [subtitle]="u.email"
     [titleId]="'admin-users-detail-' + u.id"
   >
+    <span popup-icon class="admin-users-detail__popup-icon" aria-hidden="true">
+      @if (u.photoUrl) {
+        <img [src]="u.photoUrl" alt="" />
+      } @else {
+        {{ initials(u) }}
+      }
+    </span>
     <div popup-header-extra class="admin-users-detail__header-extra">
       <span class="admin-users__role" [class]="roleBadgeClass(u.role)">
         {{ 'ADMIN_USERS_PAGE.ROLE_' + u.role | translate }}
@@ -551,6 +675,13 @@
     [subtitle]="'ADMIN_USERS_PAGE.DAILY_TARGET_SUB' | translate"
     [titleId]="'admin-users-target-' + u.id"
   >
+    <span popup-icon class="admin-users-detail__popup-icon" aria-hidden="true">
+      @if (u.photoUrl) {
+        <img [src]="u.photoUrl" alt="" />
+      } @else {
+        {{ initials(u) }}
+      }
+    </span>
     @if (dailyTargetLoading()) {
       <p class="admin-users-detail__loading">{{ 'ADMIN_USERS_PAGE.TARGET_LOADING' | translate }}</p>
     } @else if (dailyTargetError()) {

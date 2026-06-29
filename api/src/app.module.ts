@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module.js';
 import { ProjectsModule } from './projects/projects.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
 import { PdfAnalysisModule } from './pdf-analysis/pdf-analysis.module.js';
+import { ElevationModule } from './elevation/elevation.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PdfAnalysisModule } from './pdf-analysis/pdf-analysis.module.js';
     ShippingModule,
     ProjectsModule,
     PdfAnalysisModule,
+    ElevationModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

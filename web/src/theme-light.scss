@@ -264,13 +264,8 @@ html.theme-light skyflow-worker-hub .worker-hub__title {
   text-shadow: none;
 }
 
-html.theme-light skyflow-worker-hub .worker-hub__project-label {
+html.theme-light skyflow-worker-hub .worker-hub__project-field-label {
   color: rgba(30, 41, 59, 0.88);
-}
-
-html.theme-light skyflow-worker-hub .worker-hub__current-name {
-  color: #000;
-  text-shadow: none;
 }
 
 html.theme-light skyflow-worker-hub .worker-hub__overall-label {
@@ -409,28 +404,6 @@ html.theme-light skyflow-worker-hub .station-card__index {
 
 html.theme-light skyflow-worker-hub .station-card__index--done {
   box-shadow: var(--sf-shadow-inset);
-}
-
-html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn {
-  color: #fff;
-  background: linear-gradient(
-    180deg,
-    var(--sf-ui-primary-from) 0%,
-    var(--sf-ui-primary-to) 100%
-  );
-  border-color: var(--sf-ui-primary-border);
-  box-shadow: var(--sf-ui-primary-shadow);
-}
-
-html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn:hover {
-  filter: brightness(1.06);
-  box-shadow: var(--sf-ui-primary-shadow);
-}
-
-html.theme-light skyflow-worker-hub .worker-hub__orders-open.sf-ui-btn:focus-visible {
-  box-shadow:
-    var(--sf-ui-primary-shadow),
-    0 0 0 4px var(--sf-ui-ring-primary);
 }
 
 html.theme-light .sf-bottom-nav__bar {

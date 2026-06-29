@@ -3,16 +3,18 @@
     <div class="worker-hub__intro-text">
       <h1 class="worker-hub__title">{{ 'APP.WORKER_HUB' | translate }}</h1>
       @if (orders().length) {
-        <div class="worker-hub__project-bar">
-          <div class="worker-hub__current-wrap" dir="rtl">
-            <span class="worker-hub__project-label">{{
-              'WORKER_HUB.CURRENT_ORDER_LABEL' | translate
-            }}</span>
-            <p class="worker-hub__current-name">
-              {{ selectedOrderDisplayName() }}
-            </p>
-          </div>
-        </div>
+        <label class="worker-hub__project-field">
+          <span class="worker-hub__project-field-label">{{
+            'ADMIN_PAGE.FILTER_PROJECT' | translate
+          }}</span>
+          <skyflow-ui-select
+            class="worker-hub__project-select w-full"
+            size="hero"
+            [options]="projectOptions()"
+            [value]="projectSelection.selectedProjectId() ?? ''"
+            (valueChange)="onProjectChange($event)"
+          />
+        </label>
       }
     </div>
     <div class="worker-hub__intro-aside">
@@ -40,15 +42,6 @@
           ></div>
         </div>
       </div>
-      @if (orders().length) {
-        <skyflow-ui-button
-          variant="primary"
-          btnClass="worker-hub__orders-open"
-          (click)="openOrdersModal()"
-        >
-          {{ 'WORKER_HUB.ORDERS_BUTTON' | translate }}
-        </skyflow-ui-button>
-      }
     </div>
   </header>
 
@@ -165,15 +158,4 @@
       </div>
     }
   </div>
-
-  <skyflow-order-picker-modal
-    [open]="ordersModalOpen()"
-    [orders]="orders()"
-    [previews]="orderPreviews()"
-    [loadingPreviews]="loadingOrderPreviews()"
-    [includeAllOption]="false"
-    titleId="worker-hub-orders-modal-title"
-    (closed)="closeOrdersModal()"
-    (picked)="onOrderPickedFromModal($event)"
-  />
 </section>

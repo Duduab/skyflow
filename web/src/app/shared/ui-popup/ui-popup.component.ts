@@ -1,4 +1,5 @@
 import { Component, input, output } from '@angular/core';
+import { NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 
 export type UiPopupSize = 'default' | 'wide' | 'full' | 'sheet';
@@ -10,7 +11,7 @@ export type UiPopupSize = 'default' | 'wide' | 'full' | 'sheet';
 @Component({
   selector: 'skyflow-ui-popup',
   standalone: true,
-  imports: [TranslateModule],
+  imports: [TranslateModule, NgStyle],
   templateUrl: './ui-popup.component.html',
   styleUrl: './ui-popup.component.scss',
 })
@@ -25,6 +26,8 @@ export class UiPopupComponent {
   readonly zIndex = input(80);
   /** מחלקות נוספות על הפאנל (למשל accent תחנה) */
   readonly panelClass = input('');
+  /** CSS vars / inline styles על הפאנל (למשל --sr-accent דינמי) */
+  readonly panelStyle = input<Record<string, string> | null>(null);
 
   readonly closed = output<void>();
 
