@@ -1,3 +1,8 @@
+/**
+ * @deprecated זרימת ה-Excel (TPI) הוחלפה בזרימת 4 PDF (ראה `window-planning.service.ts`).
+ * נשמר לתאימות לאחור עבור פרויקטים שנוצרו לפני המעבר ולנתיב fallback ב-`approvePlanning`.
+ * אין להשתמש בנתיב זה לפרויקטים חדשים.
+ */
 import * as XLSX from 'xlsx';
 import {
   ProductComponentKind,

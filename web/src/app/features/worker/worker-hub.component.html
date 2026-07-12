@@ -46,7 +46,7 @@
   </header>
 
   <div class="worker-hub__flow">
-    @for (row of stationRows; track $index) {
+    @for (row of stationRows(); track $index) {
       <div class="worker-hub__row">
         @for (s of row; track s.id) {
           @let prog = hubProgress(s.id);
@@ -70,7 +70,7 @@
               [class.station-card__index--done]="prog.percent >= 100"
               dir="ltr"
               aria-hidden="true"
-              >{{ s.id }}</span>
+              >{{ displayNumber(s.id) }}</span>
 
             <div class="station-card__hero" aria-hidden="true">
               <div class="station-card__hero-bg"></div>
@@ -93,7 +93,9 @@
                     cy="50"
                     r="42"
                     [attr.stroke-dasharray]="progressCircumference"
-                    [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+                    [attr.stroke-dashoffset]="
+                      progressDashOffset(hubProgressRingPercent(s.id, prog))
+                    "
                     transform="rotate(-90 50 50)"
                   />
                   <circle
@@ -102,14 +104,18 @@
                     cy="50"
                     r="42"
                     [attr.stroke-dasharray]="progressCircumference"
-                    [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+                    [attr.stroke-dashoffset]="
+                      progressDashOffset(hubProgressRingPercent(s.id, prog))
+                    "
                     transform="rotate(-90 50 50)"
                   />
                   <circle class="station-card__gauge-inner" cx="50" cy="50" r="33.5" />
                 </svg>
                 <div class="station-card__gauge-core">
                   <span class="station-card__gauge-readout" dir="ltr">
-                    <span class="station-card__gauge-value">{{ prog.percent }}</span>
+                    <span class="station-card__gauge-value">{{
+                      hubProgressLabel(s.id, prog.percent)
+                    }}</span>
                     <span class="station-card__gauge-unit">%</span>
                   </span>
                 </div>

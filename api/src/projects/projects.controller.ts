@@ -23,6 +23,8 @@ import { CreatePlanningDraftDto } from './dto/create-planning-draft.dto';
 import { UpdatePlanningDraftDto } from './dto/update-planning-draft.dto';
 import { ApprovePlanningDto } from './dto/approve-planning.dto';
 import { UploadProjectDocumentDto } from './dto/upload-project-document.dto';
+import { UploadPlanningPdfDto } from './dto/upload-planning-pdf.dto';
+import { UploadWindowTypePdfDto } from './dto/upload-window-type-pdf.dto';
 import { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto';
 import {
   ensureProjectDocsUploadDir,
@@ -55,6 +57,7 @@ export class ProjectsController {
       req.user?.userId ?? null,
       dto.lineMaterial,
       dto.machiningRoute,
+      dto.angleSourcing,
     );
   }
 
@@ -126,6 +129,10 @@ export class ProjectsController {
     return this.projectsService.uploadProjectDocument(projectId, file, body);
   }
 
+  /**
+   * @deprecated נתיב ה-Excel (TPI) הוחלף ב-`POST :id/planning/pdf` (זרימת 4 PDF).
+   * נשמר לתאימות לאחור ולפרויקטים ישנים בלבד.
+   */
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post(':id/planning/upload')
   @UseInterceptors(
@@ -159,10 +166,112 @@ export class ProjectsController {
     return this.projectsService.ingestPlanningFile(id, file.buffer);
   }
 
+  /** @deprecated נתיב Excel — הוחלף ב-`GET :id/planning/pdf-preview`. */
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Get(':id/planning/preview')
   preview(@Param('id') id: string) {
     return this.projectsService.getPlanningPreview(id);
+  }
+
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Post(':id/planning/pdf')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, d: string) => void,
+        ) => {
+          cb(null, ensureProjectDocsUploadDir());
+        },
+        filename: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, n: string) => void,
+        ) => {
+          cb(null, `${randomUUID()}.pdf`);
+        },
+      }),
+      limits: { fileSize: PLANNING_UPLOAD_LIMIT },
+      fileFilter: (_req, file, cb) => {
+        const ok =
+          /\.pdf$/i.test(file.originalname) ||
+          file.mimetype === 'application/pdf' ||
+          file.mimetype === 'application/x-pdf';
+        cb(ok ? null : new BadRequestException('PDF file required'), ok);
+      },
+    }),
+  )
+  uploadPlanningPdf(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: UploadPlanningPdfDto,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    return this.projectsService.ingestPlanningPdf(
+      id,
+      file,
+      body.kind,
+      body.title,
+      body.targetQty,
+    );
+  }
+
+  /** Upload a PDF for a single window type (unit) from the quantities table row. */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Post(':id/planning/window-types/:windowTypeId/pdf')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, d: string) => void,
+        ) => {
+          cb(null, ensureProjectDocsUploadDir());
+        },
+        filename: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, n: string) => void,
+        ) => {
+          cb(null, `${randomUUID()}.pdf`);
+        },
+      }),
+      limits: { fileSize: PLANNING_UPLOAD_LIMIT },
+      fileFilter: (_req, file, cb) => {
+        const ok =
+          /\.pdf$/i.test(file.originalname) ||
+          file.mimetype === 'application/pdf' ||
+          file.mimetype === 'application/x-pdf';
+        cb(ok ? null : new BadRequestException('PDF file required'), ok);
+      },
+    }),
+  )
+  uploadWindowTypePdf(
+    @Param('id') id: string,
+    @Param('windowTypeId') windowTypeId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: UploadWindowTypePdfDto,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    return this.projectsService.ingestWindowTypePdf(
+      id,
+      windowTypeId,
+      file,
+      body.kind,
+    );
+  }
+
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Get(':id/planning/pdf-preview')
+  pdfPreview(@Param('id') id: string) {
+    return this.projectsService.getPlanningPdfPreview(id);
   }
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)

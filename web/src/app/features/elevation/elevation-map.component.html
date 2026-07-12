@@ -97,6 +97,28 @@
       </div>
     }
 
+    @if (windowTypeCodes().length) {
+      <div class="elev__wtypes">
+        <button
+          class="elev__wtype elev__wtype--all"
+          [ngClass]="{ 'is-active': windowTypeFilter() === '' }"
+          (click)="setWindowType('')"
+        >
+          {{ 'ELEVATION_MAP.ALL_WINDOW_TYPES' | translate }}
+        </button>
+        @for (wt of windowTypeCodes(); track wt) {
+          <button
+            class="elev__wtype"
+            [ngClass]="{ 'is-active': windowTypeFilter() === wt }"
+            (click)="setWindowType(wt)"
+            dir="ltr"
+          >
+            {{ wt }}
+          </button>
+        }
+      </div>
+    }
+
     @if (map()!.pageCount > 1) {
       <div class="elev__pages">
         @for (pg of map()!.pages; track pg.pageIndex) {
@@ -208,6 +230,25 @@
             }
           </div>
 
+          @if (cell.windowTypeCode) {
+            <div class="elev__detail-wtype" dir="ltr">
+              {{ 'ELEVATION_MAP.WINDOW_TYPE' | translate }}: <strong>{{ cell.windowTypeCode }}</strong>
+            </div>
+          }
+
+          @if (cell.defect; as def) {
+            <div class="elev__defect">
+              <div class="elev__defect-head">
+                <span class="elev__defect-badge">{{ 'ELEVATION_MAP.DEFECT_BADGE' | translate }}</span>
+                <span class="elev__defect-station">
+                  {{ 'ELEVATION_MAP.RETURNED_TO' | translate }}:
+                  {{ 'STATIONS.' + def.returnedToStationId | translate }}
+                </span>
+              </div>
+              <p class="elev__defect-reason">{{ def.reason }}</p>
+            </div>
+          }
+
           <h3>{{ 'ELEVATION_MAP.ITEMS' | translate }} ({{ cell.items.length }})</h3>
           <ul class="elev__items">
             @for (it of cell.items; track $index) {
@@ -224,6 +265,52 @@
             >
               {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.UNMARK' : 'ELEVATION_MAP.MARK_THIS_DONE') | translate }}
             </skyflow-ui-button>
+
+            <button
+              type="button"
+              class="elev__defect-toggle"
+              (click)="toggleDefectForm()"
+            >
+              {{ 'ELEVATION_MAP.REPORT_DEFECT' | translate }}
+            </button>
+
+            @if (defectFormOpen()) {
+              <div class="elev__defect-form">
+                <label class="elev__defect-label" for="defect-station">
+                  {{ 'ELEVATION_MAP.RETURN_TO_STATION' | translate }}
+                </label>
+                <select
+                  id="defect-station"
+                  class="elev__defect-select"
+                  [value]="defectStationId()"
+                  (change)="onDefectStationChange($any($event.target).value)"
+                >
+                  @for (sid of stationIds; track sid) {
+                    <option [value]="sid">{{ 'STATIONS.' + sid | translate }}</option>
+                  }
+                </select>
+                <label class="elev__defect-label" for="defect-reason">
+                  {{ 'ELEVATION_MAP.DEFECT_REASON' | translate }}
+                </label>
+                <textarea
+                  id="defect-reason"
+                  class="elev__defect-textarea"
+                  rows="3"
+                  [value]="defectReason()"
+                  (input)="onDefectReasonInput($event)"
+                  [placeholder]="'ELEVATION_MAP.DEFECT_REASON_PLACEHOLDER' | translate"
+                ></textarea>
+                <skyflow-ui-button
+                  variant="primary"
+                  [loading]="busy()"
+                  [disabled]="defectReason().trim().length < 2"
+                  [block]="true"
+                  (click)="submitDefect()"
+                >
+                  {{ 'ELEVATION_MAP.SEND_DEFECT' | translate }}
+                </skyflow-ui-button>
+              </div>
+            }
           }
         </aside>
       }

@@ -7,6 +7,7 @@ import { ApiService } from '../../../core/api.service';
 import {
   PlanningAssigneeOptionDto,
   PlanningDraftListItemDto,
+  ProjectAngleSourcing,
   ProjectFlowStatus,
   ProjectLineMaterial,
   ProjectMachiningRoute,
@@ -15,7 +16,7 @@ import {
   planningStation1ManagerSectionKey,
   stationLabelKey,
 } from '../../../core/station-presentation';
-import { PlanningPanelComponent } from '../planning/planning-panel.component';
+import { PlanningPdfPanelComponent } from '../planning/planning-pdf-panel.component';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
@@ -35,7 +36,7 @@ export interface PlanningSuccessSnapshot {
   standalone: true,
   imports: [
     TranslateModule,
-    PlanningPanelComponent,
+    PlanningPdfPanelComponent,
     UiButtonComponent,
     UiPopupComponent,
     UiSelectComponent,
@@ -58,6 +59,7 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly newProjectDetails = signal('');
   readonly lineMaterial = signal<ProjectLineMaterial>('ALUMINUM');
   readonly machiningRoute = signal<ProjectMachiningRoute>('GLASS');
+  readonly angleSourcing = signal<ProjectAngleSourcing>('INTERNAL_LASER');
   readonly creating = signal(false);
   readonly createErrorKey = signal<string | null>(null);
 
@@ -172,6 +174,33 @@ export class AdminPlanningNewComponent implements OnInit {
     },
   ]);
 
+  readonly angleSourcingOptions = computed((): UiSelectOption<ProjectAngleSourcing>[] => [
+    {
+      value: 'INTERNAL_LASER',
+      label: this.translate.instant('PLANNING_NEW.ANGLE_SOURCING_INTERNAL'),
+    },
+    {
+      value: 'EXTERNAL_SUPPLIER',
+      label: this.translate.instant('PLANNING_NEW.ANGLE_SOURCING_EXTERNAL'),
+    },
+  ]);
+
+  onAngleSourcingSelect(value: string | number | null): void {
+    if (value == null) return;
+    this.angleSourcing.set(String(value) as ProjectAngleSourcing);
+  }
+
+  /** משתנה בשלב 2 מתוך פאנל ה-PDF — נשמר לטיוטה */
+  onAngleSourcingChange(value: ProjectAngleSourcing): void {
+    this.angleSourcing.set(value);
+    const pid = this.selectedProjectId();
+    if (!pid) return;
+    this.api
+      .patchPlanningDraft(pid, { angleSourcing: value })
+      .pipe(take(1))
+      .subscribe({ next: () => this.reloadDrafts(), error: () => {} });
+  }
+
   /** וריאנט הפרויקט הנבחר (טיוטה / אחרי יצירה) */
   selectedVariantOrder(): {
     lineMaterial: ProjectLineMaterial;
@@ -216,6 +245,7 @@ export class AdminPlanningNewComponent implements OnInit {
         requirements: details || undefined,
         lineMaterial: this.lineMaterial(),
         machiningRoute: this.machiningRoute(),
+        angleSourcing: this.angleSourcing(),
       })
       .pipe(
         take(1),
@@ -326,18 +356,12 @@ export class AdminPlanningNewComponent implements OnInit {
     this.newProjectDetails.set(d.requirements?.trim() ?? '');
     this.lineMaterial.set(d.lineMaterial);
     this.machiningRoute.set(d.machiningRoute);
-    this.api
-      .getPlanningPreview(d.id)
-      .pipe(take(1))
-      .subscribe({
-        next: (p) => {
-          this.step.set(p.itemCount > 0 ? 3 : 2);
-          if (p.itemCount > 0) {
-            this.loadAssignees();
-          }
-        },
-        error: () => this.step.set(2),
-      });
+    this.angleSourcing.set(d.angleSourcing ?? 'INTERNAL_LASER');
+    const hasData = (d.windowTypeCount ?? 0) > 0 || d.itemCount > 0;
+    this.step.set(hasData ? 3 : 2);
+    if (hasData) {
+      this.loadAssignees();
+    }
   }
 
   panelMode(): 'uploadPreview' | 'summaryApprove' {
@@ -404,6 +428,7 @@ export class AdminPlanningNewComponent implements OnInit {
     this.newProjectDetails.set('');
     this.lineMaterial.set('ALUMINUM');
     this.machiningRoute.set('GLASS');
+    this.angleSourcing.set('INTERNAL_LASER');
     this.createErrorKey.set(null);
     this.assigneesLoadError.set(null);
     this.successModalOpen.set(false);

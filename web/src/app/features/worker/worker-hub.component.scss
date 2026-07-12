@@ -743,6 +743,26 @@ html[dir='ltr'] .worker-hub__row {
   --card-glow: rgba(245, 158, 11, 0.22);
 }
 
+.station-card--8 {
+  --accent: #f43f5e;
+  --hero-image: url('/assets/stations/8.png');
+  --hero-overlay: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 38%, rgba(15, 23, 42, 0.18)) 0%,
+    rgba(15, 23, 42, 0.52) 45%,
+    rgba(6, 10, 18, 0.92) 100%
+  );
+  --hero-bg: linear-gradient(
+    135deg,
+    #881337 0%,
+    #4b689d 48%,
+    #0f172a 100%
+  );
+  --hero-glow: rgba(244, 63, 94, 0.45);
+  --panel-bg: rgba(10, 14, 24, 0.94);
+  --card-glow: rgba(244, 63, 94, 0.28);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .station-card {
     transition: none;

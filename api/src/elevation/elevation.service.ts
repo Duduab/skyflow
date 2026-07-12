@@ -194,6 +194,24 @@ export class ElevationService {
 
     if (!map) return { map: null };
 
+    // open defects per cell (return-to-station rework)
+    const openDefects = await this.prisma.cellDefect.findMany({
+      where: { projectId, status: 'OPEN' },
+      select: { cellId: true, returnedToStationId: true, reason: true },
+    });
+    const defectByCell = new Map<
+      string,
+      { returnedToStationId: number; reason: string }
+    >();
+    for (const d of openDefects) {
+      if (!defectByCell.has(d.cellId)) {
+        defectByCell.set(d.cellId, {
+          returnedToStationId: d.returnedToStationId,
+          reason: d.reason,
+        });
+      }
+    }
+
     const cells = map.cells.map((c) => ({
       id: c.id,
       pageIndex: c.pageIndex,
@@ -207,6 +225,9 @@ export class ElevationService {
       doneBy: c.doneBy
         ? `${c.doneBy.firstName} ${c.doneBy.lastName}`.trim()
         : null,
+      windowTypeCode: c.windowTypeCode ?? null,
+      windowTypeId: c.windowTypeId ?? null,
+      defect: defectByCell.get(c.id) ?? null,
     }));
 
     const total = cells.length;
@@ -215,6 +236,11 @@ export class ElevationService {
       const list = cells.filter((c) => c.kind === kind);
       return { total: list.length, done: list.filter((c) => c.status === 'DONE').length };
     };
+
+    // distinct window-type codes present on the map (for filtering)
+    const windowTypeCodes = [
+      ...new Set(cells.map((c) => c.windowTypeCode).filter((x): x is string => !!x)),
+    ].sort();
 
     return {
       map: {
@@ -226,14 +252,105 @@ export class ElevationService {
         error: map.error,
       },
       cells,
+      windowTypeCodes,
       progress: {
         total,
         done,
         pct: total ? Math.round((done / total) * 100) : 0,
         spandrel: byKind('SPANDREL'),
         unit: byKind('UNIT'),
+        openDefects: openDefects.length,
       },
     };
+  }
+
+  /** Project manager marks a cell defective and returns the unit to a station. */
+  async reportDefect(params: {
+    projectId: string;
+    cellId: string;
+    returnedToStationId: number;
+    reason: string;
+    user: { userId: string; role: SkyflowRole };
+  }) {
+    const { projectId, cellId, returnedToStationId, reason, user } = params;
+    await this.assertCanEditInstall(projectId, user);
+
+    const cell = await this.prisma.elevationCell.findFirst({
+      where: { id: cellId, map: { projectId } },
+      select: { id: true },
+    });
+    if (!cell) throw new NotFoundException('Cell not found for this project');
+
+    const defect = await this.prisma.cellDefect.create({
+      data: {
+        projectId,
+        cellId,
+        returnedToStationId,
+        reason: reason.trim().slice(0, 1000),
+        reportedByUserId: user.userId || null,
+      },
+    });
+    // returning a unit re-opens its installation
+    await this.prisma.elevationCell.update({
+      where: { id: cellId },
+      data: { status: ElevationCellStatus.PENDING, doneAt: null, doneByUserId: null },
+    });
+    return { ok: true, defectId: defect.id };
+  }
+
+  /** Open rework items returned to a specific station. */
+  async listDefectsForStation(projectId: string, stationId: number) {
+    const defects = await this.prisma.cellDefect.findMany({
+      where: { projectId, returnedToStationId: stationId, status: 'OPEN' },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        cell: {
+          select: { code: true, windowTypeCode: true, pageIndex: true },
+        },
+      },
+    });
+    return defects.map((d) => ({
+      id: d.id,
+      cellCode: d.cell.code,
+      windowTypeCode: d.cell.windowTypeCode,
+      reason: d.reason,
+      createdAt: d.createdAt.toISOString(),
+    }));
+  }
+
+  /** Station resolves a returned defect. */
+  async resolveDefect(defectId: string) {
+    const defect = await this.prisma.cellDefect.findUnique({
+      where: { id: defectId },
+    });
+    if (!defect) throw new NotFoundException('Defect not found');
+    await this.prisma.cellDefect.update({
+      where: { id: defectId },
+      data: { status: 'RESOLVED', resolvedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  private async assertCanEditInstall(
+    projectId: string,
+    user: { userId: string; role: SkyflowRole },
+  ): Promise<void> {
+    const isAdmin = user.role === SkyflowRole.ADMIN;
+    let isSiteManager = false;
+    if (user.role === SkyflowRole.SITE_MANAGER) {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: user.userId },
+        select: { managedStationId: true },
+      });
+      isSiteManager =
+        dbUser?.managedStationId == null ||
+        dbUser.managedStationId === SITE_STATION_ID;
+    }
+    if (!isAdmin && !isSiteManager) {
+      throw new ForbiddenException(
+        'Only the site manager or an admin can update installation status',
+      );
+    }
   }
 
   /** Batch toggle DONE/PENDING. Only SITE_MANAGER (station 7) or ADMIN. */

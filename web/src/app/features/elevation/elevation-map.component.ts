@@ -48,10 +48,19 @@ export class ElevationMapComponent implements OnInit {
   readonly pageIndex = signal(0);
   readonly floorFilter = signal<string>('');
   readonly sectionFilter = signal<string>('');
+  readonly windowTypeFilter = signal<string>('');
   readonly selectedIds = signal<Set<string>>(new Set());
   readonly activeCell = signal<ElevationCellDto | null>(null);
   readonly hoveredCell = signal<ElevationCellDto | null>(null);
   readonly zoom = signal(1);
+
+  readonly windowTypeCodes = signal<string[]>([]);
+
+  /** מצב טופס החזרת פגם לתחנה */
+  readonly defectFormOpen = signal(false);
+  readonly defectStationId = signal<number>(1);
+  readonly defectReason = signal<string>('');
+  readonly stationIds: number[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
   readonly canEdit = computed(
     () => this.currentUser.isAdmin() || this.currentUser.isSiteManager(),
@@ -92,10 +101,12 @@ export class ElevationMapComponent implements OnInit {
   readonly visibleCells = computed(() => {
     const pi = this.pageIndex();
     const ff = this.floorFilter();
+    const wt = this.windowTypeFilter();
     const sec = this.activeSection();
     return this.cells().filter((c) => {
       if (c.pageIndex !== pi) return false;
       if (ff && c.floor !== ff) return false;
+      if (wt && (c.windowTypeCode ?? '') !== wt) return false;
       if (sec) {
         const cx = c.bbox.x + c.bbox.w / 2;
         if (cx < sec.x0 || cx >= sec.x1) return false;
@@ -138,6 +149,17 @@ export class ElevationMapComponent implements OnInit {
           this.map.set(res.map);
           this.cells.set(res.cells ?? []);
           this.progress.set(res.progress ?? null);
+          const codes =
+            res.windowTypeCodes && res.windowTypeCodes.length
+              ? [...res.windowTypeCodes]
+              : [
+                  ...new Set(
+                    (res.cells ?? [])
+                      .map((c) => c.windowTypeCode)
+                      .filter((v): v is string => !!v),
+                  ),
+                ].sort((a, b) => a.localeCompare(b));
+          this.windowTypeCodes.set(codes);
         },
         error: () => this.error.set('LOAD_FAILED'),
       });
@@ -149,6 +171,8 @@ export class ElevationMapComponent implements OnInit {
 
   onCellClick(cell: ElevationCellDto): void {
     this.activeCell.set(cell);
+    this.defectFormOpen.set(false);
+    this.defectReason.set('');
     if (!this.canEdit()) return;
     const next = new Set(this.selectedIds());
     if (next.has(cell.id)) next.delete(cell.id);
@@ -169,6 +193,12 @@ export class ElevationMapComponent implements OnInit {
 
   setFloor(floor: string): void {
     this.floorFilter.set(floor);
+  }
+
+  setWindowType(code: string): void {
+    this.windowTypeFilter.set(code);
+    this.activeCell.set(null);
+    this.clearSelection();
   }
 
   /** Select a named section ('' = full-map overview) and frame it. */
@@ -282,6 +312,63 @@ export class ElevationMapComponent implements OnInit {
       ),
     );
     this.recomputeProgress();
+  }
+
+  toggleDefectForm(): void {
+    this.defectFormOpen.update((v) => !v);
+    if (this.defectFormOpen()) {
+      this.defectStationId.set(1);
+      this.defectReason.set('');
+    }
+  }
+
+  onDefectStationChange(value: string): void {
+    const n = Number(value);
+    if (Number.isFinite(n)) this.defectStationId.set(n);
+  }
+
+  onDefectReasonInput(ev: Event): void {
+    this.defectReason.set((ev.target as HTMLTextAreaElement).value);
+  }
+
+  submitDefect(): void {
+    const cell = this.activeCell();
+    const reason = this.defectReason().trim();
+    if (!cell || !this.canEdit() || this.busy() || reason.length < 2) return;
+    this.busy.set(true);
+    this.api
+      .reportElevationDefect(
+        this.projectId(),
+        cell.id,
+        this.defectStationId(),
+        reason,
+      )
+      .pipe(
+        take(1),
+        finalize(() => this.busy.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          const defect = {
+            returnedToStationId: this.defectStationId(),
+            reason,
+          };
+          this.cells.set(
+            this.cells().map((c) =>
+              c.id === cell.id
+                ? { ...c, status: 'PENDING' as const, defect }
+                : c,
+            ),
+          );
+          this.activeCell.set(
+            this.cells().find((c) => c.id === cell.id) ?? null,
+          );
+          this.defectFormOpen.set(false);
+          this.defectReason.set('');
+          this.recomputeProgress();
+        },
+        error: () => this.error.set('MARK_FAILED'),
+      });
   }
 
   private recomputeProgress(): void {

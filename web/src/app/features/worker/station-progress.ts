@@ -23,6 +23,46 @@ export function progressDashOffset(percent: number): number {
   );
 }
 
+/**
+ * אחוז התקדמות ליעדי כמות גדולים (לייזר / ANG).
+ * לא מעגל ל-0 כשיש דיווח — מציג עד עשירית האחוז, מינימום 0.1% כשבוצע > 0.
+ */
+export function highVolumeProgressPercent(
+  done: number,
+  target: number,
+): number {
+  if (target <= 0) return 0;
+  if (done >= target) return 100;
+  if (done <= 0) return 0;
+  const raw = (done / target) * 100;
+  if (raw < 10) {
+    const tenths = Math.round(raw * 10) / 10;
+    return Math.min(99.9, tenths > 0 ? tenths : 0.1);
+  }
+  return Math.min(100, Math.round(raw));
+}
+
+/** תווית אחוז לטבעת / פאנל — עשiriית מתחת ל-10%, אחרת מספר שלם */
+export function formatProgressPercent(percent: number): string {
+  if (percent <= 0) return '0';
+  if (percent >= 100) return '100';
+  if (percent < 10) {
+    const s = percent.toFixed(1);
+    return s.endsWith('.0') ? String(Math.round(percent)) : s;
+  }
+  return String(Math.round(percent));
+}
+
+/** אחוז לקשת SVG — מינימום 1% כשיש התקדמות, כדי שהטבעת תהיה נראית */
+export function highVolumeProgressRingPercent(
+  percent: number,
+  done: number,
+): number {
+  if (done <= 0 || percent <= 0) return 0;
+  if (percent >= 100) return 100;
+  return percent < 1 ? 1 : percent;
+}
+
 function qtyAt(ctx: WorkerContext, stationId: number): number {
   return ctx.totals.find((t) => t.stationId === stationId)?.processedQty ?? 0;
 }
@@ -143,6 +183,21 @@ export function computeStationProgress(
     };
   }
 
+  if (sid === 8) {
+    const laser = ctx.laserStation;
+    const target = Math.max(1, laser?.totalAngleQty ?? 0);
+    const done = laser?.doneQty ?? 0;
+    const remaining = Math.max(0, target - done);
+    const percent = highVolumeProgressPercent(done, target);
+    return {
+      done,
+      target,
+      remaining,
+      percent,
+      noUpstreamTarget: false,
+    };
+  }
+
   if (sid === 5) {
     const verified = doneRaw >= 1;
     const target = 1;
@@ -248,25 +303,9 @@ export function isStationUnlockedInChain(
   stationId: number,
   contextByStation: Partial<Record<number, WorkerContext>>,
 ): boolean {
-  const flow =
-    contextByStation[1]?.order.flowStatus ?? 'IN_PRODUCTION';
-  if (flow === 'PENDING_PLANNING') {
-    return false;
-  }
-  if (stationId <= 1) return true;
-  for (let i = 1; i < stationId; i++) {
-    const ctx = contextByStation[i];
-    if (!ctx) return false;
-    if (i === 1) {
-      if (!hasAnySawStationReport(ctx)) return false;
-      continue;
-    }
-    if (i === 6) {
-      if (computeStationProgress(i, ctx).percent < 100) return false;
-      if (!ctx.deliveryNote?.hasActiveNote) return false;
-      continue;
-    }
-    if (computeStationProgress(i, ctx).percent < 100) return false;
-  }
-  return true;
+  // אף תחנה לא נשארת נעולה: כל התחנות פתוחות ברגע שהתפ״י אושר (הפרויקט בייצור).
+  // זרימת הפריטים בין התחנות נשמרת ברמת הפריט (למשל מוכנות TYPE להרכבה), לא בחסימת התחנה.
+  void stationId;
+  const flow = contextByStation[1]?.order.flowStatus ?? 'IN_PRODUCTION';
+  return flow !== 'PENDING_PLANNING';
 }

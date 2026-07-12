@@ -50,6 +50,11 @@ const DEFAULT_TOKENS: Record<number, StationVisualTokens> = {
     glow: 'rgba(245, 158, 11, 0.4)',
     heroImage: '/assets/stations/6.png',
   },
+  8: {
+    accent: '#f43f5e',
+    glow: 'rgba(244, 63, 94, 0.4)',
+    heroImage: '/assets/stations/8.png',
+  },
 };
 
 const VARIANT_TOKENS: Record<StationVisualVariant, Partial<Record<number, StationVisualTokens>>> = {
@@ -69,6 +74,23 @@ const VARIANT_TOKENS: Record<StationVisualVariant, Partial<Record<number, Statio
     },
   },
 };
+
+/**
+ * סדר הזרימה ברצפת הייצור. תחנת הלייזר (ID פנימי 8) משובצת לפני ההרכבה (3)
+ * כשהיא פעילה (לייזר פנימי עם זוויות). ה-ID הפנימי נשאר 8 לשמירת תאימות.
+ */
+export function workerFlowSequence(laserActive: boolean): number[] {
+  return laserActive ? [1, 2, 8, 3, 4, 5, 6, 7] : [1, 2, 3, 4, 5, 6, 7];
+}
+
+/** מספר התצוגה של תחנה לעובד — לפי מיקומה בזרימה (1-based), לא לפי ה-ID הפנימי. */
+export function stationDisplayNumber(
+  stationId: number,
+  laserActive: boolean,
+): number {
+  const idx = workerFlowSequence(laserActive).indexOf(stationId);
+  return idx >= 0 ? idx + 1 : stationId;
+}
 
 export function stationLabelKey(
   order: StationVariantOrder | null | undefined,

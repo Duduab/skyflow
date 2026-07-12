@@ -83,6 +83,18 @@ enum ProjectMachiningRoute {
   ALU_RANGER
 }
 
+/// מקור זוויות ANG — לייזר פנימי (תחנת לייזר) או ספק חיצוני
+enum ProjectAngleSourcing {
+  INTERNAL_LASER
+  EXTERNAL_SUPPLIER
+}
+
+/// סטטוס פגם שהוחזר לתחנה ממפת החזיתות
+enum CellDefectStatus {
+  OPEN
+  RESOLVED
+}
+
 model User {
   id               String      @id @default(uuid())
   email            String      @unique
@@ -103,6 +115,7 @@ model User {
   dailyTargets                  UserDailyTarget[]
   issuedDeliveryNotes           ProjectDeliveryNote[]
   completedElevationCells       ElevationCell[]
+  reportedCellDefects           CellDefect[]
 
   @@index([role])
   @@index([managedStationId])
@@ -169,6 +182,8 @@ model ProjectOrder {
   lineMaterial              ProjectLineMaterial   @default(ALUMINUM)
   /// זכוכית → CNC; Alu Ranger → תחנה 2 וריאנט (אותו stationId)
   machiningRoute            ProjectMachiningRoute @default(GLASS)
+  /// מקור זוויות ANG — לייזר פנימי (תחנה 8) או ספק חיצוני (מדלג על התחנה)
+  angleSourcing             ProjectAngleSourcing  @default(INTERNAL_LASER)
   createdAt                 DateTime              @default(now())
   updatedAt                 DateTime              @updatedAt
 
@@ -182,6 +197,11 @@ model ProjectOrder {
   dailyTargets        UserDailyTarget[]
   deliveryNotes       ProjectDeliveryNote[]
   elevationMaps       ElevationMap[]
+  windowTypes         WindowType[]
+  productionStages    ProductionStage[]
+  angles              Angle[]
+  steelworkDetails    SteelworkDetail[]
+  cellDefects         CellDefect[]
 
   @@index([planningAssigneeUserId])
   @@index([planningSawsManagerUserId])
@@ -269,6 +289,14 @@ enum ProjectDocumentKind {
   PURCHASE_ORDER
   WORK_ORDER
   ELEVATION_MAP
+  /// הוראות ייצור לכל חלון/יחידה (74-1-03A ...) — לתחנת הרכבה
+  WINDOW_INSTRUCTION_PDF
+  /// כמויות לפי חזית + Stages
+  QUANTITIES_PDF
+  /// הוראות ייצור לזווית ANG — לתחנת לייזר
+  ANGLE_INSTRUCTION_PDF
+  /// נספח פרטי חיבור וזוויות — לתחנת מסגריה (פלדה); מרובה קבצים, ללא זיהוי
+  CONNECTION_DETAILS_PDF
 }
 
 /// Purchase orders & work instructions (PDF) attached to a project
@@ -283,8 +311,12 @@ model ProjectDocument {
   sortOrder Int                 @default(0)
   createdAt DateTime            @default(now())
 
-  project      ProjectOrder  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  elevationMap ElevationMap?
+  project             ProjectOrder      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  elevationMap        ElevationMap?
+  windowTypes         WindowType[]      @relation("WindowTypeInstructionDoc")
+  windowConnections   WindowType[]      @relation("WindowTypeConnectionDoc")
+  angles              Angle[]           @relation("AngleInstructionDoc")
+  steelworkDetails    SteelworkDetail[] @relation("SteelworkDetailDoc")
 
   @@index([projectId, kind])
 }
@@ -395,30 +427,188 @@ model ElevationMap {
 
 /// קובייה בודדת במפת החזיתות (פאנל / ספנדרל) — ניתנת לסימון כבוצע
 model ElevationCell {
-  id           String              @id @default(uuid())
-  mapId        String
-  pageIndex    Int                 @default(0)
+  id             String              @id @default(uuid())
+  mapId          String
+  pageIndex      Int                 @default(0)
   /// קוד ראשי של הקובייה (לרוב הזקף, e.g. A7-F5-M56)
-  code         String              @db.VarChar(64)
+  code           String              @db.VarChar(64)
   /// קומה שחולצה מהקוד (e.g. F5) — לסינון
-  floor        String?             @db.VarChar(16)
-  kind         ElevationCellKind
+  floor          String?             @db.VarChar(16)
+  kind           ElevationCellKind
   /// כל הפריטים/קודים על הקובייה (מערך מחרוזות JSON)
-  items        Json
+  items          Json
   /// מיקום יחסי 0..1 בתוך עמוד הרקע: { x, y, w, h }
-  bbox         Json
-  status       ElevationCellStatus @default(PENDING)
-  doneAt       DateTime?
-  doneByUserId String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  bbox           Json
+  status         ElevationCellStatus @default(PENDING)
+  doneAt         DateTime?
+  doneByUserId   String?
+  /// קוד סוג החלון שחולץ מהקובייה (74-1-03A) — מפתח קישור לייצור
+  windowTypeCode String?             @db.VarChar(64)
+  /// קישור לסוג חלון (מחושב אחרי התאמת קוד)
+  windowTypeId   String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
-  map    ElevationMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  doneBy User?        @relation(fields: [doneByUserId], references: [id], onDelete: SetNull)
+  map        ElevationMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  doneBy     User?        @relation(fields: [doneByUserId], references: [id], onDelete: SetNull)
+  windowType WindowType?  @relation(fields: [windowTypeId], references: [id], onDelete: SetNull)
+  defects    CellDefect[]
 
   @@index([mapId, pageIndex])
   @@index([mapId, status])
   @@index([doneByUserId])
+  @@index([windowTypeId])
+}
+
+/// סוג חלון/יחידה (74-1-03A) — הישות המרכזית שמחברת מפת חזיתות ↔ כמויות ↔ הוראות ייצור
+model WindowType {
+  id               String   @id @default(uuid())
+  projectId        String
+  /// קוד סוג החלון, e.g. 74-1-03A
+  code             String   @db.VarChar(64)
+  /// מסמך הוראות הייצור (WINDOW_INSTRUCTION_PDF)
+  instructionDocId String?
+  /// עמוד ה-PDF (0-based) של החלון בתוך קובץ הוראות הייצור
+  instructionPage  Int?
+  /// נספח פרטי חיבור וזוויות המצורף ליחידה זו (CONNECTION_DETAILS_PDF) — צירוף לצפייה
+  connectionDocId  String?
+  /// הרכב היחידה מלמטה למעלה: ["SPANDREL","WINDOW","FIXED",...]
+  composition      Json?
+  hasAngles        Boolean  @default(false)
+  /// קודי זוויות המשקוף המשויכים (מערך JSON, e.g. ["ANG-1A","ANG-1B"])
+  angleCodes       Json?
+  /// טבלאות סטים (שוקונים+תושבות / פרופילים / אטמים / אביזרים) — JSON
+  setsPayload      Json?
+  /// סה״כ כמות בפרויקט (מסכום שורת הסה״כ בקובץ הכמויות)
+  totalQty         Int      @default(0)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project          ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  instructionDoc   ProjectDocument? @relation("WindowTypeInstructionDoc", fields: [instructionDocId], references: [id], onDelete: SetNull)
+  connectionDoc    ProjectDocument? @relation("WindowTypeConnectionDoc", fields: [connectionDocId], references: [id], onDelete: SetNull)
+  facadeQuantities FacadeQuantity[]
+  stageQuantities  StageQuantity[]
+  elevationCells   ElevationCell[]
+
+  @@unique([projectId, code])
+  @@index([projectId])
+}
+
+/// כמות סוג חלון בחזית מסוימת (S-w, N2-e, W4 ...) — מקובץ הכמויות
+model FacadeQuantity {
+  id           String   @id @default(uuid())
+  windowTypeId String
+  /// תווית חזית, e.g. S-w / N2-e / W4
+  facadeLabel  String   @db.VarChar(32)
+  qty          Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  windowType WindowType @relation(fields: [windowTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([windowTypeId, facadeLabel])
+  @@index([windowTypeId])
+}
+
+/// שלב ייצור (Time zone) — Stage A/B/C... מטבלת ה-Stages בקובץ הכמויות
+model ProductionStage {
+  id        String   @id @default(uuid())
+  projectId String
+  /// A, B, C ...
+  code      String   @db.VarChar(16)
+  /// צבע השלב מהטבלה (למשל #7c3aed) — לתצוגה
+  colorHex  String?  @db.VarChar(9)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project         ProjectOrder    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stageQuantities StageQuantity[]
+
+  @@unique([projectId, code])
+  @@index([projectId])
+}
+
+/// כמות סוג חלון בשלב מסוים (Stage A → 74-1-03A → N)
+model StageQuantity {
+  id           String   @id @default(uuid())
+  stageId      String
+  windowTypeId String
+  qty          Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  stage      ProductionStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  windowType WindowType      @relation(fields: [windowTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, windowTypeId])
+  @@index([stageId])
+  @@index([windowTypeId])
+}
+
+/// זווית ANG (ANG-1A) — הוראות ייצור + כמות, לתחנת הלייזר
+model Angle {
+  id               String   @id @default(uuid())
+  projectId        String
+  /// קוד הזווית, e.g. ANG-1A
+  code             String   @db.VarChar(32)
+  qty              Int      @default(0)
+  /// מסמך הוראות הייצור לזווית (ANGLE_INSTRUCTION_PDF)
+  instructionDocId String?
+  instructionPage  Int?
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project        ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  instructionDoc ProjectDocument? @relation("AngleInstructionDoc", fields: [instructionDocId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, code])
+  @@index([projectId])
+}
+
+/// נספח פרטי חיבור וזוויות לתחנת מסגריה (פלדה). כל קובץ שהתפ״י מעלה = שורה אחת,
+/// ללא זיהוי. targetQty אופציונלי (0 = ללא יעד, סופר מצטבר). דיווח נשמר ב-StationLog
+/// של תחנה 1 עם extraPayload.steelworkDetailId.
+model SteelworkDetail {
+  id               String   @id @default(uuid())
+  projectId        String
+  /// כותרת הנספח (ברירת מחדל: שם הקובץ)
+  title            String   @db.VarChar(300)
+  /// יעד כמות אופציונלי (0 = ללא יעד)
+  targetQty        Int      @default(0)
+  /// מסמך ה-PDF שהועלה (CONNECTION_DETAILS_PDF)
+  instructionDocId String?
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project        ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  instructionDoc ProjectDocument? @relation("SteelworkDetailDoc", fields: [instructionDocId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+}
+
+/// פגם שמנהל הפרויקט סימן על ריבוע במפת החזיתות — מחזיר יחידה לתחנה ספציפית
+model CellDefect {
+  id                  String           @id @default(uuid())
+  projectId           String
+  cellId              String
+  /// תחנת יעד להחזרה (1–8)
+  returnedToStationId Int
+  reason              String           @db.Text
+  status              CellDefectStatus @default(OPEN)
+  reportedByUserId    String?
+  resolvedAt          DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  project    ProjectOrder  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cell       ElevationCell @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  reportedBy User?         @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([cellId])
+  @@index([returnedToStationId])
 }
 
 model ManufacturingPlan {

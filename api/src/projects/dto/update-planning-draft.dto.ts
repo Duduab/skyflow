@@ -5,7 +5,11 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ProjectLineMaterial, ProjectMachiningRoute } from '@prisma/client';
+import {
+  ProjectAngleSourcing,
+  ProjectLineMaterial,
+  ProjectMachiningRoute,
+} from '@prisma/client';
 
 export class UpdatePlanningDraftDto {
   @IsOptional()
@@ -26,4 +30,8 @@ export class UpdatePlanningDraftDto {
   @IsOptional()
   @IsEnum(ProjectMachiningRoute)
   machiningRoute?: ProjectMachiningRoute;
+
+  @IsOptional()
+  @IsEnum(ProjectAngleSourcing)
+  angleSourcing?: ProjectAngleSourcing;
 }

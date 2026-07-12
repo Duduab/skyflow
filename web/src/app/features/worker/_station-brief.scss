@@ -58,6 +58,12 @@
   --brief-glow: rgba(245, 158, 11, 0.4);
 }
 
+.station-brief--8 {
+  --brief-accent: #f43f5e;
+  --brief-hero-image: url('/assets/stations/8.png');
+  --brief-glow: rgba(244, 63, 94, 0.4);
+}
+
 /* וריאנטי פרויקט — ערכים מוגדרים גם ב-[style] מ-stationVisualStyle */
 .station-brief--1.station-visual--steelworkshop,
 .station-brief--2.station-visual--aluranger {

@@ -38,6 +38,11 @@ function previewHasUsefulContent(
   );
 }
 
+/**
+ * @deprecated פאנל העלאת ה-Excel של אשף התכנון הישן.
+ * זרימת פתיחת הפרויקט עברה ל-`PlanningPdfPanelComponent` (4 קבצי PDF).
+ * נשמר לתאימות לאחור בלבד.
+ */
 @Component({
   selector: 'skyflow-planning-panel',
   imports: [TranslateModule, NgClass, UiButtonComponent],

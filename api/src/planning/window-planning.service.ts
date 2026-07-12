@@ -1,0 +1,421 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import Anthropic from '@anthropic-ai/sdk';
+import { PrismaService } from '../prisma/prisma.service';
+import { parseQuantitiesPdf } from './pdf/quantities-pdf.parser';
+import { parseWindowInstructionsPdf } from './pdf/window-instructions-pdf.parser';
+import { parseAnglePdf } from './pdf/angle-pdf.parser';
+import { detectAngleCodesForWindows } from './pdf/window-angle-vision';
+import { WINDOW_CODE_RE } from './pdf/pdf-text.util';
+
+/**
+ * Turns the four planning PDFs (window instructions, quantities, ANG) into the
+ * relational model (WindowType / FacadeQuantity / ProductionStage /
+ * StageQuantity / Angle) and links elevation cells to window types by code.
+ */
+@Injectable()
+export class WindowPlanningService {
+  private readonly logger = new Logger(WindowPlanningService.name);
+  private readonly anthropic: Anthropic | null;
+  private readonly anthropicModel: string;
+
+  constructor(private readonly prisma: PrismaService) {
+    const apiKey = process.env['ANTHROPIC_API_KEY']?.trim();
+    this.anthropicModel =
+      process.env['ANTHROPIC_MODEL']?.trim() || 'claude-3-5-sonnet-latest';
+    this.anthropic = apiKey ? new Anthropic({ apiKey }) : null;
+    if (!this.anthropic) {
+      this.logger.warn(
+        'ANTHROPIC_API_KEY not set — ANG codes will not be auto-detected from window drawings',
+      );
+    }
+  }
+
+  /** Window instructions PDF → WindowType rows (code, page, composition, angles). */
+  async persistWindowInstructions(
+    projectId: string,
+    documentId: string,
+    buffer: Buffer,
+  ): Promise<{ windowsFound: number; anglesDetected: number }> {
+    const parsed = await parseWindowInstructionsPdf(buffer);
+
+    // ANG codes live inside the drawing (not the text layer) → read them with vision.
+    const visionCodes = await this.detectAnglesFromDrawings(buffer, parsed.windows);
+
+    let sortOrder = 0;
+    const allAngleCodes = new Set<string>();
+    for (let i = 0; i < parsed.windows.length; i += 1) {
+      const win = parsed.windows[i];
+      const merged = [
+        ...new Set([...(win.angleCodes ?? []), ...(visionCodes[i] ?? [])]),
+      ];
+      merged.forEach((c) => allAngleCodes.add(c));
+      const hasAngles = merged.length > 0;
+      await this.prisma.windowType.upsert({
+        where: { projectId_code: { projectId, code: win.code } },
+        update: {
+          instructionDocId: documentId,
+          instructionPage: win.startPage,
+          composition: win.composition as unknown as Prisma.InputJsonValue,
+          hasAngles,
+          angleCodes: merged as unknown as Prisma.InputJsonValue,
+          setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
+        },
+        create: {
+          projectId,
+          code: win.code,
+          instructionDocId: documentId,
+          instructionPage: win.startPage,
+          composition: win.composition as unknown as Prisma.InputJsonValue,
+          hasAngles,
+          angleCodes: merged as unknown as Prisma.InputJsonValue,
+          setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
+          sortOrder: sortOrder++,
+        },
+      });
+    }
+
+    // Pre-create the required ANG rows so the wizard/laser know what must be uploaded,
+    // even before the ANG PDFs themselves arrive.
+    await this.ensureRequiredAngles(projectId, [...allAngleCodes]);
+
+    await this.linkElevationCellsToWindowTypes(projectId);
+    return {
+      windowsFound: parsed.windows.length,
+      anglesDetected: allAngleCodes.size,
+    };
+  }
+
+  /**
+   * Per-window-type instruction upload (from the quantities table row).
+   * The file is a single unit's instruction sheet → parse it and apply the
+   * results to THAT window type only (composition/sets/angles), link the doc,
+   * and detect ANG codes with vision. Angles map by code (shared project rows).
+   */
+  async persistWindowInstructionsForType(
+    projectId: string,
+    windowTypeId: string,
+    documentId: string,
+    buffer: Buffer,
+  ): Promise<{ anglesDetected: number }> {
+    const wt = await this.prisma.windowType.findFirst({
+      where: { id: windowTypeId, projectId },
+    });
+    if (!wt) throw new NotFoundException('Window type not found');
+
+    const parsed = await parseWindowInstructionsPdf(buffer);
+    // A per-unit file describes one window — use the first detected block if any.
+    const win = parsed.windows[0];
+    const pages = win?.pages ?? [0];
+    const [visionCodes = []] = await this.detectAnglesFromDrawings(buffer, [
+      { pages },
+    ]);
+    const merged = [...new Set([...(win?.angleCodes ?? []), ...visionCodes])];
+    const existingCodes = (Array.isArray(wt.angleCodes) ? wt.angleCodes : []) as string[];
+    const angleCodes = merged.length ? merged : existingCodes;
+
+    await this.prisma.windowType.update({
+      where: { id: windowTypeId },
+      data: {
+        instructionDocId: documentId,
+        instructionPage: win?.startPage ?? 0,
+        ...(win?.composition?.length
+          ? { composition: win.composition as unknown as Prisma.InputJsonValue }
+          : {}),
+        ...(win?.setLabels?.length
+          ? { setsPayload: win.setLabels as unknown as Prisma.InputJsonValue }
+          : {}),
+        hasAngles: angleCodes.length > 0,
+        angleCodes: angleCodes as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.ensureRequiredAngles(projectId, merged);
+    await this.linkElevationCellsToWindowTypes(projectId);
+    return { anglesDetected: merged.length };
+  }
+
+  /** Attach a connection-details appendix PDF to a single window type (view only). */
+  async attachConnectionDetails(
+    projectId: string,
+    windowTypeId: string,
+    documentId: string,
+  ): Promise<void> {
+    const wt = await this.prisma.windowType.findFirst({
+      where: { id: windowTypeId, projectId },
+      select: { id: true },
+    });
+    if (!wt) throw new NotFoundException('Window type not found');
+    await this.prisma.windowType.update({
+      where: { id: windowTypeId },
+      data: { connectionDocId: documentId },
+    });
+  }
+
+  /** Vision detection of ANG codes per window (empty when Anthropic isn't configured). */
+  private async detectAnglesFromDrawings(
+    buffer: Buffer,
+    windows: { pages: number[] }[],
+  ): Promise<string[][]> {
+    if (!this.anthropic || !windows.length) {
+      return windows.map(() => []);
+    }
+    try {
+      return await detectAngleCodesForWindows(
+        buffer,
+        windows.map((w) => ({ pages: w.pages })),
+        this.anthropic,
+        this.anthropicModel,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `ANG vision detection failed: ${err instanceof Error ? err.message : err}`,
+      );
+      return windows.map(() => []);
+    }
+  }
+
+  /**
+   * Create an Angle row (code only) for each required code that doesn't exist yet.
+   * Existing rows (qty/instructionDoc from an uploaded ANG PDF) are left untouched.
+   */
+  private async ensureRequiredAngles(
+    projectId: string,
+    codes: string[],
+  ): Promise<void> {
+    if (!codes.length) return;
+    const existing = await this.prisma.angle.findMany({
+      where: { projectId },
+      select: { code: true, sortOrder: true },
+    });
+    const existingCodes = new Set(existing.map((a) => a.code));
+    let nextSort = existing.reduce((m, a) => Math.max(m, a.sortOrder + 1), 0);
+    for (const code of codes) {
+      if (existingCodes.has(code)) continue;
+      await this.prisma.angle.create({
+        data: { projectId, code, qty: 0, sortOrder: nextSort++ },
+      });
+      existingCodes.add(code);
+    }
+  }
+
+  /** Quantities PDF → WindowType totals + FacadeQuantity + ProductionStage + StageQuantity. */
+  async persistQuantities(
+    projectId: string,
+    buffer: Buffer,
+  ): Promise<{ windowTypes: number; facades: number; stages: number }> {
+    const parsed = await parseQuantitiesPdf(buffer);
+
+    // ensure a WindowType exists for every column code, set totalQty
+    let sortOrder = 0;
+    const codeToId = new Map<string, string>();
+    for (const code of parsed.windowTypes) {
+      const total = parsed.totals[code] ?? 0;
+      const wt = await this.prisma.windowType.upsert({
+        where: { projectId_code: { projectId, code } },
+        update: { totalQty: total },
+        create: { projectId, code, totalQty: total, sortOrder: sortOrder++ },
+      });
+      codeToId.set(code, wt.id);
+    }
+
+    // facade quantities (replace)
+    await this.prisma.facadeQuantity.deleteMany({
+      where: { windowType: { projectId } },
+    });
+    let facadeRows = 0;
+    for (const facade of parsed.facades) {
+      for (const [code, qty] of Object.entries(facade.qtys)) {
+        const wtId = codeToId.get(code);
+        if (!wtId || !qty) continue;
+        await this.prisma.facadeQuantity.create({
+          data: { windowTypeId: wtId, facadeLabel: facade.label, qty },
+        });
+        facadeRows += 1;
+      }
+    }
+
+    // stages (replace)
+    await this.prisma.productionStage.deleteMany({ where: { projectId } });
+    let stageSort = 0;
+    for (const stage of parsed.stages) {
+      const created = await this.prisma.productionStage.create({
+        data: {
+          projectId,
+          code: stage.code,
+          colorHex: stage.colorHex,
+          sortOrder: stageSort++,
+        },
+      });
+      for (const [code, qty] of Object.entries(stage.qtys)) {
+        const wtId = codeToId.get(code);
+        if (!wtId || !qty) continue;
+        await this.prisma.stageQuantity.create({
+          data: { stageId: created.id, windowTypeId: wtId, qty },
+        });
+      }
+    }
+
+    await this.linkElevationCellsToWindowTypes(projectId);
+    return {
+      windowTypes: parsed.windowTypes.length,
+      facades: facadeRows,
+      stages: parsed.stages.length,
+    };
+  }
+
+  /** ANG PDF → Angle rows (code, qty, instruction page). */
+  async persistAngles(
+    projectId: string,
+    documentId: string,
+    buffer: Buffer,
+  ): Promise<{ anglesFound: number }> {
+    const parsed = await parseAnglePdf(buffer);
+    let sortOrder = 0;
+    for (const angle of parsed.angles) {
+      await this.prisma.angle.upsert({
+        where: { projectId_code: { projectId, code: angle.code } },
+        update: {
+          qty: angle.qty,
+          instructionDocId: documentId,
+          instructionPage: angle.page,
+        },
+        create: {
+          projectId,
+          code: angle.code,
+          qty: angle.qty,
+          instructionDocId: documentId,
+          instructionPage: angle.page,
+          sortOrder: sortOrder++,
+        },
+      });
+    }
+    return { anglesFound: parsed.angles.length };
+  }
+
+  /**
+   * Match elevation cells to window types by the window-type code found in the
+   * cell text (74-1-03A). Sets windowTypeCode + windowTypeId on each cell.
+   */
+  async linkElevationCellsToWindowTypes(projectId: string): Promise<number> {
+    const windowTypes = await this.prisma.windowType.findMany({
+      where: { projectId },
+      select: { id: true, code: true },
+    });
+    if (!windowTypes.length) return 0;
+    const codeToId = new Map(windowTypes.map((w) => [w.code, w.id]));
+
+    const cells = await this.prisma.elevationCell.findMany({
+      where: { map: { projectId } },
+      select: { id: true, code: true, items: true },
+    });
+
+    let linked = 0;
+    for (const cell of cells) {
+      const code = this.extractWindowCode(cell.code, cell.items);
+      if (!code) continue;
+      const wtId = codeToId.get(code);
+      await this.prisma.elevationCell.update({
+        where: { id: cell.id },
+        data: { windowTypeCode: code, windowTypeId: wtId ?? null },
+      });
+      if (wtId) linked += 1;
+    }
+    this.logger.log(
+      `Linked ${linked} elevation cells to window types for project ${projectId}`,
+    );
+    return linked;
+  }
+
+  private extractWindowCode(code: string, items: unknown): string | null {
+    const direct = WINDOW_CODE_RE.exec(code);
+    if (direct) return direct[1];
+    const list = Array.isArray(items) ? (items as string[]) : [];
+    for (const it of list) {
+      const m = WINDOW_CODE_RE.exec(String(it));
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  /** Aggregated preview for the wizard confirm screen. */
+  async buildPlanningPreview(projectId: string) {
+    const [windowTypes, stages, angles, cellAgg, order, steelworkDetails] =
+      await Promise.all([
+      this.prisma.windowType.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          facadeQuantities: true,
+          instructionDoc: { select: { pdfPath: true, title: true } },
+          connectionDoc: { select: { pdfPath: true } },
+          _count: { select: { elevationCells: true } },
+        },
+      }),
+      this.prisma.productionStage.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: { stageQuantities: true },
+      }),
+      this.prisma.angle.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: { instructionDoc: { select: { pdfPath: true, title: true } } },
+      }),
+      this.prisma.elevationCell.count({ where: { map: { projectId } } }),
+      this.prisma.projectOrder.findUnique({
+        where: { id: projectId },
+        select: { angleSourcing: true },
+      }),
+      this.prisma.steelworkDetail.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: { instructionDoc: { select: { pdfPath: true } } },
+      }),
+    ]);
+
+    const totalUnits = windowTypes.reduce((s, w) => s + w.totalQty, 0);
+
+    return {
+      projectId,
+      angleSourcing: order?.angleSourcing ?? 'INTERNAL_LASER',
+      windowTypeCount: windowTypes.length,
+      totalUnits,
+      elevationCellCount: cellAgg,
+      windowTypes: windowTypes.map((w) => ({
+        id: w.id,
+        code: w.code,
+        totalQty: w.totalQty,
+        hasAngles: w.hasAngles,
+        angleCodes: (Array.isArray(w.angleCodes) ? w.angleCodes : []) as string[],
+        composition: (Array.isArray(w.composition)
+          ? w.composition
+          : []) as string[],
+        setLabels: (Array.isArray(w.setsPayload) ? w.setsPayload : []) as string[],
+        instructionPdfUrl: w.instructionDoc?.pdfPath ?? null,
+        instructionPage: w.instructionPage,
+        connectionPdfUrl: w.connectionDoc?.pdfPath ?? null,
+        facadeCount: w.facadeQuantities.length,
+        elevationCellCount: w._count.elevationCells,
+      })),
+      stages: stages.map((s) => ({
+        code: s.code,
+        colorHex: s.colorHex,
+        totalQty: s.stageQuantities.reduce((sum, q) => sum + q.qty, 0),
+        windowTypeCount: s.stageQuantities.length,
+      })),
+      angles: angles.map((a) => ({
+        code: a.code,
+        qty: a.qty,
+        instructionPdfUrl: a.instructionDoc?.pdfPath ?? null,
+        instructionPage: a.instructionPage,
+      })),
+      steelworkDetails: steelworkDetails.map((d) => ({
+        id: d.id,
+        title: d.title,
+        targetQty: d.targetQty,
+        instructionPdfUrl: d.instructionDoc?.pdfPath ?? null,
+      })),
+    };
+  }
+}

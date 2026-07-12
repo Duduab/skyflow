@@ -18,6 +18,8 @@ import { ProjectOrder, WorkerContext } from '../../core/skyflow.models';
 import { WorkerProjectSelectionService } from './worker-project-selection.service';
 import {
   computeStationProgress,
+  formatProgressPercent,
+  highVolumeProgressRingPercent,
   isStationUnlockedInChain,
   progressDashOffset as ringStrokeDashOffset,
   PROGRESS_RING_C,
@@ -28,6 +30,7 @@ import { UiSelectOption } from '../../shared/ui-select/ui-select.types';
 import { StationLabelPipe } from '../../shared/station-label.pipe';
 import {
   stationDescKey,
+  stationDisplayNumber,
   stationVisualModifierClass,
   stationVisualStyle,
 } from '../../core/station-presentation';
@@ -62,13 +65,32 @@ export class WorkerHubComponent implements OnInit {
     >
   >({});
 
-  /** שתי תחנות בשורה; תחנה 7 (הרכבה באתר) בשורה אחרונה */
-  readonly stationRows: { id: number }[][] = [
-    [{ id: 1 }, { id: 2 }],
-    [{ id: 3 }, { id: 4 }],
-    [{ id: 5 }, { id: 6 }],
-    [{ id: 7 }],
-  ];
+  /**
+   * שתי תחנות בשורה, לפי סדר הזרימה הפיזי.
+   * תחנת לייזר (8) מוצגת מיד לפני ההרכבה (3), ורק כשיש זוויות בייצור פנימי.
+   * הסדר: מסורים(1) → CNC(2) → לייזר(8) → הרכבה(3) → הדבקות(4) → פינישים(5) → אריזה(6) → הרכבה באתר(7)
+   */
+  /** לייזר פעיל = לייזר פנימי עם זוויות בפרויקט. */
+  readonly laserActive = computed(() => {
+    const laser = this.contextByStation()[8]?.laserStation;
+    return !!laser && !laser.externalSupplier && laser.angles.length > 0;
+  });
+
+  readonly stationRows = computed((): { id: number }[][] => {
+    const sequence = this.laserActive()
+      ? [1, 2, 8, 3, 4, 5, 6, 7]
+      : [1, 2, 3, 4, 5, 6, 7];
+    const rows: { id: number }[][] = [];
+    for (let i = 0; i < sequence.length; i += 2) {
+      rows.push(sequence.slice(i, i + 2).map((id) => ({ id })));
+    }
+    return rows;
+  });
+
+  /** מספר התצוגה של תחנה לפי מיקום בזרימה (הלייזר לפני הרכבה, בלי "8"). */
+  displayNumber(stationId: number): number {
+    return stationDisplayNumber(stationId, this.laserActive());
+  }
 
   /** Worker context לפי הפרויקט הנבחר — מעגלי התקדמות ב־Hub */
   readonly contextByStation = signal<
@@ -164,7 +186,7 @@ export class WorkerHubComponent implements OnInit {
   }
 
   private loadAllContexts(projectId: string): void {
-    const ids = [1, 2, 3, 4, 5, 6, 7];
+    const ids = [1, 2, 3, 4, 5, 6, 7, 8];
     forkJoin(
       ids.map((id) =>
         this.api.getWorkerContext(id, projectId).pipe(
@@ -195,6 +217,16 @@ export class WorkerHubComponent implements OnInit {
       };
     }
     return computeStationProgress(stationId, ctx);
+  }
+
+  hubProgressLabel(stationId: number, percent: number): string {
+    return stationId === 8 ? formatProgressPercent(percent) : String(percent);
+  }
+
+  hubProgressRingPercent(stationId: number, prog: StationProgressVm): number {
+    return stationId === 8
+      ? highVolumeProgressRingPercent(prog.percent, prog.done)
+      : prog.percent;
   }
 
   /** תחנה 1 אחרי אישור תכנון; CNC אחרי דיווח מסורים אחד; תחנות 3+ אחרי 100% בתחנה הקודמת. */

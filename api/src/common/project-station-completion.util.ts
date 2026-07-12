@@ -17,9 +17,17 @@ export function stationProgressPercentForCompletion(
   >,
   qty: (sid: number) => number,
   latestStation7Extra: unknown,
+  laser?: { required: boolean; target: number },
 ): number {
   const qtyAt = qty;
   const doneRaw = qtyAt(stationId);
+
+  if (stationId === 8) {
+    const target = laser?.target ?? 0;
+    return target > 0
+      ? Math.min(100, Math.round((doneRaw / target) * 100))
+      : 100;
+  }
 
   if (stationId === 1) {
     const target = order.totalItems;
@@ -70,13 +78,17 @@ export function isProjectProductionComplete(
   >,
   qty: (sid: number) => number,
   latestStation7Extra: unknown,
+  laser?: { required: boolean; target: number },
 ): boolean {
-  for (let sid = 1; sid <= 7; sid++) {
+  const maxStation = laser?.required ? 8 : 7;
+  for (let sid = 1; sid <= maxStation; sid++) {
+    if (sid === 8 && !laser?.required) continue;
     const pct = stationProgressPercentForCompletion(
       sid,
       order,
       qty,
       latestStation7Extra,
+      laser,
     );
     if (pct < 100) return false;
   }

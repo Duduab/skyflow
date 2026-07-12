@@ -504,3 +504,127 @@
     font-family: ui-monospace, monospace;
   }
 }
+
+.elev__wtypes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.elev__wtype {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #334155;
+  font-family: ui-monospace, monospace;
+
+  &.is-active {
+    background: #0369a1;
+    color: #fff;
+    border-color: #0369a1;
+  }
+
+  &--all {
+    font-family: inherit;
+  }
+}
+
+.elev__detail-wtype {
+  font-size: 0.82rem;
+  color: #334155;
+  padding: 6px 10px;
+  background: #eff6ff;
+  border-radius: 8px;
+
+  strong {
+    font-family: ui-monospace, monospace;
+  }
+}
+
+.elev__defect {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.elev__defect-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.elev__defect-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+}
+
+.elev__defect-station {
+  font-size: 0.76rem;
+  color: #991b1b;
+}
+
+.elev__defect-reason {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #7f1d1d;
+}
+
+.elev__defect-toggle {
+  margin-top: 4px;
+  border: 1px dashed #f87171;
+  background: transparent;
+  color: #b91c1c;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #fef2f2;
+  }
+}
+
+.elev__defect-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.elev__defect-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.elev__defect-select,
+.elev__defect-textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #0f172a;
+  background: #fff;
+  width: 100%;
+}
+
+.elev__defect-textarea {
+  resize: vertical;
+}

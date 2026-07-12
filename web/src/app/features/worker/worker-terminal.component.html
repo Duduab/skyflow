@@ -52,7 +52,7 @@
         {{ stationId | stationLabel: ctx.order | translate }}
       </h1>
       <p class="text-touch font-semibold text-white/80">
-        {{ 'WORKER.STATION' | translate }} {{ stationId }}
+        {{ 'WORKER.STATION' | translate }} {{ displayNumber() }}
       </p>
     </div>
 
@@ -67,7 +67,7 @@
         <div class="station-brief__hero-bg"></div>
         <div class="station-brief__hero-grid"></div>
         <div class="station-brief__hero-glow"></div>
-        <span class="station-brief__index" dir="ltr">{{ stationId }}</span>
+        <span class="station-brief__index" dir="ltr">{{ displayNumber() }}</span>
         <div class="station-brief__hero-content">
           <p class="station-brief__eyebrow">
             {{ stationId | stationLabel: ctx.order | translate }}
@@ -713,6 +713,387 @@
           }
         </section>
       </div>
+    }
+
+    @if (stationId === 3 && ctx.assemblyWindowTypes?.length) {
+      <section
+        class="sf-panel md:p-8 wt-docs"
+        [attr.aria-label]="'WORKER.WT_DOCS_TITLE' | translate"
+      >
+        <header class="assembly-section-head">
+          <h2 class="assembly-section-head__title">{{ 'WORKER.WT_DOCS_TITLE' | translate }}</h2>
+          <p class="assembly-section-head__hint">{{ 'WORKER.WT_DOCS_HINT' | translate }}</p>
+        </header>
+        <div class="wt-docs__grid" role="list">
+          @for (w of ctx.assemblyWindowTypes; track w.code) {
+            <article class="wt-card" role="listitem">
+              <div class="wt-card__head">
+                <span class="wt-card__code" dir="ltr">{{ w.code }}</span>
+                <span class="wt-card__qty">{{ w.totalQty }}</span>
+              </div>
+              @if (w.composition.length) {
+                <div class="wt-card__section">
+                  <span class="wt-card__label">{{ 'WORKER.WT_COMPOSITION' | translate }}</span>
+                  <div class="wt-card__chips">
+                    @for (c of w.composition; track c) {
+                      <span class="wt-card__chip" dir="ltr">{{ c }}</span>
+                    }
+                  </div>
+                </div>
+              }
+              @if (w.setLabels.length) {
+                <div class="wt-card__section">
+                  <span class="wt-card__label">{{ 'WORKER.WT_SETS' | translate }}</span>
+                  <div class="wt-card__chips">
+                    @for (s of w.setLabels; track s) {
+                      <span class="wt-card__chip wt-card__chip--set" dir="ltr">{{ s }}</span>
+                    }
+                  </div>
+                </div>
+              }
+              @if (w.hasAngles && w.angleCodes.length) {
+                <div class="wt-card__section">
+                  <span class="wt-card__label">{{ 'WORKER.WT_ANGLES' | translate }}</span>
+                  <div class="wt-card__chips">
+                    @for (a of w.angleCodes; track a) {
+                      <span class="wt-card__chip wt-card__chip--ang" dir="ltr">{{ a }}</span>
+                    }
+                  </div>
+                </div>
+              }
+              @if (w.instructionPdfUrl) {
+                <a
+                  class="wt-card__pdf"
+                  [href]="w.instructionPdfUrl"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  {{ 'WORKER.WT_OPEN_PDF' | translate }}
+                </a>
+              } @else {
+                <span class="wt-card__pdf wt-card__pdf--missing">{{ 'WORKER.WT_NO_PDF' | translate }}</span>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (stationId === 8 && ctx.laserStation; as laser) {
+      <section
+        class="sf-panel md:p-8 laser-station"
+        [attr.aria-label]="'WORKER.LASER_TITLE' | translate"
+      >
+        <header class="assembly-section-head">
+          <h2 class="assembly-section-head__title">{{ 'WORKER.LASER_TITLE' | translate }}</h2>
+          <p class="assembly-section-head__hint">{{ 'WORKER.LASER_HINT' | translate }}</p>
+        </header>
+
+        @if (laser.externalSupplier) {
+          <p class="laser-station__external">{{ 'WORKER.LASER_EXTERNAL' | translate }}</p>
+        }
+
+        <div class="laser-station__summary" dir="ltr">
+          <span class="laser-station__pill">
+            {{ 'WORKER.LASER_TOTAL' | translate }}: <strong>{{ laser.totalAngleQty }}</strong>
+          </span>
+          <span class="laser-station__pill laser-station__pill--done">
+            {{ 'WORKER.LASER_DONE' | translate }}: <strong>{{ laser.doneQty }}</strong>
+          </span>
+        </div>
+
+        @if (laser.angles.length) {
+          <div class="laser-station__grid" role="list">
+            @for (a of laser.angles; track a.code) {
+              @let remaining = a.qty - a.doneQty;
+              <article
+                class="laser-card"
+                role="listitem"
+                [class.laser-card--done]="a.doneQty >= a.qty && a.qty > 0"
+              >
+                <div class="laser-card__head">
+                  <span class="laser-card__code" dir="ltr">{{ a.code }}</span>
+                  <span class="laser-card__qty" dir="ltr">
+                    {{ a.doneQty }}/{{ a.qty }}
+                  </span>
+                </div>
+
+                <div class="laser-card__track" aria-hidden="true">
+                  <span
+                    class="laser-card__track-fill"
+                    [style.width.%]="
+                      a.qty > 0
+                        ? (a.doneQty >= a.qty ? 100 : (a.doneQty / a.qty) * 100)
+                        : 0
+                    "
+                  ></span>
+                </div>
+
+                @if (a.instructionPdfUrl) {
+                  <button
+                    type="button"
+                    class="laser-card__pdf"
+                    (click)="openLaserPdf(a.instructionPdfUrl, a.code)"
+                  >
+                    {{ 'WORKER.WT_OPEN_PDF' | translate }}
+                  </button>
+                }
+
+                @if (a.doneQty >= a.qty && a.qty > 0) {
+                  <p class="laser-card__complete">
+                    {{ 'WORKER.LASER_ANGLE_COMPLETE' | translate }}
+                  </p>
+                } @else {
+                  <form
+                    class="laser-card__report"
+                    (ngSubmit)="$event.preventDefault(); submitLaserReport(a.code)"
+                  >
+                    <label class="laser-card__report-label">
+                      {{ 'WORKER.LASER_REPORT_LABEL' | translate }}
+                      <span class="laser-card__report-remaining" dir="ltr">
+                        ({{ 'WORKER.LASER_REMAINING' | translate }}:
+                        {{ remaining > 0 ? remaining : 0 }})
+                      </span>
+                    </label>
+                    <div class="laser-card__report-row">
+                      <input
+                        class="laser-card__report-input"
+                        type="number"
+                        inputmode="numeric"
+                        min="1"
+                        [max]="remaining > 0 ? remaining : null"
+                        dir="ltr"
+                        [value]="laserReportValue(a.code) ?? ''"
+                        (input)="onLaserReportInput(a.code, $any($event.target).value)"
+                        [attr.aria-label]="'WORKER.LASER_REPORT_LABEL' | translate"
+                      />
+                      <skyflow-ui-button
+                        type="button"
+                        size="md"
+                        [disabled]="
+                          laserSavingCode() === a.code ||
+                          (laserReportValue(a.code) ?? 0) <= 0
+                        "
+                        (click)="submitLaserReport(a.code)"
+                      >
+                        {{ 'WORKER.LASER_REPORT_SUBMIT' | translate }}
+                      </skyflow-ui-button>
+                    </div>
+                  </form>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="assembly-empty">{{ 'WORKER.LASER_EMPTY' | translate }}</p>
+        }
+      </section>
+
+      @if (laserPdfUrl(); as pdfUrl) {
+        <div
+          class="laser-pdf-modal"
+          role="dialog"
+          aria-modal="true"
+          [attr.aria-label]="'WORKER.LASER_PDF_TITLE' | translate"
+          (click)="closeLaserPdf()"
+        >
+          <div
+            class="laser-pdf-modal__panel"
+            (click)="$event.stopPropagation()"
+          >
+            <header class="laser-pdf-modal__head">
+              <span class="laser-pdf-modal__title" dir="ltr">
+                {{ laserPdfCode() }}
+              </span>
+              <button
+                type="button"
+                class="laser-pdf-modal__close"
+                (click)="closeLaserPdf()"
+                [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </header>
+            <iframe
+              class="laser-pdf-modal__frame"
+              [src]="laserPdfSafeUrl(pdfUrl)"
+              [title]="laserPdfCode() ?? ('WORKER.LASER_PDF_TITLE' | translate)"
+            ></iframe>
+          </div>
+        </div>
+      }
+    }
+
+    @if (ctx.steelworkStation; as steel) {
+      <section
+        class="sf-panel md:p-8 laser-station"
+        [attr.aria-label]="'WORKER.STEEL_TITLE' | translate"
+      >
+        <header class="assembly-section-head">
+          <h2 class="assembly-section-head__title">{{ 'WORKER.STEEL_TITLE' | translate }}</h2>
+          <p class="assembly-section-head__hint">{{ 'WORKER.STEEL_HINT' | translate }}</p>
+        </header>
+
+        @if (steel.totalTargetQty > 0) {
+          <div class="laser-station__summary" dir="ltr">
+            <span class="laser-station__pill">
+              {{ 'WORKER.STEEL_TOTAL' | translate }}: <strong>{{ steel.totalTargetQty }}</strong>
+            </span>
+            <span class="laser-station__pill laser-station__pill--done">
+              {{ 'WORKER.STEEL_DONE' | translate }}: <strong>{{ steel.doneQty }}</strong>
+            </span>
+          </div>
+        }
+
+        @if (steel.details.length) {
+          <div class="laser-station__grid" role="list">
+            @for (d of steel.details; track d.id) {
+              @let remaining = d.targetQty - d.doneQty;
+              <article
+                class="laser-card"
+                role="listitem"
+                [class.laser-card--done]="steelDetailIsComplete(d)"
+              >
+                <div class="laser-card__head">
+                  <span class="laser-card__code">{{ d.title }}</span>
+                  <span class="laser-card__qty" dir="ltr">
+                    @if (d.targetQty > 0) {
+                      {{ d.doneQty }}/{{ d.targetQty }}
+                    } @else {
+                      {{ d.doneQty }}
+                    }
+                  </span>
+                </div>
+
+                @if (d.targetQty > 0) {
+                  <div class="laser-card__track" aria-hidden="true">
+                    <span
+                      class="laser-card__track-fill"
+                      [style.width.%]="
+                        d.doneQty >= d.targetQty ? 100 : (d.doneQty / d.targetQty) * 100
+                      "
+                    ></span>
+                  </div>
+                }
+
+                @if (d.instructionPdfUrl) {
+                  <button
+                    type="button"
+                    class="laser-card__pdf"
+                    (click)="openLaserPdf(d.instructionPdfUrl, d.title)"
+                  >
+                    {{ 'WORKER.WT_OPEN_PDF' | translate }}
+                  </button>
+                }
+
+                @if (steelDetailIsComplete(d)) {
+                  <p class="laser-card__complete">
+                    {{ 'WORKER.STEEL_DETAIL_COMPLETE' | translate }}
+                  </p>
+                } @else {
+                  <form
+                    class="laser-card__report"
+                    (ngSubmit)="$event.preventDefault(); submitSteelReport(d.id)"
+                  >
+                    <label class="laser-card__report-label">
+                      {{ 'WORKER.STEEL_REPORT_LABEL' | translate }}
+                      @if (d.targetQty > 0) {
+                        <span class="laser-card__report-remaining" dir="ltr">
+                          ({{ 'WORKER.LASER_REMAINING' | translate }}:
+                          {{ remaining > 0 ? remaining : 0 }})
+                        </span>
+                      }
+                    </label>
+                    <div class="laser-card__report-row">
+                      <input
+                        class="laser-card__report-input"
+                        type="number"
+                        inputmode="numeric"
+                        min="1"
+                        [max]="d.targetQty > 0 && remaining > 0 ? remaining : null"
+                        dir="ltr"
+                        [value]="steelReportValue(d.id) ?? ''"
+                        (input)="onSteelReportInput(d.id, $any($event.target).value)"
+                        [attr.aria-label]="'WORKER.STEEL_REPORT_LABEL' | translate"
+                      />
+                      <skyflow-ui-button
+                        type="button"
+                        size="md"
+                        [disabled]="
+                          steelSavingId() === d.id ||
+                          (steelReportValue(d.id) ?? 0) <= 0
+                        "
+                        (click)="submitSteelReport(d.id)"
+                      >
+                        {{ 'WORKER.LASER_REPORT_SUBMIT' | translate }}
+                      </skyflow-ui-button>
+                    </div>
+                  </form>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="assembly-empty">{{ 'WORKER.STEEL_EMPTY' | translate }}</p>
+        }
+      </section>
+
+      @if (laserPdfUrl(); as pdfUrl) {
+        <div
+          class="laser-pdf-modal"
+          role="dialog"
+          aria-modal="true"
+          [attr.aria-label]="'WORKER.LASER_PDF_TITLE' | translate"
+          (click)="closeLaserPdf()"
+        >
+          <div class="laser-pdf-modal__panel" (click)="$event.stopPropagation()">
+            <header class="laser-pdf-modal__head">
+              <span class="laser-pdf-modal__title">{{ laserPdfCode() }}</span>
+              <button
+                type="button"
+                class="laser-pdf-modal__close"
+                (click)="closeLaserPdf()"
+                [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </header>
+            <iframe
+              class="laser-pdf-modal__frame"
+              [src]="laserPdfSafeUrl(pdfUrl)"
+              [title]="laserPdfCode() ?? ('WORKER.LASER_PDF_TITLE' | translate)"
+            ></iframe>
+          </div>
+        </div>
+      }
+    }
+
+    @if (ctx.reworkDefects?.length) {
+      <section
+        class="sf-panel md:p-8 rework-panel"
+        [attr.aria-label]="'WORKER.REWORK_TITLE' | translate"
+      >
+        <header class="assembly-section-head">
+          <h2 class="assembly-section-head__title">
+            {{ 'WORKER.REWORK_TITLE' | translate }}
+            <span class="rework-panel__count">{{ ctx.reworkDefects?.length }}</span>
+          </h2>
+          <p class="assembly-section-head__hint">{{ 'WORKER.REWORK_HINT' | translate }}</p>
+        </header>
+        <ul class="rework-panel__list">
+          @for (d of ctx.reworkDefects; track d.id) {
+            <li class="rework-item">
+              <div class="rework-item__head">
+                <span class="rework-item__cell" dir="ltr">{{ d.cellCode }}</span>
+                @if (d.windowTypeCode) {
+                  <span class="rework-item__wt" dir="ltr">{{ d.windowTypeCode }}</span>
+                }
+              </div>
+              <p class="rework-item__reason">{{ d.reason }}</p>
+            </li>
+          }
+        </ul>
+      </section>
     }
 
     @if (stationId === 4 && gluingCtx(ctx); as glu) {
@@ -1387,13 +1768,21 @@
               class="station-progress__arc"
               cx="50" cy="50" r="42"
               [attr.stroke-dasharray]="progressCircumference"
-              [attr.stroke-dashoffset]="progressDashOffset(prog.percent)"
+              [attr.stroke-dashoffset]="
+                progressDashOffset(progressRingPercent(prog.percent, prog.done))
+              "
               transform="rotate(-90 50 50)"
             />
           </svg>
           <div class="station-progress__pct" dir="ltr">
             <span class="station-progress__pct-inner">
-              <span class="station-progress__pct-value">{{ prog.percent }}</span><span class="station-progress__pct-sign">%</span>
+              @if (stationId === 8) {
+                <span class="station-progress__pct-value">{{
+                  stationProgressPercentLabel(prog.percent)
+                }}</span><span class="station-progress__pct-sign">%</span>
+              } @else {
+                <span class="station-progress__pct-value">{{ prog.percent }}</span><span class="station-progress__pct-sign">%</span>
+              }
             </span>
           </div>
         </div>
@@ -1794,8 +2183,59 @@
         [class]="'saw-save-celebration saw-type-tile--st-' + stationId"
         role="status"
         aria-live="polite"
-        [attr.aria-label]="'WORKER.SAW_SAVE_CELEBRATION' | translate"
+        [attr.aria-label]="
+          stationId === 8
+            ? ('WORKER.LASER_SAVE_CELEBRATION' | translate)
+            : ('WORKER.SAW_SAVE_CELEBRATION' | translate)
+        "
       >
+        @if (stationId === 8 && celebCtx.laserStation; as laser) {
+          <div class="saw-save-celebration__grid">
+            @for (angle of laser.angles; track angle.code) {
+              <div
+                class="saw-save-celebration__item"
+                [class.saw-save-celebration__item--done]="laserAngleIsComplete(angle)"
+              >
+                <div class="saw-type-tile__ring-wrap saw-save-celebration__ring" aria-hidden="true">
+                  <svg class="saw-type-tile__svg" viewBox="0 0 100 100">
+                    <circle class="saw-type-tile__track" cx="50" cy="50" r="42" />
+                    <circle
+                      class="saw-type-tile__arc"
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      [attr.stroke-dasharray]="progressCircumference"
+                      [attr.stroke-dashoffset]="
+                        progressDashOffset(laserAngleRingPercent(angle))
+                      "
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                  <div class="saw-type-tile__ring-center">
+                    @if (laserAngleIsComplete(angle)) {
+                      <span class="saw-type-tile__check">
+                        <svg viewBox="0 0 24 24" class="saw-type-tile__check-svg">
+                          <path
+                            fill="currentColor"
+                            d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                          />
+                        </svg>
+                      </span>
+                    } @else {
+                      <span class="saw-type-tile__pct-inner" dir="ltr">
+                        <span class="saw-type-tile__pct-value">{{
+                          laserAngleProgressLabel(angle)
+                        }}</span
+                        ><span class="saw-type-tile__pct-sign">%</span>
+                      </span>
+                    }
+                  </div>
+                </div>
+                <p class="saw-save-celebration__label" dir="ltr">{{ angle.code }}</p>
+              </div>
+            }
+          </div>
+        } @else {
         <div class="saw-save-celebration__grid">
           @for (g of sawTypeGroups(celebCtx); track g.instructionKind || 'other') {
             <div
@@ -1843,6 +2283,7 @@
             </div>
           }
         </div>
+        }
       </div>
     }
 

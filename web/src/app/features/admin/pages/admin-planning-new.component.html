@@ -128,6 +128,20 @@
               />
             </div>
             <div class="planning-wizard__field">
+              <label class="planning-wizard__field-label" for="wizard-angle-sourcing">{{
+                'PLANNING_NEW.ANGLE_SOURCING_LABEL' | translate
+              }}</label>
+              <skyflow-ui-select
+                inputId="wizard-angle-sourcing"
+                class="planning-wizard__select"
+                [fixedPanel]="false"
+                [panelZIndex]="400"
+                [options]="angleSourcingOptions()"
+                [value]="angleSourcing()"
+                (valueChange)="onAngleSourcingSelect($event)"
+              />
+            </div>
+            <div class="planning-wizard__field">
               <label class="planning-wizard__field-label" for="wizard-project-details">
                 {{ 'PLANNING_NEW.WIZARD_DETAILS_LABEL' | translate }}
                 <span class="planning-wizard__field-optional">{{
@@ -328,20 +342,19 @@
       }
 
       <div class="planning-new__panel-wrap planning-wizard__step-enter">
-        <skyflow-planning-panel
+        <skyflow-planning-pdf-panel
           class="block w-full"
           [projectId]="pid"
           [flowStatus]="selectedFlow()"
-          [projectName]="selectedName()"
           [wizardMode]="panelMode()"
-          [panelHeader]="false"
-          [lineMaterial]="selectedVariantOrder().lineMaterial"
-          [machiningRoute]="selectedVariantOrder().machiningRoute"
+          [angleSourcing]="angleSourcing()"
+          [lineMaterial]="lineMaterial()"
           [planningSawsManagerUserId]="selectedSawsManagerId()"
           [sawsWorkerUserIds]="selectedWorkerIds()"
           (planningChanged)="onPlanningChanged()"
           (planningApproved)="onPlanningApproved()"
           (wizardContinue)="goStep3()"
+          (angleSourcingChange)="onAngleSourcingChange($event)"
         />
       </div>
     }

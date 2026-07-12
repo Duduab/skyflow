@@ -1,5 +1,6 @@
 תמונות רקע לכרטיסי עמדות (worker hub):
   1.png … 6.png — מוצגות כבר בפרויקט.
+  8.png — תחנת לייזר (ANG)
 
 נתיב בדפדפן: /assets/stations/N.png
 

@@ -51,7 +51,16 @@ export type WorkerActivityLogEntry = {
 };
 
 const MIN_STATION = 1;
-const MAX_STATION = 7;
+/**
+ * 1–7 = production line; 8 = Laser station (ANG angles), after saws.
+ * 9 = Steelwork (מסגריה) appendix reports — a virtual id used only to isolate
+ * connection-details reports from station 1's saw totals; not a real line card.
+ */
+const MAX_STATION = 9;
+/** Laser station id (conditional — only when angleSourcing = INTERNAL_LASER + ANG exist). */
+export const LASER_STATION_ID = 8;
+/** Virtual station id for steelwork (מסגריה) connection-details reports. */
+export const STEELWORK_STATION_ID = 9;
 
 /** Writable public folder for delivery-note PDFs (served by Angular dev server / static hosting). */
 export function siteDeliveryUploadDir(): string {
@@ -408,6 +417,11 @@ export class StationsService {
           },
         };
       }
+      case STEELWORK_STATION_ID:
+        return {
+          summaryKey: 'WORKER.ACT_LOG_STEELWORK',
+          summaryParams: { qty },
+        };
       default:
         return {
           summaryKey: 'WORKER.ACT_LOG_GENERIC',
@@ -490,9 +504,20 @@ export class StationsService {
     const qty = (id: number) =>
       totals.find((t) => t.stationId === id)?.processedQty ?? 0;
 
+    // Laser (station 8) is a parallel component station fed by ANG angles —
+    // its target is the total angle quantity, not the previous line station.
+    const laserStationCtx =
+      stationId === LASER_STATION_ID
+        ? await this.buildLaserStationContext(projectId)
+        : undefined;
+
     const previousStationId = stationId > 1 ? stationId - 1 : null;
     const previousQty =
-      previousStationId === null ? order.totalItems : qty(previousStationId);
+      stationId === LASER_STATION_ID
+        ? (laserStationCtx?.totalAngleQty ?? 0)
+        : previousStationId === null
+          ? order.totalItems
+          : qty(previousStationId);
 
     const summaryStations = [1, 2, 3, 4].map((id) => ({
       stationId: id,
@@ -508,6 +533,13 @@ export class StationsService {
     const inProduction = order.flowStatus === ProjectFlowStatus.IN_PRODUCTION;
     const loadSawWorkLines =
       inProduction && stationId >= 1 && stationId <= 4;
+
+    // Steelwork (מסגריה) — station 1 in STEEL mode gets a laser-style section
+    // fed by the manually-uploaded "connection details & angles" appendix PDFs.
+    const steelworkStationCtx =
+      stationId === 1 && order.lineMaterial === 'STEEL' && inProduction
+        ? await this.buildSteelworkStationContext(projectId)
+        : undefined;
 
     const sawWorkLines = loadSawWorkLines
       ? await this.prisma.sawStationWorkLine.findMany({
@@ -637,6 +669,20 @@ export class StationsService {
 
     const activityLog = await this.buildActivityLog(projectId, order);
 
+    // Rework returned from the elevation map to this station.
+    const reworkRows = await this.prisma.cellDefect.findMany({
+      where: { projectId, returnedToStationId: stationId, status: 'OPEN' },
+      orderBy: { createdAt: 'desc' },
+      include: { cell: { select: { code: true, windowTypeCode: true } } },
+    });
+    const reworkDefects = reworkRows.map((d) => ({
+      id: d.id,
+      cellCode: d.cell.code,
+      windowTypeCode: d.cell.windowTypeCode,
+      reason: d.reason,
+      createdAt: d.createdAt.toISOString(),
+    }));
+
     let packReport:
       | {
           requiredCount: number;
@@ -669,6 +715,13 @@ export class StationsService {
         cncMap,
       );
     }
+
+    // New 4-PDF flow: assembly station shows the window production-instruction
+    // PDFs + sets tables per window type.
+    const assemblyWindowTypes =
+      stationId === 3
+        ? await this.buildAssemblyWindowTypeDocs(projectId)
+        : undefined;
 
     let assemblyStation: AssemblyStationContextDto | undefined;
     if (stationId === 3 && inProduction) {
@@ -739,6 +792,152 @@ export class StationsService {
       ...(deliveryNote ? { deliveryNote } : {}),
       ...(assemblyStation ? { assemblyStation } : {}),
       ...(gluingStation ? { gluingStation } : {}),
+      ...(laserStationCtx ? { laserStation: laserStationCtx } : {}),
+      ...(steelworkStationCtx ? { steelworkStation: steelworkStationCtx } : {}),
+      ...(assemblyWindowTypes?.length ? { assemblyWindowTypes } : {}),
+      ...(reworkDefects.length ? { reworkDefects } : {}),
+    };
+  }
+
+  /** Assembly (station 3) — window types with instruction PDFs + sets tables. */
+  private async buildAssemblyWindowTypeDocs(projectId: string): Promise<
+    {
+      code: string;
+      totalQty: number;
+      hasAngles: boolean;
+      angleCodes: string[];
+      composition: string[];
+      setLabels: string[];
+      instructionPdfUrl: string | null;
+      instructionPage: number | null;
+    }[]
+  > {
+    const windowTypes = await this.prisma.windowType.findMany({
+      where: { projectId },
+      orderBy: { sortOrder: 'asc' },
+      include: { instructionDoc: { select: { pdfPath: true } } },
+    });
+    return windowTypes.map((w) => ({
+      code: w.code,
+      totalQty: w.totalQty,
+      hasAngles: w.hasAngles,
+      angleCodes: (Array.isArray(w.angleCodes) ? w.angleCodes : []) as string[],
+      composition: (Array.isArray(w.composition)
+        ? w.composition
+        : []) as string[],
+      setLabels: (Array.isArray(w.setsPayload) ? w.setsPayload : []) as string[],
+      instructionPdfUrl: w.instructionDoc?.pdfPath ?? null,
+      instructionPage: w.instructionPage,
+    }));
+  }
+
+  /** Laser station (8) — ANG angles + quantities + instruction PDFs. */
+  private async buildLaserStationContext(projectId: string): Promise<{
+    angles: {
+      code: string;
+      qty: number;
+      doneQty: number;
+      instructionPdfUrl: string | null;
+      instructionPage: number | null;
+    }[];
+    totalAngleQty: number;
+    doneQty: number;
+    externalSupplier: boolean;
+  }> {
+    const [angles, order, logs] = await Promise.all([
+      this.prisma.angle.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: { instructionDoc: { select: { pdfPath: true } } },
+      }),
+      this.prisma.projectOrder.findUnique({
+        where: { id: projectId },
+        select: { angleSourcing: true },
+      }),
+      this.prisma.stationLog.findMany({
+        where: { projectId, stationId: LASER_STATION_ID },
+        select: { processedQty: true, extraPayload: true },
+      }),
+    ]);
+
+    // סכימת הכמות שדווחה לכל ANG לפי angleCode שנשמר ב-extraPayload.
+    const doneByCode = new Map<string, number>();
+    for (const log of logs) {
+      const ep = log.extraPayload as Record<string, unknown> | null;
+      const code = typeof ep?.['angleCode'] === 'string' ? (ep['angleCode'] as string) : null;
+      if (!code) continue;
+      doneByCode.set(code, (doneByCode.get(code) ?? 0) + log.processedQty);
+    }
+
+    const totalAngleQty = angles.reduce((s, a) => s + a.qty, 0);
+    const doneQty = [...doneByCode.values()].reduce((s, n) => s + n, 0);
+    return {
+      angles: angles.map((a) => ({
+        code: a.code,
+        qty: a.qty,
+        doneQty: doneByCode.get(a.code) ?? 0,
+        instructionPdfUrl: a.instructionDoc?.pdfPath ?? null,
+        instructionPage: a.instructionPage,
+      })),
+      totalAngleQty,
+      doneQty,
+      externalSupplier: order?.angleSourcing === 'EXTERNAL_SUPPLIER',
+    };
+  }
+
+  /**
+   * Steelwork station (1, STEEL) — "connection details & angles" appendix PDFs
+   * uploaded by planning + per-detail reported quantities. Mirrors the laser
+   * station shape. Reports live in StationLog(stationId=STEELWORK_STATION_ID)
+   * with an extraPayload.steelworkDetailId, isolated from station 1 saw reports.
+   */
+  private async buildSteelworkStationContext(projectId: string): Promise<{
+    details: {
+      id: string;
+      title: string;
+      targetQty: number;
+      doneQty: number;
+      instructionPdfUrl: string | null;
+    }[];
+    totalTargetQty: number;
+    doneQty: number;
+  }> {
+    const [details, logs] = await Promise.all([
+      this.prisma.steelworkDetail.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: { instructionDoc: { select: { pdfPath: true } } },
+      }),
+      this.prisma.stationLog.findMany({
+        where: { projectId, stationId: STEELWORK_STATION_ID },
+        select: { processedQty: true, extraPayload: true },
+      }),
+    ]);
+
+    // כמות שדווחה לכל נספח לפי steelworkDetailId שנשמר ב-extraPayload.
+    const doneById = new Map<string, number>();
+    for (const log of logs) {
+      const ep = log.extraPayload as Record<string, unknown> | null;
+      const id =
+        typeof ep?.['steelworkDetailId'] === 'string'
+          ? (ep['steelworkDetailId'] as string)
+          : null;
+      if (!id) continue;
+      doneById.set(id, (doneById.get(id) ?? 0) + log.processedQty);
+    }
+
+    const totalTargetQty = details.reduce((s, d) => s + d.targetQty, 0);
+    const doneQty = [...doneById.values()].reduce((s, n) => s + n, 0);
+    return {
+      details: details.map((d) => ({
+        id: d.id,
+        title: d.title,
+        targetQty: d.targetQty,
+        doneQty: doneById.get(d.id) ?? 0,
+        instructionPdfUrl: d.instructionDoc?.pdfPath ?? null,
+      })),
+      totalTargetQty,
+      doneQty,
     };
   }
 

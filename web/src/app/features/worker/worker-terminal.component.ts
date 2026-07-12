@@ -19,6 +19,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -37,8 +38,10 @@ import {
   AssemblyWindowUnitDto,
   GluingStationContextDto,
   GluingTypeGroupDto,
+  LaserAngleDto,
   ProjectOrder,
   SawWorkLineDto,
+  SteelworkDetailDto,
   SummaryStationRow,
   WorkerActivityLogEntryDto,
   WorkerContext,
@@ -47,7 +50,10 @@ import {
 import { WorkerProjectSelectionService } from './worker-project-selection.service';
 import {
   computeStationProgress,
+  formatProgressPercent,
   hasAnySawStationReport,
+  highVolumeProgressPercent,
+  highVolumeProgressRingPercent,
   progressDashOffset as ringStrokeDashOffset,
   PROGRESS_RING_C,
   StationProgressVm,
@@ -62,6 +68,7 @@ import { httpErrorMessage } from '../../core/http-error.util';
 import { LoginPopupComponent } from '../auth/login-popup.component';
 import { StationLabelPipe } from '../../shared/station-label.pipe';
 import {
+  stationDisplayNumber,
   stationLabelKey,
   stationVisualModifierClass,
   stationVisualStyle,
@@ -139,6 +146,7 @@ export class WorkerTerminalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly doc = inject(DOCUMENT);
+  private readonly sanitizer = inject(DomSanitizer);
   readonly projectSelection = inject(WorkerProjectSelectionService);
 
   private saveToastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -233,6 +241,20 @@ export class WorkerTerminalComponent implements OnInit {
   /** תצוגת תמונה מלאה ממודאל סוגי ניסור */
   readonly sawLineImagePreviewUrl = signal<string | null>(null);
 
+  /** תצוגת PDF של זווית (ANG) בתחנת לייזר — נפתח בפופאפ במקום טאב חדש */
+  readonly laserPdfUrl = signal<string | null>(null);
+  readonly laserPdfCode = signal<string | null>(null);
+
+  /** ערכי קלט הדיווח לכל ANG (code -> qty) בתחנת לייזר */
+  readonly laserReportInput = signal<Record<string, number | null>>({});
+  /** ה-ANG שנמצא כרגע בשמירה */
+  readonly laserSavingCode = signal<string | null>(null);
+
+  /** ערכי קלט הדיווח לכל נספח מסגריה (detailId -> qty) */
+  readonly steelReportInput = signal<Record<string, number | null>>({});
+  /** הנספח שנמצא כרגע בשמירה */
+  readonly steelSavingId = signal<string | null>(null);
+
   stationId = 1;
 
   stationLabelKeyFor(
@@ -277,7 +299,7 @@ export class WorkerTerminalComponent implements OnInit {
         map((p) => Number(p.get('stationId'))),
         map((sid) => {
           if (!Number.isFinite(sid)) return 1;
-          return Math.min(7, Math.max(1, sid));
+          return Math.min(8, Math.max(1, sid));
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -313,6 +335,17 @@ export class WorkerTerminalComponent implements OnInit {
 
   stationProgress(ctx: WorkerContext): StationProgressVm {
     return computeStationProgress(this.stationId, ctx);
+  }
+
+  /** לייזר פעיל בפרויקט (לייזר פנימי עם זוויות). */
+  private laserActive(): boolean {
+    const laser = this.context()?.laserStation;
+    return !!laser && !laser.externalSupplier && laser.angles.length > 0;
+  }
+
+  /** מספר התצוגה של התחנה לעובד — לפי מיקום בזרימה, לא לפי ה-ID הפנימי. */
+  displayNumber(): number {
+    return stationDisplayNumber(this.stationId, this.laserActive());
   }
 
   nextStationId(): number | null {
@@ -418,6 +451,202 @@ export class WorkerTerminalComponent implements OnInit {
 
   closeSawLineImagePreview(): void {
     this.sawLineImagePreviewUrl.set(null);
+  }
+
+  /** פתיחת PDF של זווית (ANG) בפופאפ פנימי (iframe) במקום טאב חדש */
+  openLaserPdf(url: string | null, code: string): void {
+    const u = url?.trim();
+    if (!u?.length) return;
+    this.laserPdfCode.set(code);
+    this.laserPdfUrl.set(u);
+  }
+
+  closeLaserPdf(): void {
+    this.laserPdfUrl.set(null);
+    this.laserPdfCode.set(null);
+  }
+
+  /** URL בטוח ל-iframe עם הסתרת סרגלי ה-PDF המובנים */
+  laserPdfSafeUrl(url: string): SafeResourceUrl {
+    const path = url.split('#')[0] ?? url;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(
+      `${path}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`,
+    );
+  }
+
+  /** ערך הקלט הנוכחי לדיווח כמות עבור ANG מסוים */
+  laserReportValue(code: string): number | null {
+    return this.laserReportInput()[code] ?? null;
+  }
+
+  onLaserReportInput(code: string, value: string | number | null): void {
+    const n =
+      value === '' || value === null || value === undefined
+        ? null
+        : Number(value);
+    this.laserReportInput.set({
+      ...this.laserReportInput(),
+      [code]: n != null && Number.isFinite(n) ? n : null,
+    });
+  }
+
+  laserAngleProgressPercent(angle: LaserAngleDto): number {
+    return highVolumeProgressPercent(angle.doneQty, angle.qty);
+  }
+
+  laserAngleProgressLabel(angle: LaserAngleDto): string {
+    return formatProgressPercent(this.laserAngleProgressPercent(angle));
+  }
+
+  stationProgressPercentLabel(percent: number): string {
+    return formatProgressPercent(percent);
+  }
+
+  progressRingPercent(percent: number, done: number): number {
+    return this.stationId === 8
+      ? highVolumeProgressRingPercent(percent, done)
+      : percent;
+  }
+
+  laserAngleRingPercent(angle: LaserAngleDto): number {
+    return highVolumeProgressRingPercent(
+      this.laserAngleProgressPercent(angle),
+      angle.doneQty,
+    );
+  }
+
+  laserAngleIsComplete(angle: LaserAngleDto): boolean {
+    return angle.qty > 0 && angle.doneQty >= angle.qty;
+  }
+
+  // ---- מסגריה (תחנה 1 פלדה) — נספחי פרטי חיבור וזוויות ----
+
+  steelReportValue(id: string): number | null {
+    return this.steelReportInput()[id] ?? null;
+  }
+
+  onSteelReportInput(id: string, value: string | number | null): void {
+    const n =
+      value === '' || value === null || value === undefined
+        ? null
+        : Number(value);
+    this.steelReportInput.set({
+      ...this.steelReportInput(),
+      [id]: n != null && Number.isFinite(n) ? n : null,
+    });
+  }
+
+  steelDetailProgressPercent(d: SteelworkDetailDto): number {
+    return highVolumeProgressPercent(d.doneQty, d.targetQty);
+  }
+
+  steelDetailProgressLabel(d: SteelworkDetailDto): string {
+    return formatProgressPercent(this.steelDetailProgressPercent(d));
+  }
+
+  steelDetailIsComplete(d: SteelworkDetailDto): boolean {
+    return d.targetQty > 0 && d.doneQty >= d.targetQty;
+  }
+
+  /** דיווח כמות שהושלמה עבור נספח מסגריה — נשמר כ-StationLog מבודד (תחנה 9). */
+  async submitSteelReport(id: string): Promise<void> {
+    const pid = this.projectSelection.selectedProjectId();
+    const rawQty = this.steelReportValue(id);
+    if (!pid || rawQty == null || !Number.isFinite(rawQty) || rawQty <= 0) {
+      return;
+    }
+    if (this.steelSavingId()) return;
+
+    const detail = this.context()?.steelworkStation?.details.find(
+      (d) => d.id === id,
+    );
+    let qty = Math.floor(rawQty);
+    if (detail && detail.targetQty > 0) {
+      const remaining = Math.max(0, detail.targetQty - detail.doneQty);
+      if (remaining <= 0) return;
+      qty = Math.min(qty, remaining);
+    }
+
+    this.steelSavingId.set(id);
+    this.error.set(null);
+    try {
+      await firstValueFrom(
+        this.api.postStationLog(9, {
+          projectId: pid,
+          processedQty: qty,
+          extraPayload: { steelworkDetailId: id },
+        }),
+      );
+      const ctx = await firstValueFrom(
+        this.api.getWorkerContext(this.stationId, pid),
+      );
+      this.steelReportInput.set({
+        ...this.steelReportInput(),
+        [id]: null,
+      });
+      this.finishLaserReportSuccess(ctx);
+    } catch (err) {
+      this.error.set(httpErrorMessage(err, 'שגיאה בשמירת הדיווח — נסה שוב'));
+    } finally {
+      this.steelSavingId.set(null);
+    }
+  }
+
+  /** דיווח כמות שהושלמה עבור ANG ספציפי — נשמר כ-StationLog של תחנת לייזר */
+  async submitLaserReport(code: string): Promise<void> {
+    const pid = this.projectSelection.selectedProjectId();
+    const rawQty = this.laserReportValue(code);
+    if (!pid || rawQty == null || !Number.isFinite(rawQty) || rawQty <= 0) {
+      return;
+    }
+    if (this.laserSavingCode()) return;
+
+    const angle = this.context()?.laserStation?.angles.find((a) => a.code === code);
+    const remaining = angle
+      ? Math.max(0, angle.qty - angle.doneQty)
+      : Math.floor(rawQty);
+    if (remaining <= 0) return;
+
+    const qty = Math.min(Math.floor(rawQty), remaining);
+    this.laserSavingCode.set(code);
+    this.error.set(null);
+    try {
+      await firstValueFrom(
+        this.api.postStationLog(8, {
+          projectId: pid,
+          processedQty: qty,
+          extraPayload: { angleCode: code },
+        }),
+      );
+      const ctx = await firstValueFrom(this.api.getWorkerContext(8, pid));
+      this.laserReportInput.set({
+        ...this.laserReportInput(),
+        [code]: null,
+      });
+      this.finishLaserReportSuccess(ctx);
+    } catch (err) {
+      this.error.set(
+        httpErrorMessage(err, 'שגיאה בשמירת הדיווח — נסה שוב'),
+      );
+    } finally {
+      this.laserSavingCode.set(null);
+    }
+  }
+
+  /** אחרי דיווח לייזר — פופאפ אחוזים לפי ANG, ואז משוב רגיל */
+  private finishLaserReportSuccess(ctx: WorkerContext): void {
+    this.applyWorkerContext(ctx);
+    if (this.sawSaveCelebrationTimer) {
+      clearTimeout(this.sawSaveCelebrationTimer);
+      this.sawSaveCelebrationTimer = null;
+    }
+    this.sawSaveCelebrationCtx.set(ctx);
+    this.sawSaveCelebrationTimer = setTimeout(() => {
+      this.sawSaveCelebrationCtx.set(null);
+      this.sawSaveCelebrationTimer = null;
+      this.scrollToProgress();
+      this.onReportSaved(ctx);
+    }, WorkerTerminalComponent.SAW_SAVE_CELEBRATION_MS);
   }
 
   /** תמונה ראשונה לשורת מסור (אם קיימת) */
@@ -1857,7 +2086,7 @@ export class WorkerTerminalComponent implements OnInit {
       !pid ||
       !this.stationId ||
       this.stationId < 1 ||
-      this.stationId > 7
+      this.stationId > 8
     ) {
       this.loading.set(false);
       return;

@@ -5,7 +5,11 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ProjectLineMaterial, ProjectMachiningRoute } from '@prisma/client';
+import {
+  ProjectAngleSourcing,
+  ProjectLineMaterial,
+  ProjectMachiningRoute,
+} from '@prisma/client';
 
 export class CreatePlanningDraftDto {
   @IsString()
@@ -23,4 +27,9 @@ export class CreatePlanningDraftDto {
 
   @IsEnum(ProjectMachiningRoute)
   machiningRoute!: ProjectMachiningRoute;
+
+  /** מקור זוויות ANG — לייזר פנימי / ספק חיצוני */
+  @IsOptional()
+  @IsEnum(ProjectAngleSourcing)
+  angleSourcing?: ProjectAngleSourcing;
 }

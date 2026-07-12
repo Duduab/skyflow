@@ -19,7 +19,7 @@ export const stationSequenceGuard: CanActivateFn = (route) => {
 
   const sidRaw = route.paramMap.get('stationId');
   const stationId = Number(sidRaw);
-  if (!Number.isFinite(stationId) || stationId < 1 || stationId > 7) {
+  if (!Number.isFinite(stationId) || stationId < 1 || stationId > 8) {
     return router.parseUrl('/worker');
   }
   if (stationId === 1) {

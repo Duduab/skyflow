@@ -6,8 +6,12 @@ import {
   PlanningAssigneeOptionDto,
   PlanningDraftListItemDto,
   PlanningParsePreviewDto,
+  PlanningPdfKind,
+  PlanningPdfPreviewDto,
+  PlanningPdfUploadResponse,
   ProjectDocumentDto,
   ProjectDocumentKind,
+  ProjectAngleSourcing,
   ElevationMapResponse,
   SendProjectDocumentEmailResponse,
   ProjectLineMaterial,
@@ -350,12 +354,14 @@ export class ApiService {
     requirements?: string;
     lineMaterial: ProjectLineMaterial;
     machiningRoute: ProjectMachiningRoute;
+    angleSourcing?: ProjectAngleSourcing;
   }): Observable<ProjectOrder> {
     const payload: Record<string, string> = {
       name: body.name,
       lineMaterial: body.lineMaterial,
       machiningRoute: body.machiningRoute,
     };
+    if (body.angleSourcing) payload['angleSourcing'] = body.angleSourcing;
     const details = body.requirements?.trim();
     if (details) payload['requirements'] = details;
     return this.http.post<ProjectOrder>(`${this.base}/projects`, payload);
@@ -429,6 +435,7 @@ export class ApiService {
       requirements?: string;
       lineMaterial?: import('./skyflow.models').ProjectLineMaterial;
       machiningRoute?: import('./skyflow.models').ProjectMachiningRoute;
+      angleSourcing?: ProjectAngleSourcing;
     },
   ): Observable<PlanningDraftListItemDto> {
     return this.http.patch<PlanningDraftListItemDto>(
@@ -443,6 +450,7 @@ export class ApiService {
     );
   }
 
+  /** @deprecated זרימת Excel (TPI) — הוחלפה ב-`uploadPlanningPdf` (4 PDF). */
   postPlanningUpload(
     projectId: string,
     file: File,
@@ -455,9 +463,79 @@ export class ApiService {
     );
   }
 
+  /** @deprecated זרימת Excel — הוחלפה ב-`getPlanningPdfPreview`. */
   getPlanningPreview(projectId: string): Observable<PlanningParsePreviewDto> {
     return this.http.get<PlanningParsePreviewDto>(
       `${this.base}/projects/${encodeURIComponent(projectId)}/planning/preview`,
+    );
+  }
+
+  /** אשף 4 PDF — העלאת אחד מארבעת הקבצים + פרסור */
+  uploadPlanningPdf(
+    projectId: string,
+    file: File,
+    kind: PlanningPdfKind,
+    title?: string,
+    targetQty?: number,
+  ): Observable<PlanningPdfUploadResponse> {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', kind);
+    if (title?.trim()) fd.append('title', title.trim());
+    if (targetQty != null && Number.isFinite(targetQty)) {
+      fd.append('targetQty', String(Math.max(0, Math.floor(targetQty))));
+    }
+    return this.http.post<PlanningPdfUploadResponse>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/planning/pdf`,
+      fd,
+    );
+  }
+
+  /** העלאת PDF ליחידה בודדת (שורת סוג-חלון בטבלת הכמויות) */
+  uploadWindowTypePdf(
+    projectId: string,
+    windowTypeId: string,
+    file: File,
+    kind: PlanningPdfKind,
+  ): Observable<PlanningPdfUploadResponse> {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', kind);
+    return this.http.post<PlanningPdfUploadResponse>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/planning/window-types/${encodeURIComponent(
+        windowTypeId,
+      )}/pdf`,
+      fd,
+    );
+  }
+
+  getPlanningPdfPreview(
+    projectId: string,
+  ): Observable<PlanningPdfPreviewDto> {
+    return this.http.get<PlanningPdfPreviewDto>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/planning/pdf-preview`,
+    );
+  }
+
+  reportElevationDefect(
+    projectId: string,
+    cellId: string,
+    returnedToStationId: number,
+    reason: string,
+  ): Observable<{ ok: boolean; defectId: string }> {
+    return this.http.post<{ ok: boolean; defectId: string }>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/elevation-map/cells/defect`,
+      { cellId, returnedToStationId, reason },
+    );
+  }
+
+  resolveElevationDefect(
+    projectId: string,
+    defectId: string,
+  ): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/elevation-map/defects/${encodeURIComponent(defectId)}/resolve`,
+      {},
     );
   }
 

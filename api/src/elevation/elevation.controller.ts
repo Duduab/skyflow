@@ -10,6 +10,7 @@ import {
 import { SkyflowRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { MarkCellsDto } from './dto/mark-cells.dto.js';
+import { ReportDefectDto } from './dto/report-defect.dto.js';
 import { ElevationService } from './elevation.service.js';
 
 @Controller('projects/:projectId/elevation-map')
@@ -37,5 +38,39 @@ export class ElevationController {
         role: req.user?.role ?? SkyflowRole.WORKER,
       },
     });
+  }
+
+  @Post('cells/defect')
+  reportDefect(
+    @Param('projectId') projectId: string,
+    @Body() dto: ReportDefectDto,
+    @Req() req: { user?: { userId?: string; role?: SkyflowRole } },
+  ) {
+    return this.elevation.reportDefect({
+      projectId,
+      cellId: dto.cellId,
+      returnedToStationId: dto.returnedToStationId,
+      reason: dto.reason,
+      user: {
+        userId: req.user?.userId ?? '',
+        role: req.user?.role ?? SkyflowRole.WORKER,
+      },
+    });
+  }
+
+  @Get('defects/station/:stationId')
+  defectsForStation(
+    @Param('projectId') projectId: string,
+    @Param('stationId') stationId: string,
+  ) {
+    return this.elevation.listDefectsForStation(
+      projectId,
+      Number(stationId),
+    );
+  }
+
+  @Post('defects/:defectId/resolve')
+  resolveDefect(@Param('defectId') defectId: string) {
+    return this.elevation.resolveDefect(defectId);
   }
 }

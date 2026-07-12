@@ -7,6 +7,7 @@ export type OrderStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD';
 
 export type ProjectLineMaterial = 'ALUMINUM' | 'STEEL';
 export type ProjectMachiningRoute = 'GLASS' | 'ALU_RANGER';
+export type ProjectAngleSourcing = 'INTERNAL_LASER' | 'EXTERNAL_SUPPLIER';
 
 export interface ProjectOrder {
   id: string;
@@ -157,6 +158,62 @@ export interface WorkerContext {
   assemblyStation?: AssemblyStationContextDto | null;
   /** Station 4 — הדבקות לפי TYPE וקודי GL */
   gluingStation?: GluingStationContextDto | null;
+  /** Station 8 — לייזר: קובצי ANG + כמויות */
+  laserStation?: LaserStationContextDto | null;
+  /** Station 1 (פלדה) — מסגריה: נספחי פרטי חיבור וזוויות + כמויות */
+  steelworkStation?: SteelworkStationContextDto | null;
+  /** Station 3 — סוגי חלונות עם הוראות ייצור (זרימת 4 PDF) */
+  assemblyWindowTypes?: AssemblyWindowTypeDocDto[];
+  /** פגמים שהוחזרו לתחנה זו ממפת החזיתות */
+  reworkDefects?: ReworkDefectDto[];
+}
+
+export interface LaserAngleDto {
+  code: string;
+  qty: number;
+  doneQty: number;
+  instructionPdfUrl: string | null;
+  instructionPage: number | null;
+}
+
+export interface LaserStationContextDto {
+  angles: LaserAngleDto[];
+  totalAngleQty: number;
+  doneQty: number;
+  externalSupplier: boolean;
+}
+
+export interface SteelworkDetailDto {
+  id: string;
+  title: string;
+  targetQty: number;
+  doneQty: number;
+  instructionPdfUrl: string | null;
+}
+
+export interface SteelworkStationContextDto {
+  details: SteelworkDetailDto[];
+  totalTargetQty: number;
+  doneQty: number;
+}
+
+export interface AssemblyWindowTypeDocDto {
+  code: string;
+  totalQty: number;
+  hasAngles: boolean;
+  angleCodes: string[];
+  composition: string[];
+  setLabels: string[];
+  instructionPdfUrl: string | null;
+  instructionPage: number | null;
+}
+
+export interface ReworkDefectDto {
+  id: string;
+  cellCode: string;
+  windowTypeCode: string | null;
+  reason: string;
+  createdAt: string;
 }
 
 export type AssemblyPipelineStatus = 'locked' | 'saw_only' | 'ready';
@@ -327,7 +384,80 @@ export interface AdminCharts {
 export type ProjectDocumentKind =
   | 'PURCHASE_ORDER'
   | 'WORK_ORDER'
-  | 'ELEVATION_MAP';
+  | 'ELEVATION_MAP'
+  | 'WINDOW_INSTRUCTION_PDF'
+  | 'QUANTITIES_PDF'
+  | 'ANGLE_INSTRUCTION_PDF';
+
+/** אחד מ-4 קבצי ה-PDF של אשף פתיחת הפרויקט */
+export type PlanningPdfKind =
+  | 'ELEVATION_MAP'
+  | 'WINDOW_INSTRUCTION_PDF'
+  | 'QUANTITIES_PDF'
+  | 'ANGLE_INSTRUCTION_PDF'
+  | 'CONNECTION_DETAILS_PDF';
+
+export interface WindowTypePreviewDto {
+  id: string;
+  code: string;
+  totalQty: number;
+  hasAngles: boolean;
+  angleCodes: string[];
+  composition: string[];
+  setLabels: string[];
+  instructionPdfUrl: string | null;
+  instructionPage: number | null;
+  connectionPdfUrl: string | null;
+  facadeCount: number;
+  elevationCellCount: number;
+}
+
+export interface StagePreviewDto {
+  code: string;
+  colorHex: string | null;
+  totalQty: number;
+  windowTypeCount: number;
+}
+
+export interface AnglePreviewDto {
+  code: string;
+  qty: number;
+  instructionPdfUrl: string | null;
+  instructionPage: number | null;
+}
+
+export interface SteelworkDetailPreviewDto {
+  id: string;
+  title: string;
+  targetQty: number;
+  instructionPdfUrl: string | null;
+}
+
+/** תצוגה מקדימה לאשף 4 ה-PDF */
+export interface PlanningPdfPreviewDto {
+  projectId: string;
+  angleSourcing: ProjectAngleSourcing;
+  windowTypeCount: number;
+  totalUnits: number;
+  elevationCellCount: number;
+  windowTypes: WindowTypePreviewDto[];
+  stages: StagePreviewDto[];
+  angles: AnglePreviewDto[];
+  steelworkDetails: SteelworkDetailPreviewDto[];
+}
+
+export interface PlanningPdfUploadResponse {
+  ok: boolean;
+  document: {
+    id: string;
+    kind: ProjectDocumentKind;
+    title: string;
+    pdfUrl: string;
+    createdAt: string;
+  };
+  parse: Record<string, unknown>;
+  preview: PlanningPdfPreviewDto;
+}
 
 export type ElevationCellKind = 'SPANDREL' | 'UNIT';
 export type ElevationCellStatus = 'PENDING' | 'DONE';
@@ -349,6 +479,11 @@ export interface ElevationPageDto {
   sections?: ElevationSectionDto[];
 }
 
+export interface ElevationCellDefectDto {
+  returnedToStationId: number;
+  reason: string;
+}
+
 export interface ElevationCellDto {
   id: string;
   pageIndex: number;
@@ -360,6 +495,9 @@ export interface ElevationCellDto {
   status: ElevationCellStatus;
   doneAt: string | null;
   doneBy: string | null;
+  windowTypeCode?: string | null;
+  windowTypeId?: string | null;
+  defect?: ElevationCellDefectDto | null;
 }
 
 export interface ElevationProgressDto {
@@ -368,6 +506,7 @@ export interface ElevationProgressDto {
   pct: number;
   spandrel: { total: number; done: number };
   unit: { total: number; done: number };
+  openDefects?: number;
 }
 
 export interface ElevationMapResponse {
@@ -380,6 +519,7 @@ export interface ElevationMapResponse {
     error: string | null;
   } | null;
   cells?: ElevationCellDto[];
+  windowTypeCodes?: string[];
   progress?: ElevationProgressDto;
 }
 
@@ -489,7 +629,9 @@ export interface PlanningDraftListItemDto {
   requirements: string;
   lineMaterial: ProjectLineMaterial;
   machiningRoute: ProjectMachiningRoute;
+  angleSourcing?: ProjectAngleSourcing;
   itemCount: number;
+  windowTypeCount?: number;
   wizardStep: 2 | 3;
   progressPct: number;
 }

@@ -8,6 +8,7 @@ import {
   Prisma,
   ProductComponentKind,
   ProductType,
+  ProjectAngleSourcing,
   ProjectDocumentKind,
   ProjectFlowStatus,
   ProjectLineMaterial,
@@ -39,6 +40,7 @@ import { MailService } from '../mail/mail.service.js';
 import { planningDraftWizardMeta } from '../common/planning-draft-progress.util.js';
 import { DailyTargetPlanningService } from '../users/daily-target-planning.service.js';
 import { ElevationService } from '../elevation/elevation.service.js';
+import { WindowPlanningService } from '../planning/window-planning.service.js';
 import { readFileSync } from 'fs';
 
 /** PDFs attached to projects — served as static files from the web app. */
@@ -81,6 +83,7 @@ export class ProjectsService {
     private readonly mail: MailService,
     private readonly dailyTargetPlanning: DailyTargetPlanningService,
     private readonly elevation: ElevationService,
+    private readonly windowPlanning: WindowPlanningService,
   ) {}
 
   async createPlanningDraft(
@@ -89,6 +92,7 @@ export class ProjectsService {
     createdByUserId: string | null | undefined,
     lineMaterial: ProjectLineMaterial,
     machiningRoute: ProjectMachiningRoute,
+    angleSourcing?: ProjectAngleSourcing,
   ) {
     const details = requirements?.trim() ?? '';
     const creatorId =
@@ -106,8 +110,239 @@ export class ProjectsService {
         createdByUserId: creatorId,
         lineMaterial,
         machiningRoute,
+        angleSourcing: angleSourcing ?? ProjectAngleSourcing.INTERNAL_LASER,
       },
     });
+  }
+
+  /**
+   * New 4-PDF flow: store one of the planning PDFs as a ProjectDocument and
+   * parse it into the relational model (window types / quantities / angles /
+   * elevation cells). Allowed while the project is a planning draft.
+   */
+  async ingestPlanningPdf(
+    projectId: string,
+    file: Express.Multer.File,
+    kind: ProjectDocumentKind,
+    title?: string,
+    targetQty?: number,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: { id: true, flowStatus: true },
+    });
+    if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+    if (project.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException(
+        'Planning PDFs can only be uploaded while the project is pending planning approval',
+      );
+    }
+
+    let buffer: Buffer | null = null;
+    try {
+      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+    } catch {
+      buffer = null;
+    }
+
+    const titleBase =
+      (title && title.trim()) ||
+      file.originalname.replace(/\.pdf$/i, '').trim() ||
+      'PDF';
+    const docTitle = titleBase.slice(0, 500);
+    const agg = await this.prisma.projectDocument.aggregate({
+      where: { projectId, kind },
+      _max: { sortOrder: true },
+    });
+    const sortOrder = (agg._max.sortOrder ?? -1) + 1;
+    const pdfPath = `/assets/project-docs/uploads/${file.filename}`;
+    const doc = await this.prisma.projectDocument.create({
+      data: { projectId, kind, title: docTitle, pdfPath, sortOrder },
+    });
+
+    const result: Record<string, unknown> = { kind };
+
+    // נספח פרטי חיבור וזוויות (מסגריה) — אין פענוח, פשוט שורה אחת לכל קובץ.
+    if (kind === ProjectDocumentKind.CONNECTION_DETAILS_PDF) {
+      const detailAgg = await this.prisma.steelworkDetail.aggregate({
+        where: { projectId },
+        _max: { sortOrder: true },
+      });
+      await this.prisma.steelworkDetail.create({
+        data: {
+          projectId,
+          title: docTitle.slice(0, 300),
+          targetQty: Math.max(0, Math.floor(targetQty ?? 0)),
+          instructionDocId: doc.id,
+          sortOrder: (detailAgg._max.sortOrder ?? -1) + 1,
+        },
+      });
+      result.steelworkDetail = true;
+    }
+    if (buffer) {
+      try {
+        if (kind === ProjectDocumentKind.ELEVATION_MAP) {
+          await this.elevation.analyzeDocument({
+            projectId,
+            documentId: doc.id,
+            title: docTitle,
+            fileBuffer: buffer,
+          });
+          result.elevation = await this.windowPlanning.linkElevationCellsToWindowTypes(
+            projectId,
+          );
+        } else if (kind === ProjectDocumentKind.WINDOW_INSTRUCTION_PDF) {
+          Object.assign(
+            result,
+            await this.windowPlanning.persistWindowInstructions(
+              projectId,
+              doc.id,
+              buffer,
+            ),
+          );
+        } else if (kind === ProjectDocumentKind.QUANTITIES_PDF) {
+          Object.assign(
+            result,
+            await this.windowPlanning.persistQuantities(projectId, buffer),
+          );
+        } else if (kind === ProjectDocumentKind.ANGLE_INSTRUCTION_PDF) {
+          Object.assign(
+            result,
+            await this.windowPlanning.persistAngles(projectId, doc.id, buffer),
+          );
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Planning PDF parse failed', err);
+        throw new BadRequestException(
+          'Could not parse the uploaded PDF — check the file and try again',
+        );
+      }
+    }
+
+    const preview = await this.windowPlanning.buildPlanningPreview(projectId);
+    return {
+      ok: true as const,
+      document: {
+        id: doc.id,
+        kind: doc.kind,
+        title: doc.title,
+        pdfUrl: pdfPath,
+        createdAt: doc.createdAt.toISOString(),
+      },
+      parse: result,
+      preview,
+    };
+  }
+
+  /**
+   * Upload a PDF that belongs to a single window type (from the quantities
+   * breakdown row): window instructions (parsed for that unit), a connection
+   * details appendix (attached for viewing), or ANG instructions (mapped by
+   * code to the shared project angles).
+   */
+  async ingestWindowTypePdf(
+    projectId: string,
+    windowTypeId: string,
+    file: Express.Multer.File,
+    kind: ProjectDocumentKind,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: { id: true, flowStatus: true },
+    });
+    if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+    if (project.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException(
+        'Planning PDFs can only be uploaded while the project is pending planning approval',
+      );
+    }
+    const allowed: ProjectDocumentKind[] = [
+      ProjectDocumentKind.WINDOW_INSTRUCTION_PDF,
+      ProjectDocumentKind.CONNECTION_DETAILS_PDF,
+      ProjectDocumentKind.ANGLE_INSTRUCTION_PDF,
+    ];
+    if (!allowed.includes(kind)) {
+      throw new BadRequestException('Unsupported document kind for a window type');
+    }
+
+    let buffer: Buffer | null = null;
+    try {
+      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+    } catch {
+      buffer = null;
+    }
+
+    const docTitle = (file.originalname.replace(/\.pdf$/i, '').trim() || 'PDF').slice(
+      0,
+      500,
+    );
+    const agg = await this.prisma.projectDocument.aggregate({
+      where: { projectId, kind },
+      _max: { sortOrder: true },
+    });
+    const sortOrder = (agg._max.sortOrder ?? -1) + 1;
+    const pdfPath = `/assets/project-docs/uploads/${file.filename}`;
+    const doc = await this.prisma.projectDocument.create({
+      data: { projectId, kind, title: docTitle, pdfPath, sortOrder },
+    });
+
+    const result: Record<string, unknown> = { kind, windowTypeId };
+    try {
+      if (kind === ProjectDocumentKind.CONNECTION_DETAILS_PDF) {
+        await this.windowPlanning.attachConnectionDetails(
+          projectId,
+          windowTypeId,
+          doc.id,
+        );
+        result.connectionAttached = true;
+      } else if (buffer && kind === ProjectDocumentKind.WINDOW_INSTRUCTION_PDF) {
+        Object.assign(
+          result,
+          await this.windowPlanning.persistWindowInstructionsForType(
+            projectId,
+            windowTypeId,
+            doc.id,
+            buffer,
+          ),
+        );
+      } else if (buffer && kind === ProjectDocumentKind.ANGLE_INSTRUCTION_PDF) {
+        Object.assign(
+          result,
+          await this.windowPlanning.persistAngles(projectId, doc.id, buffer),
+        );
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Window-type PDF parse failed', err);
+      throw new BadRequestException(
+        'Could not parse the uploaded PDF — check the file and try again',
+      );
+    }
+
+    const preview = await this.windowPlanning.buildPlanningPreview(projectId);
+    return {
+      ok: true as const,
+      document: {
+        id: doc.id,
+        kind: doc.kind,
+        title: doc.title,
+        pdfUrl: pdfPath,
+        createdAt: doc.createdAt.toISOString(),
+      },
+      parse: result,
+      preview,
+    };
+  }
+
+  getPlanningPdfPreview(projectId: string) {
+    return this.windowPlanning.buildPlanningPreview(projectId);
   }
 
   /** טיוטות בלבד — פרויקטים שלא אושרו עדיין (ללא popup «נוצר בהצלחה»). אחרי approve → IN_PRODUCTION ולא ברשימה זו. */
@@ -125,12 +360,16 @@ export class ProjectsService {
           requirements: true,
           lineMaterial: true,
           machiningRoute: true,
-          _count: { select: { productItems: true } },
+          angleSourcing: true,
+          _count: { select: { productItems: true, windowTypes: true } },
         },
       })
       .then((rows) =>
         rows.map((r) => {
-          const itemCount = r._count.productItems;
+          const itemCount = Math.max(
+            r._count.productItems,
+            r._count.windowTypes,
+          );
           const { wizardStep, progressPct } = planningDraftWizardMeta(itemCount);
           return {
             id: r.id,
@@ -141,7 +380,9 @@ export class ProjectsService {
             requirements: r.requirements ?? '',
             lineMaterial: r.lineMaterial,
             machiningRoute: r.machiningRoute,
+            angleSourcing: r.angleSourcing,
             itemCount,
+            windowTypeCount: r._count.windowTypes,
             wizardStep,
             progressPct,
           };
@@ -170,6 +411,9 @@ export class ProjectsService {
     if (dto.machiningRoute !== undefined) {
       data.machiningRoute = dto.machiningRoute;
     }
+    if (dto.angleSourcing !== undefined) {
+      data.angleSourcing = dto.angleSourcing;
+    }
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No fields to update');
     }
@@ -190,6 +434,7 @@ export class ProjectsService {
       requirements: updated.requirements ?? '',
       lineMaterial: updated.lineMaterial,
       machiningRoute: updated.machiningRoute,
+      angleSourcing: updated.angleSourcing,
       itemCount,
       wizardStep,
       progressPct,
@@ -311,6 +556,27 @@ export class ProjectsService {
     if (order.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
       throw new BadRequestException('Project is not awaiting planning approval');
     }
+
+    // New 4-PDF flow: production data comes from window types + quantities.
+    const windowAgg = await this.prisma.windowType.aggregate({
+      where: { projectId },
+      _sum: { totalQty: true },
+      _count: true,
+    });
+    if (windowAgg._count > 0) {
+      return this.approvePlanningFromWindowTypes({
+        projectId,
+        projectName: order.name,
+        lineMaterial: order.lineMaterial,
+        machiningRoute: order.machiningRoute,
+        totalUnits: windowAgg._sum.totalQty ?? 0,
+        teamMode,
+        workerIdsOrdered,
+        planningSawsManagerUserId,
+        planningAssigneeUserId,
+      });
+    }
+
     if (!order.productItems.length) {
       throw new BadRequestException('Upload and parse a planning file first');
     }
@@ -464,6 +730,75 @@ export class ProjectsService {
     return { ok: true, flowStatus: ProjectFlowStatus.IN_PRODUCTION };
   }
 
+  /** Approve a project built from the 4-PDF flow (window types drive totals). */
+  private async approvePlanningFromWindowTypes(params: {
+    projectId: string;
+    projectName: string;
+    lineMaterial: ProjectLineMaterial;
+    machiningRoute: ProjectMachiningRoute;
+    totalUnits: number;
+    teamMode: boolean;
+    workerIdsOrdered: string[];
+    planningSawsManagerUserId: string | null;
+    planningAssigneeUserId: string | null;
+  }) {
+    const {
+      projectId,
+      projectName,
+      lineMaterial,
+      machiningRoute,
+      totalUnits,
+      teamMode,
+      workerIdsOrdered,
+      planningSawsManagerUserId,
+      planningAssigneeUserId,
+    } = params;
+
+    const totalItems = Math.max(1, totalUnits);
+
+    await this.prisma.$transaction(async (tx) => {
+      // No Excel-derived saw lines in the PDF flow.
+      await tx.sawStationWorkLine.deleteMany({ where: { projectId } });
+      await tx.projectPlanningSawsWorker.deleteMany({ where: { projectId } });
+      if (teamMode && workerIdsOrdered.length) {
+        let sort = 0;
+        for (const userId of workerIdsOrdered) {
+          await tx.projectPlanningSawsWorker.create({
+            data: { projectId, userId, sortOrder: sort++ },
+          });
+        }
+      }
+      await tx.projectOrder.update({
+        where: { id: projectId },
+        data: {
+          totalItems,
+          flowStatus: ProjectFlowStatus.IN_PRODUCTION,
+          status: OrderStatus.IN_PROGRESS,
+          planningAssigneeUserId,
+          planningSawsManagerUserId,
+        },
+      });
+    });
+
+    const syncWorkers = teamMode
+      ? workerIdsOrdered
+      : planningAssigneeUserId
+        ? [planningAssigneeUserId]
+        : [];
+    await this.dailyTargetPlanning.syncFromPlanningApproval({
+      projectId,
+      projectName,
+      lineMaterial,
+      machiningRoute,
+      stationId: 1,
+      workerUserIds: syncWorkers,
+      managerUserId: teamMode ? planningSawsManagerUserId : null,
+      sawLines: [],
+    });
+
+    return { ok: true, flowStatus: ProjectFlowStatus.IN_PRODUCTION };
+  }
+
   async completeProject(projectId: string) {
     const order = await this.prisma.projectOrder.findUnique({
       where: { id: projectId },
@@ -491,15 +826,18 @@ export class ProjectsService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const laser = await this.laserCompletionRequirement(projectId, order);
+
     if (
       !isProjectProductionComplete(
         order,
         qty,
         latest7?.extraPayload ?? null,
+        laser,
       )
     ) {
       throw new BadRequestException(
-        'All stations (1–7, including on-site assembly) must be at 100% before completing',
+        'All stations must be at 100% before completing',
       );
     }
 
@@ -532,11 +870,30 @@ export class ProjectsService {
       where: { projectId, stationId: 7 },
       orderBy: { createdAt: 'desc' },
     });
+    const laser = await this.laserCompletionRequirement(projectId, order);
     return isProjectProductionComplete(
       order,
       qty,
       latest7?.extraPayload ?? null,
+      laser,
     );
+  }
+
+  /** Laser station is required for completion only for internal-laser projects with ANG. */
+  private async laserCompletionRequirement(
+    projectId: string,
+    order: { angleSourcing: ProjectAngleSourcing },
+  ): Promise<{ required: boolean; target: number }> {
+    if (order.angleSourcing !== ProjectAngleSourcing.INTERNAL_LASER) {
+      return { required: false, target: 0 };
+    }
+    const agg = await this.prisma.angle.aggregate({
+      where: { projectId },
+      _sum: { qty: true },
+      _count: true,
+    });
+    const target = agg._sum.qty ?? 0;
+    return { required: agg._count > 0 && target > 0, target };
   }
 
   async uploadProjectDocument(
