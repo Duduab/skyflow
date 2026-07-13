@@ -269,7 +269,7 @@ async function renderOnePage(
 
   const deduped = dedupeCells(rawCells);
 
-  const cells: RenderedCell[] = [];
+  const bandCells: RenderedCell[] = [];
   for (const c of deduped) {
     const inside = frags
       .filter((f) => f.cx >= c.minx && f.cx <= c.maxx && f.y >= c.miny && f.y <= c.maxy)
@@ -277,7 +277,7 @@ async function renderOnePage(
     const items = uniquePreserveOrder(inside);
     if (!items.length) continue;
     const code = pickPrimaryCode(items);
-    cells.push({
+    bandCells.push({
       code,
       floor: code ? extractFloor(code) : null,
       kind: c.kind,
@@ -290,6 +290,12 @@ async function renderOnePage(
       },
     });
   }
+
+  // Preferred: one clickable rectangle per window-type code label (grid layout),
+  // which merges each window's spandrel + glazing into a single unit. Falls back
+  // to the color-band cells when the sheet has no code-label grid.
+  const anchorCells = buildAnchorCells(frags, W, H);
+  const cells = anchorCells.length >= 3 ? anchorCells : bandCells;
 
   const sections = computeSections(frags, cells, W);
 
@@ -304,6 +310,137 @@ async function renderOnePage(
   const pngBuffer = canvas.toBuffer('image/png');
 
   return { pageIndex, width: W, height: H, pngBuffer, cells, sections };
+}
+
+/** Exact window/unit type code, e.g. 74-1-12A or 74-1-10. */
+const CODE_EXACT = /^\d{2}-\d-\d{2}[A-Z]?$/;
+
+interface Anchor {
+  code: string;
+  cx: number;
+  cy: number;
+}
+
+/** Cluster 1-D values (sorted) into center points, splitting on gaps > `gap`. */
+function clusterCenters(values: number[], gap: number): number[] {
+  const sorted = [...values].sort((a, b) => a - b);
+  const groups: number[][] = [];
+  for (const v of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && v - last[last.length - 1] <= gap) last.push(v);
+    else groups.push([v]);
+  }
+  return groups.map((g) => g.reduce((s, x) => s + x, 0) / g.length);
+}
+
+/**
+ * Build one clickable rectangle per window-type code label, using the text
+ * layer as anchors. Each label (e.g. 74-1-12A) sits at the top of its cell; the
+ * rectangle spans its column width and reaches down to the next label below in
+ * the same column — merging spandrel + glazing into a single unit. Returns []
+ * when the sheet has no code-label grid (caller falls back to band cells).
+ */
+function buildAnchorCells(frags: Frag[], W: number, H: number): RenderedCell[] {
+  const raw: Anchor[] = [];
+  for (const f of frags) {
+    const s = fixRtl(f.str);
+    if (CODE_EXACT.test(s)) raw.push({ code: s, cx: f.cx / W, cy: f.y / H });
+  }
+  if (raw.length < 3) return [];
+
+  // dedupe base vs lettered code at the same spot (74-1-12 + 74-1-12A) → keep lettered/longest
+  raw.sort((a, b) => a.cy - b.cy || a.cx - b.cx);
+  const anchors: Anchor[] = [];
+  for (const a of raw) {
+    const dup = anchors.find(
+      (b) => Math.abs(b.cx - a.cx) < 0.012 && Math.abs(b.cy - a.cy) < 0.012,
+    );
+    if (!dup) {
+      anchors.push({ ...a });
+      continue;
+    }
+    const aLetter = /[A-Z]$/.test(a.code);
+    const bLetter = /[A-Z]$/.test(dup.code);
+    if ((aLetter && !bLetter) || (aLetter === bLetter && a.code.length > dup.code.length)) {
+      dup.code = a.code;
+    }
+  }
+
+  const colCenters = clusterCenters(
+    anchors.map((a) => a.cx),
+    0.015,
+  );
+  if (!colCenters.length) return [];
+  const colOf = (cx: number) =>
+    colCenters.reduce(
+      (best, c, i) =>
+        Math.abs(c - cx) < Math.abs(colCenters[best] - cx) ? i : best,
+      0,
+    );
+  const colBounds = colCenters.map((c, i) => {
+    const prev = colCenters[i - 1];
+    const next = colCenters[i + 1];
+    const half =
+      next !== undefined
+        ? (next - c) / 2
+        : prev !== undefined
+          ? (c - prev) / 2
+          : 0.017;
+    const left = prev !== undefined ? (prev + c) / 2 : c - half;
+    const right = next !== undefined ? (c + next) / 2 : c + half;
+    return { left, right };
+  });
+
+  const byCol = new Map<number, Anchor[]>();
+  for (const a of anchors) {
+    const ci = colOf(a.cx);
+    if (!byCol.has(ci)) byCol.set(ci, []);
+    byCol.get(ci)!.push(a);
+  }
+
+  // median vertical spacing between stacked labels (row height)
+  const diffs: number[] = [];
+  for (const list of byCol.values()) {
+    list.sort((p, q) => p.cy - q.cy);
+    for (let i = 1; i < list.length; i += 1) diffs.push(list[i].cy - list[i - 1].cy);
+  }
+  diffs.sort((a, b) => a - b);
+  const medianRow = diffs.length ? diffs[Math.floor(diffs.length / 2)] : 0.06;
+
+  const TOP_PAD = 0.008;
+  const GAP = 0.004;
+  const cells: RenderedCell[] = [];
+  for (const [ci, list] of byCol.entries()) {
+    const b = colBounds[ci];
+    for (let i = 0; i < list.length; i += 1) {
+      const a = list[i];
+      const y0 = Math.max(0, a.cy - TOP_PAD);
+      const y1 = Math.min(
+        1,
+        i + 1 < list.length ? list[i + 1].cy - GAP : a.cy + medianRow,
+      );
+      if (y1 - y0 < 0.008) continue;
+      const x0 = Math.max(0, b.left);
+      const x1 = Math.min(1, b.right);
+      const items = uniquePreserveOrder(
+        frags
+          .filter((f) => {
+            const fx = f.cx / W;
+            const fy = f.y / H;
+            return fx >= x0 && fx <= x1 && fy >= y0 && fy <= y1;
+          })
+          .map((f) => fixRtl(f.str)),
+      );
+      cells.push({
+        code: a.code,
+        floor: extractFloor(a.code),
+        kind: 'UNIT',
+        items: items.length ? items : [a.code],
+        bbox: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 },
+      });
+    }
+  }
+  return cells;
 }
 
 /**

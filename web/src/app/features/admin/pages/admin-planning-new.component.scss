@@ -12,6 +12,12 @@
   overflow-x: visible;
   padding: 1.75rem 2rem 2.5rem;
   background: transparent;
+  --planning-wizard-brand-gradient: linear-gradient(
+    155deg,
+    var(--sf-blue, #558fc3) 0%,
+    var(--sf-indigo, #4b689d) 52%,
+    var(--sf-navy, #3e5d88) 100%
+  );
 }
 
 @media (max-width: 1023px) {
@@ -60,7 +66,7 @@
 
 /* —— Hero —— */
 .planning-new__hero {
-  margin-bottom: 0.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .planning-new__hero-card {
@@ -137,11 +143,15 @@
   position: relative;
   z-index: 1;
   text-align: center;
-  padding: 2rem 1.5rem 2.25rem;
+  padding: 2rem 1.5rem 1.5rem;
   border-radius: var(--sf-radius);
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
 }
 
 :host-context(html:not(.theme-light)) .planning-new__hero-content {
@@ -150,8 +160,25 @@
 
 @media (min-width: 768px) {
   .planning-new__hero-content {
-    padding: 2.5rem 2.5rem 2.75rem;
+    padding: 2.5rem 2.5rem 1.75rem;
   }
+}
+
+.planning-new__lead {
+  margin: 0.85rem auto 0;
+  max-width: 32rem;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: #64748b;
+  padding-bottom: 1.35rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  width: 100%;
+}
+
+:host-context(html:not(.theme-light)) .planning-new__lead {
+  color: rgba(203, 213, 225, 0.92);
+  border-bottom-color: rgba(71, 85, 105, 0.45);
 }
 
 .planning-new__badge {
@@ -180,19 +207,6 @@
 
 :host-context(html:not(.theme-light)) .planning-new__title {
   color: #f8fafc;
-}
-
-.planning-new__lead {
-  margin: 0.85rem auto 0;
-  max-width: 32rem;
-  font-size: 1.02rem;
-  font-weight: 500;
-  line-height: 1.6;
-  color: #64748b;
-}
-
-:host-context(html:not(.theme-light)) .planning-new__lead {
-  color: rgba(203, 213, 225, 0.92);
 }
 
 /* —— Alerts —— */
@@ -278,6 +292,24 @@
   background: rgba(15, 23, 42, 0.55);
   border-color: rgba(51, 65, 85, 0.5);
   box-shadow: var(--sf-shadow);
+}
+
+.planning-wizard__rail--merged {
+  margin-top: 0;
+  width: 100%;
+  padding: 1.15rem 0.5rem 0.25rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__rail--merged {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .planning-wizard__rail-inner {
@@ -454,7 +486,11 @@
 }
 
 .planning-wizard__step-enter {
-  animation: planning-wizard-step-enter 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+  // `backwards` (not `both`) so no identity transform lingers after the
+  // entrance animation — a leftover transform would establish a containing
+  // block and trap `position: fixed` overlays (e.g. the elevation map popup).
+  animation: planning-wizard-step-enter 0.45s cubic-bezier(0.4, 0, 0.2, 1)
+    backwards;
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__step--current .planning-wizard__dot {
@@ -602,6 +638,236 @@
   margin-bottom: 0.25rem;
 }
 
+.planning-wizard__field--name {
+  margin-bottom: 1.35rem;
+}
+
+.planning-wizard__field--cards {
+  margin-bottom: 1.5rem;
+}
+
+.planning-wizard__input-icon-wrap {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 3.35rem;
+  border-radius: var(--sf-radius);
+  border: 1px solid rgb(226 232 240);
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.22s ease;
+}
+
+.planning-wizard__input-icon-wrap:focus-within {
+  border-color: #0ea5e9;
+  box-shadow:
+    0 2px 10px rgba(15, 23, 42, 0.07),
+    0 0 0 4px rgba(14, 165, 233, 0.18);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__input-icon-wrap {
+  border-color: rgba(71, 85, 105, 0.65);
+  background: rgba(2, 6, 23, 0.55);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__input-icon-wrap:focus-within {
+  border-color: #38bdf8;
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.25),
+    0 0 0 4px rgba(56, 189, 248, 0.15);
+}
+
+.planning-wizard__input-icon {
+  flex: 0 0 3.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-start-start-radius: var(--sf-radius);
+  border-end-start-radius: var(--sf-radius);
+}
+
+.planning-wizard__input-icon .material-symbols-outlined {
+  font-size: 1.4rem;
+  font-variation-settings: 'FILL' 1;
+  background: var(--planning-wizard-brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.planning-wizard__input-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.65rem 0;
+  background: rgb(226 232 240);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__input-divider {
+  background: rgba(71, 85, 105, 0.65);
+}
+
+.planning-wizard__input--with-icon {
+  flex: 1;
+  min-width: 0;
+  min-height: auto;
+  border: none;
+  border-radius: 0;
+  border-start-end-radius: var(--sf-radius);
+  border-end-end-radius: var(--sf-radius);
+  box-shadow: none;
+  padding-inline: 1rem 1.1rem;
+}
+
+.planning-wizard__input--with-icon:hover,
+.planning-wizard__input--with-icon:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.planning-wizard__option-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 520px) {
+  .planning-wizard__option-cards {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+}
+
+.planning-wizard__option-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+  width: 100%;
+  min-height: 9.75rem;
+  padding: 1rem 1rem 1.05rem;
+  border: none;
+  border-radius: var(--sf-radius);
+  background: #fff;
+  color: #0a0a0a;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.09);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.planning-wizard__option-card:hover:not(.planning-wizard__option-card--selected) {
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.14);
+  transform: translateY(-1px);
+}
+
+.planning-wizard__option-card:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+.planning-wizard__option-card--selected {
+  background: var(--planning-wizard-brand-gradient);
+  color: #fff;
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+}
+
+.planning-wizard__option-card--selected:hover {
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.16) inset;
+  transform: translateY(-1px);
+}
+
+.planning-wizard__option-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 0.55rem;
+}
+
+.planning-wizard__option-card-icon {
+  font-size: 1.45rem;
+  font-variation-settings: 'FILL' 1;
+  line-height: 1;
+}
+
+.planning-wizard__option-card:not(.planning-wizard__option-card--selected) .planning-wizard__option-card-icon {
+  background: var(--planning-wizard-brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.planning-wizard__option-card-radio {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planning-wizard__option-card-radio::after {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.planning-wizard__option-card--selected .planning-wizard__option-card-radio::after {
+  background: #fff;
+}
+
+.planning-wizard__option-card-title {
+  font-size: 1.02rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+.planning-wizard__option-card-sub {
+  margin-top: 0.12rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.planning-wizard__option-card-emph {
+  margin-top: auto;
+  padding-top: 0.7rem;
+  font-size: clamp(1.75rem, 4.5vw, 2.25rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.planning-wizard__option-card-hint {
+  margin-top: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+.planning-wizard__option-card--selected .planning-wizard__option-card-sub,
+.planning-wizard__option-card--selected .planning-wizard__option-card-hint {
+  opacity: 0.88;
+}
+
 .planning-wizard__field-label {
   display: block;
   font-size: 0.78rem;
@@ -620,7 +886,6 @@
   width: 100%;
   min-height: 3.35rem;
   border-radius: var(--sf-radius);
-  border: 1px solid rgb(226 232 240);
   background: #fff;
   padding: 0.7rem 1.1rem;
   font-size: 1.06rem;
@@ -731,6 +996,31 @@
 .planning-wizard__card-actions--start {
   justify-content: flex-start;
   margin-top: 1.5rem;
+}
+
+.planning-wizard__card-actions ::ng-deep .sf-ui-btn--primary {
+  border-color: color-mix(in srgb, var(--sf-indigo, #4b689d) 80%, #fff);
+  background: var(--planning-wizard-brand-gradient);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  filter: none;
+}
+
+.planning-wizard__card-actions ::ng-deep .sf-ui-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+  box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.16) inset;
+}
+
+.planning-wizard__card-actions ::ng-deep .sf-ui-btn--primary:focus-visible {
+  box-shadow:
+    var(--sf-shadow),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+    0 0 0 4px color-mix(in srgb, var(--sf-blue, #558fc3) 35%, transparent);
+}
+
+.planning-wizard__card-actions ::ng-deep .sf-ui-btn--primary:active:not(:disabled) {
+  filter: brightness(0.98);
+  transform: translateY(0);
 }
 
 .planning-wizard__btn {
@@ -902,6 +1192,23 @@
   border: 1px solid rgba(14, 165, 233, 0.22);
   background: linear-gradient(180deg, rgba(224, 242, 254, 0.65) 0%, rgba(255, 255, 255, 0.5) 100%);
   box-shadow: var(--sf-shadow);
+}
+
+.planning-wizard__step-banner--merged {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 1rem 0.5rem 0.15rem;
+  border: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__step-banner--merged {
+  border-top-color: rgba(71, 85, 105, 0.45);
+  background: transparent;
+  box-shadow: none;
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__step-banner {

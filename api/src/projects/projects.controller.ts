@@ -268,6 +268,48 @@ export class ProjectsController {
     );
   }
 
+  /** Upload the elevation-map PDF for a facade GROUP (S / N5 / W2 ...). */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Post(':id/planning/facade-groups/:groupKey/elevation')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, d: string) => void,
+        ) => {
+          cb(null, ensureProjectDocsUploadDir());
+        },
+        filename: (
+          _req: Request,
+          _file: Express.Multer.File,
+          cb: (e: Error | null, n: string) => void,
+        ) => {
+          cb(null, `${randomUUID()}.pdf`);
+        },
+      }),
+      limits: { fileSize: PLANNING_UPLOAD_LIMIT },
+      fileFilter: (_req, file, cb) => {
+        const ok =
+          /\.pdf$/i.test(file.originalname) ||
+          file.mimetype === 'application/pdf' ||
+          file.mimetype === 'application/x-pdf';
+        cb(ok ? null : new BadRequestException('PDF file required'), ok);
+      },
+    }),
+  )
+  uploadFacadeGroupElevation(
+    @Param('id') id: string,
+    @Param('groupKey') groupKey: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    return this.projectsService.ingestFacadeGroupElevation(id, groupKey, file);
+  }
+
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Get(':id/planning/pdf-preview')
   pdfPreview(@Param('id') id: string) {

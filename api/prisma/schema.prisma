@@ -199,6 +199,7 @@ model ProjectOrder {
   elevationMaps       ElevationMap[]
   windowTypes         WindowType[]
   productionStages    ProductionStage[]
+  facades             Facade[]
   angles              Angle[]
   steelworkDetails    SteelworkDetail[]
   cellDefects         CellDefect[]
@@ -317,6 +318,7 @@ model ProjectDocument {
   windowConnections   WindowType[]      @relation("WindowTypeConnectionDoc")
   angles              Angle[]           @relation("AngleInstructionDoc")
   steelworkDetails    SteelworkDetail[] @relation("SteelworkDetailDoc")
+  facadeElevations    Facade[]          @relation("FacadeElevationDoc")
 
   @@index([projectId, kind])
 }
@@ -407,6 +409,8 @@ model ElevationMap {
   projectId  String
   /// מסמך המקור (ProjectDocument מסוג ELEVATION_MAP)
   documentId String?            @unique
+  /// קבוצת החזית שאליה שייכת המפה (S / N5 / W2 ...). null = מפה ישנה ברמת פרויקט
+  facadeGroup String?           @db.VarChar(16)
   title      String
   status     ElevationMapStatus @default(PROCESSING)
   /// מספר עמודים בקובץ המקור
@@ -423,6 +427,7 @@ model ElevationMap {
   cells    ElevationCell[]
 
   @@index([projectId])
+  @@index([projectId, facadeGroup])
 }
 
 /// קובייה בודדת במפת החזיתות (פאנל / ספנדרל) — ניתנת לסימון כבוצע
@@ -524,9 +529,49 @@ model ProductionStage {
 
   project         ProjectOrder    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stageQuantities StageQuantity[]
+  facades         Facade[]
 
   @@unique([projectId, code])
   @@index([projectId])
+}
+
+/// כיוון חזית ראשי (מתווית תת-החזית: S→SOUTH, N→NORTH, W→WEST, E→EAST)
+enum FacadeDirection {
+  SOUTH
+  NORTH
+  WEST
+  EAST
+}
+
+/// תת-חזית (S-w, N2-e, W4 ...) מקובץ הכמויות. משויכת ל-Stage יחיד לפי צבע התא,
+/// ודורשת קובץ "מפת חזיתות" משלה (elevationDoc) — צ׳ק-ליסט העלאה באשף התכנון.
+model Facade {
+  id            String          @id @default(uuid())
+  projectId     String
+  /// תווית החזית, e.g. S-w / N2-e / W4
+  label         String          @db.VarChar(32)
+  /// קבוצת החזית = החלק שלפני ה-'-' (S-w → S, N5-e → N5, W2 → W2).
+  /// זו יחידת ההעלאה של מפת החזיתות — קובץ אחד מכסה את כל תתי-החזיתות בקבוצה.
+  groupKey      String          @default("") @db.VarChar(16)
+  direction     FacadeDirection
+  /// סה״כ חלונות בחזית (משורת הסה״כ של החזית בקובץ)
+  totalQty      Int             @default(0)
+  /// השלב שאליו החזית שייכת (זוהה לפי צבע התאים בקובץ הכמויות)
+  stageId       String?
+  /// קובץ מפת החזיתות שהועלה עבור חזית זו (ELEVATION_MAP)
+  elevationDocId String?
+  sortOrder     Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  project       ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage         ProductionStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  elevationDoc  ProjectDocument? @relation("FacadeElevationDoc", fields: [elevationDocId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, label])
+  @@index([projectId])
+  @@index([projectId, groupKey])
+  @@index([stageId])
 }
 
 /// כמות סוג חלון בשלב מסוים (Stage A → 74-1-03A → N)

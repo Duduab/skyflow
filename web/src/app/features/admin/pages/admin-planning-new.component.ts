@@ -19,10 +19,17 @@ import {
 import { PlanningPdfPanelComponent } from '../planning/planning-pdf-panel.component';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
-import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
-import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 
 type WizardStep = 1 | 2 | 3;
+
+interface WizardCardOption<T extends string> {
+  value: T;
+  icon: string;
+  titleKey: string;
+  subtitleKey: string;
+  emphKey: string;
+  hintKey: string;
+}
 
 export interface PlanningSuccessSnapshot {
   name: string;
@@ -39,7 +46,6 @@ export interface PlanningSuccessSnapshot {
     PlanningPdfPanelComponent,
     UiButtonComponent,
     UiPopupComponent,
-    UiSelectComponent,
   ],
   templateUrl: './admin-planning-new.component.html',
   styleUrl: './admin-planning-new.component.scss',
@@ -136,70 +142,74 @@ export class AdminPlanningNewComponent implements OnInit {
     this.newProjectDetails.set((ev.target as HTMLTextAreaElement).value);
   }
 
-  onLineMaterialChange(ev: Event): void {
-    this.lineMaterial.set(
-      (ev.target as HTMLSelectElement).value as ProjectLineMaterial,
-    );
+  selectLineMaterial(value: ProjectLineMaterial): void {
+    this.lineMaterial.set(value);
   }
 
-  onLineMaterialSelect(value: string | number | null): void {
-    if (value == null) return;
-    this.lineMaterial.set(String(value) as ProjectLineMaterial);
+  selectMachiningRoute(value: ProjectMachiningRoute): void {
+    this.machiningRoute.set(value);
   }
 
-  onMachiningRouteSelect(value: string | number | null): void {
-    if (value == null) return;
-    this.machiningRoute.set(String(value) as ProjectMachiningRoute);
+  selectAngleSourcing(value: ProjectAngleSourcing): void {
+    this.angleSourcing.set(value);
   }
 
-  readonly lineMaterialOptions = computed((): UiSelectOption<ProjectLineMaterial>[] => [
+  readonly lineMaterialCardOptions = computed((): WizardCardOption<ProjectLineMaterial>[] => [
     {
       value: 'ALUMINUM',
-      label: this.translate.instant('PLANNING_NEW.LINE_MATERIAL_ALUMINUM'),
+      icon: 'window',
+      titleKey: 'PLANNING_NEW.LINE_MATERIAL_ALUMINUM',
+      subtitleKey: 'PLANNING_NEW.LINE_MATERIAL_ALUMINUM_CARD_SUB',
+      emphKey: 'PLANNING_NEW.LINE_MATERIAL_ALUMINUM_CARD_EMPH',
+      hintKey: 'PLANNING_NEW.LINE_MATERIAL_ALUMINUM_CARD_HINT',
     },
     {
       value: 'STEEL',
-      label: this.translate.instant('PLANNING_NEW.LINE_MATERIAL_STEEL'),
+      icon: 'construction',
+      titleKey: 'PLANNING_NEW.LINE_MATERIAL_STEEL',
+      subtitleKey: 'PLANNING_NEW.LINE_MATERIAL_STEEL_CARD_SUB',
+      emphKey: 'PLANNING_NEW.LINE_MATERIAL_STEEL_CARD_EMPH',
+      hintKey: 'PLANNING_NEW.LINE_MATERIAL_STEEL_CARD_HINT',
     },
   ]);
 
-  readonly machiningRouteOptions = computed((): UiSelectOption<ProjectMachiningRoute>[] => [
+  readonly machiningRouteCardOptions = computed((): WizardCardOption<ProjectMachiningRoute>[] => [
     {
       value: 'GLASS',
-      label: this.translate.instant('PLANNING_NEW.MACHINING_ROUTE_GLASS'),
+      icon: 'door_sliding',
+      titleKey: 'PLANNING_NEW.MACHINING_ROUTE_GLASS',
+      subtitleKey: 'PLANNING_NEW.MACHINING_ROUTE_GLASS_CARD_SUB',
+      emphKey: 'PLANNING_NEW.MACHINING_ROUTE_GLASS_CARD_EMPH',
+      hintKey: 'PLANNING_NEW.MACHINING_ROUTE_GLASS_CARD_HINT',
     },
     {
       value: 'ALU_RANGER',
-      label: this.translate.instant('PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER'),
+      icon: 'precision_manufacturing',
+      titleKey: 'PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER',
+      subtitleKey: 'PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER_CARD_SUB',
+      emphKey: 'PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER_CARD_EMPH',
+      hintKey: 'PLANNING_NEW.MACHINING_ROUTE_ALU_RANGER_CARD_HINT',
     },
   ]);
 
-  readonly angleSourcingOptions = computed((): UiSelectOption<ProjectAngleSourcing>[] => [
+  readonly angleSourcingCardOptions = computed((): WizardCardOption<ProjectAngleSourcing>[] => [
     {
       value: 'INTERNAL_LASER',
-      label: this.translate.instant('PLANNING_NEW.ANGLE_SOURCING_INTERNAL'),
+      icon: 'flare',
+      titleKey: 'PLANNING_NEW.ANGLE_SOURCING_INTERNAL',
+      subtitleKey: 'PLANNING_NEW.ANGLE_SOURCING_INTERNAL_CARD_SUB',
+      emphKey: 'PLANNING_NEW.ANGLE_SOURCING_INTERNAL_CARD_EMPH',
+      hintKey: 'PLANNING_NEW.ANGLE_SOURCING_INTERNAL_CARD_HINT',
     },
     {
       value: 'EXTERNAL_SUPPLIER',
-      label: this.translate.instant('PLANNING_NEW.ANGLE_SOURCING_EXTERNAL'),
+      icon: 'local_shipping',
+      titleKey: 'PLANNING_NEW.ANGLE_SOURCING_EXTERNAL',
+      subtitleKey: 'PLANNING_NEW.ANGLE_SOURCING_EXTERNAL_CARD_SUB',
+      emphKey: 'PLANNING_NEW.ANGLE_SOURCING_EXTERNAL_CARD_EMPH',
+      hintKey: 'PLANNING_NEW.ANGLE_SOURCING_EXTERNAL_CARD_HINT',
     },
   ]);
-
-  onAngleSourcingSelect(value: string | number | null): void {
-    if (value == null) return;
-    this.angleSourcing.set(String(value) as ProjectAngleSourcing);
-  }
-
-  /** משתנה בשלב 2 מתוך פאנל ה-PDF — נשמר לטיוטה */
-  onAngleSourcingChange(value: ProjectAngleSourcing): void {
-    this.angleSourcing.set(value);
-    const pid = this.selectedProjectId();
-    if (!pid) return;
-    this.api
-      .patchPlanningDraft(pid, { angleSourcing: value })
-      .pipe(take(1))
-      .subscribe({ next: () => this.reloadDrafts(), error: () => {} });
-  }
 
   /** וריאנט הפרויקט הנבחר (טיוטה / אחרי יצירה) */
   selectedVariantOrder(): {

@@ -4,6 +4,7 @@ import {
   computed,
   ElementRef,
   inject,
+  input,
   OnInit,
   signal,
   ViewChild,
@@ -16,6 +17,7 @@ import { ApiService } from '../../core/api.service';
 import { CurrentUserService } from '../../core/current-user.service';
 import {
   ElevationCellDto,
+  ElevationFacadeOptionDto,
   ElevationMapResponse,
   ElevationProgressDto,
 } from '../../core/skyflow.models';
@@ -34,6 +36,15 @@ export class ElevationMapComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly currentUser = inject(CurrentUserService);
 
+  /**
+   * Embedded mode (e.g. inside the planning "open" popup): when a project id is
+   * provided as an input, the component skips the route params + role redirect
+   * and shows the given facade group's map directly.
+   */
+  readonly embeddedProjectId = input<string | null>(null);
+  readonly embeddedGroup = input<string | null>(null);
+  readonly embedded = computed(() => !!this.embeddedProjectId());
+
   readonly projectId = signal('');
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -42,6 +53,10 @@ export class ElevationMapComponent implements OnInit {
   readonly map = signal<ElevationMapResponse['map']>(null);
   readonly cells = signal<ElevationCellDto[]>([]);
   readonly progress = signal<ElevationProgressDto | null>(null);
+
+  /** קבוצות חזיתות עם מפה — בורר החזיתות בתצוגת ההתקנה */
+  readonly facades = signal<ElevationFacadeOptionDto[]>([]);
+  readonly selectedFacadeGroup = signal<string | null>(null);
 
   @ViewChild('canvas') canvasRef?: ElementRef<HTMLElement>;
 
@@ -56,9 +71,8 @@ export class ElevationMapComponent implements OnInit {
 
   readonly windowTypeCodes = signal<string[]>([]);
 
-  /** מצב טופס החזרת פגם לתחנה */
-  readonly defectFormOpen = signal(false);
-  readonly defectStationId = signal<number>(1);
+  /** תחנת היעד שנבחרה בסבב העבודה (החזרה לתחנה) — null כשאין. */
+  readonly returnStationId = signal<number | null>(null);
   readonly defectReason = signal<string>('');
   readonly stationIds: number[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -118,6 +132,14 @@ export class ElevationMapComponent implements OnInit {
   readonly selectedCount = computed(() => this.selectedIds().size);
 
   ngOnInit(): void {
+    // Embedded (popup) mode — use the provided project + group, no routing.
+    const embedded = this.embeddedProjectId();
+    if (embedded) {
+      this.projectId.set(embedded);
+      this.selectedFacadeGroup.set(this.embeddedGroup());
+      this.load();
+      return;
+    }
     const id = this.route.snapshot.paramMap.get('projectId') ?? '';
     const path = this.router.url.split('?')[0];
     const role = this.currentUser.sessionUser()?.role;
@@ -135,11 +157,24 @@ export class ElevationMapComponent implements OnInit {
     this.load();
   }
 
+  /** Switch to another facade group's map (per-group elevation flow). */
+  selectFacade(groupKey: string): void {
+    if (this.selectedFacadeGroup() === groupKey) return;
+    this.selectedFacadeGroup.set(groupKey);
+    this.pageIndex.set(0);
+    this.floorFilter.set('');
+    this.sectionFilter.set('');
+    this.windowTypeFilter.set('');
+    this.selectedIds.set(new Set());
+    this.activeCell.set(null);
+    this.load();
+  }
+
   load(): void {
     this.loading.set(true);
     this.error.set(null);
     this.api
-      .getElevationMap(this.projectId())
+      .getElevationMap(this.projectId(), this.selectedFacadeGroup())
       .pipe(
         take(1),
         finalize(() => this.loading.set(false)),
@@ -149,6 +184,8 @@ export class ElevationMapComponent implements OnInit {
           this.map.set(res.map);
           this.cells.set(res.cells ?? []);
           this.progress.set(res.progress ?? null);
+          this.facades.set(res.facades ?? []);
+          this.selectedFacadeGroup.set(res.selectedFacadeGroup ?? null);
           const codes =
             res.windowTypeCodes && res.windowTypeCodes.length
               ? [...res.windowTypeCodes]
@@ -169,15 +206,26 @@ export class ElevationMapComponent implements OnInit {
     return this.selectedIds().has(id);
   }
 
+  /** לחיצה על מלבן חלון — פותחת את חלון סבב העבודה. */
   onCellClick(cell: ElevationCellDto): void {
     this.activeCell.set(cell);
-    this.defectFormOpen.set(false);
+    this.returnStationId.set(null);
     this.defectReason.set('');
+  }
+
+  closePopup(): void {
+    this.activeCell.set(null);
+    this.returnStationId.set(null);
+    this.defectReason.set('');
+  }
+
+  /** בחירת תחנה בסבב העבודה → פותח טופס החזרה לאותה תחנה (toggle). */
+  chooseReturnStation(stationId: number): void {
     if (!this.canEdit()) return;
-    const next = new Set(this.selectedIds());
-    if (next.has(cell.id)) next.delete(cell.id);
-    else next.add(cell.id);
-    this.selectedIds.set(next);
+    this.returnStationId.set(
+      this.returnStationId() === stationId ? null : stationId,
+    );
+    this.defectReason.set('');
   }
 
   clearSelection(): void {
@@ -273,8 +321,8 @@ export class ElevationMapComponent implements OnInit {
       });
   }
 
-  /** Toggle a single cell quickly from the details panel. */
-  toggleActiveCell(): void {
+  /** כפתור "הושלם" — מסמן את היחידה כבוצעה (ירוק) או מבטל. */
+  completeCell(): void {
     const cell = this.activeCell();
     if (!cell || !this.canEdit() || this.busy()) return;
     const done = cell.status !== 'DONE';
@@ -314,45 +362,33 @@ export class ElevationMapComponent implements OnInit {
     this.recomputeProgress();
   }
 
-  toggleDefectForm(): void {
-    this.defectFormOpen.update((v) => !v);
-    if (this.defectFormOpen()) {
-      this.defectStationId.set(1);
-      this.defectReason.set('');
-    }
-  }
-
-  onDefectStationChange(value: string): void {
-    const n = Number(value);
-    if (Number.isFinite(n)) this.defectStationId.set(n);
-  }
-
   onDefectReasonInput(ev: Event): void {
     this.defectReason.set((ev.target as HTMLTextAreaElement).value);
   }
 
-  submitDefect(): void {
+  /** החזרת היחידה לתחנה שנבחרה בסבב העבודה (rework). */
+  submitReturn(): void {
     const cell = this.activeCell();
+    const stationId = this.returnStationId();
     const reason = this.defectReason().trim();
-    if (!cell || !this.canEdit() || this.busy() || reason.length < 2) return;
+    if (
+      !cell ||
+      stationId == null ||
+      !this.canEdit() ||
+      this.busy() ||
+      reason.length < 2
+    )
+      return;
     this.busy.set(true);
     this.api
-      .reportElevationDefect(
-        this.projectId(),
-        cell.id,
-        this.defectStationId(),
-        reason,
-      )
+      .reportElevationDefect(this.projectId(), cell.id, stationId, reason)
       .pipe(
         take(1),
         finalize(() => this.busy.set(false)),
       )
       .subscribe({
         next: () => {
-          const defect = {
-            returnedToStationId: this.defectStationId(),
-            reason,
-          };
+          const defect = { returnedToStationId: stationId, reason };
           this.cells.set(
             this.cells().map((c) =>
               c.id === cell.id
@@ -363,7 +399,7 @@ export class ElevationMapComponent implements OnInit {
           this.activeCell.set(
             this.cells().find((c) => c.id === cell.id) ?? null,
           );
-          this.defectFormOpen.set(false);
+          this.returnStationId.set(null);
           this.defectReason.set('');
           this.recomputeProgress();
         },

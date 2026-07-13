@@ -1,7 +1,9 @@
 <section class="elev">
   <header class="elev__head">
     <div class="elev__title">
-      <a [routerLink]="backRoute()" class="elev__back">←</a>
+      @if (!embedded()) {
+        <a [routerLink]="backRoute()" class="elev__back">←</a>
+      }
       <h1>{{ 'ELEVATION_MAP.TITLE' | translate }}</h1>
       @if (map(); as m) {
         <span class="elev__doc">{{ m.title }}</span>
@@ -19,13 +21,34 @@
           <span class="elev__chip elev__chip--unit">
             {{ 'ELEVATION_MAP.UNITS' | translate }}: {{ p.unit.done }}/{{ p.unit.total }}
           </span>
-          <span class="elev__chip elev__chip--spandrel">
-            {{ 'ELEVATION_MAP.SPANDRELS' | translate }}: {{ p.spandrel.done }}/{{ p.spandrel.total }}
-          </span>
+          @if (p.spandrel.total > 0) {
+            <span class="elev__chip elev__chip--spandrel">
+              {{ 'ELEVATION_MAP.SPANDRELS' | translate }}: {{ p.spandrel.done }}/{{ p.spandrel.total }}
+            </span>
+          }
         </div>
       </div>
     }
   </header>
+
+  @if (facades().length) {
+    <div class="elev__facades" role="tablist" aria-label="facades">
+      @for (f of facades(); track f.groupKey) {
+        <button
+          class="elev__facade"
+          [ngClass]="{ 'is-active': selectedFacadeGroup() === f.groupKey }"
+          role="tab"
+          [attr.aria-selected]="selectedFacadeGroup() === f.groupKey"
+          (click)="selectFacade(f.groupKey)"
+        >
+          <span class="elev__facade-label" dir="ltr">{{ f.label }}</span>
+          @if (f.progress) {
+            <span class="elev__facade-pct" dir="ltr">{{ f.progress.pct }}%</span>
+          }
+        </button>
+      }
+    </div>
+  }
 
   @if (loading()) {
     <div class="elev__state">{{ 'COMMON.LOADING' | translate }}…</div>
@@ -64,8 +87,10 @@
       </div>
 
       <div class="elev__legend">
-        <span class="elev__lg elev__lg--unit">{{ 'ELEVATION_MAP.UNIT' | translate }}</span>
-        <span class="elev__lg elev__lg--spandrel">{{ 'ELEVATION_MAP.SPANDREL' | translate }}</span>
+        @if ((progress()?.spandrel?.total ?? 0) > 0) {
+          <span class="elev__lg elev__lg--unit">{{ 'ELEVATION_MAP.UNIT' | translate }}</span>
+          <span class="elev__lg elev__lg--spandrel">{{ 'ELEVATION_MAP.SPANDREL' | translate }}</span>
+        }
         <span class="elev__lg elev__lg--done">{{ 'ELEVATION_MAP.DONE' | translate }}</span>
       </div>
 
@@ -209,111 +234,103 @@
         }
       </div>
 
-      <!-- details panel -->
-      @if (activeCell(); as cell) {
-        <aside class="elev__detail">
-          <div class="elev__detail-head">
-            <span
-              class="elev__detail-kind"
-              [ngClass]="cell.kind === 'UNIT' ? 'is-unit' : 'is-spandrel'"
-            >
-              {{ (cell.kind === 'UNIT' ? 'ELEVATION_MAP.UNIT' : 'ELEVATION_MAP.SPANDREL') | translate }}
-            </span>
-            <strong>{{ cell.code }}</strong>
-            @if (cell.floor) { <span class="elev__detail-floor">{{ cell.floor }}</span> }
-          </div>
+    </div>
 
-          <div class="elev__detail-status" [ngClass]="cell.status === 'DONE' ? 'is-done' : 'is-pending'">
+    <!-- work-cycle popup -->
+    @if (activeCell(); as cell) {
+      <div class="elev__modal-backdrop" (click)="closePopup()"></div>
+      <div class="elev__modal" role="dialog" aria-modal="true">
+        <button
+          type="button"
+          class="elev__modal-close"
+          (click)="closePopup()"
+          [attr.aria-label]="'ELEVATION_MAP.CLOSE' | translate"
+        >✕</button>
+
+        <div class="elev__modal-head">
+          <strong dir="ltr">{{ cell.windowTypeCode || cell.code }}</strong>
+          @if (cell.floor) { <span class="elev__modal-floor">{{ cell.floor }}</span> }
+          <span
+            class="elev__modal-status"
+            [ngClass]="cell.status === 'DONE' ? 'is-done' : 'is-pending'"
+          >
             {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.STATUS_DONE' : 'ELEVATION_MAP.STATUS_PENDING') | translate }}
-            @if (cell.status === 'DONE' && cell.doneBy) {
-              <small>{{ cell.doneBy }}</small>
-            }
+          </span>
+        </div>
+
+        <h3 class="elev__cycle-title">{{ 'ELEVATION_MAP.WORK_CYCLE' | translate }}</h3>
+        <div class="elev__cycle">
+          @for (sid of stationIds; track sid) {
+            <button
+              type="button"
+              class="elev__stationsq"
+              [ngClass]="{
+                'is-return': returnStationId() === sid,
+                'is-current-defect': cell.defect?.returnedToStationId === sid
+              }"
+              [disabled]="!canEdit()"
+              (click)="chooseReturnStation(sid)"
+            >
+              <span class="elev__stationsq-num">{{ sid }}</span>
+              <span class="elev__stationsq-name">{{ 'STATIONS.' + sid | translate }}</span>
+            </button>
+          }
+        </div>
+
+        @if (cell.defect; as def) {
+          <div class="elev__modal-defect">
+            <span class="elev__defect-badge">{{ 'ELEVATION_MAP.DEFECT_BADGE' | translate }}</span>
+            {{ 'ELEVATION_MAP.RETURNED_TO' | translate }}:
+            {{ 'STATIONS.' + def.returnedToStationId | translate }}
+            <p class="elev__defect-reason">{{ def.reason }}</p>
           </div>
+        }
 
-          @if (cell.windowTypeCode) {
-            <div class="elev__detail-wtype" dir="ltr">
-              {{ 'ELEVATION_MAP.WINDOW_TYPE' | translate }}: <strong>{{ cell.windowTypeCode }}</strong>
+        @if (canEdit()) {
+          @if (returnStationId() !== null) {
+            <div class="elev__return-form">
+              <label class="elev__defect-label" for="return-reason">
+                {{ 'ELEVATION_MAP.RETURN_TO_STATION' | translate }}:
+                {{ 'STATIONS.' + returnStationId() | translate }}
+              </label>
+              <textarea
+                id="return-reason"
+                class="elev__defect-textarea"
+                rows="3"
+                [value]="defectReason()"
+                (input)="onDefectReasonInput($event)"
+                [placeholder]="'ELEVATION_MAP.DEFECT_REASON_PLACEHOLDER' | translate"
+              ></textarea>
+              <skyflow-ui-button
+                variant="primary"
+                [loading]="busy()"
+                [disabled]="defectReason().trim().length < 2"
+                [block]="true"
+                (click)="submitReturn()"
+              >
+                {{ 'ELEVATION_MAP.SEND_DEFECT' | translate }}
+              </skyflow-ui-button>
             </div>
-          }
-
-          @if (cell.defect; as def) {
-            <div class="elev__defect">
-              <div class="elev__defect-head">
-                <span class="elev__defect-badge">{{ 'ELEVATION_MAP.DEFECT_BADGE' | translate }}</span>
-                <span class="elev__defect-station">
-                  {{ 'ELEVATION_MAP.RETURNED_TO' | translate }}:
-                  {{ 'STATIONS.' + def.returnedToStationId | translate }}
-                </span>
-              </div>
-              <p class="elev__defect-reason">{{ def.reason }}</p>
-            </div>
-          }
-
-          <h3>{{ 'ELEVATION_MAP.ITEMS' | translate }} ({{ cell.items.length }})</h3>
-          <ul class="elev__items">
-            @for (it of cell.items; track $index) {
-              <li>{{ it }}</li>
-            }
-          </ul>
-
-          @if (canEdit()) {
+          } @else {
             <skyflow-ui-button
               [variant]="cell.status === 'DONE' ? 'secondary' : 'primary'"
               [loading]="busy()"
               [block]="true"
-              (click)="toggleActiveCell()"
+              (click)="completeCell()"
             >
-              {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.UNMARK' : 'ELEVATION_MAP.MARK_THIS_DONE') | translate }}
+              {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.UNMARK' : 'ELEVATION_MAP.COMPLETED') | translate }}
             </skyflow-ui-button>
-
-            <button
-              type="button"
-              class="elev__defect-toggle"
-              (click)="toggleDefectForm()"
-            >
-              {{ 'ELEVATION_MAP.REPORT_DEFECT' | translate }}
-            </button>
-
-            @if (defectFormOpen()) {
-              <div class="elev__defect-form">
-                <label class="elev__defect-label" for="defect-station">
-                  {{ 'ELEVATION_MAP.RETURN_TO_STATION' | translate }}
-                </label>
-                <select
-                  id="defect-station"
-                  class="elev__defect-select"
-                  [value]="defectStationId()"
-                  (change)="onDefectStationChange($any($event.target).value)"
-                >
-                  @for (sid of stationIds; track sid) {
-                    <option [value]="sid">{{ 'STATIONS.' + sid | translate }}</option>
-                  }
-                </select>
-                <label class="elev__defect-label" for="defect-reason">
-                  {{ 'ELEVATION_MAP.DEFECT_REASON' | translate }}
-                </label>
-                <textarea
-                  id="defect-reason"
-                  class="elev__defect-textarea"
-                  rows="3"
-                  [value]="defectReason()"
-                  (input)="onDefectReasonInput($event)"
-                  [placeholder]="'ELEVATION_MAP.DEFECT_REASON_PLACEHOLDER' | translate"
-                ></textarea>
-                <skyflow-ui-button
-                  variant="primary"
-                  [loading]="busy()"
-                  [disabled]="defectReason().trim().length < 2"
-                  [block]="true"
-                  (click)="submitDefect()"
-                >
-                  {{ 'ELEVATION_MAP.SEND_DEFECT' | translate }}
-                </skyflow-ui-button>
-              </div>
-            }
+            <p class="elev__cycle-hint">{{ 'ELEVATION_MAP.RETURN_HINT' | translate }}</p>
           }
-        </aside>
-      }
-    </div>
+        }
+
+        @if (cell.items.length) {
+          <h4 class="elev__items-title">{{ 'ELEVATION_MAP.ITEMS' | translate }} ({{ cell.items.length }})</h4>
+          <ul class="elev__items">
+            @for (it of cell.items; track $index) { <li>{{ it }}</li> }
+          </ul>
+        }
+      </div>
+    }
   }
 </section>

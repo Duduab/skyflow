@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -19,8 +20,11 @@ export class ElevationController {
   constructor(private readonly elevation: ElevationService) {}
 
   @Get()
-  get(@Param('projectId') projectId: string) {
-    return this.elevation.getForProject(projectId);
+  get(
+    @Param('projectId') projectId: string,
+    @Query('group') group?: string,
+  ) {
+    return this.elevation.getForProject(projectId, group || null);
   }
 
   @Post('cells/mark')

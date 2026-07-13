@@ -412,11 +412,47 @@ export interface WindowTypePreviewDto {
   elevationCellCount: number;
 }
 
+export type FacadeDirection = 'SOUTH' | 'NORTH' | 'WEST' | 'EAST';
+
+export interface FacadePreviewDto {
+  id: string;
+  label: string;
+  groupKey: string;
+  direction: FacadeDirection;
+  totalQty: number;
+  stageId: string | null;
+  elevationPdfUrl: string | null;
+}
+
+/** קבוצת חזית (S / N5 / W2) — יחידת העלאת מפת החזיתות */
+export interface FacadeGroupPreviewDto {
+  key: string;
+  direction: FacadeDirection;
+  subLabels: string[];
+  totalQty: number;
+  elevationPdfUrl: string | null;
+}
+
+export interface StageFacadeDto {
+  id: string;
+  label: string;
+  totalQty: number;
+  elevationPdfUrl: string | null;
+}
+
+export interface StageFacadeGroupDto {
+  direction: FacadeDirection;
+  facades: StageFacadeDto[];
+}
+
 export interface StagePreviewDto {
   code: string;
   colorHex: string | null;
   totalQty: number;
   windowTypeCount: number;
+  facadeCount: number;
+  facadeTotalQty: number;
+  facadeGroups: StageFacadeGroupDto[];
 }
 
 export interface AnglePreviewDto {
@@ -444,6 +480,12 @@ export interface PlanningPdfPreviewDto {
   stages: StagePreviewDto[];
   angles: AnglePreviewDto[];
   steelworkDetails: SteelworkDetailPreviewDto[];
+  facades: FacadePreviewDto[];
+  facadeCount: number;
+  facadesWithElevation: number;
+  facadeGroups: FacadeGroupPreviewDto[];
+  facadeGroupCount: number;
+  facadeGroupsWithElevation: number;
 }
 
 export interface PlanningPdfUploadResponse {
@@ -509,6 +551,15 @@ export interface ElevationProgressDto {
   openDefects?: number;
 }
 
+export interface ElevationFacadeOptionDto {
+  groupKey: string;
+  label: string;
+  direction: FacadeDirection;
+  mapId: string;
+  status: ElevationMapStatus;
+  progress?: { total: number; done: number; pct: number };
+}
+
 export interface ElevationMapResponse {
   map: {
     id: string;
@@ -518,6 +569,9 @@ export interface ElevationMapResponse {
     pages: ElevationPageDto[];
     error: string | null;
   } | null;
+  /** קבוצות החזיתות עם מפה (בורר בתצוגת ההתקנה); ריק לפרויקטים ישנים */
+  facades?: ElevationFacadeOptionDto[];
+  selectedFacadeGroup?: string | null;
   cells?: ElevationCellDto[];
   windowTypeCodes?: string[];
   progress?: ElevationProgressDto;

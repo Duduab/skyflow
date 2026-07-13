@@ -8,21 +8,38 @@ import {
   WINDOW_CODE_EXACT_RE,
   type TextFrag,
 } from './pdf-text.util';
+import { colorDistance, createColorSampler } from './pdf-color.util';
+
+export type FacadeDirection = 'SOUTH' | 'NORTH' | 'WEST' | 'EAST';
 
 export interface ParsedFacadeRow {
   /** e.g. S-w, N2-e, W4 */
   label: string;
+  /** SOUTH / NORTH / WEST / EAST — from the label prefix */
+  direction: FacadeDirection;
   /** windowTypeCode -> qty */
   qtys: Record<string, number>;
   total: number | null;
+  /** Stage this facade belongs to (by cell fill color); null if undetermined. */
+  stageCode: string | null;
 }
 
 export interface ParsedStageRow {
   /** e.g. A, B, C */
   code: string;
+  /** Fill color sampled from the stage's row in the table (e.g. #aa9abf). */
   colorHex: string | null;
   /** windowTypeCode -> qty */
   qtys: Record<string, number>;
+}
+
+/** Map a facade label prefix to a compass direction. */
+function facadeDirection(label: string): FacadeDirection {
+  const c = label.trim().charAt(0).toUpperCase();
+  if (c === 'N') return 'NORTH';
+  if (c === 'W') return 'WEST';
+  if (c === 'E') return 'EAST';
+  return 'SOUTH';
 }
 
 export interface ParsedQuantities {
@@ -120,6 +137,18 @@ export async function parseQuantitiesPdf(
   const stages: ParsedStageRow[] = [];
   let projectTotal: number | null = null;
 
+  // Render the page once so we can read the Stage color legend and the fill
+  // color behind each facade cell (the color↔stage link is not in the text).
+  let sampler: Awaited<ReturnType<typeof createColorSampler>> | null = null;
+  try {
+    sampler = await createColorSampler(fileBuffer, 1, 3);
+  } catch {
+    sampler = null;
+  }
+
+  // Per facade: the sampled fill colors of its non-zero cells (+ weight = qty).
+  const facadeCellColors: { color: string; weight: number }[][] = [];
+
   for (let i = rowIndex + 1; i < rows.length; i += 1) {
     const row = rows[i];
     if (!row.length) continue;
@@ -138,9 +167,13 @@ export async function parseQuantitiesPdf(
         (f) => !/^stage$/i.test(f.str),
       );
       const { qtys } = mapRowNumbers(stageNumbers, columns, columnCx, totalCx);
+      const label = row[0];
+      const colorHex = sampler
+        ? sampler.sample(label.cx, label.y - label.h / 2)
+        : null;
       stages.push({
         code: stageMatch[1].toUpperCase(),
-        colorHex: null,
+        colorHex: colorHex && colorHex !== '#ffffff' ? colorHex : null,
         qtys,
       });
       continue;
@@ -162,7 +195,24 @@ export async function parseQuantitiesPdf(
         columnCx,
         totalCx,
       );
-      facades.push({ label: row[0].str, qtys, total });
+      const cellColors: { color: string; weight: number }[] = [];
+      if (sampler) {
+        for (const num of facadeNumbers) {
+          const idx = nearestColumn(num.cx, columnCx);
+          if (idx < 0) continue;
+          const color = sampler.sample(num.cx, num.y - num.h / 2);
+          if (color === '#ffffff') continue;
+          cellColors.push({ color, weight: parseInt(num.str, 10) || 1 });
+        }
+      }
+      facades.push({
+        label: row[0].str,
+        direction: facadeDirection(row[0].str),
+        qtys,
+        total,
+        stageCode: null,
+      });
+      facadeCellColors.push(cellColors);
       continue;
     }
 
@@ -171,6 +221,40 @@ export async function parseQuantitiesPdf(
       const v = parseInt(numbers[0].str, 10);
       if (v > 100) projectTotal = v;
     }
+  }
+
+  sampler?.destroy();
+
+  // Assign each facade to a single Stage: for every sampled cell find the
+  // nearest Stage color, then pick the winning Stage weighted by cell qty.
+  const stageColors = stages
+    .filter((s) => !!s.colorHex)
+    .map((s) => ({ code: s.code, hex: s.colorHex as string }));
+  if (stageColors.length) {
+    facades.forEach((facade, i) => {
+      const votes = new Map<string, number>();
+      for (const { color, weight } of facadeCellColors[i] ?? []) {
+        let best: string | null = null;
+        let bestD = Infinity;
+        for (const sc of stageColors) {
+          const d = colorDistance(color, sc.hex);
+          if (d < bestD) {
+            bestD = d;
+            best = sc.code;
+          }
+        }
+        if (best) votes.set(best, (votes.get(best) ?? 0) + weight);
+      }
+      let winner: string | null = null;
+      let bestVotes = -1;
+      for (const [code, v] of votes) {
+        if (v > bestVotes) {
+          bestVotes = v;
+          winner = code;
+        }
+      }
+      facade.stageCode = winner;
+    });
   }
 
   // Fill totals from facade sums when the totals row was not detected.

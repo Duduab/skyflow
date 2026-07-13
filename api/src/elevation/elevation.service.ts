@@ -4,7 +4,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ElevationCellStatus, SkyflowRole } from '@prisma/client';
+import {
+  ElevationCellStatus,
+  ElevationMapStatus,
+  SkyflowRole,
+} from '@prisma/client';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
@@ -68,11 +72,18 @@ export class ElevationService {
     documentId: string;
     title: string;
     fileBuffer: Buffer;
+    /** When set, the map belongs to a single facade group (S / N5 / W2 ...). */
+    facadeGroup?: string | null;
   }): Promise<void> {
     const { projectId, documentId, title, fileBuffer } = params;
+    const facadeGroup = params.facadeGroup ?? null;
 
-    // carry over previously completed cells (by code) from the latest existing map
-    const previousDone = await this.collectPreviousDoneCodes(projectId);
+    // carry over previously completed cells (by code); scope to the same facade
+    // group when known so repeated codes across groups don't collide.
+    const previousDone = await this.collectPreviousDoneCodes(
+      projectId,
+      facadeGroup,
+    );
 
     // remove any prior map tied to this document (re-upload of same doc)
     await this.prisma.elevationMap.deleteMany({ where: { documentId } });
@@ -81,6 +92,7 @@ export class ElevationService {
       data: {
         projectId,
         documentId,
+        facadeGroup,
         title,
         status: 'PROCESSING',
         pageCount: 1,
@@ -156,7 +168,10 @@ export class ElevationService {
     return `${code}::${items.join('|')}`;
   }
 
-  private async collectPreviousDoneCodes(projectId: string): Promise<
+  private async collectPreviousDoneCodes(
+    projectId: string,
+    facadeGroup: string | null = null,
+  ): Promise<
     Map<string, { doneAt: Date | null; doneByUserId: string | null }>
   > {
     const result = new Map<
@@ -164,7 +179,10 @@ export class ElevationService {
       { doneAt: Date | null; doneByUserId: string | null }
     >();
     const cells = await this.prisma.elevationCell.findMany({
-      where: { map: { projectId }, status: 'DONE' },
+      where: {
+        map: facadeGroup ? { projectId, facadeGroup } : { projectId },
+        status: 'DONE',
+      },
       select: { code: true, items: true, doneAt: true, doneByUserId: true },
     });
     for (const c of cells) {
@@ -177,10 +195,79 @@ export class ElevationService {
     return result;
   }
 
-  /** Map + cells + progress for a project (latest READY/PROCESSING map). */
-  async getForProject(projectId: string) {
+  /**
+   * Map + cells + progress for a project. Projects built from the per-facade
+   * flow have one map per facade group — the caller may pass `facadeGroup` to select
+   * one; otherwise the first facade (by sortOrder) is shown. `facades` drives
+   * the facade picker in the install view. Legacy projects (no facade maps)
+   * fall back to the latest project-level map.
+   */
+  async getForProject(projectId: string, facadeGroup?: string | null) {
+    // facade-group maps for the picker (per-group elevation flow)
+    const groupMaps = await this.prisma.elevationMap.findMany({
+      where: { projectId, facadeGroup: { not: null } },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const directionOf = (
+      key: string,
+    ): 'SOUTH' | 'NORTH' | 'WEST' | 'EAST' => {
+      const c = key.charAt(0).toUpperCase();
+      if (c === 'N') return 'NORTH';
+      if (c === 'W') return 'WEST';
+      if (c === 'E') return 'EAST';
+      return 'SOUTH';
+    };
+
+    // one entry per distinct group (latest map wins if duplicated)
+    const groupOrder = new Map<string, { mapId: string; status: string }>();
+    for (const m of groupMaps) {
+      const key = m.facadeGroup as string;
+      groupOrder.set(key, { mapId: m.id, status: m.status });
+    }
+    const facades = [...groupOrder.entries()].map(([key, v]) => ({
+      groupKey: key,
+      label: key,
+      direction: directionOf(key),
+      mapId: v.mapId,
+      status: v.status as ElevationMapStatus,
+      progress: { total: 0, done: 0, pct: 0 },
+    }));
+
+    // per-group progress counts for the picker badges
+    if (facades.length) {
+      const grouped = await this.prisma.elevationCell.groupBy({
+        by: ['mapId', 'status'],
+        where: { mapId: { in: facades.map((f) => f.mapId) } },
+        _count: { _all: true },
+      });
+      const byMap = new Map<string, { total: number; done: number }>();
+      for (const g of grouped) {
+        const acc = byMap.get(g.mapId) ?? { total: 0, done: 0 };
+        acc.total += g._count._all;
+        if (g.status === 'DONE') acc.done += g._count._all;
+        byMap.set(g.mapId, acc);
+      }
+      for (const f of facades) {
+        const c = byMap.get(f.mapId) ?? { total: 0, done: 0 };
+        f.progress = {
+          total: c.total,
+          done: c.done,
+          pct: c.total ? Math.round((c.done / c.total) * 100) : 0,
+        };
+      }
+    }
+
+    // pick the requested group map, else the first group, else legacy latest
+    const selectedFacadeGroup =
+      facadeGroup && facades.some((f) => f.groupKey === facadeGroup)
+        ? facadeGroup
+        : (facades[0]?.groupKey ?? null);
+
     const map = await this.prisma.elevationMap.findFirst({
-      where: { projectId },
+      where: selectedFacadeGroup
+        ? { projectId, facadeGroup: selectedFacadeGroup }
+        : { projectId },
       orderBy: { createdAt: 'desc' },
       include: {
         cells: {
@@ -192,7 +279,8 @@ export class ElevationService {
       },
     });
 
-    if (!map) return { map: null };
+    if (!map)
+      return { map: null, facades, selectedFacadeGroup: null };
 
     // open defects per cell (return-to-station rework)
     const openDefects = await this.prisma.cellDefect.findMany({
@@ -243,6 +331,8 @@ export class ElevationService {
     ].sort();
 
     return {
+      facades,
+      selectedFacadeGroup,
       map: {
         id: map.id,
         title: map.title,

@@ -11,6 +11,65 @@
           <span class="planning-new__badge">{{ 'PLANNING_NEW.BADGE' | translate }}</span>
           <h1 class="planning-new__title">{{ 'PLANNING_NEW.TITLE' | translate }}</h1>
           <p class="planning-new__lead">{{ 'PLANNING_NEW.WIZARD_LEAD' | translate }}</p>
+
+          <nav
+            class="planning-wizard__rail planning-wizard__rail--merged"
+            [attr.aria-label]="'PLANNING_NEW.WIZARD_STEPS_ARIA' | translate"
+          >
+            <div class="planning-wizard__rail-inner">
+              <ol class="planning-wizard__steps">
+                @for (s of [1, 2, 3]; track s) {
+                  <li
+                    class="planning-wizard__step"
+                    [class.planning-wizard__step--current]="step() === s"
+                    [class.planning-wizard__step--done]="step() > s"
+                  >
+                    <span class="planning-wizard__dot-wrap">
+                      <span class="planning-wizard__dot">
+                        @if (step() > s) {
+                          <span class="planning-wizard__dot-check" aria-hidden="true">✓</span>
+                        } @else {
+                          <span class="planning-wizard__dot-num">{{ s }}</span>
+                        }
+                      </span>
+                    </span>
+                    <span class="planning-wizard__step-text">
+                      @switch (s) {
+                        @case (1) {
+                          {{ 'PLANNING_NEW.WIZARD_STEP1_SHORT' | translate }}
+                        }
+                        @case (2) {
+                          {{ 'PLANNING_NEW.WIZARD_STEP2_SHORT' | translate }}
+                        }
+                        @case (3) {
+                          {{ 'PLANNING_NEW.WIZARD_STEP3_SHORT' | translate }}
+                        }
+                      }
+                    </span>
+                  </li>
+                  @if (s < 3) {
+                    <li
+                      class="planning-wizard__seg"
+                      [class.planning-wizard__seg--done]="step() > s"
+                      aria-hidden="true"
+                    >
+                      <span class="planning-wizard__seg-track">
+                        <span class="planning-wizard__seg-fill"></span>
+                      </span>
+                    </li>
+                  }
+                }
+              </ol>
+            </div>
+          </nav>
+
+          @if (step() === 2) {
+            <div class="planning-wizard__step-banner planning-wizard__step-banner--merged planning-wizard__step-enter">
+              <span class="planning-wizard__step-banner-kicker">{{ 'PLANNING_NEW.WIZARD_STEP2_SHORT' | translate }}</span>
+              <span class="planning-wizard__step-banner-title">{{ 'PLANNING_NEW.WIZARD_STEP2_TITLE' | translate }}</span>
+              <span class="planning-wizard__step-banner-desc">{{ 'PLANNING_NEW.WIZARD_STEP2_DESC' | translate }}</span>
+            </div>
+          }
         </div>
       </div>
     </header>
@@ -20,57 +79,6 @@
         {{ errKey | translate }}
       </p>
     }
-
-    <nav
-      class="planning-wizard__rail"
-      [attr.aria-label]="'PLANNING_NEW.WIZARD_STEPS_ARIA' | translate"
-    >
-      <div class="planning-wizard__rail-inner">
-        <ol class="planning-wizard__steps">
-          @for (s of [1, 2, 3]; track s) {
-            <li
-              class="planning-wizard__step"
-              [class.planning-wizard__step--current]="step() === s"
-              [class.planning-wizard__step--done]="step() > s"
-            >
-              <span class="planning-wizard__dot-wrap">
-                <span class="planning-wizard__dot">
-                  @if (step() > s) {
-                    <span class="planning-wizard__dot-check" aria-hidden="true">✓</span>
-                  } @else {
-                    <span class="planning-wizard__dot-num">{{ s }}</span>
-                  }
-                </span>
-              </span>
-              <span class="planning-wizard__step-text">
-                @switch (s) {
-                  @case (1) {
-                    {{ 'PLANNING_NEW.WIZARD_STEP1_SHORT' | translate }}
-                  }
-                  @case (2) {
-                    {{ 'PLANNING_NEW.WIZARD_STEP2_SHORT' | translate }}
-                  }
-                  @case (3) {
-                    {{ 'PLANNING_NEW.WIZARD_STEP3_SHORT' | translate }}
-                  }
-                }
-              </span>
-            </li>
-            @if (s < 3) {
-              <li
-                class="planning-wizard__seg"
-                [class.planning-wizard__seg--done]="step() > s"
-                aria-hidden="true"
-              >
-                <span class="planning-wizard__seg-track">
-                  <span class="planning-wizard__seg-fill"></span>
-                </span>
-              </li>
-            }
-          }
-        </ol>
-      </div>
-    </nav>
 
     @if (step() === 1) {
       <div class="planning-wizard__layout planning-wizard__layout--step1 planning-wizard__step-enter">
@@ -82,64 +90,124 @@
               <h2 class="planning-wizard__card-title">{{ 'PLANNING_NEW.WIZARD_STEP1_TITLE' | translate }}</h2>
               <p class="planning-wizard__card-desc">{{ 'PLANNING_NEW.WIZARD_STEP1_DESC' | translate }}</p>
             </div>
-            <div class="planning-wizard__field">
+            <div class="planning-wizard__field planning-wizard__field--name">
               <label class="planning-wizard__field-label" for="wizard-project-name">{{
                 'PLANNING_NEW.WIZARD_NAME_LABEL' | translate
               }}</label>
-              <input
-                id="wizard-project-name"
-                type="text"
-                class="planning-wizard__input"
-                [value]="newProjectName()"
-                (input)="onWizardNameInput($event)"
-                [placeholder]="'PLANNING_NEW.WIZARD_NAME_PLACEHOLDER' | translate"
-                autocomplete="off"
-              />
+              <div class="planning-wizard__input-icon-wrap">
+                <span class="planning-wizard__input-icon" aria-hidden="true">
+                  <span class="material-symbols-outlined">apartment</span>
+                </span>
+                <span class="planning-wizard__input-divider" aria-hidden="true"></span>
+                <input
+                  id="wizard-project-name"
+                  type="text"
+                  class="planning-wizard__input planning-wizard__input--with-icon"
+                  [value]="newProjectName()"
+                  (input)="onWizardNameInput($event)"
+                  [placeholder]="'PLANNING_NEW.WIZARD_NAME_PLACEHOLDER' | translate"
+                  autocomplete="off"
+                />
+              </div>
               @if (createErrorKey(); as ck) {
                 <p class="planning-wizard__field-err" role="alert">{{ ck | translate }}</p>
               }
             </div>
-            <div class="planning-wizard__field">
-              <label class="planning-wizard__field-label" for="wizard-line-material">{{
+            <div class="planning-wizard__field planning-wizard__field--cards">
+              <span class="planning-wizard__field-label" id="wizard-line-material-label">{{
                 'PLANNING_NEW.LINE_MATERIAL_LABEL' | translate
-              }}</label>
-              <skyflow-ui-select
-                inputId="wizard-line-material"
-                class="planning-wizard__select"
-                [fixedPanel]="false"
-                [panelZIndex]="400"
-                [options]="lineMaterialOptions()"
-                [value]="lineMaterial()"
-                (valueChange)="onLineMaterialSelect($event)"
-              />
+              }}</span>
+              <div
+                class="planning-wizard__option-cards"
+                role="radiogroup"
+                [attr.aria-labelledby]="'wizard-line-material-label'"
+              >
+                @for (opt of lineMaterialCardOptions(); track opt.value) {
+                  <button
+                    type="button"
+                    class="planning-wizard__option-card"
+                    [class.planning-wizard__option-card--selected]="lineMaterial() === opt.value"
+                    role="radio"
+                    [attr.aria-checked]="lineMaterial() === opt.value"
+                    (click)="selectLineMaterial(opt.value)"
+                  >
+                    <span class="planning-wizard__option-card-top">
+                      <span class="material-symbols-outlined planning-wizard__option-card-icon">{{
+                        opt.icon
+                      }}</span>
+                      <span class="planning-wizard__option-card-radio" aria-hidden="true"></span>
+                    </span>
+                    <span class="planning-wizard__option-card-title">{{ opt.titleKey | translate }}</span>
+                    <span class="planning-wizard__option-card-sub">{{ opt.subtitleKey | translate }}</span>
+                    <span class="planning-wizard__option-card-emph">{{ opt.emphKey | translate }}</span>
+                    <span class="planning-wizard__option-card-hint">{{ opt.hintKey | translate }}</span>
+                  </button>
+                }
+              </div>
             </div>
-            <div class="planning-wizard__field">
-              <label class="planning-wizard__field-label" for="wizard-machining-route">{{
+            <div class="planning-wizard__field planning-wizard__field--cards">
+              <span class="planning-wizard__field-label" id="wizard-machining-route-label">{{
                 'PLANNING_NEW.MACHINING_ROUTE_LABEL' | translate
-              }}</label>
-              <skyflow-ui-select
-                inputId="wizard-machining-route"
-                class="planning-wizard__select"
-                [fixedPanel]="false"
-                [panelZIndex]="400"
-                [options]="machiningRouteOptions()"
-                [value]="machiningRoute()"
-                (valueChange)="onMachiningRouteSelect($event)"
-              />
+              }}</span>
+              <div
+                class="planning-wizard__option-cards"
+                role="radiogroup"
+                [attr.aria-labelledby]="'wizard-machining-route-label'"
+              >
+                @for (opt of machiningRouteCardOptions(); track opt.value) {
+                  <button
+                    type="button"
+                    class="planning-wizard__option-card"
+                    [class.planning-wizard__option-card--selected]="machiningRoute() === opt.value"
+                    role="radio"
+                    [attr.aria-checked]="machiningRoute() === opt.value"
+                    (click)="selectMachiningRoute(opt.value)"
+                  >
+                    <span class="planning-wizard__option-card-top">
+                      <span class="material-symbols-outlined planning-wizard__option-card-icon">{{
+                        opt.icon
+                      }}</span>
+                      <span class="planning-wizard__option-card-radio" aria-hidden="true"></span>
+                    </span>
+                    <span class="planning-wizard__option-card-title">{{ opt.titleKey | translate }}</span>
+                    <span class="planning-wizard__option-card-sub">{{ opt.subtitleKey | translate }}</span>
+                    <span class="planning-wizard__option-card-emph">{{ opt.emphKey | translate }}</span>
+                    <span class="planning-wizard__option-card-hint">{{ opt.hintKey | translate }}</span>
+                  </button>
+                }
+              </div>
             </div>
-            <div class="planning-wizard__field">
-              <label class="planning-wizard__field-label" for="wizard-angle-sourcing">{{
+            <div class="planning-wizard__field planning-wizard__field--cards">
+              <span class="planning-wizard__field-label" id="wizard-angle-sourcing-label">{{
                 'PLANNING_NEW.ANGLE_SOURCING_LABEL' | translate
-              }}</label>
-              <skyflow-ui-select
-                inputId="wizard-angle-sourcing"
-                class="planning-wizard__select"
-                [fixedPanel]="false"
-                [panelZIndex]="400"
-                [options]="angleSourcingOptions()"
-                [value]="angleSourcing()"
-                (valueChange)="onAngleSourcingSelect($event)"
-              />
+              }}</span>
+              <div
+                class="planning-wizard__option-cards"
+                role="radiogroup"
+                [attr.aria-labelledby]="'wizard-angle-sourcing-label'"
+              >
+                @for (opt of angleSourcingCardOptions(); track opt.value) {
+                  <button
+                    type="button"
+                    class="planning-wizard__option-card"
+                    [class.planning-wizard__option-card--selected]="angleSourcing() === opt.value"
+                    role="radio"
+                    [attr.aria-checked]="angleSourcing() === opt.value"
+                    (click)="selectAngleSourcing(opt.value)"
+                  >
+                    <span class="planning-wizard__option-card-top">
+                      <span class="material-symbols-outlined planning-wizard__option-card-icon">{{
+                        opt.icon
+                      }}</span>
+                      <span class="planning-wizard__option-card-radio" aria-hidden="true"></span>
+                    </span>
+                    <span class="planning-wizard__option-card-title">{{ opt.titleKey | translate }}</span>
+                    <span class="planning-wizard__option-card-sub">{{ opt.subtitleKey | translate }}</span>
+                    <span class="planning-wizard__option-card-emph">{{ opt.emphKey | translate }}</span>
+                    <span class="planning-wizard__option-card-hint">{{ opt.hintKey | translate }}</span>
+                  </button>
+                }
+              </div>
             </div>
             <div class="planning-wizard__field">
               <label class="planning-wizard__field-label" for="wizard-project-details">
@@ -174,14 +242,6 @@
     }
 
     @if (step() >= 2 && selectedProjectId(); as pid) {
-      @if (step() === 2) {
-        <div class="planning-wizard__step-banner planning-wizard__step-enter">
-          <span class="planning-wizard__step-banner-kicker">{{ 'PLANNING_NEW.WIZARD_STEP2_SHORT' | translate }}</span>
-          <span class="planning-wizard__step-banner-title">{{ 'PLANNING_NEW.WIZARD_STEP2_TITLE' | translate }}</span>
-          <span class="planning-wizard__step-banner-desc">{{ 'PLANNING_NEW.WIZARD_STEP2_DESC' | translate }}</span>
-        </div>
-      }
-
       @if (step() === 3) {
         <section class="planning-wizard__card planning-wizard__card--assign planning-wizard__step-enter">
           <div class="planning-wizard__card-accent" aria-hidden="true"></div>
@@ -354,7 +414,6 @@
           (planningChanged)="onPlanningChanged()"
           (planningApproved)="onPlanningApproved()"
           (wizardContinue)="goStep3()"
-          (angleSourcingChange)="onAngleSourcingChange($event)"
         />
       </div>
     }

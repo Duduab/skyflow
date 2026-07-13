@@ -15,6 +15,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/api.service';
 import { httpErrorMessage } from '../../../core/http-error.util';
 import {
+  FacadeDirection,
+  FacadeGroupPreviewDto,
   PlanningPdfKind,
   PlanningPdfPreviewDto,
   ProjectAngleSourcing,
@@ -22,20 +24,26 @@ import {
   ProjectLineMaterial,
 } from '../../../core/skyflow.models';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
-import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
-import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
+import { ElevationMapComponent } from '../../elevation/elevation-map.component';
 
 interface PdfSlot {
   kind: PlanningPdfKind;
   titleKey: string;
   descKey: string;
   done: boolean;
+  /** Locked until the quantities + stages file is uploaded and parsed. */
+  locked: boolean;
 }
 
 @Component({
   selector: 'skyflow-planning-pdf-panel',
   standalone: true,
-  imports: [TranslateModule, NgClass, UiButtonComponent, UiSelectComponent],
+  imports: [
+    TranslateModule,
+    NgClass,
+    UiButtonComponent,
+    ElevationMapComponent,
+  ],
   templateUrl: './planning-pdf-panel.component.html',
   styleUrl: './planning-pdf-panel.component.scss',
 })
@@ -56,7 +64,6 @@ export class PlanningPdfPanelComponent {
   readonly planningChanged = output<void>();
   readonly planningApproved = output<void>();
   readonly wizardContinue = output<void>();
-  readonly angleSourcingChange = output<ProjectAngleSourcing>();
 
   readonly preview = signal<PlanningPdfPreviewDto | null>(null);
   readonly uploadingKind = signal<PlanningPdfKind | null>(null);
@@ -134,6 +141,18 @@ export class PlanningPdfPanelComponent {
   /** מפתח `${windowTypeId}:${kind}` של ההעלאה שרצה כרגע. */
   readonly uploadingRowKey = signal<string | null>(null);
 
+  /** popup בחירת חלון עבור כפתור "הוראות ייצור לחלון" הראשי. */
+  readonly windowPickerOpen = signal(false);
+
+  openWindowPicker(): void {
+    if (!this.quantitiesReady()) return;
+    this.windowPickerOpen.set(true);
+  }
+
+  closeWindowPicker(): void {
+    this.windowPickerOpen.set(false);
+  }
+
   toggleRowUploader(windowTypeId: string): void {
     this.expandedWindowTypeId.update((cur) =>
       cur === windowTypeId ? null : windowTypeId,
@@ -203,24 +222,6 @@ export class PlanningPdfPanelComponent {
     });
   }
 
-  readonly angleSourcingOptions = computed(
-    (): UiSelectOption<ProjectAngleSourcing>[] => [
-      {
-        value: 'INTERNAL_LASER',
-        label: this.translate.instant('PLANNING_NEW.ANGLE_SOURCING_INTERNAL'),
-      },
-      {
-        value: 'EXTERNAL_SUPPLIER',
-        label: this.translate.instant('PLANNING_NEW.ANGLE_SOURCING_EXTERNAL'),
-      },
-    ],
-  );
-
-  onAngleSourcingSelect(value: string | number | null): void {
-    if (value == null) return;
-    this.angleSourcingChange.emit(String(value) as ProjectAngleSourcing);
-  }
-
   private slotDone(kind: PlanningPdfKind): boolean {
     const p = this.preview();
     if (!p) return false;
@@ -238,23 +239,28 @@ export class PlanningPdfPanelComponent {
     }
   }
 
+  /** Quantities + Stages must be uploaded/parsed first; it unlocks the rest. */
+  readonly quantitiesReady = computed(() => {
+    const p = this.preview();
+    if (!p) return false;
+    return p.stages.length > 0 || p.facadeCount > 0;
+  });
+
   readonly slots = computed((): PdfSlot[] => {
     const angDetected = (this.preview()?.angles.length ?? 0) > 0;
-    const defs: Omit<PdfSlot, 'done'>[] = [
+    const ready = this.quantitiesReady();
+    // כמויות + Stages תמיד ראשון — הוא שמזין את החזיתות והשלבים ומשחרר את השאר.
+    // מפת החזיתות אינה סלוט גנרי אלא צ'ק-ליסט per-facade (ראה למטה).
+    const defs: Omit<PdfSlot, 'done' | 'locked'>[] = [
       {
-        kind: 'ELEVATION_MAP',
-        titleKey: 'PLANNING_PDF.SLOT_ELEVATION_TITLE',
-        descKey: 'PLANNING_PDF.SLOT_ELEVATION_DESC',
+        kind: 'QUANTITIES_PDF',
+        titleKey: 'PLANNING_PDF.SLOT_QUANTITIES_TITLE',
+        descKey: 'PLANNING_PDF.SLOT_QUANTITIES_DESC',
       },
       {
         kind: 'WINDOW_INSTRUCTION_PDF',
         titleKey: 'PLANNING_PDF.SLOT_WINDOW_TITLE',
         descKey: 'PLANNING_PDF.SLOT_WINDOW_DESC',
-      },
-      {
-        kind: 'QUANTITIES_PDF',
-        titleKey: 'PLANNING_PDF.SLOT_QUANTITIES_TITLE',
-        descKey: 'PLANNING_PDF.SLOT_QUANTITIES_DESC',
       },
       // סלוט העלאת ה-ANG מוצג רק כשזוהה ANG בקובץ הוראות החלונות.
       ...(angDetected
@@ -267,8 +273,81 @@ export class PlanningPdfPanelComponent {
           ]
         : []),
     ];
-    return defs.map((d) => ({ ...d, done: this.slotDone(d.kind) }));
+    return defs.map((d) => ({
+      ...d,
+      done: this.slotDone(d.kind),
+      locked: d.kind !== 'QUANTITIES_PDF' && !ready,
+    }));
   });
+
+  /** Human-readable direction label key for the stages element. */
+  directionKey(dir: FacadeDirection): string {
+    return `PLANNING_PDF.DIR_${dir}`;
+  }
+
+  /** The facade group whose elevation map is currently uploading. */
+  readonly uploadingGroupKey = signal<string | null>(null);
+
+  /** קבוצת החזית שמפתה נפתחת ב-popup המפה האינטראקטיבית (או null כשסגור). */
+  readonly mapModalGroup = signal<string | null>(null);
+
+  /** פתיחת מפת החזיתות האינטראקטיבית (מלבנים לחיצים + סבב עבודה) לקבוצה. */
+  openGroupMap(groupKey: string): void {
+    if (!this.projectId()) return;
+    this.mapModalGroup.set(groupKey);
+  }
+
+  closeGroupMap(): void {
+    this.mapModalGroup.set(null);
+  }
+
+  private readonly DIRECTION_ORDER: FacadeDirection[] = [
+    'SOUTH',
+    'NORTH',
+    'WEST',
+    'EAST',
+  ];
+
+  /** Facade groups by direction — drives the per-group elevation checklist. */
+  readonly facadeGroupsByDirection = computed(
+    (): { direction: FacadeDirection; groups: FacadeGroupPreviewDto[] }[] => {
+      const groups = this.preview()?.facadeGroups ?? [];
+      return this.DIRECTION_ORDER.map((direction) => ({
+        direction,
+        groups: groups.filter((g) => g.direction === direction),
+      })).filter((d) => d.groups.length > 0);
+    },
+  );
+
+  /** Facade groups still missing an elevation map (soft warning, not blocking). */
+  readonly missingElevationCount = computed(() => {
+    const p = this.preview();
+    if (!p) return 0;
+    return Math.max(0, p.facadeGroupCount - p.facadeGroupsWithElevation);
+  });
+
+  onFacadeGroupElevationSelected(
+    groupKey: string,
+    fileList: FileList | null,
+  ): void {
+    const file = fileList && fileList.length ? fileList[0] : null;
+    if (!file) return;
+    const id = this.projectId();
+    if (!id) return;
+    this.uploadingGroupKey.set(groupKey);
+    this.error.set(null);
+    this.api
+      .uploadFacadeGroupElevation(id, groupKey, file)
+      .pipe(finalize(() => this.uploadingGroupKey.set(null)))
+      .subscribe({
+        next: (res) => {
+          this.preview.set(res.preview);
+          this.planningChanged.emit();
+        },
+        error: (err) =>
+          this.error.set(httpErrorMessage(err, 'Upload or parse failed')),
+      });
+  }
 
   /** קודי ANG שזוהו מהשרטוט אך עדיין חסר להם קובץ הוראות. */
   readonly missingAngles = computed(() =>
@@ -298,6 +377,8 @@ export class PlanningPdfPanelComponent {
   }
 
   onFilesSelected(kind: PlanningPdfKind, fileList: FileList | null): void {
+    // Everything except the quantities file is locked until quantities parsed.
+    if (kind !== 'QUANTITIES_PDF' && !this.quantitiesReady()) return;
     const files = fileList ? Array.from(fileList) : [];
     if (!files.length) return;
     this.uploadFiles(kind, this.isMultiKind(kind) ? files : [files[0]]);

@@ -235,9 +235,10 @@ export class WindowPlanningService {
       }
     }
 
-    // stages (replace)
+    // stages (replace) — capture code→id to attach facades by stage
     await this.prisma.productionStage.deleteMany({ where: { projectId } });
     let stageSort = 0;
+    const stageCodeToId = new Map<string, string>();
     for (const stage of parsed.stages) {
       const created = await this.prisma.productionStage.create({
         data: {
@@ -247,6 +248,7 @@ export class WindowPlanningService {
           sortOrder: stageSort++,
         },
       });
+      stageCodeToId.set(stage.code, created.id);
       for (const [code, qty] of Object.entries(stage.qtys)) {
         const wtId = codeToId.get(code);
         if (!wtId || !qty) continue;
@@ -254,6 +256,38 @@ export class WindowPlanningService {
           data: { stageId: created.id, windowTypeId: wtId, qty },
         });
       }
+    }
+
+    // facades (replace) — each sub-facade belongs to a single stage (by color)
+    // and later requires its own elevation-map PDF. Preserve an already-uploaded
+    // elevation doc across re-parses (match by label).
+    const priorFacades = await this.prisma.facade.findMany({
+      where: { projectId },
+      select: { label: true, elevationDocId: true },
+    });
+    const priorElevationByLabel = new Map(
+      priorFacades.map((f) => [f.label, f.elevationDocId]),
+    );
+    await this.prisma.facade.deleteMany({ where: { projectId } });
+    let facadeSort = 0;
+    for (const facade of parsed.facades) {
+      const total =
+        facade.total ??
+        Object.values(facade.qtys).reduce((s, q) => s + q, 0);
+      await this.prisma.facade.create({
+        data: {
+          projectId,
+          label: facade.label,
+          groupKey: facade.label.split('-')[0],
+          direction: facade.direction,
+          totalQty: total,
+          stageId: facade.stageCode
+            ? (stageCodeToId.get(facade.stageCode) ?? null)
+            : null,
+          elevationDocId: priorElevationByLabel.get(facade.label) ?? null,
+          sortOrder: facadeSort++,
+        },
+      });
     }
 
     await this.linkElevationCellsToWindowTypes(projectId);
@@ -340,8 +374,15 @@ export class WindowPlanningService {
 
   /** Aggregated preview for the wizard confirm screen. */
   async buildPlanningPreview(projectId: string) {
-    const [windowTypes, stages, angles, cellAgg, order, steelworkDetails] =
-      await Promise.all([
+    const [
+      windowTypes,
+      stages,
+      angles,
+      cellAgg,
+      order,
+      steelworkDetails,
+      facadeRows,
+    ] = await Promise.all([
       this.prisma.windowType.findMany({
         where: { projectId },
         orderBy: { sortOrder: 'asc' },
@@ -372,11 +413,95 @@ export class WindowPlanningService {
         orderBy: { sortOrder: 'asc' },
         include: { instructionDoc: { select: { pdfPath: true } } },
       }),
+      this.prisma.facade.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: 'asc' },
+        include: { elevationDoc: { select: { pdfPath: true } } },
+      }),
     ]);
 
     const totalUnits = windowTypes.reduce((s, w) => s + w.totalQty, 0);
 
+    const DIRECTIONS: ('SOUTH' | 'NORTH' | 'WEST' | 'EAST')[] = [
+      'SOUTH',
+      'NORTH',
+      'WEST',
+      'EAST',
+    ];
+    const facadeView = facadeRows.map((f) => ({
+      id: f.id,
+      label: f.label,
+      groupKey: f.groupKey || f.label.split('-')[0],
+      direction: f.direction,
+      totalQty: f.totalQty,
+      stageId: f.stageId,
+      elevationPdfUrl: f.elevationDoc?.pdfPath ?? null,
+    }));
+
+    // Facade GROUPS = elevation-map upload unit (S-w+S-e → S, W2 → W2).
+    const directionOf = (key: string): 'SOUTH' | 'NORTH' | 'WEST' | 'EAST' => {
+      const c = key.charAt(0).toUpperCase();
+      if (c === 'N') return 'NORTH';
+      if (c === 'W') return 'WEST';
+      if (c === 'E') return 'EAST';
+      return 'SOUTH';
+    };
+    const groupMap = new Map<
+      string,
+      {
+        key: string;
+        direction: 'SOUTH' | 'NORTH' | 'WEST' | 'EAST';
+        subLabels: string[];
+        totalQty: number;
+        elevationPdfUrl: string | null;
+        sortOrder: number;
+      }
+    >();
+    facadeRows.forEach((f, i) => {
+      const key = f.groupKey || f.label.split('-')[0];
+      const existing = groupMap.get(key);
+      if (existing) {
+        existing.subLabels.push(f.label);
+        existing.totalQty += f.totalQty;
+        if (!existing.elevationPdfUrl && f.elevationDoc?.pdfPath) {
+          existing.elevationPdfUrl = f.elevationDoc.pdfPath;
+        }
+      } else {
+        groupMap.set(key, {
+          key,
+          direction: directionOf(key),
+          subLabels: [f.label],
+          totalQty: f.totalQty,
+          elevationPdfUrl: f.elevationDoc?.pdfPath ?? null,
+          sortOrder: i,
+        });
+      }
+    });
+    const facadeGroupsView = [...groupMap.values()].sort(
+      (a, b) => a.sortOrder - b.sortOrder,
+    );
+    /** Group a stage's facades by direction (skip empty directions). */
+    const facadesByStage = (stageId: string) => {
+      const list = facadeView.filter((f) => f.stageId === stageId);
+      return DIRECTIONS.map((dir) => ({
+        direction: dir,
+        facades: list.filter((f) => f.direction === dir),
+      })).filter((g) => g.facades.length > 0);
+    };
+    const facadeCount = facadeView.length;
+    const facadesWithElevation = facadeView.filter(
+      (f) => !!f.elevationPdfUrl,
+    ).length;
+
     return {
+      facades: facadeView,
+      facadeCount,
+      facadesWithElevation,
+      facadeGroups: facadeGroupsView,
+      facadeGroupCount: facadeGroupsView.length,
+      facadeGroupsWithElevation: facadeGroupsView.filter(
+        (g) => !!g.elevationPdfUrl,
+      ).length,
       projectId,
       angleSourcing: order?.angleSourcing ?? 'INTERNAL_LASER',
       windowTypeCount: windowTypes.length,
@@ -398,12 +523,30 @@ export class WindowPlanningService {
         facadeCount: w.facadeQuantities.length,
         elevationCellCount: w._count.elevationCells,
       })),
-      stages: stages.map((s) => ({
-        code: s.code,
-        colorHex: s.colorHex,
-        totalQty: s.stageQuantities.reduce((sum, q) => sum + q.qty, 0),
-        windowTypeCount: s.stageQuantities.length,
-      })),
+      stages: stages.map((s) => {
+        const facadeGroups = facadesByStage(s.id);
+        const facadeTotal = facadeGroups.reduce(
+          (sum, g) => sum + g.facades.reduce((a, f) => a + f.totalQty, 0),
+          0,
+        );
+        return {
+          code: s.code,
+          colorHex: s.colorHex,
+          totalQty: s.stageQuantities.reduce((sum, q) => sum + q.qty, 0),
+          windowTypeCount: s.stageQuantities.length,
+          facadeCount: facadeGroups.reduce((n, g) => n + g.facades.length, 0),
+          facadeTotalQty: facadeTotal,
+          facadeGroups: facadeGroups.map((g) => ({
+            direction: g.direction,
+            facades: g.facades.map((f) => ({
+              id: f.id,
+              label: f.label,
+              totalQty: f.totalQty,
+              elevationPdfUrl: f.elevationPdfUrl,
+            })),
+          })),
+        };
+      }),
       angles: angles.map((a) => ({
         code: a.code,
         qty: a.qty,

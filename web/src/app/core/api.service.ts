@@ -405,9 +405,13 @@ export class ApiService {
     );
   }
 
-  getElevationMap(projectId: string): Observable<ElevationMapResponse> {
+  getElevationMap(
+    projectId: string,
+    group?: string | null,
+  ): Observable<ElevationMapResponse> {
+    const q = group ? `?group=${encodeURIComponent(group)}` : '';
     return this.http.get<ElevationMapResponse>(
-      `${this.base}/projects/${encodeURIComponent(projectId)}/elevation-map`,
+      `${this.base}/projects/${encodeURIComponent(projectId)}/elevation-map${q}`,
     );
   }
 
@@ -514,6 +518,22 @@ export class ApiService {
   ): Observable<PlanningPdfPreviewDto> {
     return this.http.get<PlanningPdfPreviewDto>(
       `${this.base}/projects/${encodeURIComponent(projectId)}/planning/pdf-preview`,
+    );
+  }
+
+  /** העלאת מפת חזיתות עבור קבוצת חזית (S / N5 / W2) — קובץ אחד לכל הקבוצה */
+  uploadFacadeGroupElevation(
+    projectId: string,
+    groupKey: string,
+    file: File,
+  ): Observable<PlanningPdfUploadResponse> {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<PlanningPdfUploadResponse>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/planning/facade-groups/${encodeURIComponent(
+        groupKey,
+      )}/elevation`,
+      fd,
     );
   }
 

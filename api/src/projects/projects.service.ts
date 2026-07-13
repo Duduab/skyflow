@@ -341,6 +341,117 @@ export class ProjectsService {
     };
   }
 
+  /**
+   * Upload the elevation-map PDF for a facade GROUP. A group is the label
+   * prefix before '-' (S-w/S-e → S, N5-w/N5-e → N5, W2 → W2); one PDF covers
+   * all sub-facades in the group. Analyzed into cells tied to the group's map;
+   * the document is linked to every facade in the group. Re-uploading replaces
+   * the group's previous map + document.
+   */
+  async ingestFacadeGroupElevation(
+    projectId: string,
+    groupKey: string,
+    file: Express.Multer.File,
+  ) {
+    if (!file?.filename) {
+      throw new BadRequestException('file is required');
+    }
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: { id: true, flowStatus: true },
+    });
+    if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+    if (project.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
+      throw new BadRequestException(
+        'Elevation maps can only be uploaded while the project is pending planning approval',
+      );
+    }
+    const facades = await this.prisma.facade.findMany({
+      where: { projectId, groupKey },
+      select: { id: true, elevationDocId: true },
+    });
+    if (!facades.length) {
+      throw new NotFoundException('Facade group not found for this project');
+    }
+
+    let buffer: Buffer | null = null;
+    try {
+      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+    } catch {
+      buffer = null;
+    }
+
+    // replace a previously uploaded map/document for this group
+    const oldDocIds = [
+      ...new Set(
+        facades
+          .map((f) => f.elevationDocId)
+          .filter((v): v is string => !!v),
+      ),
+    ];
+    if (oldDocIds.length) {
+      for (const oldDocId of oldDocIds) {
+        await this.elevation.deleteForDocument(oldDocId);
+      }
+      await this.prisma.facade.updateMany({
+        where: { projectId, groupKey },
+        data: { elevationDocId: null },
+      });
+      await this.prisma.projectDocument
+        .deleteMany({ where: { id: { in: oldDocIds } } })
+        .catch(() => undefined);
+    }
+
+    const docTitle = (
+      file.originalname.replace(/\.pdf$/i, '').trim() ||
+      `${groupKey} — elevation`
+    ).slice(0, 500);
+    const agg = await this.prisma.projectDocument.aggregate({
+      where: { projectId, kind: ProjectDocumentKind.ELEVATION_MAP },
+      _max: { sortOrder: true },
+    });
+    const sortOrder = (agg._max.sortOrder ?? -1) + 1;
+    const pdfPath = `/assets/project-docs/uploads/${file.filename}`;
+    const doc = await this.prisma.projectDocument.create({
+      data: {
+        projectId,
+        kind: ProjectDocumentKind.ELEVATION_MAP,
+        title: docTitle,
+        pdfPath,
+        sortOrder,
+      },
+    });
+    await this.prisma.facade.updateMany({
+      where: { projectId, groupKey },
+      data: { elevationDocId: doc.id },
+    });
+
+    if (buffer) {
+      await this.elevation.analyzeDocument({
+        projectId,
+        documentId: doc.id,
+        title: docTitle,
+        fileBuffer: buffer,
+        facadeGroup: groupKey,
+      });
+      await this.windowPlanning.linkElevationCellsToWindowTypes(projectId);
+    }
+
+    const preview = await this.windowPlanning.buildPlanningPreview(projectId);
+    return {
+      ok: true as const,
+      document: {
+        id: doc.id,
+        kind: doc.kind,
+        title: doc.title,
+        pdfUrl: pdfPath,
+        createdAt: doc.createdAt.toISOString(),
+      },
+      facadeGroup: groupKey,
+      preview,
+    };
+  }
+
   getPlanningPdfPreview(projectId: string) {
     return this.windowPlanning.buildPlanningPreview(projectId);
   }
