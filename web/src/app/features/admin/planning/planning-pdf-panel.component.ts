@@ -1,4 +1,4 @@
-import { NgClass, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   computed,
@@ -42,7 +42,6 @@ interface PdfSlot {
   standalone: true,
   imports: [
     TranslateModule,
-    NgClass,
     NgTemplateOutlet,
     UiButtonComponent,
     ElevationMapComponent,
