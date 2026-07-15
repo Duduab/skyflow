@@ -80,6 +80,7 @@
     rgba(34, 197, 94, 0.2)
   );
   box-shadow: var(--sf-shadow);
+  overflow: visible;
 }
 
 :host-context(html:not(.theme-light)) .planning-new__hero-card {
@@ -89,6 +90,7 @@
 .planning-new__hero-glow {
   position: absolute;
   inset: -35% -15%;
+  z-index: 0;
   border-radius: var(--sf-radius);
   background: conic-gradient(
     from 200deg at 50% 50%,
@@ -99,6 +101,7 @@
   );
   opacity: 0.45;
   filter: blur(56px);
+  pointer-events: none;
   animation: planning-new-spin 28s linear infinite;
 }
 
@@ -152,6 +155,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
+  overflow: visible;
 }
 
 :host-context(html:not(.theme-light)) .planning-new__hero-content {
@@ -297,13 +301,14 @@
 .planning-wizard__rail--merged {
   margin-top: 0;
   width: 100%;
-  padding: 1.15rem 0.5rem 0.25rem;
+  padding: 1.35rem 0.75rem 0.85rem;
   border: none;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  overflow: visible;
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__rail--merged {
@@ -316,6 +321,7 @@
   max-width: 32rem;
   margin: 0 auto;
   padding-top: 0.35rem;
+  overflow: visible;
 }
 
 .planning-wizard__steps {
@@ -326,11 +332,12 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  overflow: visible;
 }
 
 @media (min-width: 480px) {
   .planning-wizard__rail-inner {
-    max-width: 36rem;
+    max-width: 42rem;
   }
 }
 
@@ -340,13 +347,20 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.5rem;
-  width: 5.5rem;
+  gap: 0.55rem;
+  width: 6.25rem;
+  overflow: visible;
 }
 
 @media (min-width: 480px) {
   .planning-wizard__step {
-    width: 6.5rem;
+    width: 7.75rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .planning-wizard__step {
+    width: 8.5rem;
   }
 }
 
@@ -358,7 +372,7 @@
   align-self: flex-start;
   min-width: 1.75rem;
   max-width: 7rem;
-  margin-top: 1.4rem;
+  margin-top: 1.55rem;
   padding: 0 0.15rem;
   list-style: none;
 }
@@ -398,38 +412,66 @@
 .planning-wizard__dot-wrap {
   display: flex;
   justify-content: center;
+  overflow: visible;
+  padding: 0.15rem;
 }
 
 .planning-wizard__dot {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.85rem;
-  height: 2.85rem;
-  border-radius: 999px;
+  box-sizing: border-box;
+  width: 3.15rem;
+  height: 3.15rem;
+  border-radius: 50%;
   font-weight: 900;
   border: 2px solid rgb(226 232 240);
-  background: #fff;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  background-clip: border-box;
   color: #64748b;
-  box-shadow: var(--sf-shadow);
+  box-shadow:
+    0 4px 14px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   transition:
     transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     background 0.2s ease,
     color 0.2s ease;
+  overflow: hidden;
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__dot {
-  background: rgba(30, 41, 59, 0.95);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%);
   border-color: rgba(71, 85, 105, 0.75);
-  color: rgba(226, 232, 240, 0.9);
-  box-shadow: var(--sf-shadow);
+  color: rgba(226, 232, 240, 0.92);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .planning-wizard__dot-num {
-  font-size: 1rem;
+  font-size: 1.18rem;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  background: linear-gradient(
+    135deg,
+    var(--sf-blue, #558fc3) 0%,
+    var(--sf-indigo, #4b689d) 55%,
+    var(--sf-navy, #3e5d88) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__dot-num {
+  background: linear-gradient(135deg, #93c5fd 0%, #7dd3fc 55%, #bae6fd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .planning-wizard__dot-check {
@@ -444,22 +486,47 @@
 
 .planning-wizard__step--done .planning-wizard__dot {
   border-color: rgba(34, 197, 94, 0.55);
-  background: linear-gradient(145deg, #ecfdf5, #d1fae5);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  background: linear-gradient(145deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.28);
+}
+
+.planning-wizard__step--done .planning-wizard__dot-check {
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 900;
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__step--done .planning-wizard__dot {
-  background: linear-gradient(145deg, rgba(6, 78, 59, 0.9), rgba(20, 83, 45, 0.85));
+  background: linear-gradient(145deg, #16a34a 0%, #15803d 100%);
   border-color: rgba(74, 222, 128, 0.45);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__step--done .planning-wizard__dot-check {
+  color: #fff;
 }
 
 .planning-wizard__step--current .planning-wizard__dot {
-  transform: scale(1.08);
-  border-color: #0ea5e9;
-  background: linear-gradient(160deg, #e0f2fe 0%, #fff 100%);
-  color: #0369a1;
-  box-shadow: var(--sf-shadow), 0 0 0 4px rgba(14, 165, 233, 0.2);
+  width: 3.35rem;
+  height: 3.35rem;
+  transform: none;
+  border: none;
+  background: var(--planning-wizard-brand-gradient);
+  background-clip: border-box;
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(62, 93, 136, 0.38);
   animation: planning-wizard-dot-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.planning-wizard__step--current .planning-wizard__dot-num {
+  position: relative;
+  z-index: 1;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: #fff;
+  font-size: 1.28rem;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
 }
 
 @keyframes planning-wizard-dot-pop {
@@ -467,10 +534,10 @@
     transform: scale(0.92);
   }
   55% {
-    transform: scale(1.12);
+    transform: scale(1.06);
   }
   100% {
-    transform: scale(1.08);
+    transform: scale(1);
   }
 }
 
@@ -494,17 +561,23 @@
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__step--current .planning-wizard__dot {
-  background: linear-gradient(160deg, rgba(12, 74, 110, 0.95), rgba(15, 23, 42, 0.98));
-  color: #bae6fd;
-  border-color: #38bdf8;
-  box-shadow: var(--sf-shadow), 0 0 0 4px rgba(56, 189, 248, 0.18);
+  background: var(--planning-wizard-brand-gradient);
+  background-clip: border-box;
+  color: #fff;
+  border: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__step--current .planning-wizard__dot-num {
+  color: #fff;
 }
 
 .planning-wizard__step-text {
+  max-width: 100%;
   font-size: 0.68rem;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
   color: #94a3b8;
 }
 
@@ -513,11 +586,17 @@
 }
 
 .planning-wizard__step--current .planning-wizard__step-text {
-  color: #0369a1;
+  color: var(--sf-blue, #558fc3);
 }
 
 :host-context(html:not(.theme-light)) .planning-wizard__step--current .planning-wizard__step-text {
-  color: #7dd3fc;
+  color: #93c5fd;
+}
+
+@media (min-width: 480px) {
+  .planning-wizard__step-text {
+    font-size: 0.72rem;
+  }
 }
 
 .planning-wizard__step--done .planning-wizard__step-text {
@@ -642,6 +721,36 @@
   margin-bottom: 1.35rem;
 }
 
+.planning-wizard__field--manager {
+  margin-bottom: 1.5rem;
+}
+
+.planning-wizard__select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.15rem;
+  padding-inline-end: 2.7rem;
+}
+
+:host-context(html[dir='rtl']) .planning-wizard__select {
+  background-position: left 1rem center;
+}
+
+.planning-wizard__select--placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.planning-wizard__field-hint {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
 .planning-wizard__field--cards {
   margin-bottom: 1.5rem;
 }
@@ -734,10 +843,36 @@
   gap: 0.75rem;
 }
 
+.planning-wizard__option-cards--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 520px) {
   .planning-wizard__option-cards {
     grid-template-columns: 1fr;
     gap: 0.65rem;
+  }
+
+  .planning-wizard__option-cards--triple {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .planning-wizard__option-cards--triple .planning-wizard__option-card {
+    min-height: 8.5rem;
+    padding: 0.75rem 0.55rem 0.8rem;
+  }
+
+  .planning-wizard__option-cards--triple .planning-wizard__option-card-title {
+    font-size: 0.82rem;
+  }
+
+  .planning-wizard__option-cards--triple .planning-wizard__option-card-emph {
+    font-size: clamp(1.25rem, 3.5vw, 1.75rem);
+  }
+
+  .planning-wizard__option-cards--triple .planning-wizard__option-card-hint {
+    font-size: 0.68rem;
   }
 }
 
@@ -750,7 +885,7 @@
   width: 100%;
   min-height: 9.75rem;
   padding: 1rem 1rem 1.05rem;
-  border: none;
+  border: 1.5px solid var(--sf-blue, #558fc3);
   border-radius: var(--sf-radius);
   background: #fff;
   color: #0a0a0a;
@@ -759,12 +894,14 @@
   transition:
     background 0.2s ease,
     color 0.2s ease,
+    border-color 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.15s ease;
 }
 
 .planning-wizard__option-card:hover:not(.planning-wizard__option-card--selected) {
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.14);
+  border-color: var(--sf-indigo, #4b689d);
+  box-shadow: 0 4px 18px rgba(62, 93, 136, 0.16);
   transform: translateY(-1px);
 }
 
@@ -774,6 +911,7 @@
 }
 
 .planning-wizard__option-card--selected {
+  border-color: transparent;
   background: var(--planning-wizard-brand-gradient);
   color: #fff;
   box-shadow: var(--sf-shadow), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
@@ -814,6 +952,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.planning-wizard__option-card:not(.planning-wizard__option-card--selected) .planning-wizard__option-card-radio {
+  border-color: var(--sf-blue, #558fc3);
+  color: var(--sf-blue, #558fc3);
 }
 
 .planning-wizard__option-card-radio::after {
@@ -902,6 +1045,11 @@
   font-weight: 500;
 }
 
+.planning-wizard__input.planning-wizard__select--placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
 .planning-wizard__input:hover {
   border-color: rgb(203 213 225);
 }
@@ -920,6 +1068,11 @@
 :host-context(html:not(.theme-light)) .planning-wizard__input:focus {
   border-color: #38bdf8;
   box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__input.planning-wizard__select--placeholder {
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .planning-wizard__field-optional {
@@ -1366,6 +1519,332 @@
 
 :host-context(html:not(.theme-light)) .planning-wizard__assign-hint {
   color: rgba(203, 213, 225, 0.82);
+}
+
+/* ── Unit grid (step 3) ───────────────────────────────────────── */
+.planning-wizard__unit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+@media (max-width: 900px) {
+  .planning-wizard__unit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.planning-wizard__unit-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 96px;
+  padding: 0.85rem 0.65rem;
+  border-radius: 14px;
+  border: 1.5px solid rgba(85, 143, 195, 0.45);
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.05s ease;
+}
+
+.planning-wizard__unit-card:hover {
+  border-color: var(--sf-blue, #558fc3);
+  box-shadow: 0 8px 20px rgba(62, 93, 136, 0.14);
+}
+
+.planning-wizard__unit-card:active {
+  transform: scale(0.98);
+}
+
+.planning-wizard__unit-card--launched {
+  border-color: rgba(22, 163, 74, 0.45);
+  background: rgba(240, 253, 244, 0.85);
+}
+
+.planning-wizard__unit-code {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.01em;
+}
+
+.planning-wizard__unit-qty {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+}
+
+.planning-wizard__unit-status {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.14);
+  color: #475569;
+}
+
+.planning-wizard__unit-status--OPEN,
+.planning-wizard__unit-status--IN_PROGRESS {
+  background: rgba(85, 143, 195, 0.16);
+  color: #2563eb;
+}
+
+.planning-wizard__unit-status--COMPLETED {
+  background: rgba(22, 163, 74, 0.16);
+  color: #15803d;
+}
+
+.planning-wizard__unit-status--RETURNED {
+  background: rgba(239, 68, 68, 0.16);
+  color: #b91c1c;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__unit-card {
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(85, 143, 195, 0.35);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__unit-code {
+  color: rgba(241, 245, 249, 0.95);
+}
+
+/* ── Station tiles (assign modal) ─────────────────────────────── */
+.planning-wizard__unit-modal-lead {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.planning-wizard__station-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.planning-wizard__station-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 1.5px solid rgba(100, 116, 139, 0.3);
+  border-radius: 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.05s;
+}
+
+.planning-wizard__station-tile:hover {
+  border-color: var(--sf-blue, #558fc3);
+}
+
+.planning-wizard__station-tile:active {
+  transform: scale(0.97);
+}
+
+.planning-wizard__station-tile--active {
+  border-color: transparent;
+  background: var(--planning-wizard-brand-gradient);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(62, 93, 136, 0.22);
+}
+
+.planning-wizard__station-tile-num {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(85, 143, 195, 0.14);
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.planning-wizard__station-tile--active .planning-wizard__station-tile-num {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.planning-wizard__station-tile-name {
+  font-size: 11px;
+  text-align: center;
+  color: #475569;
+  line-height: 1.25;
+}
+
+.planning-wizard__station-tile--active .planning-wizard__station-tile-name {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.planning-wizard__daily-target--modal {
+  margin-bottom: 0.85rem;
+}
+
+/* ── Work-cycle chips (legacy) ────────────────────────────────── */
+.planning-wizard__cycle-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.85rem;
+}
+
+.planning-wizard__cycle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.planning-wizard__cycle-chip:hover {
+  border-color: var(--sf-blue, #558fc3);
+}
+
+.planning-wizard__cycle-chip--active {
+  border-color: transparent;
+  background: var(--planning-wizard-brand-gradient);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(62, 93, 136, 0.25);
+}
+
+.planning-wizard__cycle-chip-qty {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.planning-wizard__cycle-chip-status {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.16);
+  color: inherit;
+}
+
+.planning-wizard__cycle-chip-status--COMPLETED {
+  background: rgba(22, 163, 74, 0.16);
+  color: #15803d;
+}
+
+.planning-wizard__cycle-chip-status--RETURNED {
+  background: rgba(239, 68, 68, 0.16);
+  color: #b91c1c;
+}
+
+.planning-wizard__cycle-chip--active .planning-wizard__cycle-chip-status {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__cycle-chip {
+  background: rgba(30, 41, 59, 0.55);
+  color: rgba(226, 232, 240, 0.92);
+}
+
+/* ── Selected cycle detail ────────────────────────────────────── */
+.planning-wizard__cycle-detail {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.planning-wizard__daily-target {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 260px;
+  margin-bottom: 0.5rem;
+}
+
+.planning-wizard__daily-target-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.planning-wizard__daily-target-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--sf-radius, 12px);
+  border: 1.5px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.planning-wizard__daily-target-input:focus {
+  outline: none;
+  border-color: var(--sf-blue, #558fc3);
+  box-shadow: 0 0 0 3px rgba(85, 143, 195, 0.18);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__daily-target-label {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__daily-target-input {
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
+}
+
+.planning-wizard__station-group {
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.75rem;
+  border-radius: var(--sf-radius, 12px);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(248, 250, 252, 0.55);
+}
+
+.planning-wizard__station-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__station-group {
+  background: rgba(30, 41, 59, 0.4);
+  border-color: rgba(71, 85, 105, 0.4);
+}
+
+:host-context(html:not(.theme-light)) .planning-wizard__station-title {
+  color: #e2e8f0;
+}
+
+.planning-wizard__cycle-save {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.5rem;
 }
 
 .planning-wizard__assignee-grid {

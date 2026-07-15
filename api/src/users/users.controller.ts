@@ -44,6 +44,12 @@ export class UsersController {
     return this.users.planningAssignees();
   }
 
+  @Get('site-managers')
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  siteManagers() {
+    return this.users.siteManagers();
+  }
+
   @Get('daily-targets/today-alerts')
   todayTargetAlerts() {
     return this.users.getTodayTargetAlerts();

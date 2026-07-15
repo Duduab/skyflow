@@ -34,4 +34,9 @@ export class UpdatePlanningDraftDto {
   @IsOptional()
   @IsEnum(ProjectAngleSourcing)
   angleSourcing?: ProjectAngleSourcing;
+
+  /** מנהל הפרויקט (מנהל אתר) — null מנקה את השיבוץ */
+  @IsOptional()
+  @IsString()
+  projectManagerUserId?: string | null;
 }

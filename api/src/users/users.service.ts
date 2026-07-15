@@ -92,6 +92,22 @@ export class UsersService {
     });
   }
 
+  /** מנהלי אתר/פרויקט — לבחירת מנהל פרויקט בשלב פתיחת הפרויקט */
+  async siteManagers() {
+    return this.prisma.user.findMany({
+      where: { role: SkyflowRole.SITE_MANAGER },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        managedStationId: true,
+        photoUrl: true,
+      },
+    });
+  }
+
   async create(dto: CreateUserDto) {
     const hash = await bcrypt.hash(dto.password, 10);
     const stationBound =

@@ -1,4 +1,256 @@
 <div class="pdf-panel">
+  <ng-template #windowTypeUploader let-w="w">
+    <div class="pdf-panel__uploader">
+      <p class="pdf-panel__uploader-title" dir="ltr">
+        <span class="pdf-panel__code-badge">{{ w.code }}</span>
+      </p>
+      <div class="pdf-panel__u-targets">
+        <div class="pdf-panel__u-card" [class.pdf-panel__u-card--done]="!!w.instructionPdfUrl">
+          <div class="pdf-panel__u-head">
+            <span class="material-symbols-outlined" aria-hidden="true">description</span>
+            <span class="pdf-panel__u-title">{{ 'PLANNING_PDF.U_INSTRUCTIONS' | translate }}</span>
+          </div>
+          <div class="pdf-panel__u-foot">
+            @if (w.instructionPdfUrl) {
+              <a class="pdf-panel__pdf-btn" [href]="w.instructionPdfUrl" target="_blank" rel="noopener">
+                <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                {{ 'PLANNING_PDF.OPEN' | translate }}
+              </a>
+            }
+            <label class="pdf-panel__u-drop">
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                hidden
+                (change)="onWindowTypeFileSelected(w.id, 'WINDOW_INSTRUCTION_PDF', $any($event.target).files)"
+              />
+              @if (isRowUploading(w.id, 'WINDOW_INSTRUCTION_PDF')) {
+                <span class="pdf-panel__upload-cta">
+                  <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
+                  <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
+                </span>
+              } @else {
+                <span class="pdf-panel__upload-cta">
+                  <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
+                  <span>{{ (w.instructionPdfUrl ? 'PLANNING_PDF.REPLACE' : 'PLANNING_PDF.CHOOSE') | translate }}</span>
+                </span>
+              }
+            </label>
+          </div>
+        </div>
+
+        <div class="pdf-panel__u-card" [class.pdf-panel__u-card--done]="!!w.connectionPdfUrl">
+          <div class="pdf-panel__u-head">
+            <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
+            <span class="pdf-panel__u-title">{{ 'PLANNING_PDF.U_CONNECTION' | translate }}</span>
+          </div>
+          <div class="pdf-panel__u-foot">
+            @if (w.connectionPdfUrl) {
+              <a class="pdf-panel__pdf-btn" [href]="w.connectionPdfUrl" target="_blank" rel="noopener">
+                <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                {{ 'PLANNING_PDF.OPEN' | translate }}
+              </a>
+            }
+            <label class="pdf-panel__u-drop">
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                hidden
+                (change)="onWindowTypeFileSelected(w.id, 'CONNECTION_DETAILS_PDF', $any($event.target).files)"
+              />
+              @if (isRowUploading(w.id, 'CONNECTION_DETAILS_PDF')) {
+                <span class="pdf-panel__upload-cta">
+                  <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
+                  <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
+                </span>
+              } @else {
+                <span class="pdf-panel__upload-cta">
+                  <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
+                  <span>{{ (w.connectionPdfUrl ? 'PLANNING_PDF.REPLACE' : 'PLANNING_PDF.CHOOSE') | translate }}</span>
+                </span>
+              }
+            </label>
+          </div>
+        </div>
+
+        @if (w.hasAngles) {
+          <div class="pdf-panel__u-card">
+            <div class="pdf-panel__u-head">
+              <span class="material-symbols-outlined" aria-hidden="true">square_foot</span>
+              <span class="pdf-panel__u-title">{{ 'PLANNING_PDF.U_ANG' | translate }}</span>
+            </div>
+            <div class="pdf-panel__u-chips">
+              @for (a of angleStatusForWindow(w.angleCodes); track a.code) {
+                @if (a.hasPdf && a.url) {
+                  <a class="pdf-panel__mini-chip" [href]="a.url" target="_blank" rel="noopener" dir="ltr">{{ a.code }} ↗</a>
+                } @else {
+                  <span class="pdf-panel__mini-chip pdf-panel__mini-chip--missing" dir="ltr">{{ a.code }}</span>
+                }
+              }
+            </div>
+            <div class="pdf-panel__u-foot">
+              <label class="pdf-panel__u-drop">
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  hidden
+                  (change)="onWindowTypeFileSelected(w.id, 'ANGLE_INSTRUCTION_PDF', $any($event.target).files)"
+                />
+                @if (isRowUploading(w.id, 'ANGLE_INSTRUCTION_PDF')) {
+                  <span class="pdf-panel__upload-cta">
+                    <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
+                    <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
+                  </span>
+                } @else {
+                  <span class="pdf-panel__upload-cta">
+                    <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
+                    <span>{{ 'PLANNING_PDF.CHOOSE' | translate }}</span>
+                  </span>
+                }
+              </label>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (w.instructionPdfUrl) {
+        <div class="pdf-panel__parts">
+          <div class="pdf-panel__parts-head">
+            <span class="material-symbols-outlined" aria-hidden="true">grid_view</span>
+            <span class="pdf-panel__parts-title">{{ 'PLANNING_PDF.PARTS_TITLE' | translate }}</span>
+            @if (partsRowCount(w); as cnt) {
+              <span class="pdf-panel__parts-count" dir="ltr">{{ cnt }}</span>
+            }
+            <span class="pdf-panel__parts-spacer"></span>
+            @if (editingPartsId() !== w.id) {
+              <button type="button" class="pdf-panel__parts-edit" (click)="openPartsEditor(w)">
+                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                {{ 'PLANNING_PDF.PARTS_EDIT' | translate }}
+              </button>
+            }
+          </div>
+
+          @if (editingPartsId() === w.id) {
+            @if (partsDraft(); as draft) {
+              <div class="pdf-panel__parts-editor">
+                <p class="pdf-panel__parts-hint">{{ 'PLANNING_PDF.PARTS_HINT' | translate }}</p>
+                @for (sec of draft.sections; track $index; let si = $index) {
+                  <div class="pdf-panel__parts-sec">
+                    <div class="pdf-panel__parts-sec-head">
+                      <input
+                        class="pdf-panel__parts-sec-title"
+                        [value]="sec.title"
+                        (input)="updateSectionTitle(si, $any($event.target).value)"
+                        [placeholder]="'PLANNING_PDF.PARTS_SECTION_PH' | translate"
+                      />
+                      <button
+                        type="button"
+                        class="pdf-panel__parts-icon-btn"
+                        (click)="removePartSection(si)"
+                        [attr.aria-label]="'PLANNING_PDF.PARTS_DEL_SECTION' | translate"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                      </button>
+                    </div>
+                    <table class="pdf-panel__parts-table">
+                      <thead>
+                        <tr>
+                          <th class="pdf-panel__parts-th-sm">{{ 'PLANNING_PDF.PARTS_COL_BLOCK' | translate }}</th>
+                          <th>{{ 'PLANNING_PDF.PARTS_COL_DESC' | translate }}</th>
+                          <th>{{ 'PLANNING_PDF.PARTS_COL_PART' | translate }}</th>
+                          <th class="pdf-panel__parts-th-x" aria-hidden="true"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of sec.rows; track $index; let ri = $index) {
+                          <tr>
+                            <td>
+                              <input
+                                dir="ltr"
+                                class="pdf-panel__parts-inp pdf-panel__parts-inp--sm"
+                                [value]="row.blockNumber"
+                                (input)="updatePartCell(si, ri, 'blockNumber', $any($event.target).value)"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                class="pdf-panel__parts-inp"
+                                [value]="row.description"
+                                (input)="updatePartCell(si, ri, 'description', $any($event.target).value)"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                dir="ltr"
+                                class="pdf-panel__parts-inp"
+                                [value]="row.partNumber"
+                                (input)="updatePartCell(si, ri, 'partNumber', $any($event.target).value)"
+                              />
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                class="pdf-panel__parts-icon-btn"
+                                (click)="removePartRow(si, ri)"
+                                [attr.aria-label]="'PLANNING_PDF.PARTS_DEL_ROW' | translate"
+                              >
+                                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                    <button type="button" class="pdf-panel__parts-add-row" (click)="addPartRow(si)">
+                      <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                      {{ 'PLANNING_PDF.PARTS_ADD_ROW' | translate }}
+                    </button>
+                  </div>
+                }
+                <button type="button" class="pdf-panel__parts-add-sec" (click)="addPartSection()">
+                  <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                  {{ 'PLANNING_PDF.PARTS_ADD_SECTION' | translate }}
+                </button>
+                <div class="pdf-panel__parts-actions">
+                  <button type="button" class="pdf-panel__parts-cancel" (click)="closePartsEditor()">
+                    {{ 'PLANNING_PDF.PARTS_CANCEL' | translate }}
+                  </button>
+                  <button
+                    type="button"
+                    class="pdf-panel__parts-save"
+                    [disabled]="savingParts()"
+                    (click)="savePartsEditor(w)"
+                  >
+                    {{ (savingParts() ? 'PLANNING_PDF.PARTS_SAVING' : 'PLANNING_PDF.PARTS_SAVE') | translate }}
+                  </button>
+                </div>
+              </div>
+            }
+          } @else if (w.parts && w.parts.sections.length) {
+            <div class="pdf-panel__parts-view">
+              @for (sec of w.parts.sections; track sec.key + sec.title) {
+                <div class="pdf-panel__parts-vsec">
+                  <span class="pdf-panel__parts-vtitle">{{ sec.title }}</span>
+                  <div class="pdf-panel__parts-vrows">
+                    @for (row of sec.rows; track $index) {
+                      <div class="pdf-panel__parts-vrow">
+                        <span class="pdf-panel__parts-vblock" dir="ltr">{{ row.blockNumber || '—' }}</span>
+                        <span class="pdf-panel__parts-vdesc">{{ row.description }}</span>
+                        <span class="pdf-panel__parts-vpart" dir="ltr">{{ row.partNumber || '—' }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="pdf-panel__parts-empty">{{ 'PLANNING_PDF.PARTS_EMPTY' | translate }}</p>
+          }
+        </div>
+      }
+    </div>
+  </ng-template>
+
   @if (error(); as e) {
     <p class="pdf-panel__alert" role="alert">{{ e }}</p>
   }
@@ -26,6 +278,19 @@
             <span class="pdf-panel__slot-cta pdf-panel__slot-cta--locked">
               {{ 'PLANNING_PDF.LOCKED_UNTIL_QTY' | translate }}
             </span>
+          } @else if (slot.kind === 'WINDOW_INSTRUCTION_PDF') {
+            <button
+              type="button"
+              class="pdf-panel__slot-drop pdf-panel__slot-drop--btn"
+              (click)="openWindowPicker()"
+            >
+              <span class="pdf-panel__slot-cta pdf-panel__upload-cta">
+                <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
+                <span>{{
+                  (slot.done ? 'PLANNING_PDF.WINDOW_PICKER_MANAGE' : 'PLANNING_PDF.CHOOSE') | translate
+                }}</span>
+              </span>
+            </button>
           } @else {
             <label class="pdf-panel__slot-drop">
               <input
@@ -423,110 +688,9 @@
                   @if (expandedWindowTypeId() === w.id) {
                     <tr class="pdf-panel__uploader-row">
                       <td [attr.colspan]="6">
-                        <div class="pdf-panel__uploader">
-                          <p class="pdf-panel__uploader-title" dir="ltr">
-                            <span class="pdf-panel__code-badge">{{ w.code }}</span>
-                          </p>
-                          <div class="pdf-panel__u-targets">
-                            <!-- הוראות ייצור לחלון -->
-                            <div class="pdf-panel__u-card" [class.pdf-panel__u-card--done]="!!w.instructionPdfUrl">
-                              <div class="pdf-panel__u-head">
-                                <span class="material-symbols-outlined" aria-hidden="true">description</span>
-                                <span class="pdf-panel__u-title">{{ 'PLANNING_PDF.U_INSTRUCTIONS' | translate }}</span>
-                              </div>
-                              <div class="pdf-panel__u-foot">
-                                @if (w.instructionPdfUrl) {
-                                  <a class="pdf-panel__pdf-btn" [href]="w.instructionPdfUrl" target="_blank" rel="noopener">
-                                    <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
-                                    {{ 'PLANNING_PDF.OPEN' | translate }}
-                                  </a>
-                                }
-                                <label class="pdf-panel__u-drop">
-                                  <input type="file" accept="application/pdf,.pdf" hidden
-                                    (change)="onWindowTypeFileSelected(w.id, 'WINDOW_INSTRUCTION_PDF', $any($event.target).files)" />
-                                  @if (isRowUploading(w.id, 'WINDOW_INSTRUCTION_PDF')) {
-                                    <span class="pdf-panel__upload-cta">
-                                      <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                                      <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
-                                    </span>
-                                  } @else {
-                                    <span class="pdf-panel__upload-cta">
-                                      <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                                      <span>{{ (w.instructionPdfUrl ? 'PLANNING_PDF.REPLACE' : 'PLANNING_PDF.CHOOSE') | translate }}</span>
-                                    </span>
-                                  }
-                                </label>
-                              </div>
-                            </div>
-
-                            <!-- נספח פרטי חיבור וזוויות -->
-                            <div class="pdf-panel__u-card" [class.pdf-panel__u-card--done]="!!w.connectionPdfUrl">
-                              <div class="pdf-panel__u-head">
-                                <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
-                                <span class="pdf-panel__u-title">{{ 'PLANNING_PDF.U_CONNECTION' | translate }}</span>
-                              </div>
-                              <div class="pdf-panel__u-foot">
-                                @if (w.connectionPdfUrl) {
-                                  <a class="pdf-panel__pdf-btn" [href]="w.connectionPdfUrl" target="_blank" rel="noopener">
-                                    <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
-                                    {{ 'PLANNING_PDF.OPEN' | translate }}
-                                  </a>
-                                }
-                                <label class="pdf-panel__u-drop">
-                                  <input type="file" accept="application/pdf,.pdf" hidden
-                                    (change)="onWindowTypeFileSelected(w.id, 'CONNECTION_DETAILS_PDF', $any($event.target).files)" />
-                                  @if (isRowUploading(w.id, 'CONNECTION_DETAILS_PDF')) {
-                                    <span class="pdf-panel__upload-cta">
-                                      <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                                      <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
-                                    </span>
-                                  } @else {
-                                    <span class="pdf-panel__upload-cta">
-                                      <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                                      <span>{{ (w.connectionPdfUrl ? 'PLANNING_PDF.REPLACE' : 'PLANNING_PDF.CHOOSE') | translate }}</span>
-                                    </span>
-                                  }
-                                </label>
-                              </div>
-                            </div>
-
-                            <!-- הוראות ANG (רק אם יש זוויות) -->
-                            @if (w.hasAngles) {
-                              <div class="pdf-panel__u-card">
-                                <div class="pdf-panel__u-head">
-                                  <span class="material-symbols-outlined" aria-hidden="true">square_foot</span>
-                                  <span class="pdf-panel__u-title">{{ 'PLANNING_PDF.U_ANG' | translate }}</span>
-                                </div>
-                                <div class="pdf-panel__u-chips">
-                                  @for (a of angleStatusForWindow(w.angleCodes); track a.code) {
-                                    @if (a.hasPdf && a.url) {
-                                      <a class="pdf-panel__mini-chip" [href]="a.url" target="_blank" rel="noopener" dir="ltr">{{ a.code }} ↗</a>
-                                    } @else {
-                                      <span class="pdf-panel__mini-chip pdf-panel__mini-chip--missing" dir="ltr">{{ a.code }}</span>
-                                    }
-                                  }
-                                </div>
-                                <div class="pdf-panel__u-foot">
-                                  <label class="pdf-panel__u-drop">
-                                    <input type="file" accept="application/pdf,.pdf" hidden
-                                      (change)="onWindowTypeFileSelected(w.id, 'ANGLE_INSTRUCTION_PDF', $any($event.target).files)" />
-                                    @if (isRowUploading(w.id, 'ANGLE_INSTRUCTION_PDF')) {
-                                      <span class="pdf-panel__upload-cta">
-                                        <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                                        <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
-                                      </span>
-                                    } @else {
-                                      <span class="pdf-panel__upload-cta">
-                                        <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                                        <span>{{ 'PLANNING_PDF.CHOOSE' | translate }}</span>
-                                      </span>
-                                    }
-                                  </label>
-                                </div>
-                              </div>
-                            }
-                          </div>
-                        </div>
+                        <ng-container
+                          *ngTemplateOutlet="windowTypeUploader; context: { w: w }"
+                        />
                       </td>
                     </tr>
                   }
@@ -607,7 +771,7 @@
       >
         {{ 'PLANNING_PDF.CONTINUE' | translate }}
       </skyflow-ui-button>
-    } @else {
+    } @else if (flowStatus() !== 'IN_PRODUCTION') {
       <skyflow-ui-button
         variant="primary"
         [disabled]="approving() || !canContinue()"
@@ -618,6 +782,94 @@
       </skyflow-ui-button>
     }
   </div>
+
+  <!-- popup בחירת יחידה להעלאת הוראות ייצור לחלון -->
+  @if (windowPickerOpen()) {
+    <div class="pdf-panel__picker-backdrop" (click)="closeWindowPicker()"></div>
+    <div
+      class="pdf-panel__picker-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pdf-panel-picker-title"
+    >
+      <button
+        type="button"
+        class="pdf-panel__picker-close"
+        (click)="closeWindowPicker()"
+        [attr.aria-label]="'PLANNING_PDF.CLOSE' | translate"
+      >
+        ✕
+      </button>
+      <header class="pdf-panel__picker-head">
+        <h2 id="pdf-panel-picker-title" class="pdf-panel__picker-title">
+          {{ 'PLANNING_PDF.WINDOW_PICKER_TITLE' | translate }}
+        </h2>
+        <p class="pdf-panel__picker-sub">
+          {{ 'PLANNING_PDF.WINDOW_PICKER_SUB' | translate }}
+        </p>
+      </header>
+      <div class="pdf-panel__picker-body">
+        @if (windowTypesForPicker().length) {
+          <div class="pdf-panel__picker-list">
+            @for (w of windowTypesForPicker(); track w.id) {
+              <div
+                class="pdf-panel__picker-row"
+                [class.pdf-panel__picker-row--expanded]="expandedWindowTypeId() === w.id"
+                [class.pdf-panel__picker-row--done]="!!w.instructionPdfUrl"
+              >
+                <div class="pdf-panel__picker-row-main">
+                  <span class="pdf-panel__code-badge" dir="ltr">{{ w.code }}</span>
+                  <span class="pdf-panel__qty-pill" dir="ltr">{{ w.totalQty }}</span>
+                  @if (w.instructionPdfUrl) {
+                    <span class="pdf-panel__picker-status pdf-panel__picker-status--done" aria-hidden="true">✓</span>
+                  }
+                  <div class="pdf-panel__picker-row-actions">
+                    @if (w.instructionPdfUrl) {
+                      <a
+                        class="pdf-panel__pdf-btn"
+                        [href]="w.instructionPdfUrl"
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                        {{ 'PLANNING_PDF.OPEN' | translate }}
+                      </a>
+                      <button
+                        type="button"
+                        class="pdf-panel__files-btn"
+                        [class.pdf-panel__files-btn--open]="expandedWindowTypeId() === w.id"
+                        [attr.aria-label]="'PLANNING_PDF.MANAGE_FILES' | translate"
+                        (click)="toggleRowUploader(w.id)"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="pdf-panel__upload-btn"
+                        [class.pdf-panel__upload-btn--open]="expandedWindowTypeId() === w.id"
+                        (click)="toggleRowUploader(w.id)"
+                      >
+                        <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+                        {{ 'PLANNING_PDF.UPLOAD_FILES' | translate }}
+                      </button>
+                    }
+                  </div>
+                </div>
+                @if (expandedWindowTypeId() === w.id) {
+                  <div class="pdf-panel__picker-uploader">
+                    <ng-container *ngTemplateOutlet="windowTypeUploader; context: { w: w }" />
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="pdf-panel__picker-empty">{{ 'PLANNING_PDF.WINDOW_PICKER_EMPTY' | translate }}</p>
+        }
+      </div>
+    </div>
+  }
 
   <!-- popup מפת החזיתות האינטראקטיבית (מלבנים לחיצים + סבב עבודה) -->
   @if (mapModalGroup(); as groupKey) {

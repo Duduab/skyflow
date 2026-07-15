@@ -3,18 +3,69 @@
     <div class="worker-hub__intro-text">
       <h1 class="worker-hub__title">{{ 'APP.WORKER_HUB' | translate }}</h1>
       @if (orders().length) {
-        <label class="worker-hub__project-field">
-          <span class="worker-hub__project-field-label">{{
-            'ADMIN_PAGE.FILTER_PROJECT' | translate
-          }}</span>
-          <skyflow-ui-select
-            class="worker-hub__project-select w-full"
-            size="hero"
-            [options]="projectOptions()"
-            [value]="projectSelection.selectedProjectId() ?? ''"
-            (valueChange)="onProjectChange($event)"
-          />
-        </label>
+        <div class="worker-hub__selects">
+          <label class="worker-hub__project-field">
+            <span class="worker-hub__project-field-label">{{
+              'ADMIN_PAGE.FILTER_PROJECT' | translate
+            }}</span>
+            <skyflow-ui-select
+              class="worker-hub__project-select w-full"
+              size="hero"
+              [options]="projectOptions()"
+              [value]="projectSelection.selectedProjectId() ?? ''"
+              (valueChange)="onProjectChange($event)"
+            />
+          </label>
+
+          <div class="worker-hub__project-field">
+            <span class="worker-hub__project-field-label">{{
+              'WORKER_HUB.UNIT_LABEL' | translate
+            }}</span>
+            @if (projectCycles().length) {
+              <button
+                type="button"
+                class="worker-hub__unit-current-row"
+                (click)="openUnitPicker()"
+                [attr.aria-label]="'WORKER_HUB.UNIT_CHOOSE_OTHER' | translate"
+              >
+                <span class="worker-hub__unit-current-glyph" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+                    <path
+                      d="M12 2.5l8 4.5v9L12 20.5 4 16V7z"
+                      stroke-linejoin="round"
+                    />
+                    <path d="M4 7l8 4.5L20 7M12 11.5v9" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <span class="worker-hub__unit-current-body">
+                  <span class="worker-hub__unit-current-eyebrow">
+                    {{ 'WORKER_HUB.UNIT_CURRENT_EYEBROW' | translate }}
+                  </span>
+                  <span class="worker-hub__unit-current" dir="ltr">{{
+                    selectedCycle()?.code ?? ('WORKER_HUB.UNIT_NONE' | translate)
+                  }}</span>
+                </span>
+                <span class="worker-hub__unit-btn">
+                  <span class="worker-hub__unit-btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" />
+                      <rect x="13.5" y="3.5" width="7" height="7" rx="1.6" />
+                      <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" />
+                      <rect x="13.5" y="13.5" width="7" height="7" rx="1.6" />
+                    </svg>
+                  </span>
+                  <span class="worker-hub__unit-btn-text">
+                    {{ 'WORKER_HUB.UNIT_CHOOSE_OTHER' | translate }}
+                  </span>
+                </span>
+              </button>
+            } @else {
+              <span class="worker-hub__unit-empty">{{
+                'WORKER_HUB.UNIT_EMPTY' | translate
+              }}</span>
+            }
+          </div>
+        </div>
       }
     </div>
     <div class="worker-hub__intro-aside">
@@ -54,6 +105,7 @@
           @let order = selectedOrder();
           <a
             [routerLink]="stationRouterLink(s.id)"
+            [queryParams]="{ cycleId: projectSelection.selectedCycleId() }"
             [class]="'station-card station-card--' + s.id"
             [class.station-visual--steelworkshop]="stationVisualModifier(s.id) === 'station-visual--steelworkshop'"
             [class.station-visual--aluranger]="stationVisualModifier(s.id) === 'station-visual--aluranger'"
@@ -147,9 +199,15 @@
                 </span>
                 <span class="station-card__meta station-card__meta--accent">
                   <svg class="station-card__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke-linejoin="round" />
+                    <path d="M3.3 7l8.7 5 8.7-5M12 22V12" stroke-linejoin="round" />
                   </svg>
-                  {{ 'WORKER_HUB.META_RIGHT' | translate }}
+                  @if (prog.target > 0) {
+                    <span dir="ltr">{{ prog.remaining }}</span>
+                    {{ 'WORKER_HUB.META_REMAINING' | translate }}
+                  } @else {
+                    {{ 'WORKER_HUB.META_REMAINING_NONE' | translate }}
+                  }
                 </span>
               </div>
 
@@ -164,4 +222,126 @@
       </div>
     }
   </div>
+
+  <skyflow-ui-popup
+    [open]="unitPickerOpen()"
+    [title]="'WORKER_HUB.UNIT_PICKER_TITLE' | translate"
+    [subtitle]="selectedOrder()?.name ?? ''"
+    size="wide"
+    panelClass="worker-hub__unit-popup"
+    (closed)="closeUnitPicker()"
+  >
+    <span popup-icon class="worker-hub__unit-popup-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path
+          d="M12 2.5l8 4.5v9L12 20.5 4 16V7z"
+          stroke-linejoin="round"
+        />
+        <path d="M4 7l8 4.5L20 7M12 11.5v9" stroke-linejoin="round" />
+      </svg>
+    </span>
+
+    <div class="worker-hub__unit-picker">
+      <div class="worker-hub__unit-toolbar">
+        <label class="worker-hub__unit-search">
+          <span class="worker-hub__unit-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" stroke-linecap="round" />
+            </svg>
+          </span>
+          <input
+            type="search"
+            class="worker-hub__unit-search-input"
+            [value]="unitSearch()"
+            (input)="onUnitSearchInput($any($event.target).value)"
+            [placeholder]="'WORKER_HUB.UNIT_SEARCH_PLACEHOLDER' | translate"
+            [attr.aria-label]="'WORKER_HUB.UNIT_SEARCH_PLACEHOLDER' | translate"
+          />
+        </label>
+
+        <div class="worker-hub__unit-filters" role="group">
+          @for (f of unitStatusFilters(); track f.value) {
+            <button
+              type="button"
+              class="worker-hub__unit-filter"
+              [class.worker-hub__unit-filter--active]="unitStatusFilter() === f.value"
+              (click)="setUnitStatusFilter(f.value)"
+            >
+              {{
+                f.value === 'ALL'
+                  ? ('WORKER_HUB.UNIT_FILTER_ALL' | translate)
+                  : (cycleStatusKey(f.value) | translate)
+              }}
+              <span class="worker-hub__unit-filter-count" dir="ltr">{{ f.count }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (filteredCycles().length) {
+        <div class="worker-hub__unit-list">
+          @for (c of filteredCycles(); track c.cycleId) {
+            @let percent = cyclePercent(c);
+            <button
+              type="button"
+              class="worker-hub__unit-option worker-hub__unit-option--status-{{ c.status }}"
+              [class.worker-hub__unit-option--active]="
+                c.cycleId === projectSelection.selectedCycleId()
+              "
+              (click)="chooseUnit(c.cycleId)"
+            >
+              <span class="worker-hub__unit-option-top">
+                <span class="worker-hub__unit-option-code" dir="ltr">{{ c.code }}</span>
+                <span class="worker-hub__unit-option-status">
+                  {{ cycleStatusKey(c.status) | translate }}
+                </span>
+              </span>
+
+              <span class="worker-hub__unit-option-stats">
+                <span class="worker-hub__unit-stat">
+                  <span class="worker-hub__unit-stat-value" dir="ltr">{{ c.targetQty }}</span>
+                  <span class="worker-hub__unit-stat-label">
+                    {{ 'WORKER_HUB.UNIT_STAT_QTY' | translate }}
+                  </span>
+                </span>
+                <span class="worker-hub__unit-stat">
+                  <span class="worker-hub__unit-stat-value" dir="ltr">
+                    {{ cycleDoneStations(c) }}/{{ c.stations.length }}
+                  </span>
+                  <span class="worker-hub__unit-stat-label">
+                    {{ 'WORKER_HUB.UNIT_STAT_STATIONS' | translate }}
+                  </span>
+                </span>
+                @if (c.currentStationId) {
+                  <span class="worker-hub__unit-stat">
+                    <span class="worker-hub__unit-stat-value">
+                      {{ c.currentStationId | stationLabel: selectedOrder() | translate }}
+                    </span>
+                    <span class="worker-hub__unit-stat-label">
+                      {{ 'WORKER_HUB.UNIT_STAT_CURRENT' | translate }}
+                    </span>
+                  </span>
+                }
+              </span>
+
+              <span class="worker-hub__unit-progress">
+                <span class="worker-hub__unit-progress-track" aria-hidden="true">
+                  <span
+                    class="worker-hub__unit-progress-fill"
+                    [style.width.%]="percent"
+                  ></span>
+                </span>
+                <span class="worker-hub__unit-progress-label" dir="ltr">{{ percent }}%</span>
+              </span>
+            </button>
+          }
+        </div>
+      } @else {
+        <p class="worker-hub__unit-no-results">
+          {{ 'WORKER_HUB.UNIT_NO_RESULTS' | translate }}
+        </p>
+      }
+    </div>
+  </skyflow-ui-popup>
 </section>

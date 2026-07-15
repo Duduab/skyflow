@@ -1,4 +1,4 @@
-import { NgClass } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   computed,
@@ -15,6 +15,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/api.service';
 import { httpErrorMessage } from '../../../core/http-error.util';
 import {
+  AssemblyWindowPartsDto,
   FacadeDirection,
   FacadeGroupPreviewDto,
   PlanningPdfKind,
@@ -22,6 +23,7 @@ import {
   ProjectAngleSourcing,
   ProjectFlowStatus,
   ProjectLineMaterial,
+  WindowTypePreviewDto,
 } from '../../../core/skyflow.models';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { ElevationMapComponent } from '../../elevation/elevation-map.component';
@@ -41,6 +43,7 @@ interface PdfSlot {
   imports: [
     TranslateModule,
     NgClass,
+    NgTemplateOutlet,
     UiButtonComponent,
     ElevationMapComponent,
   ],
@@ -144,13 +147,20 @@ export class PlanningPdfPanelComponent {
   /** popup בחירת חלון עבור כפתור "הוראות ייצור לחלון" הראשי. */
   readonly windowPickerOpen = signal(false);
 
+  /** כל סוגי החלון לבחירה בפופאפ (לא מעומד). */
+  readonly windowTypesForPicker = computed(
+    () => this.preview()?.windowTypes ?? [],
+  );
+
   openWindowPicker(): void {
     if (!this.quantitiesReady()) return;
+    this.expandedWindowTypeId.set(null);
     this.windowPickerOpen.set(true);
   }
 
   closeWindowPicker(): void {
     this.windowPickerOpen.set(false);
+    this.expandedWindowTypeId.set(null);
   }
 
   toggleRowUploader(windowTypeId: string): void {
@@ -161,6 +171,109 @@ export class PlanningPdfPanelComponent {
 
   isRowUploading(windowTypeId: string, kind: PlanningPdfKind): boolean {
     return this.uploadingRowKey() === `${windowTypeId}:${kind}`;
+  }
+
+  // ── Parts mapping review/edit (page-2 set tables) ─────────────────────────
+  /** windowTypeId whose parts mapping is currently open in the editor. */
+  readonly editingPartsId = signal<string | null>(null);
+  /** Working copy of the mapping being edited (committed only on save). */
+  readonly partsDraft = signal<AssemblyWindowPartsDto | null>(null);
+  readonly savingParts = signal(false);
+
+  /** Total number of mapped part rows for a window type (for the badge). */
+  partsRowCount(w: WindowTypePreviewDto): number {
+    return (w.parts?.sections ?? []).reduce((n, s) => n + s.rows.length, 0);
+  }
+
+  openPartsEditor(w: WindowTypePreviewDto): void {
+    const source: AssemblyWindowPartsDto = w.parts
+      ? (JSON.parse(JSON.stringify(w.parts)) as AssemblyWindowPartsDto)
+      : { sections: [] };
+    this.partsDraft.set(source);
+    this.editingPartsId.set(w.id);
+  }
+
+  closePartsEditor(): void {
+    this.editingPartsId.set(null);
+    this.partsDraft.set(null);
+  }
+
+  /** In-place text edit of a single cell (value binding keeps the input synced). */
+  updatePartCell(
+    si: number,
+    ri: number,
+    field: 'partNumber' | 'description' | 'blockNumber',
+    value: string,
+  ): void {
+    const draft = this.partsDraft();
+    const row = draft?.sections?.[si]?.rows?.[ri];
+    if (row) row[field] = value;
+  }
+
+  updateSectionTitle(si: number, value: string): void {
+    const draft = this.partsDraft();
+    const sec = draft?.sections?.[si];
+    if (sec) sec.title = value;
+  }
+
+  addPartRow(si: number): void {
+    this.partsDraft.update((d) => {
+      if (!d) return d;
+      const next = JSON.parse(JSON.stringify(d)) as AssemblyWindowPartsDto;
+      next.sections[si]?.rows.push({
+        partNumber: '',
+        description: '',
+        blockNumber: '',
+      });
+      return next;
+    });
+  }
+
+  removePartRow(si: number, ri: number): void {
+    this.partsDraft.update((d) => {
+      if (!d) return d;
+      const next = JSON.parse(JSON.stringify(d)) as AssemblyWindowPartsDto;
+      next.sections[si]?.rows.splice(ri, 1);
+      return next;
+    });
+  }
+
+  addPartSection(): void {
+    this.partsDraft.update((d) => {
+      const base = d ?? { sections: [] };
+      const next = JSON.parse(JSON.stringify(base)) as AssemblyWindowPartsDto;
+      next.sections.push({ key: 'OTHER', title: '', rows: [] });
+      return next;
+    });
+  }
+
+  removePartSection(si: number): void {
+    this.partsDraft.update((d) => {
+      if (!d) return d;
+      const next = JSON.parse(JSON.stringify(d)) as AssemblyWindowPartsDto;
+      next.sections.splice(si, 1);
+      return next;
+    });
+  }
+
+  savePartsEditor(w: WindowTypePreviewDto): void {
+    const id = this.projectId();
+    const draft = this.partsDraft();
+    if (!id || !draft) return;
+    this.savingParts.set(true);
+    this.error.set(null);
+    this.api
+      .saveWindowTypeParts(id, w.id, draft)
+      .pipe(finalize(() => this.savingParts.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.preview.set(res.preview);
+          this.closePartsEditor();
+          this.planningChanged.emit();
+        },
+        error: (err) =>
+          this.error.set(httpErrorMessage(err, 'Save failed')),
+      });
   }
 
   /** מצב קבצי ה-ANG של יחידה: לכל קוד — האם כבר הועלה קובץ הוראות. */
@@ -203,7 +316,7 @@ export class PlanningPdfPanelComponent {
     effect((onCleanup) => {
       const id = this.projectId();
       const flow = this.flowStatus();
-      if (!id || flow !== 'PENDING_PLANNING') {
+      if (!id || (flow !== 'PENDING_PLANNING' && flow !== 'IN_PRODUCTION')) {
         this.preview.set(null);
         return;
       }
@@ -367,8 +480,12 @@ export class PlanningPdfPanelComponent {
   }
 
   readonly canContinue = computed(
-    () =>
-      (this.preview()?.windowTypeCount ?? 0) > 0 && !this.requiresAngleUpload(),
+    () => {
+      const preview = this.preview();
+      return !!preview?.windowTypes.some(
+        (window) => !!window.instructionPdfUrl,
+      );
+    },
   );
 
   /** סלוט ANG מאפשר כמה קבצים (ANG-1A, ANG-1B ...); שאר הסלוטים — קובץ אחד. */

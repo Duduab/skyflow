@@ -6,7 +6,7 @@
 
 .station-brief {
   --brief-accent: #558fc3;
-  --brief-hero-h: 9.5rem;
+  --brief-hero-h: 12.5rem;
   --brief-hero-image: none;
   --brief-hero-overlay: linear-gradient(
     165deg,
@@ -137,16 +137,20 @@
   flex-direction: column;
   justify-content: flex-end;
   min-height: var(--brief-hero-h);
-  padding: 1.15rem 1.35rem 1.35rem;
+  padding: 1.15rem 1.35rem 2.15rem;
+  /* Keep title clear of the station index badge */
+  padding-inline-end: 4.25rem;
 }
 
 .station-brief__eyebrow {
   margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--brief-accent) 75%, #fff);
+  font-size: clamp(1.55rem, 4.2vw, 2.35rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-transform: none;
+  color: color-mix(in srgb, var(--brief-accent) 88%, #fff);
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.4);
 }
 
 .station-brief__order {

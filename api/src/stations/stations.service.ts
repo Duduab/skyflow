@@ -14,6 +14,7 @@ import {
   assembledFromLogPayload,
   computeSiteAssemblyPercent,
 } from '../common/site-assembly.util';
+import { normalizeWindowParts } from '../common/window-parts.util';
 import { packPhotoRequiredCount, MAX_PACK_PHOTO_SLOTS } from '../common/pack-photo.util';
 import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
 import { PrismaService } from '../prisma/prisma.service';
@@ -417,6 +418,15 @@ export class StationsService {
           },
         };
       }
+      case LASER_STATION_ID: {
+        const ep = log.extraPayload as Record<string, unknown> | null;
+        const code =
+          typeof ep?.['angleCode'] === 'string' ? ep['angleCode'] : '';
+        return {
+          summaryKey: 'WORKER.ACT_LOG_S8',
+          summaryParams: { qty, code },
+        };
+      }
       case STEELWORK_STATION_ID:
         return {
           summaryKey: 'WORKER.ACT_LOG_STEELWORK',
@@ -810,6 +820,17 @@ export class StationsService {
       setLabels: string[];
       instructionPdfUrl: string | null;
       instructionPage: number | null;
+      parts: {
+        sections: {
+          key: string;
+          title: string;
+          rows: {
+            partNumber: string;
+            description: string;
+            blockNumber: string;
+          }[];
+        }[];
+      } | null;
     }[]
   > {
     const windowTypes = await this.prisma.windowType.findMany({
@@ -828,6 +849,7 @@ export class StationsService {
       setLabels: (Array.isArray(w.setsPayload) ? w.setsPayload : []) as string[],
       instructionPdfUrl: w.instructionDoc?.pdfPath ?? null,
       instructionPage: w.instructionPage,
+      parts: normalizeWindowParts(w.partsPayload),
     }));
   }
 

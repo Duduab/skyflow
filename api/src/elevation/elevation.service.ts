@@ -12,6 +12,7 @@ import {
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { WorkCycleService } from '../work-cycles/work-cycle.service';
 import {
   detectElevationSignature,
   renderElevation,
@@ -49,7 +50,10 @@ export interface PageMeta {
 export class ElevationService {
   private readonly logger = new Logger(ElevationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workCycles: WorkCycleService,
+  ) {}
 
   /** Content probe: does this PDF look like an elevation map? */
   async looksLikeElevation(fileBuffer: Buffer): Promise<boolean> {
@@ -367,7 +371,7 @@ export class ElevationService {
 
     const cell = await this.prisma.elevationCell.findFirst({
       where: { id: cellId, map: { projectId } },
-      select: { id: true },
+      select: { id: true, windowTypeId: true },
     });
     if (!cell) throw new NotFoundException('Cell not found for this project');
 
@@ -385,6 +389,13 @@ export class ElevationService {
       where: { id: cellId },
       data: { status: ElevationCellStatus.PENDING, doneAt: null, doneByUserId: null },
     });
+    // Returning a unit sends its whole work cycle back to the given station.
+    await this.workCycles.markReturnedFromElevation(
+      projectId,
+      cell.windowTypeId,
+      returnedToStationId,
+      reason,
+    );
     return { ok: true, defectId: defect.id };
   }
 
@@ -474,7 +485,7 @@ export class ElevationService {
     // ensure cells belong to this project's map
     const valid = await this.prisma.elevationCell.findMany({
       where: { id: { in: cellIds }, map: { projectId } },
-      select: { id: true },
+      select: { id: true, windowTypeId: true },
     });
     if (!valid.length) {
       throw new NotFoundException('No matching cells for this project');
@@ -495,6 +506,18 @@ export class ElevationService {
             doneByUserId: null,
           },
     });
+
+    // Re-evaluate cycle completion for each affected window type.
+    const windowTypeIds = [
+      ...new Set(
+        valid
+          .map((c) => c.windowTypeId)
+          .filter((id): id is string => !!id),
+      ),
+    ];
+    for (const wtId of windowTypeIds) {
+      await this.workCycles.recomputeCompletionFromElevation(projectId, wtId);
+    }
 
     return { updated: res.count };
   }

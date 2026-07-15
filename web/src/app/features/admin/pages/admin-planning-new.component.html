@@ -113,6 +113,36 @@
                 <p class="planning-wizard__field-err" role="alert">{{ ck | translate }}</p>
               }
             </div>
+            <div class="planning-wizard__field planning-wizard__field--manager">
+              <label class="planning-wizard__field-label" for="wizard-project-manager">{{
+                'PLANNING_NEW.WIZARD_MANAGER_LABEL' | translate
+              }}</label>
+              <div class="planning-wizard__input-icon-wrap">
+                <span class="planning-wizard__input-icon" aria-hidden="true">
+                  <span class="material-symbols-outlined">person</span>
+                </span>
+                <span class="planning-wizard__input-divider" aria-hidden="true"></span>
+                <select
+                  id="wizard-project-manager"
+                  class="planning-wizard__input planning-wizard__input--with-icon planning-wizard__select"
+                  [class.planning-wizard__select--placeholder]="!selectedProjectManagerId()"
+                  [value]="selectedProjectManagerId() ?? ''"
+                  (change)="onProjectManagerSelect($event)"
+                >
+                  <option value="">
+                    {{ 'PLANNING_NEW.WIZARD_MANAGER_PLACEHOLDER' | translate }}
+                  </option>
+                  @for (opt of projectManagerOptions(); track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
+              @if (!siteManagersLoading() && projectManagerOptions().length === 0) {
+                <p class="planning-wizard__field-hint">
+                  {{ 'PLANNING_NEW.WIZARD_MANAGER_EMPTY' | translate }}
+                </p>
+              }
+            </div>
             <div class="planning-wizard__field planning-wizard__field--cards">
               <span class="planning-wizard__field-label" id="wizard-line-material-label">{{
                 'PLANNING_NEW.LINE_MATERIAL_LABEL' | translate
@@ -182,7 +212,7 @@
                 'PLANNING_NEW.ANGLE_SOURCING_LABEL' | translate
               }}</span>
               <div
-                class="planning-wizard__option-cards"
+                class="planning-wizard__option-cards planning-wizard__option-cards--triple"
                 role="radiogroup"
                 [attr.aria-labelledby]="'wizard-angle-sourcing-label'"
               >
@@ -252,141 +282,30 @@
               <p class="planning-wizard__card-desc">{{ 'PLANNING_NEW.WIZARD_STEP3_DESC' | translate }}</p>
             </div>
 
-            <p class="planning-wizard__flow-title">{{ 'PLANNING_NEW.WIZARD_FLOW_TITLE' | translate }}</p>
-            <div class="planning-wizard__flow" role="list">
-              <div class="planning-wizard__flow-item" role="listitem">
-                <span class="planning-wizard__flow-idx">1</span>
-                <p>{{ 'PLANNING_NEW.WIZARD_FLOW_PARSE' | translate }}</p>
-              </div>
-              <div class="planning-wizard__flow-item" role="listitem">
-                <span class="planning-wizard__flow-idx">2</span>
-                <p>
-                  {{ 'PLANNING_NEW.WIZARD_FLOW_UNLOCK' | translate }}
-                  <strong class="planning-wizard__flow-strong">{{
-                    station1FlowLabelKey() | translate
-                  }}</strong>
-                </p>
-              </div>
-            </div>
-
-            <h3 class="planning-wizard__assign-heading">{{ 'PLANNING_NEW.WIZARD_ASSIGNEE_HEADING' | translate }}</h3>
-            @if (assigneesLoading()) {
+            @if (assigneesLoading() || workCyclesLoading()) {
               <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_ASSIGNEES_LOADING' | translate }}</p>
             } @else if (assigneesLoadError(); as ak) {
               <p class="planning-wizard__field-err" role="alert">{{ ak | translate }}</p>
+            } @else if (workCyclesError(); as ck) {
+              <p class="planning-wizard__field-err" role="alert">{{ ck | translate }}</p>
+            } @else if (unitsForAssignment().length === 0) {
+              <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_CYCLES_EMPTY' | translate }}</p>
             } @else {
-              <h4 class="planning-wizard__assign-subheading">{{
-                station1ManagerSectionKey() | translate
-              }}</h4>
-              <div class="planning-wizard__assignee-grid">
-                <button
-                  type="button"
-                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
-                  [class.planning-wizard__assignee-card--selected]="selectedSawsManagerId() === null"
-                  (click)="pickSawsManager(null)"
-                >
-                  <div class="planning-wizard__profile-wrap planning-wizard__profile-wrap--muted" aria-hidden="true">
-                    <div class="planning-wizard__profile-fallback planning-wizard__profile-fallback--empty">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div class="planning-wizard__assignee-text">
-                    <span class="planning-wizard__assignee-name">{{
-                      'PLANNING_NEW.WIZARD_MANAGER_NONE' | translate
-                    }}</span>
-                    <span class="planning-wizard__assignee-sub">{{
-                      'PLANNING_NEW.WIZARD_MANAGER_NONE_HINT' | translate
-                    }}</span>
-                  </div>
-                </button>
-                @for (a of sawsManagerOptions(); track a.id) {
+              <p class="planning-wizard__assign-hint">{{ 'PLANNING_NEW.WIZARD_UNIT_GRID_HINT' | translate }}</p>
+              <div class="planning-wizard__unit-grid" role="list">
+                @for (c of unitsForAssignment(); track c.id) {
                   <button
                     type="button"
-                    class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
-                    [class.planning-wizard__assignee-card--selected]="selectedSawsManagerId() === a.id"
-                    (click)="pickSawsManager(a.id)"
+                    class="planning-wizard__unit-card"
+                    [class.planning-wizard__unit-card--launched]="isLaunchedUnit(c)"
+                    role="listitem"
+                    (click)="openCycleAssignModal(c)"
                   >
-                    <div class="planning-wizard__profile-wrap" aria-hidden="true">
-                      @if (assigneePhotoVisible(a)) {
-                        <img
-                          class="planning-wizard__profile-img"
-                          [src]="a.photoUrl!"
-                          [alt]="a.firstName + ' ' + a.lastName"
-                          (error)="onAssigneePhotoError(a.id)"
-                        />
-                      } @else {
-                        <div class="planning-wizard__profile-fallback">
-                          <span class="planning-wizard__profile-initials">{{ initialsFor(a) }}</span>
-                        </div>
-                      }
-                    </div>
-                    <div class="planning-wizard__assignee-text">
-                      <span class="planning-wizard__assignee-name">{{ a.firstName }} {{ a.lastName }}</span>
-                      <span class="planning-wizard__assignee-badge">{{
-                        'PLANNING_NEW.WIZARD_ROLE_SAWS_MGR' | translate
-                      }}</span>
-                    </div>
-                  </button>
-                }
-              </div>
-
-              <h4 class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_SECTION_SAWS_WORKERS' | translate }}</h4>
-              <p class="planning-wizard__assign-hint">{{ 'PLANNING_NEW.WIZARD_WORKER_MULTI_HINT' | translate }}</p>
-              <div class="planning-wizard__assignee-grid">
-                <button
-                  type="button"
-                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
-                  [class.planning-wizard__assignee-card--selected]="selectedWorkerIds().length === 0"
-                  (click)="clearWorkers()"
-                >
-                  <div class="planning-wizard__profile-wrap planning-wizard__profile-wrap--muted" aria-hidden="true">
-                    <div class="planning-wizard__profile-fallback planning-wizard__profile-fallback--empty">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div class="planning-wizard__assignee-text">
-                    <span class="planning-wizard__assignee-name">{{
-                      'PLANNING_NEW.WIZARD_WORKERS_NONE' | translate
-                    }}</span>
-                    <span class="planning-wizard__assignee-sub">{{
-                      'PLANNING_NEW.WIZARD_WORKERS_NONE_HINT' | translate
-                    }}</span>
-                  </div>
-                </button>
-                @for (a of workerOptions(); track a.id) {
-                  <button
-                    type="button"
-                    class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
-                    [class.planning-wizard__assignee-card--selected]="isWorkerSelected(a.id)"
-                    (click)="toggleWorker(a.id)"
-                  >
-                    <div class="planning-wizard__profile-wrap" aria-hidden="true">
-                      @if (assigneePhotoVisible(a)) {
-                        <img
-                          class="planning-wizard__profile-img"
-                          [src]="a.photoUrl!"
-                          [alt]="a.firstName + ' ' + a.lastName"
-                          (error)="onAssigneePhotoError(a.id)"
-                        />
-                      } @else {
-                        <div class="planning-wizard__profile-fallback">
-                          <span class="planning-wizard__profile-initials">{{ initialsFor(a) }}</span>
-                        </div>
-                      }
-                    </div>
-                    <div class="planning-wizard__assignee-text">
-                      <span class="planning-wizard__assignee-name">{{ a.firstName }} {{ a.lastName }}</span>
-                      <span class="planning-wizard__assignee-badge">{{
-                        'PLANNING_NEW.WIZARD_ROLE_WORKER' | translate
-                      }}</span>
-                    </div>
+                    <span class="planning-wizard__unit-code" dir="ltr">{{ c.windowType.code }}</span>
+                    <span class="planning-wizard__unit-qty">×{{ c.targetQty }}</span>
+                    <span
+                      class="planning-wizard__unit-status planning-wizard__unit-status--{{ c.status }}"
+                    >{{ cycleStatusKey(c.status) | translate }}</span>
                   </button>
                 }
               </div>
@@ -401,23 +320,189 @@
         </section>
       }
 
-      <div class="planning-new__panel-wrap planning-wizard__step-enter">
-        <skyflow-planning-pdf-panel
-          class="block w-full"
-          [projectId]="pid"
-          [flowStatus]="selectedFlow()"
-          [wizardMode]="panelMode()"
-          [angleSourcing]="angleSourcing()"
-          [lineMaterial]="lineMaterial()"
-          [planningSawsManagerUserId]="selectedSawsManagerId()"
-          [sawsWorkerUserIds]="selectedWorkerIds()"
-          (planningChanged)="onPlanningChanged()"
-          (planningApproved)="onPlanningApproved()"
-          (wizardContinue)="goStep3()"
-        />
-      </div>
+      @if (step() === 2) {
+        <div class="planning-new__panel-wrap planning-wizard__step-enter">
+          <skyflow-planning-pdf-panel
+            class="block w-full"
+            [projectId]="pid"
+            [flowStatus]="selectedFlow()"
+            [wizardMode]="panelMode()"
+            [angleSourcing]="angleSourcing()"
+            [lineMaterial]="lineMaterial()"
+            [planningSawsManagerUserId]="selectedSawsManagerId()"
+            [sawsWorkerUserIds]="selectedWorkerIds()"
+            (planningChanged)="onPlanningChanged()"
+            (planningApproved)="onPlanningApproved()"
+            (wizardContinue)="goStep3()"
+          />
+        </div>
+      }
     }
   </div>
+
+  @if (cycleAssignModalOpen() && selectedCycle(); as sel) {
+    <skyflow-ui-popup
+      [open]="true"
+      (closed)="closeCycleAssignModal()"
+      [title]="('PLANNING_NEW.WIZARD_UNIT_MODAL_TITLE' | translate) + ' · ' + sel.windowType.code"
+      titleId="planning-cycle-assign-modal-title"
+    >
+      <p class="planning-wizard__unit-modal-lead">{{ 'PLANNING_NEW.WIZARD_UNIT_SELECT_STATION' | translate }}</p>
+
+      <div class="planning-wizard__station-tiles" role="tablist">
+        @for (st of stationsForSelectedCycle(); track st) {
+          <button
+            type="button"
+            class="planning-wizard__station-tile"
+            role="tab"
+            [class.planning-wizard__station-tile--active]="activeAssignStationId() === st"
+            [attr.aria-selected]="activeAssignStationId() === st"
+            (click)="selectAssignStation(st)"
+          >
+            <span class="planning-wizard__station-tile-num">{{ st }}</span>
+            <span class="planning-wizard__station-tile-name">{{ stationLabelKeyFor(st) | translate }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="planning-wizard__daily-target planning-wizard__daily-target--modal">
+        <label class="planning-wizard__daily-target-label" for="cycle-daily-target-modal">{{
+          'PLANNING_NEW.WIZARD_DAILY_TARGET' | translate
+        }}</label>
+        <input
+          id="cycle-daily-target-modal"
+          type="number"
+          min="0"
+          inputmode="numeric"
+          class="planning-wizard__daily-target-input"
+          [value]="cycleDailyTarget() ?? ''"
+          (input)="onCycleDailyTargetInput($event)"
+          [placeholder]="'PLANNING_NEW.WIZARD_DAILY_TARGET_AUTO' | translate"
+        />
+      </div>
+
+      @if (activeAssignStationId(); as st) {
+        <div class="planning-wizard__station-group">
+          <h4 class="planning-wizard__station-title">{{ stationLabelKeyFor(st) | translate }}</h4>
+
+          <p class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_STATION_MANAGER' | translate }}</p>
+          @if (managerOptionsForStation(st).length === 0) {
+            <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_NO_STATION_MANAGER' | translate }}</p>
+          } @else {
+            <div class="planning-wizard__assignee-grid">
+              <button
+                type="button"
+                class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
+                [class.planning-wizard__assignee-card--selected]="cycleStationManagerId(st) === null"
+                (click)="pickCycleStationManager(st, null)"
+              >
+                <div class="planning-wizard__profile-wrap planning-wizard__profile-wrap--muted" aria-hidden="true">
+                  <div class="planning-wizard__profile-fallback planning-wizard__profile-fallback--empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  </div>
+                </div>
+                <div class="planning-wizard__assignee-text">
+                  <span class="planning-wizard__assignee-name">{{ 'PLANNING_NEW.WIZARD_MANAGER_NONE' | translate }}</span>
+                </div>
+              </button>
+              @for (m of managerOptionsForStation(st); track m.id) {
+                <button
+                  type="button"
+                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
+                  [class.planning-wizard__assignee-card--selected]="cycleStationManagerId(st) === m.id"
+                  (click)="pickCycleStationManager(st, m.id)"
+                >
+                  <div class="planning-wizard__profile-wrap" aria-hidden="true">
+                    @if (assigneePhotoVisible(m)) {
+                      <img
+                        class="planning-wizard__profile-img"
+                        [src]="m.photoUrl!"
+                        [alt]="m.firstName + ' ' + m.lastName"
+                        (error)="onAssigneePhotoError(m.id)"
+                      />
+                    } @else {
+                      <div class="planning-wizard__profile-fallback">
+                        <span class="planning-wizard__profile-initials">{{ initialsFor(m) }}</span>
+                      </div>
+                    }
+                  </div>
+                  <div class="planning-wizard__assignee-text">
+                    <span class="planning-wizard__assignee-name">{{ m.firstName }} {{ m.lastName }}</span>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+
+          <p class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_STATION_WORKERS' | translate }}</p>
+          @if (workerOptions().length === 0) {
+            <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_WORKERS_NONE' | translate }}</p>
+          } @else {
+            <div class="planning-wizard__assignee-grid">
+              @for (w of workerOptions(); track w.id) {
+                <button
+                  type="button"
+                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
+                  [class.planning-wizard__assignee-card--selected]="isCycleStationWorker(st, w.id)"
+                  (click)="toggleCycleStationWorker(st, w.id)"
+                >
+                  <div class="planning-wizard__profile-wrap" aria-hidden="true">
+                    @if (assigneePhotoVisible(w)) {
+                      <img
+                        class="planning-wizard__profile-img"
+                        [src]="w.photoUrl!"
+                        [alt]="w.firstName + ' ' + w.lastName"
+                        (error)="onAssigneePhotoError(w.id)"
+                      />
+                    } @else {
+                      <div class="planning-wizard__profile-fallback">
+                        <span class="planning-wizard__profile-initials">{{ initialsFor(w) }}</span>
+                      </div>
+                    }
+                  </div>
+                  <div class="planning-wizard__assignee-text">
+                    <span class="planning-wizard__assignee-name">{{ w.firstName }} {{ w.lastName }}</span>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <div popup-actions>
+        <skyflow-ui-button
+          variant="ghost"
+          btnClass="planning-wizard__btn"
+          (click)="closeCycleAssignModal()"
+        >
+          {{ 'PLANNING_NEW.WIZARD_UNIT_MODAL_CANCEL' | translate }}
+        </skyflow-ui-button>
+        @if (isDraftUnit(sel)) {
+          <skyflow-ui-button
+            variant="primary"
+            btnClass="planning-wizard__btn"
+            [loading]="cycleLaunching()"
+            (click)="launchSelectedCycle()"
+          >
+            {{ 'PLANNING_NEW.WIZARD_UNIT_LAUNCH' | translate }}
+          </skyflow-ui-button>
+        } @else {
+          <skyflow-ui-button
+            variant="primary"
+            btnClass="planning-wizard__btn"
+            [loading]="cycleSaving()"
+            (click)="saveCycleAssignments()"
+          >
+            {{ 'PLANNING_NEW.WIZARD_CYCLE_SAVE' | translate }}
+          </skyflow-ui-button>
+        }
+      </div>
+    </skyflow-ui-popup>
+  }
 
   @if (successModalOpen() && successSnapshot(); as snap) {
     <skyflow-ui-popup

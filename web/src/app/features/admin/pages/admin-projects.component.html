@@ -112,6 +112,18 @@
             </a>
           }
 
+          @if (p.flowStatus !== 'COMPLETED') {
+            <skyflow-ui-card-action
+              color="purple"
+              [routerLink]="['/admin/planning-new']"
+              [queryParams]="{ draftId: p.id }"
+              (click)="$event.stopPropagation()"
+            >
+              <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
+              {{ 'ADMIN_PROJECTS.CARD_EDIT' | translate }}
+            </skyflow-ui-card-action>
+          }
+
           <skyflow-ui-card-action
             color="blue"
             [routerLink]="['/admin/projects', p.id, 'stations']"

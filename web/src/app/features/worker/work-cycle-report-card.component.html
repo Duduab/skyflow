@@ -1,0 +1,138 @@
+<article class="cycle-card">
+  <header class="cycle-card__header">
+    <div class="cycle-card__identity">
+      <span class="cycle-card__eyebrow">{{
+        'WORKER.CYCLE_REPORT_TITLE' | translate
+      }}</span>
+      <strong class="cycle-card__code" dir="ltr">{{ row().code }}</strong>
+    </div>
+    <div class="cycle-card__badges">
+      <span class="cycle-card__station">
+        {{ 'STATIONS.' + stationId() | translate }}
+      </span>
+      <span class="cycle-card__status">
+        <span class="cycle-card__status-dot" aria-hidden="true"></span>
+        {{ 'WORKER.CYCLE_REPORT_ACTIVE' | translate }}
+      </span>
+    </div>
+  </header>
+
+  <div class="cycle-card__progress-head">
+    <span>{{ 'WORKER.CYCLE_REPORT_PROGRESS' | translate }}</span>
+    <strong dir="ltr">
+      {{ row().processedQty | number: '1.0-0' }} /
+      {{ progressTarget() | number: '1.0-0' }}
+    </strong>
+  </div>
+  <div
+    class="cycle-card__track"
+    role="progressbar"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    [attr.aria-valuenow]="progressPercent()"
+  >
+    <span class="cycle-card__fill" [style.width.%]="progressPercent()"></span>
+  </div>
+  <div class="cycle-card__progress-foot">
+    <span>
+      @if (inboundQty() != null) {
+        {{ 'WORKER.FROM_PREV' | translate }}:
+      } @else {
+        {{ 'WORKER.CYCLES_REMAINING' | translate }}:
+      }
+      <strong>{{ displayInboundQty() | number: '1.0-0' }}</strong>
+    </span>
+    <strong dir="ltr">{{ progressPercent() }}%</strong>
+  </div>
+
+  <div class="cycle-card__report">
+    <div class="cycle-card__report-copy">
+      <span class="cycle-card__report-label">{{
+        'WORKER.CYCLE_REPORT_QTY' | translate
+      }}</span>
+      <span class="cycle-card__report-hint">{{
+        'WORKER.CYCLE_REPORT_HINT' | translate
+      }}</span>
+    </div>
+
+    <div class="cycle-card__controls" dir="ltr">
+      <button
+        type="button"
+        class="cycle-card__control cycle-card__control--minus"
+        [disabled]="loading() || (quantity() ?? 0) <= 0"
+        (click)="nudge(-1)"
+        [attr.aria-label]="'WORKER.SAW_CARD_MINUS_A11Y' | translate"
+      >
+        <span aria-hidden="true">−</span>
+      </button>
+
+      <span class="cycle-card__quantity" aria-live="polite">{{
+        quantity() ?? 0
+      }}</span>
+
+      <button
+        type="button"
+        class="cycle-card__control cycle-card__control--plus"
+        [disabled]="loading() || (quantity() ?? 0) >= reportRemaining()"
+        (click)="nudge(1)"
+        [attr.aria-label]="'WORKER.SAW_CARD_PLUS_A11Y' | translate"
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+
+      <span class="cycle-card__divider" aria-hidden="true"></span>
+
+      <button
+        type="button"
+        class="cycle-card__control cycle-card__control--fill"
+        [disabled]="
+          loading() ||
+          reportRemaining() <= 0 ||
+          (quantity() ?? 0) >= reportRemaining()
+        "
+        (click)="fillRemaining()"
+        [attr.aria-label]="
+          'WORKER.SAW_CARD_FILL_A11Y'
+            | translate: { qty: reportRemaining() | number: '1.0-0' }
+        "
+      >
+        <span aria-hidden="true">✓</span>
+      </button>
+    </div>
+
+    <button
+      type="button"
+      class="cycle-card__save"
+      [class.cycle-card__save--locked]="locked()"
+      [disabled]="loading() || locked() || !(quantity() ?? 0)"
+      [attr.aria-busy]="loading()"
+      (click)="submit()"
+    >
+      @if (loading()) {
+        <span class="cycle-card__spinner" aria-hidden="true"></span>
+      } @else if (locked()) {
+        <skyflow-mat-icon
+          class="cycle-card__save-icon"
+          icon="lock"
+          [size]="20"
+          [weight]="500"
+        />
+      } @else {
+        <skyflow-mat-icon
+          class="cycle-card__save-icon"
+          icon="task_alt"
+          [size]="20"
+          [weight]="500"
+        />
+      }
+      {{ 'WORKER.CYCLE_REPORT_SAVE' | translate }}
+    </button>
+  </div>
+
+  @if (locked() && lockedHint()) {
+    <p class="cycle-card__locked-hint" role="status">
+      <skyflow-mat-icon icon="info" [size]="18" [weight]="600" />
+      {{ lockedHint() }}
+    </p>
+  }
+</article>

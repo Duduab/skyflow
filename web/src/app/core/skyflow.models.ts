@@ -7,7 +7,7 @@ export type OrderStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD';
 
 export type ProjectLineMaterial = 'ALUMINUM' | 'STEEL';
 export type ProjectMachiningRoute = 'GLASS' | 'ALU_RANGER';
-export type ProjectAngleSourcing = 'INTERNAL_LASER' | 'EXTERNAL_SUPPLIER';
+export type ProjectAngleSourcing = 'INTERNAL_LASER' | 'EXTERNAL_SUPPLIER' | 'NO_LASER';
 
 export interface ProjectOrder {
   id: string;
@@ -197,6 +197,22 @@ export interface SteelworkStationContextDto {
   doneQty: number;
 }
 
+export interface AssemblyWindowPartRow {
+  partNumber: string;
+  description: string;
+  blockNumber: string;
+}
+
+export interface AssemblyWindowPartSection {
+  key: string;
+  title: string;
+  rows: AssemblyWindowPartRow[];
+}
+
+export interface AssemblyWindowPartsDto {
+  sections: AssemblyWindowPartSection[];
+}
+
 export interface AssemblyWindowTypeDocDto {
   code: string;
   totalQty: number;
@@ -206,6 +222,7 @@ export interface AssemblyWindowTypeDocDto {
   setLabels: string[];
   instructionPdfUrl: string | null;
   instructionPage: number | null;
+  parts: AssemblyWindowPartsDto | null;
 }
 
 export interface ReworkDefectDto {
@@ -410,6 +427,7 @@ export interface WindowTypePreviewDto {
   connectionPdfUrl: string | null;
   facadeCount: number;
   elevationCellCount: number;
+  parts: AssemblyWindowPartsDto | null;
 }
 
 export type FacadeDirection = 'SOUTH' | 'NORTH' | 'WEST' | 'EAST';
@@ -684,6 +702,7 @@ export interface PlanningDraftListItemDto {
   lineMaterial: ProjectLineMaterial;
   machiningRoute: ProjectMachiningRoute;
   angleSourcing?: ProjectAngleSourcing;
+  projectManagerUserId?: string | null;
   itemCount: number;
   windowTypeCount?: number;
   wizardStep: 2 | 3;
@@ -996,4 +1015,102 @@ export interface StationManagersResponse {
     lastName: string;
     photoUrl: string | null;
   };
+}
+
+export type WorkCycleStatus =
+  | 'DRAFT'
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'RETURNED';
+
+export type WorkCycleStationStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE';
+
+export interface WorkCycleStationProgress {
+  id: string;
+  stationId: number;
+  targetQty: number;
+  processedQty: number;
+  status: WorkCycleStationStatus;
+}
+
+export interface WorkCycleAssignmentUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+export interface WorkCycleAssignment {
+  id: string;
+  userId: string;
+  role: 'MANAGER' | 'WORKER';
+  stationId: number | null;
+  sortOrder: number;
+  user: WorkCycleAssignmentUser;
+}
+
+export interface WorkCycle {
+  id: string;
+  projectId: string;
+  windowTypeId: string;
+  status: WorkCycleStatus;
+  targetQty: number;
+  dailyTargetQty: number | null;
+  currentStationId: number | null;
+  openedAt: string | null;
+  completedAt: string | null;
+  returnedAt: string | null;
+  returnedFromStationId: number | null;
+  returnReason: string | null;
+  windowType: {
+    id: string;
+    code: string;
+    totalQty: number;
+    hasAngles: boolean;
+    instructionDocId: string | null;
+  };
+  stationProgress: WorkCycleStationProgress[];
+  assignments: WorkCycleAssignment[];
+}
+
+export interface WorkCycleAssignmentInput {
+  userId: string;
+  role: 'MANAGER' | 'WORKER';
+  stationId?: number | null;
+}
+
+export interface StationWorkCycleRow {
+  cycleId: string;
+  windowTypeId: string;
+  code: string;
+  /** Public path to WINDOW_INSTRUCTION_PDF when uploaded. */
+  instructionPdfUrl?: string | null;
+  /** Document title from the uploaded production instructions. */
+  instructionTitle?: string | null;
+  status: WorkCycleStatus;
+  currentStationId: number | null;
+  targetQty: number;
+  processedQty: number;
+  remaining: number;
+  stationStatus: WorkCycleStationStatus;
+}
+
+export interface WorkerCycleStation {
+  stationId: number;
+  targetQty: number;
+  processedQty: number;
+  remaining: number;
+  status: WorkCycleStationStatus;
+}
+
+/** A project unit (work cycle) as shown on the worker hub unit picker. */
+export interface WorkerProjectCycle {
+  cycleId: string;
+  windowTypeId: string;
+  code: string;
+  status: WorkCycleStatus;
+  currentStationId: number | null;
+  targetQty: number;
+  stations: WorkerCycleStation[];
 }

@@ -2,11 +2,21 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
+import { WorkCycleService } from '../work-cycles/work-cycle.service';
 import { parseQuantitiesPdf } from './pdf/quantities-pdf.parser';
 import { parseWindowInstructionsPdf } from './pdf/window-instructions-pdf.parser';
 import { parseAnglePdf } from './pdf/angle-pdf.parser';
 import { detectAngleCodesForWindows } from './pdf/window-angle-vision';
+import {
+  extractWindowPartsFromPdf,
+  type WindowPartsMapping,
+} from './pdf/window-parts-vision';
 import { WINDOW_CODE_RE } from './pdf/pdf-text.util';
+import {
+  normalizeWindowParts,
+  sanitizeWindowPartsInput,
+  type WindowPartsDto,
+} from '../common/window-parts.util';
 
 /**
  * Turns the four planning PDFs (window instructions, quantities, ANG) into the
@@ -19,7 +29,10 @@ export class WindowPlanningService {
   private readonly anthropic: Anthropic | null;
   private readonly anthropicModel: string;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workCycles: WorkCycleService,
+  ) {
     const apiKey = process.env['ANTHROPIC_API_KEY']?.trim();
     this.anthropicModel =
       process.env['ANTHROPIC_MODEL']?.trim() || 'claude-3-5-sonnet-latest';
@@ -51,7 +64,11 @@ export class WindowPlanningService {
       ];
       merged.forEach((c) => allAngleCodes.add(c));
       const hasAngles = merged.length > 0;
-      await this.prisma.windowType.upsert({
+      const parts = await this.detectPartsFromDrawings(buffer, win.pages ?? []);
+      const partsData = parts.sections.length
+        ? (parts as unknown as Prisma.InputJsonValue)
+        : undefined;
+      const windowType = await this.prisma.windowType.upsert({
         where: { projectId_code: { projectId, code: win.code } },
         update: {
           instructionDocId: documentId,
@@ -60,6 +77,7 @@ export class WindowPlanningService {
           hasAngles,
           angleCodes: merged as unknown as Prisma.InputJsonValue,
           setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
+          ...(partsData ? { partsPayload: partsData } : {}),
         },
         create: {
           projectId,
@@ -70,9 +88,12 @@ export class WindowPlanningService {
           hasAngles,
           angleCodes: merged as unknown as Prisma.InputJsonValue,
           setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
+          ...(partsData ? { partsPayload: partsData } : {}),
           sortOrder: sortOrder++,
         },
+        select: { id: true },
       });
+      await this.workCycles.syncCycleStations(projectId, windowType.id);
     }
 
     // Pre-create the required ANG rows so the wizard/laser know what must be uploaded,
@@ -114,6 +135,10 @@ export class WindowPlanningService {
     const existingCodes = (Array.isArray(wt.angleCodes) ? wt.angleCodes : []) as string[];
     const angleCodes = merged.length ? merged : existingCodes;
 
+    // Set/part tables (profiles/seals/accessories) live on the sheet's later
+    // page(s) as a raster drawing → read them with vision, same as ANG codes.
+    const parts = await this.detectPartsFromDrawings(buffer, pages);
+
     await this.prisma.windowType.update({
       where: { id: windowTypeId },
       data: {
@@ -125,6 +150,9 @@ export class WindowPlanningService {
         ...(win?.setLabels?.length
           ? { setsPayload: win.setLabels as unknown as Prisma.InputJsonValue }
           : {}),
+        ...(parts.sections.length
+          ? { partsPayload: parts as unknown as Prisma.InputJsonValue }
+          : {}),
         hasAngles: angleCodes.length > 0,
         angleCodes: angleCodes as unknown as Prisma.InputJsonValue,
       },
@@ -132,6 +160,10 @@ export class WindowPlanningService {
 
     await this.ensureRequiredAngles(projectId, merged);
     await this.linkElevationCellsToWindowTypes(projectId);
+
+    // Prepare station chain for assignment; cycle stays DRAFT until launched in step 3.
+    await this.workCycles.syncCycleStations(projectId, windowTypeId);
+
     return { anglesDetected: merged.length };
   }
 
@@ -172,6 +204,35 @@ export class WindowPlanningService {
         `ANG vision detection failed: ${err instanceof Error ? err.message : err}`,
       );
       return windows.map(() => []);
+    }
+  }
+
+  /**
+   * Read the set/part tables (profiles/seals/accessories) from the sheet's
+   * later page(s). The first page is the drawing/composition; the tables live
+   * on the following page(s). Returns an empty mapping if vision is unavailable
+   * or nothing is found.
+   */
+  private async detectPartsFromDrawings(
+    buffer: Buffer,
+    pages: number[],
+  ): Promise<WindowPartsMapping> {
+    if (!this.anthropic || !pages.length) return { sections: [] };
+    // Prefer the pages after the first (page 2+ holds the set tables); if the
+    // sheet is a single page, scan that page.
+    const tablePages = pages.length > 1 ? pages.slice(1) : pages;
+    try {
+      return await extractWindowPartsFromPdf(
+        buffer,
+        tablePages,
+        this.anthropic,
+        this.anthropicModel,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Parts vision extraction failed: ${err instanceof Error ? err.message : err}`,
+      );
+      return { sections: [] };
     }
   }
 
@@ -217,6 +278,8 @@ export class WindowPlanningService {
         create: { projectId, code, totalQty: total, sortOrder: sortOrder++ },
       });
       codeToId.set(code, wt.id);
+      // Seed a DRAFT cycle per window; it flips to OPEN once instructions arrive.
+      await this.workCycles.ensureDraftCycle(projectId, wt.id, total);
     }
 
     // facade quantities (replace)
@@ -373,6 +436,31 @@ export class WindowPlanningService {
   }
 
   /** Aggregated preview for the wizard confirm screen. */
+  /**
+   * Persist a planner-reviewed/edited parts mapping for a single window type.
+   * This is the "human confirm" step that guarantees the assembly worker sees
+   * a 100%-correct mapping regardless of OCR imperfections.
+   */
+  async saveWindowTypeParts(
+    projectId: string,
+    windowTypeId: string,
+    payload: unknown,
+  ): Promise<WindowPartsDto> {
+    const windowType = await this.prisma.windowType.findFirst({
+      where: { id: windowTypeId, projectId },
+      select: { id: true },
+    });
+    if (!windowType) {
+      throw new NotFoundException('Window type not found');
+    }
+    const parts = sanitizeWindowPartsInput(payload);
+    await this.prisma.windowType.update({
+      where: { id: windowTypeId },
+      data: { partsPayload: parts as unknown as Prisma.InputJsonValue },
+    });
+    return parts;
+  }
+
   async buildPlanningPreview(projectId: string) {
     const [
       windowTypes,
@@ -522,6 +610,7 @@ export class WindowPlanningService {
         connectionPdfUrl: w.connectionDoc?.pdfPath ?? null,
         facadeCount: w.facadeQuantities.length,
         elevationCellCount: w._count.elevationCells,
+        parts: normalizeWindowParts(w.partsPayload),
       })),
       stages: stages.map((s) => {
         const facadeGroups = facadesByStage(s.id);

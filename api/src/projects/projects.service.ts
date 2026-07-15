@@ -41,6 +41,7 @@ import { planningDraftWizardMeta } from '../common/planning-draft-progress.util.
 import { DailyTargetPlanningService } from '../users/daily-target-planning.service.js';
 import { ElevationService } from '../elevation/elevation.service.js';
 import { WindowPlanningService } from '../planning/window-planning.service.js';
+import { WorkCycleService } from '../work-cycles/work-cycle.service.js';
 import { readFileSync } from 'fs';
 
 /** PDFs attached to projects — served as static files from the web app. */
@@ -84,6 +85,7 @@ export class ProjectsService {
     private readonly dailyTargetPlanning: DailyTargetPlanningService,
     private readonly elevation: ElevationService,
     private readonly windowPlanning: WindowPlanningService,
+    private readonly workCycles: WorkCycleService,
   ) {}
 
   async createPlanningDraft(
@@ -93,12 +95,14 @@ export class ProjectsService {
     lineMaterial: ProjectLineMaterial,
     machiningRoute: ProjectMachiningRoute,
     angleSourcing?: ProjectAngleSourcing,
+    projectManagerUserId?: string | null,
   ) {
     const details = requirements?.trim() ?? '';
     const creatorId =
       createdByUserId && String(createdByUserId).trim().length
         ? String(createdByUserId).trim()
         : null;
+    const managerId = await this.resolveProjectManagerId(projectManagerUserId);
     return this.prisma.projectOrder.create({
       data: {
         name: name.trim(),
@@ -108,11 +112,47 @@ export class ProjectsService {
         flowStatus: ProjectFlowStatus.PENDING_PLANNING,
         originalLength: new Prisma.Decimal(0),
         createdByUserId: creatorId,
+        projectManagerUserId: managerId,
         lineMaterial,
         machiningRoute,
         angleSourcing: angleSourcing ?? ProjectAngleSourcing.INTERNAL_LASER,
       },
     });
+  }
+
+  /** מוודא שמנהל הפרויקט שנבחר קיים ובעל role של מנהל אתר; מחזיר null אם ריק. */
+  private async resolveProjectManagerId(
+    projectManagerUserId?: string | null,
+  ): Promise<string | null> {
+    const id = projectManagerUserId?.trim();
+    if (!id) return null;
+    const u = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true },
+    });
+    if (!u || u.role !== SkyflowRole.SITE_MANAGER) {
+      throw new BadRequestException(
+        'Project manager must be a site manager user',
+      );
+    }
+    return u.id;
+  }
+
+  /**
+   * Planning files may be uploaded while the project is still a draft
+   * (PENDING_PLANNING) or after it went live (IN_PRODUCTION) — the latter lets
+   * a planner keep adding production instructions, each opening a new work
+   * cycle. Completed projects are frozen.
+   */
+  private assertUploadableFlow(flowStatus: ProjectFlowStatus): void {
+    if (
+      flowStatus !== ProjectFlowStatus.PENDING_PLANNING &&
+      flowStatus !== ProjectFlowStatus.IN_PRODUCTION
+    ) {
+      throw new BadRequestException(
+        'Planning files can only be uploaded while the project is pending planning approval or in production',
+      );
+    }
   }
 
   /**
@@ -135,11 +175,7 @@ export class ProjectsService {
       select: { id: true, flowStatus: true },
     });
     if (!project) throw new NotFoundException(`Project ${projectId} not found`);
-    if (project.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
-      throw new BadRequestException(
-        'Planning PDFs can only be uploaded while the project is pending planning approval',
-      );
-    }
+    this.assertUploadableFlow(project.flowStatus);
 
     let buffer: Buffer | null = null;
     try {
@@ -258,11 +294,7 @@ export class ProjectsService {
       select: { id: true, flowStatus: true },
     });
     if (!project) throw new NotFoundException(`Project ${projectId} not found`);
-    if (project.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
-      throw new BadRequestException(
-        'Planning PDFs can only be uploaded while the project is pending planning approval',
-      );
-    }
+    this.assertUploadableFlow(project.flowStatus);
     const allowed: ProjectDocumentKind[] = [
       ProjectDocumentKind.WINDOW_INSTRUCTION_PDF,
       ProjectDocumentKind.CONNECTION_DETAILS_PDF,
@@ -361,11 +393,7 @@ export class ProjectsService {
       select: { id: true, flowStatus: true },
     });
     if (!project) throw new NotFoundException(`Project ${projectId} not found`);
-    if (project.flowStatus !== ProjectFlowStatus.PENDING_PLANNING) {
-      throw new BadRequestException(
-        'Elevation maps can only be uploaded while the project is pending planning approval',
-      );
-    }
+    this.assertUploadableFlow(project.flowStatus);
     const facades = await this.prisma.facade.findMany({
       where: { projectId, groupKey },
       select: { id: true, elevationDocId: true },
@@ -456,6 +484,21 @@ export class ProjectsService {
     return this.windowPlanning.buildPlanningPreview(projectId);
   }
 
+  /** Save a planner-edited parts mapping for a window type, return fresh preview. */
+  async saveWindowTypeParts(
+    projectId: string,
+    windowTypeId: string,
+    payload: unknown,
+  ) {
+    const parts = await this.windowPlanning.saveWindowTypeParts(
+      projectId,
+      windowTypeId,
+      payload,
+    );
+    const preview = await this.windowPlanning.buildPlanningPreview(projectId);
+    return { ok: true as const, parts, preview };
+  }
+
   /** טיוטות בלבד — פרויקטים שלא אושרו עדיין (ללא popup «נוצר בהצלחה»). אחרי approve → IN_PRODUCTION ולא ברשימה זו. */
   listPlanningDrafts() {
     return this.prisma.projectOrder
@@ -472,6 +515,7 @@ export class ProjectsService {
           lineMaterial: true,
           machiningRoute: true,
           angleSourcing: true,
+          projectManagerUserId: true,
           _count: { select: { productItems: true, windowTypes: true } },
         },
       })
@@ -492,6 +536,7 @@ export class ProjectsService {
             lineMaterial: r.lineMaterial,
             machiningRoute: r.machiningRoute,
             angleSourcing: r.angleSourcing,
+            projectManagerUserId: r.projectManagerUserId,
             itemCount,
             windowTypeCount: r._count.windowTypes,
             wizardStep,
@@ -499,6 +544,53 @@ export class ProjectsService {
           };
         }),
       );
+  }
+
+  /**
+   * Resume item for the planning wizard by id — works for a draft that is still
+   * pending planning AND for a project already in production (so a planner can
+   * add more production instructions / work cycles). Completed projects cannot
+   * be resumed for editing.
+   */
+  async getPlanningResumeItem(projectId: string) {
+    const r = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: {
+        id: true,
+        name: true,
+        flowStatus: true,
+        updatedAt: true,
+        createdAt: true,
+        requirements: true,
+        lineMaterial: true,
+        machiningRoute: true,
+        angleSourcing: true,
+        projectManagerUserId: true,
+        _count: { select: { productItems: true, windowTypes: true } },
+      },
+    });
+    if (!r) throw new NotFoundException(`Project ${projectId} not found`);
+    if (r.flowStatus === ProjectFlowStatus.COMPLETED) {
+      throw new BadRequestException('Completed projects cannot be edited');
+    }
+    const itemCount = Math.max(r._count.productItems, r._count.windowTypes);
+    const { wizardStep, progressPct } = planningDraftWizardMeta(itemCount);
+    return {
+      id: r.id,
+      name: r.name,
+      flowStatus: r.flowStatus,
+      updatedAt: r.updatedAt,
+      createdAt: r.createdAt,
+      requirements: r.requirements ?? '',
+      lineMaterial: r.lineMaterial,
+      machiningRoute: r.machiningRoute,
+      angleSourcing: r.angleSourcing,
+      projectManagerUserId: r.projectManagerUserId,
+      itemCount,
+      windowTypeCount: r._count.windowTypes,
+      wizardStep,
+      progressPct,
+    };
   }
 
   async updatePlanningDraft(projectId: string, dto: UpdatePlanningDraftDto) {
@@ -525,6 +617,14 @@ export class ProjectsService {
     if (dto.angleSourcing !== undefined) {
       data.angleSourcing = dto.angleSourcing;
     }
+    if (dto.projectManagerUserId !== undefined) {
+      const managerId = await this.resolveProjectManagerId(
+        dto.projectManagerUserId,
+      );
+      data.projectManager = managerId
+        ? { connect: { id: managerId } }
+        : { disconnect: true };
+    }
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No fields to update');
     }
@@ -546,6 +646,7 @@ export class ProjectsService {
       lineMaterial: updated.lineMaterial,
       machiningRoute: updated.machiningRoute,
       angleSourcing: updated.angleSourcing,
+      projectManagerUserId: updated.projectManagerUserId,
       itemCount,
       wizardStep,
       progressPct,
@@ -939,7 +1040,15 @@ export class ProjectsService {
 
     const laser = await this.laserCompletionRequirement(projectId, order);
 
-    if (
+    // Work-cycle model: the project is done only when every cycle is COMPLETED.
+    // Legacy projects (no cycles) fall back to the station-based check.
+    if (await this.workCycles.hasCycles(projectId)) {
+      if (!(await this.workCycles.allCyclesCompleted(projectId))) {
+        throw new BadRequestException(
+          'All work cycles must be completed before completing the project',
+        );
+      }
+    } else if (
       !isProjectProductionComplete(
         order,
         qty,
@@ -969,6 +1078,10 @@ export class ProjectsService {
     });
     if (!order || order.flowStatus !== ProjectFlowStatus.IN_PRODUCTION) {
       return false;
+    }
+    // Work-cycle model takes precedence: all cycles must be COMPLETED.
+    if (await this.workCycles.hasCycles(projectId)) {
+      return this.workCycles.allCyclesCompleted(projectId);
     }
     const grouped = await this.prisma.stationLog.groupBy({
       by: ['stationId'],

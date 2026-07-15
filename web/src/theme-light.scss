@@ -690,22 +690,21 @@ html.theme-light skyflow-worker-terminal .sf-panel {
 }
 
 html.theme-light skyflow-worker-terminal .station-back-cta {
-  color: #0f172a;
-  border-color: rgba(62, 93, 136, 0.22);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(224, 242, 254, 0.65));
-  box-shadow: var(--sf-shadow-inset);
+  color: #334155;
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(248, 250, 252, 0.95);
+  box-shadow: none;
 }
 
 html.theme-light skyflow-worker-terminal .station-back-cta:hover {
-  border-color: rgba(62, 93, 136, 0.32);
-  background:
-    linear-gradient(135deg, #fff, rgba(186, 230, 253, 0.75));
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.18);
+  background: #fff;
 }
 
 html.theme-light skyflow-worker-terminal .station-back-cta__icon {
-  background: rgba(85, 143, 195, 0.12);
-  color: rgba(62, 93, 136, 0.9);
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  /* color comes from station accent binding */
 }
 
 html.theme-light skyflow-worker-terminal .station-brief.sf-panel {
@@ -713,7 +712,8 @@ html.theme-light skyflow-worker-terminal .station-brief.sf-panel {
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__eyebrow {
-  color: color-mix(in srgb, var(--brief-accent) 82%, #0f172a);
+  color: color-mix(in srgb, var(--brief-accent) 92%, #0f172a);
+  text-shadow: none;
 }
 
 html.theme-light skyflow-worker-terminal .station-brief__order {
@@ -860,7 +860,7 @@ html.theme-light skyflow-worker-terminal .saw-type-tile__track {
 }
 
 html.theme-light skyflow-worker-terminal .saw-type-tile__pct-inner {
-  color: #1e3a5f;
+  color: var(--tile-ring-accent, #1e3a5f);
   text-shadow: none;
 }
 
@@ -876,6 +876,12 @@ html.theme-light skyflow-worker-terminal .station-progress__stat {
     rgba(199, 210, 254, 0.55) 100%
   ) !important;
   box-shadow: var(--sf-shadow-inset);
+}
+
+html.theme-light skyflow-worker-terminal .station-progress__stat-value,
+html.theme-light skyflow-worker-terminal .station-progress__pct {
+  color: var(--progress-accent, #558fc3) !important;
+  text-shadow: none;
 }
 
 /* מודאל סוגי ניסור — כותרת TYPE כהה; ב־LTR בלוק הטקסט בצד ימין */

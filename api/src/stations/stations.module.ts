@@ -5,9 +5,16 @@ import { StationsController } from './stations.controller';
 import { StationsService } from './stations.service';
 import { OrdersModule } from '../orders/orders.module';
 import { PrismaModule } from '../prisma/prisma.module.js';
+import { WorkCyclesModule } from '../work-cycles/work-cycle.module';
 
 @Module({
-  imports: [AuthModule, OrdersModule, DeliveryNotesModule, PrismaModule],
+  imports: [
+    AuthModule,
+    OrdersModule,
+    DeliveryNotesModule,
+    PrismaModule,
+    WorkCyclesModule,
+  ],
   controllers: [StationsController],
   providers: [StationsService],
 })

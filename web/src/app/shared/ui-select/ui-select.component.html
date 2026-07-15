@@ -22,7 +22,17 @@
     (keydown)="onTriggerKeydown($event)"
   >
     <span class="sf-ui-select__value" [class.sf-ui-select__value--placeholder]="!hasSelection()">
-      {{ displayLabel() }}
+      @if (selectedOption()?.labelParts; as parts) {
+        <span class="sf-ui-select__value-parts">
+          <span class="sf-ui-select__value-leading">{{ parts.leading }}</span>
+          <span class="sf-ui-select__value-meta" dir="ltr">
+            <strong class="sf-ui-select__emphasis">{{ parts.emphasis }}</strong>
+            <span class="sf-ui-select__value-trailing">: {{ parts.trailing }}</span>
+          </span>
+        </span>
+      } @else {
+        {{ displayLabel() }}
+      }
     </span>
     <span class="sf-ui-select__chevron" aria-hidden="true">
       <skyflow-mat-icon icon="expand_more" [size]="chevronSize()" [weight]="500" />
@@ -66,7 +76,19 @@
             (pointerdown)="onOptionActivate($event, opt)"
             (mouseenter)="activeIndex.set(i)"
           >
-            <span class="sf-ui-select__option-label">{{ opt.label }}</span>
+            <span class="sf-ui-select__option-label">
+              @if (opt.labelParts; as parts) {
+                <span class="sf-ui-select__value-parts">
+                  <span class="sf-ui-select__value-leading">{{ parts.leading }}</span>
+                  <span class="sf-ui-select__value-meta" dir="ltr">
+                    <strong class="sf-ui-select__emphasis">{{ parts.emphasis }}</strong>
+                    <span class="sf-ui-select__value-trailing">: {{ parts.trailing }}</span>
+                  </span>
+                </span>
+              } @else {
+                {{ opt.label }}
+              }
+            </span>
             @if (isSelected(opt)) {
               <skyflow-mat-icon
                 class="sf-ui-select__option-check"

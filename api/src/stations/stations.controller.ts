@@ -29,6 +29,8 @@ import {
   ensureSiteDeliveryDir,
   StationsService,
 } from './stations.service';
+import { WorkCycleService } from '../work-cycles/work-cycle.service';
+import { ReportCycleProgressDto } from '../work-cycles/dto/report-cycle-progress.dto';
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { SetAssemblyWindowQtyDto } from './dto/set-assembly-window-qty.dto.js';
@@ -50,6 +52,7 @@ export class StationsController {
     private readonly ordersService: OrdersService,
     private readonly deliveryNotes: DeliveryNotesService,
     private readonly prisma: PrismaService,
+    private readonly workCycles: WorkCycleService,
   ) {}
 
   @Get(':stationId/context/:projectId')
@@ -58,6 +61,38 @@ export class StationsController {
     @Param('projectId') projectId: string,
   ) {
     return this.stationsService.getWorkerContext(projectId, stationId);
+  }
+
+  /** All units (work cycles) of a project with instructions — drives the hub unit picker. */
+  @Get('project-cycles/:projectId')
+  async projectWorkCycles(@Param('projectId') projectId: string) {
+    return this.workCycles.listForWorker(projectId);
+  }
+
+  /** Work cycles waiting at this station (per-cycle reporting). */
+  @Get(':stationId/work-cycles/:projectId')
+  async stationWorkCycles(
+    @Param('stationId', ParseIntPipe) stationId: number,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.workCycles.cyclesForStation(projectId, stationId);
+  }
+
+  /** Worker reports qty completed for a specific cycle at this station. */
+  @Post(':stationId/work-cycles/:cycleId/report')
+  async reportWorkCycle(
+    @Req() req: { user?: { userId?: string } },
+    @Param('stationId', ParseIntPipe) stationId: number,
+    @Param('cycleId') cycleId: string,
+    @Body() dto: ReportCycleProgressDto,
+  ) {
+    return this.workCycles.reportCycleStationProgress(
+      dto.projectId,
+      cycleId,
+      stationId,
+      dto.qty,
+      { workerUserId: req.user?.userId ?? null, cutLength: dto.cutLength ?? null },
+    );
   }
 
   @Post(':stationId/logs')

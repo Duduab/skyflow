@@ -1,12 +1,16 @@
-<div class="mx-auto max-w-4xl space-y-10">
-  <header class="station-top-bar">
+<header class="station-top-bar">
+  <div class="station-top-bar__inner">
     <nav class="station-back-nav" [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate">
       <a
         class="station-back-cta"
         routerLink="/worker"
         [attr.aria-label]="'WORKER.BACK_TO_STATIONS' | translate"
       >
-        <span class="station-back-cta__icon" aria-hidden="true">
+        <span
+          class="station-back-cta__icon"
+          [style.color]="cycleSelectEmphasisColor()"
+          aria-hidden="true"
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
             <path
               d="M9 18l6-6-6-6"
@@ -28,10 +32,21 @@
           [value]="projectSelection.selectedProjectId() ?? ''"
           (valueChange)="onOrderChange($event)"
         />
+        @if (projectCycles().length) {
+          <skyflow-ui-select
+            class="sf-select station-cycle-select"
+            [style.--sf-ui-select-emphasis]="cycleSelectEmphasisColor()"
+            [options]="cycleSelectOptions()"
+            [value]="projectSelection.selectedCycleId() ?? ''"
+            (valueChange)="onCycleChange($event)"
+          />
+        }
       </div>
     }
-  </header>
+  </div>
+</header>
 
+<div class="mx-auto max-w-4xl space-y-10 worker-terminal__page">
 @if (loading()) {
   <div class="py-24 text-center text-touch font-bold text-white/80">
     …
@@ -47,15 +62,6 @@
       class="worker-terminal__body"
       [class.worker-terminal__body--site-gated]="siteManagerAuthRequired()"
     >
-    <div class="space-y-3">
-      <h1 class="text-hero tracking-tight text-white drop-shadow-lg">
-        {{ stationId | stationLabel: ctx.order | translate }}
-      </h1>
-      <p class="text-touch font-semibold text-white/80">
-        {{ 'WORKER.STATION' | translate }} {{ displayNumber() }}
-      </p>
-    </div>
-
     <section
       [class]="'station-brief station-brief--' + stationId + ' sf-panel'"
       [class.station-visual--steelworkshop]="stationBriefVisualModifier() === 'station-visual--steelworkshop'"
@@ -134,14 +140,18 @@
               @if (stationId === 1) {
                 <div class="station-brief__stat">
                   <p class="station-brief__stat-label">
-                    @if (ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0) {
+                    @if (stationWorkCycles().length) {
+                      {{ 'WORKER.SAW_PROGRESS_REMAINING' | translate }}
+                    } @else if (ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0) {
                       {{ 'WORKER.SAW_TARGET_PLANNING_LABEL' | translate }}
                     } @else {
                       {{ 'WORKER.SAW_TARGET_BARS' | translate }}
                     }
                   </p>
                   <p class="station-brief__stat-value" dir="ltr">
-                    @if (ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0) {
+                    @if (stationWorkCycles().length) {
+                      {{ stationProgress(ctx).remaining | number: '1.0-0' }}
+                    } @else if (ctx.sawWorkTargetQty != null && ctx.sawWorkTargetQty > 0) {
                       {{ ctx.sawWorkTargetQty | number: '1.0-0' }}
                     } @else {
                       {{ ctx.order.totalItems | number: '1.0-0' }}
@@ -375,104 +385,9 @@
       </section>
     }
 
-    @if (stationId === 3 && assemblyCtx(ctx); as asm) {
+    @if (stationId === 3 && assemblyInstructionWindows(ctx).length) {
       <div class="assembly-station">
-        <header class="assembly-hero sf-panel" [attr.aria-label]="'WORKER.ASSEMBLY_INSTRUCTIONS_TITLE' | translate">
-          <div class="assembly-hero__head">
-            <div class="assembly-hero__copy">
-              <p class="assembly-hero__eyebrow">{{ 'WORKER.ASSEMBLY_HERO_EYEBROW' | translate }}</p>
-              <h2 class="assembly-hero__title">
-                {{ 'WORKER.ASSEMBLY_INSTRUCTIONS_TITLE' | translate }}
-              </h2>
-              <p class="assembly-hero__hint">
-                {{ 'WORKER.ASSEMBLY_INSTRUCTIONS_HINT' | translate }}
-              </p>
-              @if (asm.typesReportTarget > 0) {
-                <p class="assembly-hero__stat">
-                  {{
-                    'WORKER.ASSEMBLY_TYPES_REPORT_PROGRESS'
-                      | translate
-                        : {
-                            done: asm.typesReportedCount,
-                            total: asm.typesReportTarget,
-                          }
-                  }}
-                </p>
-              } @else if (asm.windowsTotalQty > 0) {
-                <p class="assembly-hero__stat">
-                  {{
-                    'WORKER.ASSEMBLY_WINDOWS_PROGRESS'
-                      | translate
-                        : {
-                            done: asm.windowsAssembledQty,
-                            total: asm.windowsTotalQty,
-                            units: asm.windowsUnitCount,
-                          }
-                  }}
-                </p>
-              }
-            </div>
-            @if (asm.typesReportTarget > 0 || asm.windowsTotalQty > 0) {
-              <div
-                class="assembly-hero__ring"
-                role="img"
-                [attr.aria-label]="
-                  asm.typesReportTarget > 0
-                    ? ('WORKER.ASSEMBLY_TYPES_REPORT_PROGRESS'
-                        | translate
-                          : {
-                              done: asm.typesReportedCount,
-                              total: asm.typesReportTarget,
-                            })
-                    : ('WORKER.ASSEMBLY_WINDOWS_PROGRESS'
-                        | translate
-                          : {
-                              done: asm.windowsAssembledQty,
-                              total: asm.windowsTotalQty,
-                              units: asm.windowsUnitCount,
-                            })
-                "
-              >
-                <svg viewBox="0 0 100 100" aria-hidden="true">
-                  <circle class="assembly-hero__ring-track" cx="50" cy="50" r="42" />
-                  <circle
-                    class="assembly-hero__ring-arc"
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    [attr.stroke-dasharray]="progressCircumference"
-                    [attr.stroke-dashoffset]="
-                      progressDashOffset(
-                        asm.typesReportTarget > 0
-                          ? assemblyTypesReportProgressPercent(ctx)
-                          : assemblyWindowsProgressPercent(ctx)
-                      )
-                    "
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
-                <div class="assembly-hero__ring-label" dir="ltr">
-                  @if (
-                    asm.typesReportTarget > 0 &&
-                    asm.typesReportedCount >= asm.typesReportTarget
-                  ) {
-                    <span class="assembly-hero__ring-check" aria-hidden="true">✓</span>
-                  } @else {
-                    <span class="assembly-hero__ring-value">{{
-                      asm.typesReportTarget > 0
-                        ? assemblyTypesReportProgressPercent(ctx)
-                        : assemblyWindowsProgressPercent(ctx)
-                    }}</span>
-                    <span class="assembly-hero__ring-sign">%</span>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </header>
-
-        @if (assemblyInstructionWindows(ctx).length) {
-          <section
+        <section
             class="sf-panel md:p-8 assembly-window-guide"
             [attr.aria-label]="'WORKER.ASSEMBLY_WINDOW_GUIDE_TITLE' | translate"
           >
@@ -552,376 +467,213 @@
               </div>
             }
           </section>
-        }
-
-        <section
-          class="sf-panel md:p-8 assembly-pipeline"
-          [attr.aria-label]="'WORKER.ASSEMBLY_PIPELINE_TITLE' | translate"
-        >
-          <header class="assembly-section-head">
-            <h2 class="assembly-section-head__title">
-              {{ 'WORKER.ASSEMBLY_PIPELINE_TITLE' | translate }}
-            </h2>
-            <p class="assembly-section-head__hint">
-              {{ 'WORKER.ASSEMBLY_PIPELINE_HINT' | translate }}
-            </p>
-          </header>
-
-          @let track = assemblyPipelineTrackPercents(ctx);
-          <div class="assembly-pipeline__summary" dir="ltr">
-            <span class="assembly-pipeline__pill">
-              {{ 'WORKER.ASSEMBLY_KPI_READY' | translate }}:
-              <strong>{{ asm.pipelineReadyCount }}/{{ asm.pipelineTotalCount }}</strong>
-            </span>
-            <span class="assembly-pipeline__pill assembly-pipeline__pill--saw">
-              {{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }} {{ track.sawPct }}%
-            </span>
-            <span class="assembly-pipeline__pill assembly-pipeline__pill--cnc">
-              {{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }} {{ track.cncPct }}%
-            </span>
-          </div>
-
-          @if (assemblyPipelineTypeGroups(ctx).length === 0) {
-            <p class="assembly-empty">{{ 'WORKER.ASSEMBLY_PIPELINE_EMPTY' | translate }}</p>
-          } @else {
-            <div
-              class="assembly-type-grid"
-              role="list"
-              [attr.aria-label]="'WORKER.ASSEMBLY_PIPELINE_TITLE' | translate"
-            >
-              @for (g of assemblyPipelineTypeGroups(ctx); track g.instructionKind) {
-                <article
-                  class="assembly-type-card"
-                  [class.assembly-type-card--ready]="g.status === 'ready'"
-                  [class.assembly-type-card--locked]="g.status === 'locked'"
-                  [class.assembly-type-card--reported]="assemblyTypeReported(ctx, g)"
-                  role="listitem"
-                >
-                  <div class="assembly-type-card__head">
-                    <h3 class="assembly-type-card__title" dir="ltr">
-                      {{ sawInstructionKindTitle(g.instructionKind, g.typeNum) }}
-                    </h3>
-                    @if (assemblyTypeReported(ctx, g)) {
-                      <div class="assembly-type-card__ring-wrap" aria-hidden="true">
-                        <svg class="assembly-type-card__svg" viewBox="0 0 100 100">
-                          <circle class="assembly-type-card__track" cx="50" cy="50" r="42" />
-                          <circle
-                            class="assembly-type-card__arc assembly-type-card__arc--done"
-                            cx="50"
-                            cy="50"
-                            r="42"
-                            [attr.stroke-dasharray]="progressCircumference"
-                            [attr.stroke-dashoffset]="progressDashOffset(100)"
-                            transform="rotate(-90 50 50)"
-                          />
-                        </svg>
-                        <span class="assembly-type-card__check">✓</span>
-                      </div>
-                    } @else if (g.status === 'locked') {
-                      <span class="assembly-type-card__badge assembly-type-card__badge--locked">
-                        {{ 'WORKER.ASSEMBLY_BADGE_LOCKED' | translate }}
-                      </span>
-                    }
-                  </div>
-
-                  <p class="assembly-type-card__meta">
-                    {{
-                      'WORKER.ASSEMBLY_TYPE_PROFILE_COUNT'
-                        | translate: { count: g.lineCount }
-                    }}
-                  </p>
-
-                  <div class="assembly-type-card__chips" aria-label="Profiles">
-                    @for (chip of g.profileChips; track chip) {
-                      <span class="assembly-type-card__chip" dir="ltr">{{ chip }}</span>
-                    }
-                    @if (g.extraChipCount > 0) {
-                      <span class="assembly-type-card__chip assembly-type-card__chip--more" dir="ltr">
-                        +{{ g.extraChipCount }}
-                      </span>
-                    }
-                  </div>
-
-                  <div
-                    class="assembly-type-card__track"
-                    [class.assembly-type-card__track--ok]="
-                      g.sawnQty >= g.totalQty && g.totalQty > 0
-                    "
-                  >
-                    <span>{{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }}</span>
-                    <span class="assembly-type-card__track-bar" aria-hidden="true">
-                      <span
-                        class="assembly-type-card__track-fill assembly-type-card__track-fill--saw"
-                        [style.width.%]="assemblyTypeTrackPercent(g.sawnQty, g.totalQty)"
-                      ></span>
-                    </span>
-                    <span dir="ltr">{{ g.sawnQty }}/{{ g.totalQty }}</span>
-                  </div>
-
-                  <div
-                    class="assembly-type-card__track"
-                    [class.assembly-type-card__track--ok]="
-                      g.cncDoneQty >= g.totalQty && g.totalQty > 0
-                    "
-                  >
-                    <span>{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span>
-                    <span class="assembly-type-card__track-bar" aria-hidden="true">
-                      <span
-                        class="assembly-type-card__track-fill assembly-type-card__track-fill--cnc"
-                        [style.width.%]="assemblyTypeTrackPercent(g.cncDoneQty, g.totalQty)"
-                      ></span>
-                    </span>
-                    <span dir="ltr">{{ g.cncDoneQty }}/{{ g.totalQty }}</span>
-                  </div>
-
-                  <div class="assembly-type-card__steps" aria-hidden="true">
-                    <span
-                      class="assembly-type-card__step"
-                      [class.is-ok]="g.sawnQty >= g.totalQty && g.totalQty > 0"
-                      >{{ 'WORKER.ASSEMBLY_BADGE_SAW' | translate }}</span
-                    >
-                    <span
-                      class="assembly-type-card__step"
-                      [class.is-ok]="g.cncDoneQty >= g.totalQty && g.totalQty > 0"
-                      >{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span
-                    >
-                    <span
-                      class="assembly-type-card__step"
-                      [class.is-ok]="g.status === 'ready'"
-                      >{{ 'WORKER.ASSEMBLY_STEP_READY' | translate }}</span
-                    >
-                  </div>
-
-                  @if (g.status === 'locked') {
-                    <p class="assembly-type-card__locked-hint">
-                      {{ 'WORKER.SAW_TYPE_LOCKED_WAIT_SAW' | translate }}
-                    </p>
-                  }
-
-                  @if (!assemblyTypeReported(ctx, g) && g.status === 'ready') {
-                    <button
-                      type="button"
-                      class="assembly-type-card__action"
-                      (click)="openAssemblyTypeModal(g)"
-                    >
-                      {{ 'WORKER.ASSEMBLY_TYPE_REPORT_BTN' | translate }}
-                    </button>
-                  }
-                </article>
-              }
-            </div>
-          }
-        </section>
       </div>
     }
 
-    @if (stationId === 3 && ctx.assemblyWindowTypes?.length) {
+    @if (stationId === 3 && assemblyDocUnits(ctx).length) {
       <section
-        class="sf-panel md:p-8 wt-docs"
-        [attr.aria-label]="'WORKER.WT_DOCS_TITLE' | translate"
+        class="sf-panel md:p-8 asm-docs"
+        [attr.aria-label]="'WORKER.ASM_DOCS_TITLE' | translate"
       >
-        <header class="assembly-section-head">
-          <h2 class="assembly-section-head__title">{{ 'WORKER.WT_DOCS_TITLE' | translate }}</h2>
-          <p class="assembly-section-head__hint">{{ 'WORKER.WT_DOCS_HINT' | translate }}</p>
-        </header>
-        <div class="wt-docs__grid" role="list">
-          @for (w of ctx.assemblyWindowTypes; track w.code) {
-            <article class="wt-card" role="listitem">
-              <div class="wt-card__head">
-                <span class="wt-card__code" dir="ltr">{{ w.code }}</span>
-                <span class="wt-card__qty">{{ w.totalQty }}</span>
-              </div>
-              @if (w.composition.length) {
-                <div class="wt-card__section">
-                  <span class="wt-card__label">{{ 'WORKER.WT_COMPOSITION' | translate }}</span>
-                  <div class="wt-card__chips">
-                    @for (c of w.composition; track c) {
-                      <span class="wt-card__chip" dir="ltr">{{ c }}</span>
-                    }
-                  </div>
-                </div>
-              }
-              @if (w.setLabels.length) {
-                <div class="wt-card__section">
-                  <span class="wt-card__label">{{ 'WORKER.WT_SETS' | translate }}</span>
-                  <div class="wt-card__chips">
-                    @for (s of w.setLabels; track s) {
-                      <span class="wt-card__chip wt-card__chip--set" dir="ltr">{{ s }}</span>
-                    }
-                  </div>
-                </div>
-              }
-              @if (w.hasAngles && w.angleCodes.length) {
-                <div class="wt-card__section">
-                  <span class="wt-card__label">{{ 'WORKER.WT_ANGLES' | translate }}</span>
-                  <div class="wt-card__chips">
-                    @for (a of w.angleCodes; track a) {
-                      <span class="wt-card__chip wt-card__chip--ang" dir="ltr">{{ a }}</span>
-                    }
-                  </div>
-                </div>
-              }
-              @if (w.instructionPdfUrl) {
-                <a
-                  class="wt-card__pdf"
-                  [href]="w.instructionPdfUrl"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  {{ 'WORKER.WT_OPEN_PDF' | translate }}
-                </a>
-              } @else {
-                <span class="wt-card__pdf wt-card__pdf--missing">{{ 'WORKER.WT_NO_PDF' | translate }}</span>
-              }
-            </article>
-          }
-        </div>
-      </section>
-    }
-
-    @if (stationId === 8 && ctx.laserStation; as laser) {
-      <section
-        class="sf-panel md:p-8 laser-station"
-        [attr.aria-label]="'WORKER.LASER_TITLE' | translate"
-      >
-        <header class="assembly-section-head">
-          <h2 class="assembly-section-head__title">{{ 'WORKER.LASER_TITLE' | translate }}</h2>
-          <p class="assembly-section-head__hint">{{ 'WORKER.LASER_HINT' | translate }}</p>
-        </header>
-
-        @if (laser.externalSupplier) {
-          <p class="laser-station__external">{{ 'WORKER.LASER_EXTERNAL' | translate }}</p>
-        }
-
-        <div class="laser-station__summary" dir="ltr">
-          <span class="laser-station__pill">
-            {{ 'WORKER.LASER_TOTAL' | translate }}: <strong>{{ laser.totalAngleQty }}</strong>
-          </span>
-          <span class="laser-station__pill laser-station__pill--done">
-            {{ 'WORKER.LASER_DONE' | translate }}: <strong>{{ laser.doneQty }}</strong>
-          </span>
-        </div>
-
-        @if (laser.angles.length) {
-          <div class="laser-station__grid" role="list">
-            @for (a of laser.angles; track a.code) {
-              @let remaining = a.qty - a.doneQty;
-              <article
-                class="laser-card"
-                role="listitem"
-                [class.laser-card--done]="a.doneQty >= a.qty && a.qty > 0"
-              >
-                <div class="laser-card__head">
-                  <span class="laser-card__code" dir="ltr">{{ a.code }}</span>
-                  <span class="laser-card__qty" dir="ltr">
-                    {{ a.doneQty }}/{{ a.qty }}
-                  </span>
-                </div>
-
-                <div class="laser-card__track" aria-hidden="true">
-                  <span
-                    class="laser-card__track-fill"
-                    [style.width.%]="
-                      a.qty > 0
-                        ? (a.doneQty >= a.qty ? 100 : (a.doneQty / a.qty) * 100)
-                        : 0
-                    "
-                  ></span>
-                </div>
-
-                @if (a.instructionPdfUrl) {
-                  <button
-                    type="button"
-                    class="laser-card__pdf"
-                    (click)="openLaserPdf(a.instructionPdfUrl, a.code)"
-                  >
-                    {{ 'WORKER.WT_OPEN_PDF' | translate }}
-                  </button>
-                }
-
-                @if (a.doneQty >= a.qty && a.qty > 0) {
-                  <p class="laser-card__complete">
-                    {{ 'WORKER.LASER_ANGLE_COMPLETE' | translate }}
-                  </p>
-                } @else {
-                  <form
-                    class="laser-card__report"
-                    (ngSubmit)="$event.preventDefault(); submitLaserReport(a.code)"
-                  >
-                    <label class="laser-card__report-label">
-                      {{ 'WORKER.LASER_REPORT_LABEL' | translate }}
-                      <span class="laser-card__report-remaining" dir="ltr">
-                        ({{ 'WORKER.LASER_REMAINING' | translate }}:
-                        {{ remaining > 0 ? remaining : 0 }})
-                      </span>
-                    </label>
-                    <div class="laser-card__report-row">
-                      <input
-                        class="laser-card__report-input"
-                        type="number"
-                        inputmode="numeric"
-                        min="1"
-                        [max]="remaining > 0 ? remaining : null"
-                        dir="ltr"
-                        [value]="laserReportValue(a.code) ?? ''"
-                        (input)="onLaserReportInput(a.code, $any($event.target).value)"
-                        [attr.aria-label]="'WORKER.LASER_REPORT_LABEL' | translate"
-                      />
-                      <skyflow-ui-button
-                        type="button"
-                        size="md"
-                        [disabled]="
-                          laserSavingCode() === a.code ||
-                          (laserReportValue(a.code) ?? 0) <= 0
-                        "
-                        (click)="submitLaserReport(a.code)"
-                      >
-                        {{ 'WORKER.LASER_REPORT_SUBMIT' | translate }}
-                      </skyflow-ui-button>
-                    </div>
-                  </form>
-                }
-              </article>
-            }
+        <header class="asm-docs__head">
+          <div class="asm-docs__head-copy">
+            <span class="asm-docs__eyebrow">{{
+              'WORKER.ASM_DOCS_EYEBROW' | translate
+            }}</span>
+            <h2 class="asm-docs__title">{{ 'WORKER.ASM_DOCS_TITLE' | translate }}</h2>
+            <p class="asm-docs__hint">{{ 'WORKER.ASM_DOCS_HINT' | translate }}</p>
           </div>
-        } @else {
-          <p class="assembly-empty">{{ 'WORKER.LASER_EMPTY' | translate }}</p>
-        }
-      </section>
+          <span class="asm-docs__head-icon" aria-hidden="true">
+            <skyflow-mat-icon icon="menu_book" [size]="30" [weight]="600" [filled]="true" />
+          </span>
+        </header>
 
-      @if (laserPdfUrl(); as pdfUrl) {
-        <div
-          class="laser-pdf-modal"
-          role="dialog"
-          aria-modal="true"
-          [attr.aria-label]="'WORKER.LASER_PDF_TITLE' | translate"
-          (click)="closeLaserPdf()"
-        >
-          <div
-            class="laser-pdf-modal__panel"
-            (click)="$event.stopPropagation()"
-          >
-            <header class="laser-pdf-modal__head">
-              <span class="laser-pdf-modal__title" dir="ltr">
-                {{ laserPdfCode() }}
-              </span>
+        @if (assemblyDocUnits(ctx).length > 1) {
+          <div class="asm-docs__tabs" role="tablist">
+            @for (u of assemblyDocUnits(ctx); track u.code) {
               <button
                 type="button"
-                class="laser-pdf-modal__close"
-                (click)="closeLaserPdf()"
-                [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+                class="asm-docs__tab"
+                role="tab"
+                [class.is-active]="assemblyDocSelected(ctx)?.code === u.code"
+                [attr.aria-selected]="assemblyDocSelected(ctx)?.code === u.code"
+                (click)="selectAssemblyDocUnit(u.code)"
               >
-                <span aria-hidden="true">×</span>
+                <span class="asm-docs__tab-code" dir="ltr">{{ u.code }}</span>
+                <span class="asm-docs__tab-qty">×{{ u.totalQty }}</span>
               </button>
-            </header>
-            <iframe
-              class="laser-pdf-modal__frame"
-              [src]="laserPdfSafeUrl(pdfUrl)"
-              [title]="laserPdfCode() ?? ('WORKER.LASER_PDF_TITLE' | translate)"
-            ></iframe>
+            }
           </div>
-        </div>
-      }
+        }
+
+        @if (assemblyDocSelected(ctx); as unit) {
+          <div class="asm-docs__unit-bar">
+            <span class="asm-docs__unit-eyebrow">{{
+              'WORKER.ASM_DOCS_UNIT' | translate
+            }}</span>
+            <span class="asm-docs__unit-code" dir="ltr">{{ unit.code }}</span>
+            <span class="asm-docs__unit-qty" dir="ltr">×{{ unit.totalQty }}</span>
+          </div>
+
+          <div class="asm-docs__views">
+            <button
+              type="button"
+              class="asm-docs__view-btn"
+              (click)="openAssemblyDocPage(unit, 1)"
+            >
+              <span class="asm-docs__view-icon" aria-hidden="true">
+                <skyflow-mat-icon icon="image" [size]="26" [weight]="600" [filled]="true" />
+              </span>
+              <span class="asm-docs__view-text">
+                <span class="asm-docs__view-label">{{
+                  'WORKER.ASM_DOCS_VIEW_PAGE1' | translate
+                }}</span>
+                <span class="asm-docs__view-sub">{{
+                  'WORKER.ASM_DOCS_VIEW_PAGE1_SUB' | translate
+                }}</span>
+              </span>
+              <span class="asm-docs__view-arrow" aria-hidden="true">
+                <skyflow-mat-icon icon="open_in_full" [size]="18" [weight]="600" />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="asm-docs__view-btn"
+              (click)="openAssemblyDocPage(unit, 2)"
+            >
+              <span class="asm-docs__view-icon" aria-hidden="true">
+                <skyflow-mat-icon icon="table_chart" [size]="26" [weight]="600" [filled]="true" />
+              </span>
+              <span class="asm-docs__view-text">
+                <span class="asm-docs__view-label">{{
+                  'WORKER.ASM_DOCS_VIEW_PAGE2' | translate
+                }}</span>
+                <span class="asm-docs__view-sub">{{
+                  'WORKER.ASM_DOCS_VIEW_PAGE2_SUB' | translate
+                }}</span>
+              </span>
+              <span class="asm-docs__view-arrow" aria-hidden="true">
+                <skyflow-mat-icon icon="open_in_full" [size]="18" [weight]="600" />
+              </span>
+            </button>
+          </div>
+
+          <div class="asm-map">
+            <div class="asm-map__head">
+              <h3 class="asm-map__title">
+                <span class="asm-map__title-dot" aria-hidden="true"></span>
+                {{ 'WORKER.ASM_MAP_TITLE' | translate }}
+              </h3>
+              <span class="asm-map__count">{{
+                'WORKER.ASM_MAP_COUNT'
+                  | translate: { count: assemblyDocPartCount(unit) }
+              }}</span>
+            </div>
+
+            @if (assemblyDocSections(unit).length) {
+              <div
+                class="asm-map__checkbar"
+                [class.asm-map__checkbar--done]="assemblyChecksComplete(unit)"
+              >
+                <span class="asm-map__checkbar-icon" aria-hidden="true">
+                  <skyflow-mat-icon
+                    [icon]="assemblyChecksComplete(unit) ? 'task_alt' : 'checklist'"
+                    [size]="20"
+                    [weight]="600"
+                    [filled]="true"
+                  />
+                </span>
+                <span class="asm-map__checkbar-text">{{
+                  'WORKER.ASM_MAP_CHECK_PROGRESS'
+                    | translate
+                      : {
+                          done: assemblyChecklistDone(unit),
+                          total: assemblyDocPartCount(unit)
+                        }
+                }}</span>
+                @if (assemblyChecksComplete(unit)) {
+                  <span class="asm-map__checkbar-badge">{{
+                    'WORKER.ASM_MAP_CHECK_DONE' | translate
+                  }}</span>
+                }
+              </div>
+
+              <div class="asm-map__sections">
+                @for (sec of assemblyDocSections(unit); track $index; let si = $index) {
+                  <article class="asm-map__section" [attr.data-kind]="sec.key">
+                    <header class="asm-map__section-head">
+                      <span class="asm-map__section-icon" aria-hidden="true">
+                        <skyflow-mat-icon
+                          [icon]="assemblyDocSectionIcon(sec.key)"
+                          [size]="20"
+                          [weight]="600"
+                          [filled]="true"
+                        />
+                      </span>
+                      <h4 class="asm-map__section-title">{{ sec.title }}</h4>
+                      <span class="asm-map__section-badge">{{ sec.rows.length }}</span>
+                    </header>
+
+                    <div class="asm-map__table" role="table">
+                      <div class="asm-map__row asm-map__row--head" role="row">
+                        <span class="asm-map__cell asm-map__cell--check" aria-hidden="true"></span>
+                        <span class="asm-map__cell asm-map__cell--block">{{
+                          'WORKER.ASM_MAP_COL_BLOCK' | translate
+                        }}</span>
+                        <span class="asm-map__cell asm-map__cell--desc">{{
+                          'WORKER.ASM_MAP_COL_DESC' | translate
+                        }}</span>
+                        <span class="asm-map__cell asm-map__cell--part">{{
+                          'WORKER.ASM_MAP_COL_PART' | translate
+                        }}</span>
+                      </div>
+                      @for (row of sec.rows; track $index; let ri = $index) {
+                        <div
+                          class="asm-map__row"
+                          role="row"
+                          [class.asm-map__row--checked]="isAssemblyItemChecked(unit.code, si, ri)"
+                        >
+                          <span class="asm-map__cell asm-map__cell--check">
+                            <button
+                              type="button"
+                              class="asm-map__check"
+                              [class.asm-map__check--on]="isAssemblyItemChecked(unit.code, si, ri)"
+                              [attr.aria-pressed]="isAssemblyItemChecked(unit.code, si, ri)"
+                              [attr.aria-label]="'WORKER.ASM_MAP_CHECK_A11Y' | translate"
+                              (click)="toggleAssemblyItem(unit.code, si, ri)"
+                            >
+                              @if (isAssemblyItemChecked(unit.code, si, ri)) {
+                                <skyflow-mat-icon icon="check" [size]="18" [weight]="700" />
+                              }
+                            </button>
+                          </span>
+                          <span class="asm-map__cell asm-map__cell--block">
+                            <span class="asm-map__block-chip" dir="ltr">{{
+                              row.blockNumber || '—'
+                            }}</span>
+                          </span>
+                          <span class="asm-map__cell asm-map__cell--desc">{{
+                            row.description || '—'
+                          }}</span>
+                          <span class="asm-map__cell asm-map__cell--part" dir="ltr">{{
+                            row.partNumber || '—'
+                          }}</span>
+                        </div>
+                      }
+                    </div>
+                  </article>
+                }
+              </div>
+            } @else {
+              <p class="asm-map__empty">
+                <skyflow-mat-icon icon="hourglass_empty" [size]="22" [weight]="600" />
+                {{ 'WORKER.ASM_MAP_EMPTY' | translate }}
+              </p>
+            }
+          </div>
+        }
+      </section>
     }
 
     @if (ctx.steelworkStation; as steel) {
@@ -1037,35 +789,6 @@
           <p class="assembly-empty">{{ 'WORKER.STEEL_EMPTY' | translate }}</p>
         }
       </section>
-
-      @if (laserPdfUrl(); as pdfUrl) {
-        <div
-          class="laser-pdf-modal"
-          role="dialog"
-          aria-modal="true"
-          [attr.aria-label]="'WORKER.LASER_PDF_TITLE' | translate"
-          (click)="closeLaserPdf()"
-        >
-          <div class="laser-pdf-modal__panel" (click)="$event.stopPropagation()">
-            <header class="laser-pdf-modal__head">
-              <span class="laser-pdf-modal__title">{{ laserPdfCode() }}</span>
-              <button
-                type="button"
-                class="laser-pdf-modal__close"
-                (click)="closeLaserPdf()"
-                [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            </header>
-            <iframe
-              class="laser-pdf-modal__frame"
-              [src]="laserPdfSafeUrl(pdfUrl)"
-              [title]="laserPdfCode() ?? ('WORKER.LASER_PDF_TITLE' | translate)"
-            ></iframe>
-          </div>
-        </div>
-      }
     }
 
     @if (ctx.reworkDefects?.length) {
@@ -1254,28 +977,317 @@
       </div>
     }
 
-    @if (
-      stationId <= 4 &&
-      stationId >= 1 &&
-      stationId !== 3 &&
-      stationId !== 4 &&
-      ctx.sawWorkLines !== undefined
-    ) {
-      <section
-        class="sf-panel md:p-10 mt-6"
+    <section
+      class="sf-panel md:p-10 mt-6 worker-station-panel"
+      [attr.aria-label]="'WORKER.PROGRESS_TITLE' | translate"
+    >
+    @if (stationId === 8 && ctx.laserStation; as laser) {
+      <div
+        class="worker-station-panel__block laser-angles-panel"
+        [attr.aria-label]="'WORKER.LASER_ANGLES_TITLE' | translate"
+      >
+        <div class="worker-cycles__title-row">
+          <h2 class="worker-cycles__title worker-station-panel__title text-white drop-shadow-md">
+            {{ 'WORKER.LASER_ANGLES_TITLE' | translate }}
+          </h2>
+          <span
+            class="worker-cycles__saw-icon laser-angles-panel__icon"
+            [style.background]="cycleSelectEmphasisColor()"
+            aria-hidden="true"
+          >
+            <skyflow-mat-icon
+              icon="flare"
+              [size]="28"
+              [weight]="600"
+              [filled]="true"
+            />
+          </span>
+        </div>
+        <p class="mt-2 text-touch text-white/75">
+          {{ 'WORKER.LASER_HINT' | translate }}
+        </p>
+
+        @if (laser.externalSupplier) {
+          <p class="laser-angles-panel__external mt-4">
+            {{ 'WORKER.LASER_EXTERNAL' | translate }}
+          </p>
+        }
+
+        <div class="laser-angles-panel__summary">
+          <span class="laser-angles-panel__pill laser-angles-panel__pill--total">
+            {{ 'WORKER.LASER_TOTAL' | translate }}:
+            <strong>{{ laser.totalAngleQty }}</strong>
+          </span>
+          <span class="laser-angles-panel__pill laser-angles-panel__pill--done">
+            {{ 'WORKER.LASER_DONE' | translate }}:
+            <strong>{{ laser.doneQty }}</strong>
+          </span>
+        </div>
+
+        @if (laser.angles.length) {
+          <div class="laser-angles-panel__grid" role="list">
+            @for (a of laser.angles; track a.code) {
+              @let remaining = a.qty - a.doneQty;
+              <article
+                class="laser-card laser-card--panel"
+                role="listitem"
+                [style.--laser-card-accent]="cycleSelectEmphasisColor()"
+                [class.laser-card--done]="laserAngleIsComplete(a)"
+              >
+                <div class="laser-card__head">
+                  <span class="laser-card__code" dir="ltr">{{ a.code }}</span>
+                  <span class="laser-card__qty" dir="ltr">
+                    {{ a.doneQty }}/{{ a.qty }}
+                  </span>
+                </div>
+
+                <div class="laser-card__track" aria-hidden="true">
+                  <span
+                    class="laser-card__track-fill"
+                    [style.width.%]="laserAngleRingPercent(a)"
+                  ></span>
+                </div>
+
+                <p class="laser-card__pct" dir="ltr">
+                  {{ laserAngleProgressLabel(a) }}%
+                </p>
+
+                @if (a.instructionPdfUrl) {
+                  <button
+                    type="button"
+                    class="laser-card__view"
+                    (click)="openLaserPdf(a.instructionPdfUrl, a.code)"
+                  >
+                    <skyflow-mat-icon
+                      class="laser-card__view-icon"
+                      icon="visibility"
+                      [size]="18"
+                      [weight]="500"
+                    />
+                    {{ 'WORKER.SAW_OPEN_INSTRUCTIONS_BTN' | translate }}
+                  </button>
+                }
+
+                @if (laserAngleIsComplete(a)) {
+                  <p class="laser-card__complete">
+                    {{ 'WORKER.LASER_ANGLE_COMPLETE' | translate }}
+                  </p>
+                } @else if (!laser.externalSupplier) {
+                  <form
+                    class="laser-card__report"
+                    (ngSubmit)="$event.preventDefault(); submitLaserReport(a.code)"
+                  >
+                    <label class="laser-card__report-label">
+                      {{ 'WORKER.LASER_REPORT_LABEL' | translate }}
+                      <span class="laser-card__report-remaining" dir="ltr">
+                        ({{ 'WORKER.LASER_REMAINING' | translate }}:
+                        {{ remaining > 0 ? remaining : 0 }})
+                      </span>
+                    </label>
+                    <div class="laser-card__report-row">
+                      <div class="laser-card__controls" dir="ltr">
+                        <button
+                          type="button"
+                          class="laser-card__control laser-card__control--minus"
+                          [disabled]="
+                            laserSavingCode() === a.code ||
+                            (laserReportValue(a.code) ?? 0) <= 0
+                          "
+                          (click)="nudgeLaserReport(a.code, -1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_MINUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">−</span>
+                        </button>
+
+                        <span class="laser-card__quantity" aria-live="polite">{{
+                          laserReportValue(a.code) ?? 0
+                        }}</span>
+
+                        <button
+                          type="button"
+                          class="laser-card__control laser-card__control--plus"
+                          [disabled]="
+                            laserSavingCode() === a.code ||
+                            (laserReportValue(a.code) ?? 0) >= remaining
+                          "
+                          (click)="nudgeLaserReport(a.code, 1)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_PLUS_A11Y' | translate"
+                        >
+                          <span aria-hidden="true">+</span>
+                        </button>
+
+                        <span class="laser-card__divider" aria-hidden="true"></span>
+
+                        <button
+                          type="button"
+                          class="laser-card__control laser-card__control--fill"
+                          [disabled]="
+                            laserSavingCode() === a.code ||
+                            remaining <= 0 ||
+                            (laserReportValue(a.code) ?? 0) >= remaining
+                          "
+                          (click)="fillLaserReport(a.code)"
+                          [attr.aria-label]="
+                            'WORKER.SAW_CARD_FILL_A11Y'
+                              | translate: { qty: remaining | number: '1.0-0' }
+                          "
+                        >
+                          <span aria-hidden="true">✓</span>
+                        </button>
+                      </div>
+                      <skyflow-ui-button
+                        type="button"
+                        variant="primary"
+                        size="md"
+                        btnClass="laser-card__report-btn"
+                        [loading]="laserSavingCode() === a.code"
+                        [disabled]="
+                          laserSavingCode() === a.code ||
+                          (laserReportValue(a.code) ?? 0) <= 0
+                        "
+                        (click)="submitLaserReport(a.code)"
+                      >
+                        @if (laserSavingCode() !== a.code) {
+                          <skyflow-mat-icon
+                            icon="task_alt"
+                            [size]="20"
+                            [weight]="500"
+                          />
+                        }
+                        {{ 'WORKER.CYCLE_REPORT_SAVE' | translate }}
+                      </skyflow-ui-button>
+                    </div>
+                  </form>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="laser-angles-panel__empty mt-6 text-touch text-white/70">
+            {{ 'WORKER.LASER_EMPTY' | translate }}
+          </p>
+        }
+      </div>
+    }
+
+    @if (visibleStationCycles().length && stationId !== 8) {
+      <div
+        class="worker-station-panel__block worker-cycles"
+        [attr.aria-label]="cyclesSectionTitleKey() | translate"
+      >
+        <div class="worker-cycles__title-row">
+          <h2 class="worker-cycles__title worker-station-panel__title text-white drop-shadow-md">
+            {{ cyclesSectionTitleKey() | translate }}
+          </h2>
+          <span
+            class="worker-cycles__saw-icon"
+            [style.background]="cycleSelectEmphasisColor()"
+            aria-hidden="true"
+          >
+            <skyflow-mat-icon
+              [icon]="cyclesSectionIcon()"
+              [size]="28"
+              [weight]="600"
+              [filled]="true"
+            />
+          </span>
+        </div>
+        <p class="mt-2 text-touch text-white/75">
+          {{ 'WORKER.CYCLES_HINT' | translate }}
+        </p>
+        @if (selectedCycleNotAtStation()) {
+          <p class="mt-2 text-touch text-amber-300/90">
+            {{ 'WORKER.CYCLES_UNIT_NOT_HERE' | translate }}
+          </p>
+        }
+        <div class="mt-6 worker-cycles__list" role="list">
+          @for (row of visibleStationCycles(); track row.cycleId) {
+            <skyflow-work-cycle-report-card
+              role="listitem"
+              [row]="row"
+              [stationId]="stationId"
+              [inboundQty]="usesInboundCycleMetrics() ? cycleInboundQty(row.cycleId) : null"
+              [quantity]="cycleQty(row.cycleId)"
+              [loading]="cycleReportingId() === row.cycleId"
+              [locked]="assemblyReportLocked(ctx, stationId, row)"
+              [lockedHint]="'WORKER.ASM_REPORT_LOCKED' | translate"
+              (quantityChange)="setCycleQtyValue(row.cycleId, $event)"
+              (submitted)="reportCycle(row)"
+            />
+          }
+        </div>
+      </div>
+    }
+
+    @if (showSawProfileLines(ctx)) {
+      @if (visibleStationCycles().length && stationId !== 8) {
+        <hr class="worker-station-panel__hr" />
+      }
+      <div
+        class="worker-station-panel__block"
         [attr.aria-label]="'WORKER.SAW_PROFILE_LINES_TITLE' | translate"
       >
-        <h2 class="text-hero text-white drop-shadow-md">
-          {{ 'WORKER.SAW_PROFILE_LINES_TITLE' | translate }}
-        </h2>
-        <p class="mt-2 text-touch text-white/75">
-          {{ 'WORKER.SAW_PROFILE_LINES_HINT' | translate }}
-        </p>
-        @if (ctx.sawWorkLines!.length === 0) {
-          <p class="mt-6 text-touch text-white/70">
-            {{ 'WORKER.SAW_PROFILE_LINES_EMPTY' | translate }}
-          </p>
+        @if (activeSawUnit(); as unit) {
+          <h3 class="worker-station-panel__title text-white drop-shadow-md">
+            {{ 'WORKER.SAW_UNIT_INSTRUCTIONS_TITLE' | translate }}
+          </h3>
+          <header
+            class="saw-unit-hero mt-5"
+            [style.--saw-unit-accent]="cycleSelectEmphasisColor()"
+            [attr.aria-label]="'WORKER.SAW_META_GROUP' | translate"
+          >
+            <div class="saw-unit-hero__identity">
+              <div class="saw-unit-hero__text">
+                <span class="saw-unit-hero__eyebrow">{{
+                  'WORKER.SAW_META_UNIT' | translate
+                }}</span>
+                <h2 class="saw-unit-hero__code" dir="ltr">{{ unit.code }}</h2>
+              </div>
+              <p class="saw-unit-hero__qty">
+                <strong class="saw-unit-hero__qty-word">{{
+                  (stationId >= 2
+                    ? 'WORKER.FROM_PREV'
+                    : 'WORKER.CYCLE_SELECT_QTY') | translate
+                }}</strong><span class="saw-unit-hero__qty-sep">:</span>
+                <span class="saw-unit-hero__qty-value">{{
+                  (stationId >= 2
+                    ? activeSawUnitInboundQty()
+                    : unit.targetQty) | number: '1.0-0'
+                }}</span>
+              </p>
+              <p class="saw-unit-hero__hint">
+                {{
+                  'WORKER.SAW_VIEW_INSTRUCTIONS_HINT'
+                    | translate: { code: unit.code }
+                }}
+              </p>
+            </div>
+            @if (unit.instructionPdfUrl) {
+              <button
+                type="button"
+                class="saw-unit-hero__view"
+                (click)="openLaserPdf(unit.instructionPdfUrl, unit.code)"
+              >
+                <skyflow-mat-icon
+                  class="saw-unit-hero__view-icon"
+                  icon="visibility"
+                  [size]="20"
+                  [weight]="500"
+                />
+                {{ 'WORKER.SAW_OPEN_INSTRUCTIONS_BTN' | translate }}
+              </button>
+            } @else {
+              <span class="saw-unit-hero__view saw-unit-hero__view--missing">{{
+                'WORKER.WT_NO_PDF' | translate
+              }}</span>
+            }
+          </header>
         } @else {
+          <h2 class="text-hero text-white drop-shadow-md">
+            {{ 'WORKER.SAW_PROFILE_LINES_TITLE' | translate }}
+          </h2>
+        }
+        @if (ctx.sawWorkLines!.length > 0) {
           <div
             class="mt-6 grid grid-cols-2 gap-4"
             role="list"
@@ -1413,8 +1425,235 @@
             }
           </div>
         }
-      </section>
+      </div>
     }
+
+    @if (
+      (visibleStationCycles().length && stationId !== 8) ||
+      showSawProfileLines(ctx) ||
+      (stationId === 8 && ctx.laserStation)
+    ) {
+      <hr class="worker-station-panel__hr" />
+    }
+    @let prog = stationProgress(ctx);
+    <div
+      id="station-progress-panel"
+      [class]="
+        'worker-station-panel__block station-progress station-progress--' + stationId
+      "
+      [attr.aria-label]="'WORKER.PROGRESS_TITLE' | translate"
+    >
+      <h3 class="worker-station-panel__title text-white drop-shadow-md">
+        {{ 'WORKER.PROGRESS_TITLE' | translate }}
+      </h3>
+      <div
+        class="mt-8 flex flex-col items-center gap-10 md:flex-row md:items-center md:justify-center md:gap-16"
+      >
+        <div class="station-progress__ring-wrap relative shrink-0">
+          <svg
+            class="station-progress__svg"
+            viewBox="0 0 100 100"
+            aria-hidden="true"
+          >
+            <circle class="station-progress__track" cx="50" cy="50" r="42" />
+            <circle
+              class="station-progress__arc"
+              cx="50" cy="50" r="42"
+              [attr.stroke-dasharray]="progressCircumference"
+              [attr.stroke-dashoffset]="
+                progressDashOffset(progressRingPercent(prog.percent, prog.done))
+              "
+              transform="rotate(-90 50 50)"
+            />
+          </svg>
+          <div class="station-progress__pct" dir="ltr">
+            <span class="station-progress__pct-inner">
+              @if (stationId === 8) {
+                <span class="station-progress__pct-value">{{
+                  stationProgressPercentLabel(prog.percent)
+                }}</span><span class="station-progress__pct-sign">%</span>
+              } @else {
+                <span class="station-progress__pct-value">{{ prog.percent }}</span><span class="station-progress__pct-sign">%</span>
+              }
+            </span>
+          </div>
+        </div>
+        <div class="w-full max-w-md space-y-5 text-center md:text-start">
+          <div class="grid grid-cols-2 gap-5">
+            <div
+              class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
+            >
+              <p class="text-touch font-bold text-white/75">
+                @if (
+                  stationId === 1 ||
+                  (stationId >= 2 &&
+                    stationId <= 4 &&
+                    (ctx.sawWorkLines?.length ?? 0) > 0 &&
+                    ctx.sawWorkTargetQty != null &&
+                    ctx.sawWorkTargetQty > 0)
+                ) {
+                  {{ 'WORKER.SAW_PROGRESS_DONE' | translate }}
+                } @else if (stationId === 6) {
+                  {{ 'WORKER.PACK_PHOTOS_PROGRESS_DONE' | translate }}
+                } @else {
+                  {{ 'WORKER.PROGRESS_DONE' | translate }}
+                }
+              </p>
+              <p class="station-progress__stat-value mt-2 text-hero font-black">
+                {{ prog.done | number: '1.0-0' }}
+              </p>
+            </div>
+            <div
+              class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
+            >
+              <p class="text-touch font-bold text-white/75">
+                @if (usesInboundCycleMetrics()) {
+                  {{ 'WORKER.FROM_PREV' | translate }}
+                } @else if (
+                  stationId === 1 ||
+                  (stationId >= 2 &&
+                    stationId <= 4 &&
+                    (ctx.sawWorkLines?.length ?? 0) > 0 &&
+                    ctx.sawWorkTargetQty != null &&
+                    ctx.sawWorkTargetQty > 0)
+                ) {
+                  {{ 'WORKER.SAW_PROGRESS_REMAINING' | translate }}
+                } @else if (stationId === 6) {
+                  {{ 'WORKER.PACK_PHOTOS_PROGRESS_REMAINING' | translate }}
+                } @else {
+                  {{ 'WORKER.PROGRESS_REMAINING' | translate }}
+                }
+              </p>
+              <p class="station-progress__stat-value mt-2 text-hero font-black">
+                {{ prog.remaining | number: '1.0-0' }}
+              </p>
+            </div>
+          </div>
+          <p class="text-touch font-semibold text-white/90">
+            @if (
+              stationId === 1 ||
+              (stationId >= 2 &&
+                stationId <= 4 &&
+                (ctx.sawWorkLines?.length ?? 0) > 0 &&
+                ctx.sawWorkTargetQty != null &&
+                ctx.sawWorkTargetQty > 0)
+            ) {
+              {{ 'WORKER.SAW_PROGRESS_TARGET' | translate }}:
+            } @else if (stationId === 6) {
+              {{ 'WORKER.PACK_PHOTOS_PROGRESS_TARGET' | translate }}:
+            } @else {
+              {{ 'WORKER.PROGRESS_TARGET' | translate }}:
+            }
+            <span class="font-black text-white">{{ prog.target | number: '1.0-0' }}</span>
+          </p>
+          @if (prog.noUpstreamTarget) {
+            <p class="text-touch font-semibold text-amber-200/95">
+              {{ 'WORKER.PROGRESS_NO_UPSTREAM' | translate }}
+            </p>
+          }
+        </div>
+      </div>
+    </div>
+
+    <hr class="worker-station-panel__hr" />
+    <div
+      class="worker-station-panel__block activity-log"
+      [attr.aria-label]="'WORKER.ACTIVITY_LOG_TITLE' | translate"
+    >
+      <h3 class="activity-log__title worker-station-panel__title text-white drop-shadow-md">
+        {{ 'WORKER.ACTIVITY_LOG_TITLE' | translate }}
+      </h3>
+      @if (!(ctx.activityLog?.length ?? 0)) {
+        <p class="activity-log__empty mt-4 text-touch text-white/70">
+          {{ 'WORKER.ACTIVITY_LOG_EMPTY' | translate }}
+        </p>
+      } @else {
+        <div class="activity-log__accordion mt-5">
+          @for (sid of activityLogStationIds(ctx); track sid) {
+            @let entries = activityLogForStation(ctx, sid);
+            @let expanded = isActivityLogExpanded(sid);
+            <div
+              class="activity-log__item activity-log__item--{{ sid }}"
+              [class.activity-log__item--open]="expanded"
+            >
+              <button
+                type="button"
+                class="activity-log__trigger"
+                [attr.aria-expanded]="expanded"
+                [attr.aria-controls]="'activity-log-panel-' + sid"
+                (click)="toggleActivityLogStation(sid)"
+              >
+                <span class="activity-log__trigger-main">
+                  <span class="activity-log__station-id" dir="ltr">{{ sid }}</span>
+                  <span class="activity-log__station-name">{{
+                    sid | stationLabel: ctx.order | translate
+                  }}</span>
+                </span>
+                <span class="activity-log__meta">
+                  <span class="activity-log__count">{{
+                    'WORKER.ACTIVITY_LOG_STATION_REPORTS'
+                      | translate: { count: entries.length }
+                  }}</span>
+                  <svg
+                    class="activity-log__chevron"
+                    [class.activity-log__chevron--open]="expanded"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M6 9l6 6 6-6"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.4"
+                    />
+                  </svg>
+                </span>
+              </button>
+              @if (expanded) {
+                <ul
+                  [id]="'activity-log-panel-' + sid"
+                  class="activity-log__entries"
+                  role="list"
+                >
+                  @for (entry of entries; track entry.id) {
+                    <li class="activity-log__entry" role="listitem">
+                      <div class="activity-log__entry-head">
+                        <time
+                          class="activity-log__entry-time"
+                          [attr.datetime]="entry.createdAt"
+                          >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time>
+                      </div>
+                      <p class="activity-log__entry-meta">
+                        <span class="font-semibold">{{
+                          'WORKER.ACTIVITY_LOG_MANAGER' | translate
+                        }}</span
+                        >: {{ entry.stationManagerName }}
+                        @if (entry.reporterName) {
+                          <span class="activity-log__sep">·</span>
+                          <span class="font-semibold">{{
+                            'WORKER.ACTIVITY_LOG_REPORTER' | translate
+                          }}</span
+                          >: {{ entry.reporterName }}
+                        }
+                      </p>
+                      <p class="activity-log__entry-summary">
+                        {{ entry.summaryKey | translate: entry.summaryParams }}
+                      </p>
+                      @if (entry.issues) {
+                        <p class="activity-log__entry-issues">{{ entry.issues }}</p>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+    </section>
 
     @if (stationId === 6) {
       <section
@@ -1743,158 +1982,8 @@
       }
     }
 
-    @let prog = stationProgress(ctx);
-    <section
-      id="station-progress-panel"
-      [class]="
-        'station-progress sf-panel md:p-10 station-progress--' + stationId
-      "
-      [attr.aria-label]="'WORKER.PROGRESS_TITLE' | translate"
-    >
-      <h3 class="text-hero text-white drop-shadow-md">
-        {{ 'WORKER.PROGRESS_TITLE' | translate }}
-      </h3>
-      <div
-        class="mt-8 flex flex-col items-center gap-10 md:flex-row md:items-center md:justify-center md:gap-16"
-      >
-        <div class="station-progress__ring-wrap relative shrink-0">
-          <svg
-            class="station-progress__svg"
-            viewBox="0 0 100 100"
-            aria-hidden="true"
-          >
-            <circle class="station-progress__track" cx="50" cy="50" r="42" />
-            <circle
-              class="station-progress__arc"
-              cx="50" cy="50" r="42"
-              [attr.stroke-dasharray]="progressCircumference"
-              [attr.stroke-dashoffset]="
-                progressDashOffset(progressRingPercent(prog.percent, prog.done))
-              "
-              transform="rotate(-90 50 50)"
-            />
-          </svg>
-          <div class="station-progress__pct" dir="ltr">
-            <span class="station-progress__pct-inner">
-              @if (stationId === 8) {
-                <span class="station-progress__pct-value">{{
-                  stationProgressPercentLabel(prog.percent)
-                }}</span><span class="station-progress__pct-sign">%</span>
-              } @else {
-                <span class="station-progress__pct-value">{{ prog.percent }}</span><span class="station-progress__pct-sign">%</span>
-              }
-            </span>
-          </div>
-        </div>
-        <div class="w-full max-w-md space-y-5 text-center md:text-start">
-          <div class="grid grid-cols-2 gap-5">
-            <div
-              class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
-            >
-              <p class="text-touch font-bold text-white/75">
-                @if (
-                  stationId === 1 ||
-                  (stationId >= 2 &&
-                    stationId <= 4 &&
-                    (ctx.sawWorkLines?.length ?? 0) > 0 &&
-                    ctx.sawWorkTargetQty != null &&
-                    ctx.sawWorkTargetQty > 0)
-                ) {
-                  {{ 'WORKER.SAW_PROGRESS_DONE' | translate }}
-                } @else if (stationId === 6) {
-                  {{ 'WORKER.PACK_PHOTOS_PROGRESS_DONE' | translate }}
-                } @else {
-                  {{ 'WORKER.PROGRESS_DONE' | translate }}
-                }
-              </p>
-              <p class="mt-2 text-hero font-black text-white">
-                {{ prog.done | number: '1.0-0' }}
-              </p>
-            </div>
-            <div
-              class="station-progress__stat rounded-xl border border-white/20 bg-black/35 px-4 py-5"
-            >
-              <p class="text-touch font-bold text-white/75">
-                @if (
-                  stationId === 1 ||
-                  (stationId >= 2 &&
-                    stationId <= 4 &&
-                    (ctx.sawWorkLines?.length ?? 0) > 0 &&
-                    ctx.sawWorkTargetQty != null &&
-                    ctx.sawWorkTargetQty > 0)
-                ) {
-                  {{ 'WORKER.SAW_PROGRESS_REMAINING' | translate }}
-                } @else if (stationId === 6) {
-                  {{ 'WORKER.PACK_PHOTOS_PROGRESS_REMAINING' | translate }}
-                } @else {
-                  {{ 'WORKER.PROGRESS_REMAINING' | translate }}
-                }
-              </p>
-              <p class="mt-2 text-hero font-black text-white">
-                {{ prog.remaining | number: '1.0-0' }}
-              </p>
-            </div>
-          </div>
-          <p class="text-touch font-semibold text-white/90">
-            @if (
-              stationId === 1 ||
-              (stationId >= 2 &&
-                stationId <= 4 &&
-                (ctx.sawWorkLines?.length ?? 0) > 0 &&
-                ctx.sawWorkTargetQty != null &&
-                ctx.sawWorkTargetQty > 0)
-            ) {
-              {{ 'WORKER.SAW_PROGRESS_TARGET' | translate }}:
-            } @else if (stationId === 6) {
-              {{ 'WORKER.PACK_PHOTOS_PROGRESS_TARGET' | translate }}:
-            } @else {
-              {{ 'WORKER.PROGRESS_TARGET' | translate }}:
-            }
-            <span class="font-black text-white">{{ prog.target | number: '1.0-0' }}</span>
-          </p>
-          @if (prog.noUpstreamTarget) {
-            <p class="text-touch font-semibold text-amber-200/95">
-              {{ 'WORKER.PROGRESS_NO_UPSTREAM' | translate }}
-            </p>
-          }
-        </div>
-      </div>
-    </section>
-
-    @if (stationId !== 1 && stationId !== 4 && stationId !== 6 && stationId !== 7 && !usesWorkLineModalUi(ctx)) {
-      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-10">
-        @switch (stationId) {
-          @case (2) {
-          <label class="block text-touch font-bold text-white">
-            {{ 'WORKER.PROCESSED_QTY' | translate }}
-            <input
-              type="number"
-              formControlName="processedQty"
-              class="sf-input mt-4"
-            />
-          </label>
-        }
-        @case (3) {
-          <label class="block text-touch font-bold text-white">
-            {{ 'WORKER.USED_QTY' | translate }}
-            <input
-              type="number"
-              formControlName="usedQty"
-              class="sf-input mt-4"
-            />
-          </label>
-        }
-        @case (4) {
-          <label class="block text-touch font-bold text-white">
-            {{ 'WORKER.GLUED_QTY' | translate }}
-            <input
-              type="number"
-              formControlName="gluedQty"
-              class="sf-input mt-4"
-            />
-          </label>
-        }
-        @case (5) {
+    @if (stationId === 5) {
+      <div [formGroup]="form" class="space-y-10">
           <div class="finish-verify" formGroupName="checks">
             <section class="finish-verify__hero sf-panel">
               <p class="finish-verify__eyebrow">
@@ -2009,122 +2098,8 @@
               </p>
             }
           </div>
-        }
-      }
-
-      <skyflow-ui-button
-        type="submit"
-        variant="primary"
-        size="touch"
-        [loading]="saving()"
-        [disabled]="
-          form.invalid ||
-          (stationId === 7 && !ctx.siteAssembly?.deliveryNoteUrl)
-        "
-        btnClass="shadow-sf-lg disabled:shadow-none"
-      >
-        {{ 'WORKER.SUBMIT' | translate }}
-      </skyflow-ui-button>
-    </form>
+      </div>
     }
-
-    <section
-      class="activity-log sf-panel md:p-10 mt-6"
-      [attr.aria-label]="'WORKER.ACTIVITY_LOG_TITLE' | translate"
-    >
-      <h3 class="activity-log__title text-hero text-white drop-shadow-md">
-        {{ 'WORKER.ACTIVITY_LOG_TITLE' | translate }}
-      </h3>
-      @if (!(ctx.activityLog?.length ?? 0)) {
-        <p class="activity-log__empty mt-4 text-touch text-white/70">
-          {{ 'WORKER.ACTIVITY_LOG_EMPTY' | translate }}
-        </p>
-      } @else {
-        <div class="activity-log__accordion mt-5">
-          @for (sid of activityLogStationIds(ctx); track sid) {
-            @let entries = activityLogForStation(ctx, sid);
-            @let expanded = isActivityLogExpanded(sid);
-            <div
-              class="activity-log__item activity-log__item--{{ sid }}"
-              [class.activity-log__item--open]="expanded"
-            >
-              <button
-                type="button"
-                class="activity-log__trigger"
-                [attr.aria-expanded]="expanded"
-                [attr.aria-controls]="'activity-log-panel-' + sid"
-                (click)="toggleActivityLogStation(sid)"
-              >
-                <span class="activity-log__trigger-main">
-                  <span class="activity-log__station-id" dir="ltr">{{ sid }}</span>
-                  <span class="activity-log__station-name">{{
-                    sid | stationLabel: ctx.order | translate
-                  }}</span>
-                </span>
-                <span class="activity-log__meta">
-                  <span class="activity-log__count">{{
-                    'WORKER.ACTIVITY_LOG_STATION_REPORTS'
-                      | translate: { count: entries.length }
-                  }}</span>
-                  <svg
-                    class="activity-log__chevron"
-                    [class.activity-log__chevron--open]="expanded"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M6 9l6 6 6-6"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2.4"
-                    />
-                  </svg>
-                </span>
-              </button>
-              @if (expanded) {
-                <ul
-                  [id]="'activity-log-panel-' + sid"
-                  class="activity-log__entries"
-                  role="list"
-                >
-                  @for (entry of entries; track entry.id) {
-                    <li class="activity-log__entry" role="listitem">
-                      <div class="activity-log__entry-head">
-                        <time
-                          class="activity-log__entry-time"
-                          [attr.datetime]="entry.createdAt"
-                          >{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</time>
-                      </div>
-                      <p class="activity-log__entry-meta">
-                        <span class="font-semibold">{{
-                          'WORKER.ACTIVITY_LOG_MANAGER' | translate
-                        }}</span
-                        >: {{ entry.stationManagerName }}
-                        @if (entry.reporterName) {
-                          <span class="activity-log__sep">·</span>
-                          <span class="font-semibold">{{
-                            'WORKER.ACTIVITY_LOG_REPORTER' | translate
-                          }}</span
-                          >: {{ entry.reporterName }}
-                        }
-                      </p>
-                      <p class="activity-log__entry-summary">
-                        {{ entry.summaryKey | translate: entry.summaryParams }}
-                      </p>
-                      @if (entry.issues) {
-                        <p class="activity-log__entry-issues">{{ entry.issues }}</p>
-                      }
-                    </li>
-                  }
-                </ul>
-              }
-            </div>
-          }
-        </div>
-      }
-    </section>
 
     @if (canMoveToNextStation(ctx) && nextStationId(); as nextSid) {
       <div class="station-next-cta-wrap">
@@ -3178,6 +3153,51 @@
           </div>
         }
       </skyflow-ui-popup>
+    }
+
+    @if (laserPdfUrl(); as pdfUrl) {
+      <div
+        class="laser-pdf-modal"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="'WORKER.SAW_INSTRUCTIONS_PDF_TITLE' | translate"
+        (click)="closeLaserPdf()"
+      >
+        <div
+          class="laser-pdf-modal__panel"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="laser-pdf-modal__head">
+            <span class="laser-pdf-modal__title" dir="ltr">
+              {{ laserPdfCode() }}
+            </span>
+            <button
+              type="button"
+              class="laser-pdf-modal__close"
+              (click)="closeLaserPdf()"
+              [attr.aria-label]="'WORKER_HUB.MODAL_CLOSE' | translate"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </header>
+          @if (isInstructionImageUrl(pdfUrl)) {
+            <img
+              class="laser-pdf-modal__image"
+              [src]="pdfUrl"
+              [alt]="laserPdfCode() ?? ('WORKER.LASER_PDF_TITLE' | translate)"
+            />
+          } @else {
+            <iframe
+              class="laser-pdf-modal__frame"
+              [src]="laserPdfSafeUrl(pdfUrl)"
+              [title]="
+                laserPdfCode() ??
+                ('WORKER.SAW_INSTRUCTIONS_PDF_TITLE' | translate)
+              "
+            ></iframe>
+          }
+        </div>
+      </div>
     }
 
     </div>

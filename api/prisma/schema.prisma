@@ -83,16 +83,44 @@ enum ProjectMachiningRoute {
   ALU_RANGER
 }
 
-/// מקור זוויות ANG — לייזר פנימי (תחנת לייזר) או ספק חיצוני
+/// מקור זוויות ANG — לייזר פנימי (תחנת לייזר), ספק חיצוני, או ללא לייזר
 enum ProjectAngleSourcing {
   INTERNAL_LASER
   EXTERNAL_SUPPLIER
+  NO_LASER
 }
 
 /// סטטוס פגם שהוחזר לתחנה ממפת החזיתות
 enum CellDefectStatus {
   OPEN
   RESOLVED
+}
+
+/// מחזור חיים של סבב עבודה (WorkCycle) — פר סוג-חלון בפרויקט
+enum WorkCycleStatus {
+  /// סוג החלון קיים (מקובץ הכמויות) אך עדיין לא הועלו הוראות ייצור
+  DRAFT
+  /// הועלו הוראות ייצור → הסבב נפתח ברצפת הייצור
+  OPEN
+  /// לפחות תחנה אחת דיווחה התקדמות
+  IN_PROGRESS
+  /// כל התחנות הושלמו ואושר במפת החזיתות
+  COMPLETED
+  /// הוחזר עם פגם (תחנה + סיבה)
+  RETURNED
+}
+
+/// סטטוס התקדמות סבב עבודה בתחנה בודדת
+enum WorkCycleStationStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+/// תפקיד בשיבוץ סבב עבודה
+enum WorkCycleAssignmentRole {
+  MANAGER
+  WORKER
 }
 
 model User {
@@ -110,12 +138,14 @@ model User {
 
   planningAssignedProjects      ProjectOrder[]              @relation("PlanningAssignee")
   planningSawsManagerOfProjects ProjectOrder[]              @relation("PlanningSawsManager")
+  managedProjects               ProjectOrder[]              @relation("ProjectManager")
   createdProjects               ProjectOrder[]              @relation("ProjectCreator")
   projectSawsPlanningWorkers    ProjectPlanningSawsWorker[]
   dailyTargets                  UserDailyTarget[]
   issuedDeliveryNotes           ProjectDeliveryNote[]
   completedElevationCells       ElevationCell[]
   reportedCellDefects           CellDefect[]
+  workCycleAssignments          WorkCycleAssignment[]
 
   @@index([role])
   @@index([managedStationId])
@@ -175,6 +205,9 @@ model ProjectOrder {
   /// מנהל עמדת מסורים (1) משובץ מתכנון — נפרד מעובדים
   planningSawsManagerUserId String?
   planningSawsManager       User?                 @relation("PlanningSawsManager", fields: [planningSawsManagerUserId], references: [id], onDelete: SetNull)
+  /// מנהל הפרויקט (מנהל אתר) — משובץ בשלב פתיחת הפרויקט
+  projectManagerUserId      String?
+  projectManager            User?                 @relation("ProjectManager", fields: [projectManagerUserId], references: [id], onDelete: SetNull)
   /// משתמש שיצר/פתח את הפרויקט (טיוטת תכנון)
   createdByUserId           String?
   createdBy                 User?                 @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -203,9 +236,11 @@ model ProjectOrder {
   angles              Angle[]
   steelworkDetails    SteelworkDetail[]
   cellDefects         CellDefect[]
+  workCycles          WorkCycle[]
 
   @@index([planningAssigneeUserId])
   @@index([planningSawsManagerUserId])
+  @@index([projectManagerUserId])
   @@index([createdByUserId])
 }
 
@@ -312,13 +347,13 @@ model ProjectDocument {
   sortOrder Int                 @default(0)
   createdAt DateTime            @default(now())
 
-  project             ProjectOrder      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  elevationMap        ElevationMap?
-  windowTypes         WindowType[]      @relation("WindowTypeInstructionDoc")
-  windowConnections   WindowType[]      @relation("WindowTypeConnectionDoc")
-  angles              Angle[]           @relation("AngleInstructionDoc")
-  steelworkDetails    SteelworkDetail[] @relation("SteelworkDetailDoc")
-  facadeElevations    Facade[]          @relation("FacadeElevationDoc")
+  project           ProjectOrder      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  elevationMap      ElevationMap?
+  windowTypes       WindowType[]      @relation("WindowTypeInstructionDoc")
+  windowConnections WindowType[]      @relation("WindowTypeConnectionDoc")
+  angles            Angle[]           @relation("AngleInstructionDoc")
+  steelworkDetails  SteelworkDetail[] @relation("SteelworkDetailDoc")
+  facadeElevations  Facade[]          @relation("FacadeElevationDoc")
 
   @@index([projectId, kind])
 }
@@ -335,11 +370,15 @@ model StationLog {
   cutLength    Decimal? @db.Decimal(14, 4)
   /// Station-specific JSON (e.g. Finishes checklist completion)
   extraPayload Json?
+  /// אופציונלי — סבב העבודה (סוג-חלון) שדווח נגדו, למעקב פר-סבב
+  workCycleId  String?
   createdAt    DateTime @default(now())
 
-  project ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workCycle WorkCycle?   @relation(fields: [workCycleId], references: [id], onDelete: SetNull)
 
   @@index([projectId, stationId])
+  @@index([workCycleId])
 }
 
 model ScrapReport {
@@ -405,22 +444,22 @@ model ProjectDeliveryNote {
 
 /// מפת חזיתות להתקנה באתר — נגזרת מ-PDF (ELEVATION_MAP) שהתפ״י מעלה
 model ElevationMap {
-  id         String             @id @default(uuid())
-  projectId  String
+  id          String             @id @default(uuid())
+  projectId   String
   /// מסמך המקור (ProjectDocument מסוג ELEVATION_MAP)
-  documentId String?            @unique
+  documentId  String?            @unique
   /// קבוצת החזית שאליה שייכת המפה (S / N5 / W2 ...). null = מפה ישנה ברמת פרויקט
-  facadeGroup String?           @db.VarChar(16)
-  title      String
-  status     ElevationMapStatus @default(PROCESSING)
+  facadeGroup String?            @db.VarChar(16)
+  title       String
+  status      ElevationMapStatus @default(PROCESSING)
   /// מספר עמודים בקובץ המקור
-  pageCount  Int                @default(1)
+  pageCount   Int                @default(1)
   /// מטא לכל עמוד: [{ pageIndex, imageUrl, width, height }] — תמונות רקע ל-overlay
-  pages      Json
+  pages       Json
   /// הודעת שגיאה אם status=FAILED
-  error      String?            @db.Text
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  error       String?            @db.Text
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
   project  ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   document ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
@@ -482,8 +521,10 @@ model WindowType {
   hasAngles        Boolean  @default(false)
   /// קודי זוויות המשקוף המשויכים (מערך JSON, e.g. ["ANG-1A","ANG-1B"])
   angleCodes       Json?
-  /// טבלאות סטים (שוקונים+תושבות / פרופילים / אטמים / אביזרים) — JSON
+  /// טבלאות סטים (שוקונים+תושבות / פרופילים / אטמים / אביזרים) — תוויות זוהו (מערך JSON)
   setsPayload      Json?
+  /// מיפוי מלא של טבלאות עמוד 2 (פרופילים/אטמים/אביזרים) — חולץ ב-Vision. JSON: { sections: [{ key, title, rows: [{ partNumber, description, blockNumber }] }] }
+  partsPayload     Json?
   /// סה״כ כמות בפרויקט (מסכום שורת הסה״כ בקובץ הכמויות)
   totalQty         Int      @default(0)
   sortOrder        Int      @default(0)
@@ -496,6 +537,7 @@ model WindowType {
   facadeQuantities FacadeQuantity[]
   stageQuantities  StageQuantity[]
   elevationCells   ElevationCell[]
+  workCycle        WorkCycle?
 
   @@unique([projectId, code])
   @@index([projectId])
@@ -546,27 +588,27 @@ enum FacadeDirection {
 /// תת-חזית (S-w, N2-e, W4 ...) מקובץ הכמויות. משויכת ל-Stage יחיד לפי צבע התא,
 /// ודורשת קובץ "מפת חזיתות" משלה (elevationDoc) — צ׳ק-ליסט העלאה באשף התכנון.
 model Facade {
-  id            String          @id @default(uuid())
-  projectId     String
+  id             String          @id @default(uuid())
+  projectId      String
   /// תווית החזית, e.g. S-w / N2-e / W4
-  label         String          @db.VarChar(32)
+  label          String          @db.VarChar(32)
   /// קבוצת החזית = החלק שלפני ה-'-' (S-w → S, N5-e → N5, W2 → W2).
   /// זו יחידת ההעלאה של מפת החזיתות — קובץ אחד מכסה את כל תתי-החזיתות בקבוצה.
-  groupKey      String          @default("") @db.VarChar(16)
-  direction     FacadeDirection
+  groupKey       String          @default("") @db.VarChar(16)
+  direction      FacadeDirection
   /// סה״כ חלונות בחזית (משורת הסה״כ של החזית בקובץ)
-  totalQty      Int             @default(0)
+  totalQty       Int             @default(0)
   /// השלב שאליו החזית שייכת (זוהה לפי צבע התאים בקובץ הכמויות)
-  stageId       String?
+  stageId        String?
   /// קובץ מפת החזיתות שהועלה עבור חזית זו (ELEVATION_MAP)
   elevationDocId String?
-  sortOrder     Int             @default(0)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
-  project       ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  stage         ProductionStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
-  elevationDoc  ProjectDocument? @relation("FacadeElevationDoc", fields: [elevationDocId], references: [id], onDelete: SetNull)
+  project      ProjectOrder     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage        ProductionStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  elevationDoc ProjectDocument? @relation("FacadeElevationDoc", fields: [elevationDocId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, label])
   @@index([projectId])
@@ -662,4 +704,73 @@ model ManufacturingPlan {
   s3Url       String
   bomData     Json
   createdAt   DateTime @default(now())
+}
+
+/// סבב עבודה — יחידת ייצור פר סוג-חלון (74-1-12A) בפרויקט. נפתח כשמעלים הוראות ייצור,
+/// רץ דרך התחנות, ונסגר בסימון במפת החזיתות או בהחזרה עם ציון תחנה+סיבה.
+model WorkCycle {
+  id                    String          @id @default(uuid())
+  projectId             String
+  /// יחס 1:1 לסוג החלון
+  windowTypeId          String          @unique
+  status                WorkCycleStatus @default(DRAFT)
+  /// כמות ליצור בסבב (N מקובץ הכמויות + Stages)
+  targetQty             Int             @default(0)
+  /// יעד יומי שהוזן ידנית בשלב 3 (null = חישוב אוטומטי בלבד)
+  dailyTargetQty        Int?
+  /// התחנה שבה הסבב נמצא כעת (1–8)
+  currentStationId      Int?
+  openedAt              DateTime?
+  completedAt           DateTime?
+  returnedAt            DateTime?
+  /// באיזו תחנה נפל כשהוחזר
+  returnedFromStationId Int?
+  returnReason          String?         @db.Text
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  project         ProjectOrder               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  windowType      WindowType                 @relation(fields: [windowTypeId], references: [id], onDelete: Cascade)
+  stationProgress WorkCycleStationProgress[]
+  assignments     WorkCycleAssignment[]
+  stationLogs     StationLog[]
+
+  @@index([projectId])
+  @@index([projectId, status])
+}
+
+/// התקדמות סבב עבודה בתחנה בודדת (מחליף מעקב פר-פרויקט לרמת הסבב)
+model WorkCycleStationProgress {
+  id           String                 @id @default(uuid())
+  workCycleId  String
+  stationId    Int
+  /// יעד בתחנה (בדרך כלל = targetQty של הסבב)
+  targetQty    Int                    @default(0)
+  processedQty Int                    @default(0)
+  status       WorkCycleStationStatus @default(PENDING)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  workCycle WorkCycle @relation(fields: [workCycleId], references: [id], onDelete: Cascade)
+
+  @@unique([workCycleId, stationId])
+  @@index([workCycleId])
+}
+
+/// שיבוץ עובד/מנהל לסבב עבודה — פר תחנה (stationId null = כללי לסבב)
+model WorkCycleAssignment {
+  id          String                  @id @default(uuid())
+  workCycleId String
+  userId      String
+  role        WorkCycleAssignmentRole @default(WORKER)
+  stationId   Int?
+  sortOrder   Int                     @default(0)
+  createdAt   DateTime                @default(now())
+
+  workCycle WorkCycle @relation(fields: [workCycleId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workCycleId, userId, stationId])
+  @@index([workCycleId])
+  @@index([userId])
 }

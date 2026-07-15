@@ -22,6 +22,37 @@ export const stationSequenceGuard: CanActivateFn = (route) => {
   if (!Number.isFinite(stationId) || stationId < 1 || stationId > 8) {
     return router.parseUrl('/worker');
   }
+
+  const requestedCycleId =
+    route.queryParamMap.get('cycleId') ?? projectSelection.selectedCycleId();
+  if (requestedCycleId) {
+    return api.getOrders().pipe(
+      switchMap((orders) => {
+        if (!orders.length) return of(router.parseUrl('/worker'));
+        projectSelection.syncFromOrders(orders);
+        const projectId = projectSelection.selectedProjectId();
+        if (!projectId) return of(router.parseUrl('/worker'));
+
+        return api.getProjectWorkCycles(projectId).pipe(
+          map((cycles) => {
+            const cycle = cycles.find(
+              (item) => item.cycleId === requestedCycleId,
+            );
+            const stationBelongsToCycle =
+              cycle?.status !== 'DRAFT' &&
+              cycle?.stations.some((station) => station.stationId === stationId);
+            if (!cycle || !stationBelongsToCycle) {
+              return router.parseUrl('/worker');
+            }
+            projectSelection.selectCycle(cycle.cycleId);
+            return true;
+          }),
+          catchError(() => of(router.parseUrl('/worker'))),
+        );
+      }),
+    );
+  }
+
   if (stationId === 1) {
     return api.getOrders().pipe(
       switchMap((orders) => {

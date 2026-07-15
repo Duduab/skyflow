@@ -36,6 +36,8 @@ import {
   AssemblyPipelineStatus,
   AssemblyStationContextDto,
   AssemblyWindowUnitDto,
+  AssemblyWindowTypeDocDto,
+  AssemblyWindowPartSection,
   GluingStationContextDto,
   GluingTypeGroupDto,
   LaserAngleDto,
@@ -45,7 +47,9 @@ import {
   SummaryStationRow,
   WorkerActivityLogEntryDto,
   WorkerContext,
+  WorkerProjectCycle,
   WorkerStationManagerDisplayDto,
+  StationWorkCycleRow,
 } from '../../core/skyflow.models';
 import { WorkerProjectSelectionService } from './worker-project-selection.service';
 import {
@@ -67,11 +71,14 @@ import {
 import { httpErrorMessage } from '../../core/http-error.util';
 import { LoginPopupComponent } from '../auth/login-popup.component';
 import { StationLabelPipe } from '../../shared/station-label.pipe';
+import { WorkCycleReportCardComponent } from './work-cycle-report-card.component';
+import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import {
   stationDisplayNumber,
   stationLabelKey,
   stationVisualModifierClass,
   stationVisualStyle,
+  stationVisualTokens,
 } from '../../core/station-presentation';
 
 interface SawTypeGroupVm {
@@ -133,6 +140,8 @@ function allCheckedValidator(): ValidatorFn {
     NgStyle,
     StationLabelPipe,
     LoginPopupComponent,
+    WorkCycleReportCardComponent,
+    MatIconComponent,
   ],
   templateUrl: './worker-terminal.component.html',
   styleUrl: './worker-terminal.component.scss',
@@ -164,6 +173,12 @@ export class WorkerTerminalComponent implements OnInit {
 
   readonly orders = signal<ProjectOrder[]>([]);
   readonly context = signal<WorkerContext | null>(null);
+  readonly projectCycles = signal<WorkerProjectCycle[]>([]);
+
+  /** סבבי עבודה שממתינים בתחנה הזו (MVP: תחנת מסורים). */
+  readonly stationWorkCycles = signal<StationWorkCycleRow[]>([]);
+  readonly cycleReportQty = signal<Record<string, number | null>>({});
+  readonly cycleReportingId = signal<string | null>(null);
 
   readonly progressCircumference = PROGRESS_RING_C;
 
@@ -188,6 +203,8 @@ export class WorkerTerminalComponent implements OnInit {
   readonly assemblySelectedWindowId = signal<string | null>(null);
   readonly assemblyWindowPhotoIdx = signal(0);
   readonly assemblyInstructionWindowId = signal<string | null>(null);
+  /** קוד היחידה הנבחרת בפאנל הוראות הייצור להרכבה (assemblyWindowTypes) */
+  readonly assemblyDocSelectedCode = signal<string | null>(null);
   readonly assemblyInstructionPhotoIdx = signal(0);
   readonly assemblyTogglingWindow = signal(false);
   readonly assemblyTypeModalGroup = signal<AssemblyTypeGroupVm | null>(null);
@@ -216,7 +233,9 @@ export class WorkerTerminalComponent implements OnInit {
   /** יומן דיווחים — תחנות פתוחות באקורדיון */
   private readonly activityLogExpanded = signal<Set<number>>(new Set());
 
-  private static readonly ACTIVITY_LOG_STATION_IDS = [1, 2, 3, 4, 5, 6, 7] as const;
+  private static readonly ACTIVITY_LOG_STATION_IDS = [
+    1, 2, 8, 3, 4, 5, 6, 7,
+  ] as const;
 
   readonly finishingCheckSteps: FinishingCheckStep[] = [
     { key: 's1', stationId: 1, accent: '#fbbf24' },
@@ -244,6 +263,8 @@ export class WorkerTerminalComponent implements OnInit {
   /** תצוגת PDF של זווית (ANG) בתחנת לייזר — נפתח בפופאפ במקום טאב חדש */
   readonly laserPdfUrl = signal<string | null>(null);
   readonly laserPdfCode = signal<string | null>(null);
+  /** עמוד PDF פתיחה (1-based) עבור המודאל — למשל דף 1 / דף 2 של הוראות הרכבה */
+  readonly laserPdfPage = signal<number | null>(null);
 
   /** ערכי קלט הדיווח לכל ANG (code -> qty) בתחנת לייזר */
   readonly laserReportInput = signal<Record<string, number | null>>({});
@@ -310,6 +331,13 @@ export class WorkerTerminalComponent implements OnInit {
         this.tryLoadContext();
       });
 
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        const cycleId = params.get('cycleId');
+        if (cycleId) this.projectSelection.selectCycle(cycleId);
+      });
+
     this.api
       .getOrders()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -329,12 +357,145 @@ export class WorkerTerminalComponent implements OnInit {
     this.tryLoadContext();
   }
 
+  onCycleChange(id: string | number | null): void {
+    const cycleId = id == null ? null : String(id);
+    this.projectSelection.selectCycle(cycleId || null);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { cycleId: cycleId || null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
   orderSelectOptions(): UiSelectOption[] {
     return this.orders().map((o) => ({ value: o.id, label: o.name }));
   }
 
+  cycleSelectOptions(): UiSelectOption[] {
+    const qtyWord = this.translate.instant('WORKER.CYCLE_SELECT_QTY');
+    return this.projectCycles().map((cycle) => {
+      const qty = cycle.targetQty;
+      return {
+        value: cycle.cycleId,
+        label: `${cycle.code} ${qtyWord}: ${qty}`,
+        labelParts: {
+          leading: cycle.code,
+          emphasis: qtyWord,
+          trailing: String(qty),
+        },
+      };
+    });
+  }
+
+  /** Accent color for the unit picker “כמות” emphasis. */
+  cycleSelectEmphasisColor(): string {
+    const order = this.context()?.order ?? this.orders()[0] ?? null;
+    return stationVisualTokens(order, this.stationId).accent;
+  }
+
+  /** CNC+ stations: qty received from the previous station for a work cycle. */
+  cycleInboundQty(cycleId: string): number {
+    const prevStationId = this.stationId - 1;
+    if (prevStationId < 1) return 0;
+    const cycle = this.projectCycles().find((c) => c.cycleId === cycleId);
+    const fromCycle =
+      cycle?.stations.find((s) => s.stationId === prevStationId)?.processedQty ??
+      0;
+    if (fromCycle > 0) return fromCycle;
+    return this.context()?.previousQty ?? 0;
+  }
+
+  activeSawUnitInboundQty(): number {
+    const unit = this.activeSawUnit();
+    if (!unit) return this.context()?.previousQty ?? 0;
+    return this.cycleInboundQty(unit.cycleId);
+  }
+
+  /** Work-cycles block title — per station wording. */
+  cyclesSectionTitleKey(): string {
+    if (this.stationId === 2) return 'WORKER.CYCLES_TITLE_CNC';
+    if (this.stationId === 3) return 'WORKER.CYCLES_TITLE_ASSEMBLY';
+    return 'WORKER.CYCLES_TITLE';
+  }
+
+  /** Work-cycles block icon (Material Symbols). */
+  cyclesSectionIcon(): string {
+    if (this.stationId === 2) return 'precision_manufacturing';
+    if (this.stationId === 3) return 'construction';
+    return 'carpenter';
+  }
+
+  /** Downstream stations show upstream arrival qty instead of unit target. */
+  usesInboundCycleMetrics(): boolean {
+    return this.stationId >= 2 && this.visibleStationCycles().length > 0;
+  }
+
+  cycleReportRemaining(row: StationWorkCycleRow): number {
+    if (this.stationId >= 2) {
+      return Math.max(0, this.cycleInboundQty(row.cycleId) - row.processedQty);
+    }
+    return row.remaining;
+  }
+
   stationProgress(ctx: WorkerContext): StationProgressVm {
+    // When this station has work cycles, progress mirrors the cycle cards
+    // (selected unit / units waiting here) — not order.totalItems.
+    if (this.stationWorkCycles().length > 0) {
+      const rows = this.visibleStationCycles();
+      if (this.stationId >= 2) {
+        const inbound = rows.reduce(
+          (sum, row) => sum + this.cycleInboundQty(row.cycleId),
+          0,
+        );
+        const done = rows.reduce((sum, row) => sum + row.processedQty, 0);
+        const percent =
+          inbound > 0 ? Math.min(100, Math.round((done / inbound) * 100)) : 0;
+        return {
+          done,
+          target: inbound,
+          remaining: inbound,
+          percent,
+          noUpstreamTarget: inbound === 0,
+        };
+      }
+      const target = rows.reduce((sum, row) => sum + row.targetQty, 0);
+      const done = rows.reduce((sum, row) => sum + row.processedQty, 0);
+      const remaining = rows.reduce((sum, row) => sum + row.remaining, 0);
+      const percent =
+        target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
+      return {
+        done,
+        target,
+        remaining,
+        percent,
+        noUpstreamTarget: false,
+      };
+    }
     return computeStationProgress(this.stationId, ctx);
+  }
+
+  /** Saw MPS/MPB profile lines block (stations 1–2). */
+  showSawProfileLines(ctx: WorkerContext): boolean {
+    return (
+      this.stationId <= 4 &&
+      this.stationId >= 1 &&
+      this.stationId !== 3 &&
+      this.stationId !== 4 &&
+      ctx.sawWorkLines !== undefined
+    );
+  }
+
+  /**
+   * Unit highlighted in the saws block: selected cycle, or the only waiting
+   * cycle at this station.
+   */
+  activeSawUnit(): StationWorkCycleRow | null {
+    const visible = this.visibleStationCycles();
+    if (visible.length === 1) return visible[0];
+    const selected = this.projectSelection.selectedCycleId();
+    if (!selected) return null;
+    return visible.find((row) => row.cycleId === selected) ?? null;
   }
 
   /** לייזר פעיל בפרויקט (לייזר פנימי עם זוויות). */
@@ -453,24 +614,34 @@ export class WorkerTerminalComponent implements OnInit {
     this.sawLineImagePreviewUrl.set(null);
   }
 
+  /** Whether the instruction asset is an image (not PDF). */
+  isInstructionImageUrl(url: string | null | undefined): boolean {
+    const path = (url ?? '').split('#')[0]?.split('?')[0] ?? '';
+    return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(path);
+  }
+
   /** פתיחת PDF של זווית (ANG) בפופאפ פנימי (iframe) במקום טאב חדש */
-  openLaserPdf(url: string | null, code: string): void {
+  openLaserPdf(url: string | null, code: string, page?: number): void {
     const u = url?.trim();
     if (!u?.length) return;
     this.laserPdfCode.set(code);
+    this.laserPdfPage.set(page && page > 0 ? page : null);
     this.laserPdfUrl.set(u);
   }
 
   closeLaserPdf(): void {
     this.laserPdfUrl.set(null);
     this.laserPdfCode.set(null);
+    this.laserPdfPage.set(null);
   }
 
-  /** URL בטוח ל-iframe עם הסתרת סרגלי ה-PDF המובנים */
+  /** URL בטוח ל-iframe עם הסתרת סרגלי ה-PDF המובנים (ועם עמוד פתיחה אופציונלי) */
   laserPdfSafeUrl(url: string): SafeResourceUrl {
     const path = url.split('#')[0] ?? url;
+    const page = this.laserPdfPage();
+    const pageFrag = page && page > 0 ? `page=${page}&` : '';
     return this.sanitizer.bypassSecurityTrustResourceUrl(
-      `${path}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`,
+      `${path}#${pageFrag}toolbar=0&navpanes=0&scrollbar=0&view=FitH`,
     );
   }
 
@@ -488,6 +659,24 @@ export class WorkerTerminalComponent implements OnInit {
       ...this.laserReportInput(),
       [code]: n != null && Number.isFinite(n) ? n : null,
     });
+  }
+
+  laserReportRemaining(code: string): number {
+    const angle = this.context()?.laserStation?.angles.find((a) => a.code === code);
+    if (!angle) return 0;
+    return Math.max(0, angle.qty - angle.doneQty);
+  }
+
+  nudgeLaserReport(code: string, delta: number): void {
+    const value = this.laserReportValue(code) ?? 0;
+    const remaining = this.laserReportRemaining(code);
+    const next = Math.max(0, Math.min(remaining, value + delta));
+    this.onLaserReportInput(code, next || null);
+  }
+
+  fillLaserReport(code: string): void {
+    const remaining = this.laserReportRemaining(code);
+    if (remaining > 0) this.onLaserReportInput(code, remaining);
   }
 
   laserAngleProgressPercent(angle: LaserAngleDto): number {
@@ -1400,6 +1589,121 @@ export class WorkerTerminalComponent implements OnInit {
     this.assemblyInstructionPhotoIdx.update((i) => (i + 1) % n);
   }
 
+  // ── Assembly production-instruction docs (station 3, 4-PDF flow) ──────────
+
+  /** Window types (units) that have an uploaded instruction PDF. */
+  assemblyDocUnits(ctx: WorkerContext): AssemblyWindowTypeDocDto[] {
+    return (ctx.assemblyWindowTypes ?? []).filter(
+      (w) => !!w.instructionPdfUrl,
+    );
+  }
+
+  /** Currently selected instruction unit (defaults to the first). */
+  assemblyDocSelected(ctx: WorkerContext): AssemblyWindowTypeDocDto | null {
+    const list = this.assemblyDocUnits(ctx);
+    if (!list.length) return null;
+    const code = this.assemblyDocSelectedCode();
+    return list.find((w) => w.code === code) ?? list[0] ?? null;
+  }
+
+  selectAssemblyDocUnit(code: string): void {
+    this.assemblyDocSelectedCode.set(code);
+  }
+
+  /** Open the instruction PDF at a specific 1-based page (page 1 / page 2). */
+  openAssemblyDocPage(unit: AssemblyWindowTypeDocDto | null, page: number): void {
+    if (!unit?.instructionPdfUrl) return;
+    this.openLaserPdf(unit.instructionPdfUrl, unit.code, page);
+  }
+
+  /** Parsed set-table sections for the selected unit (profiles/seals/…). */
+  assemblyDocSections(unit: AssemblyWindowTypeDocDto | null): AssemblyWindowPartSection[] {
+    return unit?.parts?.sections ?? [];
+  }
+
+  // ── Assembly parts checklist ──────────────────────────────────────────────
+  // The worker ticks off each part; reporting stays locked until all are done.
+  /** Set of checked item keys `${unitCode}#${sectionIdx}#${rowIdx}`. */
+  readonly assemblyCheckedKeys = signal<ReadonlySet<string>>(new Set<string>());
+
+  private assemblyItemKey(unitCode: string, si: number, ri: number): string {
+    return `${unitCode}#${si}#${ri}`;
+  }
+
+  isAssemblyItemChecked(unitCode: string, si: number, ri: number): boolean {
+    return this.assemblyCheckedKeys().has(this.assemblyItemKey(unitCode, si, ri));
+  }
+
+  toggleAssemblyItem(unitCode: string, si: number, ri: number): void {
+    const key = this.assemblyItemKey(unitCode, si, ri);
+    this.assemblyCheckedKeys.update((set) => {
+      const next = new Set(set);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  /** How many items of the unit are checked (only counting existing rows). */
+  assemblyChecklistDone(unit: AssemblyWindowTypeDocDto | null): number {
+    if (!unit) return 0;
+    const checked = this.assemblyCheckedKeys();
+    let done = 0;
+    this.assemblyDocSections(unit).forEach((sec, si) => {
+      sec.rows.forEach((_row, ri) => {
+        if (checked.has(this.assemblyItemKey(unit.code, si, ri))) done += 1;
+      });
+    });
+    return done;
+  }
+
+  /** True once every mapped item of the unit has been checked. */
+  assemblyChecksComplete(unit: AssemblyWindowTypeDocDto | null): boolean {
+    const total = this.assemblyDocPartCount(unit);
+    if (total <= 0) return true; // nothing to check → don't block reporting
+    return this.assemblyChecklistDone(unit) >= total;
+  }
+
+  /**
+   * Whether the "save & report" button of a cycle must stay locked: only for
+   * the assembly station (3) and only when the matching unit still has
+   * unchecked parts.
+   */
+  assemblyReportLocked(
+    ctx: WorkerContext,
+    stationId: number,
+    row: StationWorkCycleRow,
+  ): boolean {
+    if (stationId !== 3) return false;
+    const unit = this.assemblyDocUnits(ctx).find((u) => u.code === row.code);
+    if (!unit || this.assemblyDocPartCount(unit) <= 0) return false;
+    return !this.assemblyChecksComplete(unit);
+  }
+
+  /** Total mapped part rows across all sections (for the header stat). */
+  assemblyDocPartCount(unit: AssemblyWindowTypeDocDto | null): number {
+    return this.assemblyDocSections(unit).reduce(
+      (sum, s) => sum + s.rows.length,
+      0,
+    );
+  }
+
+  /** Material Symbol icon per section kind. */
+  assemblyDocSectionIcon(key: string): string {
+    switch (key) {
+      case 'PROFILES':
+        return 'view_column';
+      case 'SEALS':
+        return 'water_drop';
+      case 'ACCESSORIES':
+        return 'handyman';
+      case 'SHOKONIM_MOUNTS':
+        return 'grid_view';
+      default:
+        return 'table_rows';
+    }
+  }
+
   assemblyWindowsProgressPercent(ctx: WorkerContext): number {
     const a = ctx.assemblyStation;
     if (!a || a.windowsTotalQty <= 0) return 0;
@@ -1602,6 +1906,12 @@ export class WorkerTerminalComponent implements OnInit {
     ctrl.setValue(true);
     ctrl.markAsTouched();
     this.closeFinishingVerify();
+    if (
+      this.finishingChecksDoneCount() === this.finishingCheckSteps.length &&
+      this.form?.valid
+    ) {
+      void this.submit();
+    }
   }
 
   packPhotoSlotIndexes(ctx: WorkerContext): number[] {
@@ -2101,12 +2411,105 @@ export class WorkerTerminalComponent implements OnInit {
           this.applyWorkerContext(ctx);
           this.stationWasComplete = this.isStationComplete(ctx);
           this.loading.set(false);
+          this.loadProjectCycles();
+          this.loadStationWorkCycles();
         },
         error: () => {
           this.loading.set(false);
           this.error.set('שגיאה בטעינת העמדה — נסה שוב');
         },
       });
+  }
+
+  /** טוען את היחידות הפעילות בפרויקט לבורר היחידה בעמוד התחנה. */
+  private loadProjectCycles(): void {
+    const pid = this.projectSelection.selectedProjectId();
+    if (!pid) {
+      this.projectCycles.set([]);
+      return;
+    }
+    this.api.getProjectWorkCycles(pid).subscribe({
+      next: (cycles) => {
+        this.projectCycles.set(cycles);
+        const selected = this.projectSelection.selectedCycleId();
+        if (!selected || !cycles.some((cycle) => cycle.cycleId === selected)) {
+          this.projectSelection.selectCycle(
+            cycles.length ? cycles[0].cycleId : null,
+          );
+        }
+      },
+      error: () => this.projectCycles.set([]),
+    });
+  }
+
+  /** טוען את סבבי העבודה הממתינים בתחנה הנוכחית (לכל התחנות). */
+  private loadStationWorkCycles(): void {
+    const pid = this.projectSelection.selectedProjectId();
+    if (!pid) {
+      this.stationWorkCycles.set([]);
+      return;
+    }
+    this.api.getStationWorkCycles(this.stationId, pid).subscribe({
+      next: (rows) => this.stationWorkCycles.set(rows),
+      error: () => this.stationWorkCycles.set([]),
+    });
+  }
+
+  /** מציג אך ורק את סבב היחידה שנבחרה; ללא בחירה מציג את כל הסבבים. */
+  visibleStationCycles(): StationWorkCycleRow[] {
+    const all = this.stationWorkCycles();
+    const selected = this.projectSelection.selectedCycleId();
+    if (selected) return all.filter((r) => r.cycleId === selected);
+    return all;
+  }
+
+  /** האם הסבב שנבחר ב-Hub קיים אך אין לו עבודה שנותרה בתחנה הזו. */
+  selectedCycleNotAtStation(): boolean {
+    const selected = this.projectSelection.selectedCycleId();
+    if (!selected) return false;
+    return !this.stationWorkCycles().some((r) => r.cycleId === selected);
+  }
+
+  cycleQty(cycleId: string): number | null {
+    return this.cycleReportQty()[cycleId] ?? null;
+  }
+
+  setCycleQtyValue(cycleId: string, quantity: number | null): void {
+    this.cycleReportQty.update((current) => ({
+      ...current,
+      [cycleId]: quantity,
+    }));
+  }
+
+  /** דיווח כמות שהושלמה עבור סבב עבודה ספציפי בתחנה זו. */
+  async reportCycle(row: StationWorkCycleRow): Promise<void> {
+    const pid = this.projectSelection.selectedProjectId();
+    const qty = this.cycleQty(row.cycleId);
+    if (!pid || qty == null || qty <= 0) return;
+    if (this.cycleReportingId()) return;
+    const applied = Math.min(qty, this.cycleReportRemaining(row));
+    if (applied <= 0) return;
+
+    this.cycleReportingId.set(row.cycleId);
+    this.error.set(null);
+    try {
+      await firstValueFrom(
+        this.api.reportStationWorkCycle(this.stationId, row.cycleId, {
+          projectId: pid,
+          qty: applied,
+        }),
+      );
+      this.cycleReportQty.update((cur) => ({ ...cur, [row.cycleId]: null }));
+      this.loadStationWorkCycles();
+      const ctx = await firstValueFrom(
+        this.api.getWorkerContext(this.stationId, pid),
+      );
+      this.applyWorkerContext(ctx);
+    } catch (err) {
+      this.error.set(httpErrorMessage(err, 'שגיאה בשמירת הדיווח — נסה שוב'));
+    } finally {
+      this.cycleReportingId.set(null);
+    }
   }
 
   private buildForm(): void {

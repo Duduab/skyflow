@@ -1,8 +1,35 @@
 <div
   class="skyflow-logo-loader"
   [class.skyflow-logo-loader--lg]="size() === 'lg'"
+  [class.skyflow-logo-loader--progress]="showProgress()"
   aria-hidden="true"
 >
   <span class="skyflow-logo-loader__ring"></span>
+
+  @if (showProgress()) {
+    <svg
+      class="skyflow-logo-loader__track"
+      [class.skyflow-logo-loader__track--indeterminate]="isIndeterminate()"
+      viewBox="0 0 100 100"
+    >
+      <defs>
+        <linearGradient id="sf-loader-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7dd3fc" />
+          <stop offset="55%" stop-color="#0ea5e9" />
+          <stop offset="100%" stop-color="#4b689d" />
+        </linearGradient>
+      </defs>
+      <circle class="skyflow-logo-loader__track-bg" cx="50" cy="50" [attr.r]="radius" />
+      <circle
+        class="skyflow-logo-loader__track-fill"
+        cx="50"
+        cy="50"
+        [attr.r]="radius"
+        [style.stroke-dasharray]="circumference"
+        [style.stroke-dashoffset]="isIndeterminate() ? null : dashOffset()"
+      />
+    </svg>
+  }
+
   <img [src]="logoSrc" alt="" class="skyflow-logo-loader__img" />
 </div>

@@ -25,6 +25,7 @@ import { ApprovePlanningDto } from './dto/approve-planning.dto';
 import { UploadProjectDocumentDto } from './dto/upload-project-document.dto';
 import { UploadPlanningPdfDto } from './dto/upload-planning-pdf.dto';
 import { UploadWindowTypePdfDto } from './dto/upload-window-type-pdf.dto';
+import { SaveWindowTypePartsDto } from './dto/save-window-type-parts.dto';
 import { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto';
 import {
   ensureProjectDocsUploadDir,
@@ -58,6 +59,7 @@ export class ProjectsController {
       dto.lineMaterial,
       dto.machiningRoute,
       dto.angleSourcing,
+      dto.projectManagerUserId ?? null,
     );
   }
 
@@ -314,6 +316,25 @@ export class ProjectsController {
   @Get(':id/planning/pdf-preview')
   pdfPreview(@Param('id') id: string) {
     return this.projectsService.getPlanningPdfPreview(id);
+  }
+
+  /** Save a planner-reviewed/edited parts mapping for a single window type. */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Post(':id/planning/window-types/:windowTypeId/parts')
+  saveWindowTypeParts(
+    @Param('id') id: string,
+    @Param('windowTypeId') windowTypeId: string,
+    @Body() body: SaveWindowTypePartsDto,
+  ) {
+    return this.projectsService.saveWindowTypeParts(id, windowTypeId, {
+      sections: body.sections,
+    });
+  }
+
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Get(':id/planning/resume')
+  planningResume(@Param('id') id: string) {
+    return this.projectsService.getPlanningResumeItem(id);
   }
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)

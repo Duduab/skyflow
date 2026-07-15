@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize, take } from 'rxjs/operators';
+import { concatMap, finalize, take } from 'rxjs/operators';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { ApiService } from '../../../core/api.service';
@@ -11,6 +11,9 @@ import {
   ProjectFlowStatus,
   ProjectLineMaterial,
   ProjectMachiningRoute,
+  WorkCycle,
+  WorkCycleAssignmentInput,
+  WorkCycleStatus,
 } from '../../../core/skyflow.models';
 import {
   planningStation1ManagerSectionKey,
@@ -69,6 +72,11 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly creating = signal(false);
   readonly createErrorKey = signal<string | null>(null);
 
+  /** מנהלי אתר/פרויקט לבחירה בשלב פתיחת הפרויקט. */
+  readonly siteManagers = signal<PlanningAssigneeOptionDto[]>([]);
+  readonly siteManagersLoading = signal(false);
+  readonly selectedProjectManagerId = signal<string | null>(null);
+
   readonly selectedProjectId = signal<string | null>(null);
   readonly selectedFlow = signal<ProjectFlowStatus | null>(null);
   readonly selectedName = signal<string | null>(null);
@@ -83,8 +91,55 @@ export class AdminPlanningNewComponent implements OnInit {
   /** תמונת פרופיל שנכשלה בטעינה — מציגים ראשי תיבות במסגרת כמו במסוף עמדה */
   readonly assigneePhotoFailedIds = signal<Set<string>>(new Set());
 
+  /** סבבי העבודה של הפרויקט (פר סוג-חלון) — לשיבוץ פר תחנה בשלב 3. */
+  readonly workCycles = signal<WorkCycle[]>([]);
+  readonly workCyclesLoading = signal(false);
+  readonly workCyclesError = signal<string | null>(null);
+  readonly selectedCycleId = signal<string | null>(null);
+  readonly cycleSaving = signal(false);
+  /** יעד יומי ידני לסבב הנבחר (null = חישוב אוטומטי). */
+  readonly cycleDailyTarget = signal<number | null>(null);
+  /** stationId → מנהל תחנה שנבחר לסבב הנבחר. */
+  readonly cycleStationManager = signal<Record<number, string | null>>({});
+  /** stationId → עובדים שנבחרו לסבב הנבחר. */
+  readonly cycleStationWorkers = signal<Record<number, string[]>>({});
+  /** פופאפ שיבוץ ליחידה שנבחרה מהגריד. */
+  readonly cycleAssignModalOpen = signal(false);
+  readonly cycleLaunching = signal(false);
+  /** תחנה פעילה בתוך פופאפ השיבוץ. */
+  readonly selectedAssignStationId = signal<number | null>(null);
+
   ngOnInit(): void {
     this.reloadDrafts();
+    this.loadSiteManagers();
+  }
+
+  private loadSiteManagers(): void {
+    if (this.siteManagers().length || this.siteManagersLoading()) return;
+    this.siteManagersLoading.set(true);
+    this.api
+      .getSiteManagers()
+      .pipe(
+        take(1),
+        finalize(() => this.siteManagersLoading.set(false)),
+      )
+      .subscribe({
+        next: (list) => this.siteManagers.set(list),
+        error: () => this.siteManagers.set([]),
+      });
+  }
+
+  /** אפשרויות בורר מנהל הפרויקט (select). */
+  readonly projectManagerOptions = computed(() =>
+    this.siteManagers().map((m) => ({
+      value: m.id,
+      label: `${m.firstName} ${m.lastName}`.trim(),
+    })),
+  );
+
+  onProjectManagerSelect(ev: Event): void {
+    const value = (ev.target as HTMLSelectElement).value;
+    this.selectedProjectManagerId.set(value || null);
   }
 
   reloadDrafts(): void {
@@ -104,6 +159,16 @@ export class AdminPlanningNewComponent implements OnInit {
             const pick = rows.find((r) => r.id === draftId);
             if (pick) {
               this.resumeDraft(pick);
+            } else if (this.selectedProjectId() !== draftId) {
+              // Not in the drafts list (e.g. already in production) — fetch it
+              // directly so the planner can add more production instructions.
+              this.api
+                .getPlanningResumeItem(draftId)
+                .pipe(take(1))
+                .subscribe({
+                  next: (item) => this.resumeDraft(item),
+                  error: () => this.listError.set('PLANNING_NEW.LOAD_LIST_FAILED'),
+                });
             }
           }
           const cur = this.selectedProjectId();
@@ -119,8 +184,10 @@ export class AdminPlanningNewComponent implements OnInit {
             this.step.set(1);
             this.selectedSawsManagerId.set(null);
             this.selectedWorkerIds.set([]);
+            this.resetCycleSelection();
             this.newProjectName.set('');
             this.newProjectDetails.set('');
+            this.selectedProjectManagerId.set(null);
             return;
           }
         },
@@ -209,6 +276,14 @@ export class AdminPlanningNewComponent implements OnInit {
       emphKey: 'PLANNING_NEW.ANGLE_SOURCING_EXTERNAL_CARD_EMPH',
       hintKey: 'PLANNING_NEW.ANGLE_SOURCING_EXTERNAL_CARD_HINT',
     },
+    {
+      value: 'NO_LASER',
+      icon: 'block',
+      titleKey: 'PLANNING_NEW.ANGLE_SOURCING_NONE',
+      subtitleKey: 'PLANNING_NEW.ANGLE_SOURCING_NONE_CARD_SUB',
+      emphKey: 'PLANNING_NEW.ANGLE_SOURCING_NONE_CARD_EMPH',
+      hintKey: 'PLANNING_NEW.ANGLE_SOURCING_NONE_CARD_HINT',
+    },
   ]);
 
   /** וריאנט הפרויקט הנבחר (טיוטה / אחרי יצירה) */
@@ -256,6 +331,7 @@ export class AdminPlanningNewComponent implements OnInit {
         lineMaterial: this.lineMaterial(),
         machiningRoute: this.machiningRoute(),
         angleSourcing: this.angleSourcing(),
+        projectManagerUserId: this.selectedProjectManagerId() || undefined,
       })
       .pipe(
         take(1),
@@ -279,6 +355,7 @@ export class AdminPlanningNewComponent implements OnInit {
     if (!this.assignees().length && !this.assigneesLoading()) {
       this.loadAssignees();
     }
+    this.loadWorkCycles();
   }
 
   goStep2(): void {
@@ -301,6 +378,217 @@ export class AdminPlanningNewComponent implements OnInit {
         },
         error: () =>
           this.assigneesLoadError.set('PLANNING_NEW.WIZARD_ASSIGNEES_FAILED'),
+      });
+  }
+
+  private loadWorkCycles(): void {
+    const pid = this.selectedProjectId();
+    if (!pid) return;
+    this.workCyclesLoading.set(true);
+    this.workCyclesError.set(null);
+    this.api
+      .getWorkCycles(pid)
+      .pipe(
+        take(1),
+        finalize(() => this.workCyclesLoading.set(false)),
+      )
+      .subscribe({
+        next: (cycles) => {
+          this.workCycles.set(cycles);
+          if (
+            this.step() === 3 &&
+            !cycles.some((cycle) => this.hasInstructions(cycle))
+          ) {
+            this.step.set(2);
+            return;
+          }
+          const cur = this.selectedCycleId();
+          if (cur) {
+            const still = cycles.find((c) => c.id === cur);
+            if (still) this.selectCycle(still);
+          }
+        },
+        error: () =>
+          this.workCyclesError.set('PLANNING_NEW.WIZARD_CYCLES_FAILED'),
+      });
+  }
+
+  /** A unit appears in step 3 once production instructions were uploaded. */
+  hasInstructions(c: WorkCycle): boolean {
+    return !!c.windowType.instructionDocId;
+  }
+
+  unitsForAssignment(): WorkCycle[] {
+    return this.workCycles().filter((c) => this.hasInstructions(c));
+  }
+
+  isDraftUnit(c: WorkCycle): boolean {
+    return c.status === 'DRAFT';
+  }
+
+  isLaunchedUnit(c: WorkCycle): boolean {
+    return c.status !== 'DRAFT';
+  }
+
+  selectedCycle(): WorkCycle | null {
+    const id = this.selectedCycleId();
+    return this.workCycles().find((c) => c.id === id) ?? null;
+  }
+
+  stationsForSelectedCycle(): number[] {
+    return (this.selectedCycle()?.stationProgress ?? []).map((p) => p.stationId);
+  }
+
+  stationLabelKeyFor(stationId: number): string {
+    return stationLabelKey(this.selectedVariantOrder(), stationId);
+  }
+
+  cycleStatusKey(status: WorkCycleStatus): string {
+    return `PLANNING_NEW.CYCLE_STATUS_${status}`;
+  }
+
+  selectCycle(c: WorkCycle): void {
+    this.selectedCycleId.set(c.id);
+    this.cycleDailyTarget.set(c.dailyTargetQty ?? null);
+    const managers: Record<number, string | null> = {};
+    const workers: Record<number, string[]> = {};
+    for (const p of c.stationProgress) {
+      managers[p.stationId] = null;
+      workers[p.stationId] = [];
+    }
+    for (const a of c.assignments) {
+      const sid = a.stationId ?? 0;
+      if (a.role === 'MANAGER') {
+        managers[sid] = a.userId;
+      } else {
+        workers[sid] = [...(workers[sid] ?? []), a.userId];
+      }
+    }
+    this.cycleStationManager.set(managers);
+    this.cycleStationWorkers.set(workers);
+    const stations = c.stationProgress.map((p) => p.stationId);
+    const curSt = this.selectedAssignStationId();
+    if (!curSt || !stations.includes(curSt)) {
+      this.selectedAssignStationId.set(stations[0] ?? null);
+    }
+  }
+
+  openCycleAssignModal(c: WorkCycle): void {
+    this.selectCycle(c);
+    this.cycleAssignModalOpen.set(true);
+  }
+
+  closeCycleAssignModal(): void {
+    this.cycleAssignModalOpen.set(false);
+  }
+
+  selectAssignStation(stationId: number): void {
+    this.selectedAssignStationId.set(stationId);
+  }
+
+  activeAssignStationId(): number | null {
+    return this.selectedAssignStationId();
+  }
+
+  managerOptionsForStation(stationId: number): PlanningAssigneeOptionDto[] {
+    return this.assignees().filter(
+      (a) => a.role === 'STATION_MANAGER' && a.managedStationId === stationId,
+    );
+  }
+
+  cycleStationManagerId(stationId: number): string | null {
+    return this.cycleStationManager()[stationId] ?? null;
+  }
+
+  pickCycleStationManager(stationId: number, id: string | null): void {
+    this.cycleStationManager.update((cur) => ({ ...cur, [stationId]: id }));
+  }
+
+  isCycleStationWorker(stationId: number, id: string): boolean {
+    return (this.cycleStationWorkers()[stationId] ?? []).includes(id);
+  }
+
+  toggleCycleStationWorker(stationId: number, id: string): void {
+    this.cycleStationWorkers.update((cur) => {
+      const list = cur[stationId] ?? [];
+      const next = list.includes(id)
+        ? list.filter((x) => x !== id)
+        : [...list, id];
+      return { ...cur, [stationId]: next };
+    });
+  }
+
+  onCycleDailyTargetInput(ev: Event): void {
+    const raw = (ev.target as HTMLInputElement).value;
+    const n = Number(raw);
+    this.cycleDailyTarget.set(
+      raw.trim().length && Number.isFinite(n) && n > 0 ? Math.floor(n) : null,
+    );
+  }
+
+  private buildCycleAssignments(cycle: WorkCycle): WorkCycleAssignmentInput[] {
+    const managers = this.cycleStationManager();
+    const workers = this.cycleStationWorkers();
+    const assignments: WorkCycleAssignmentInput[] = [];
+    for (const p of cycle.stationProgress) {
+      const sid = p.stationId;
+      const mgr = managers[sid];
+      if (mgr) assignments.push({ userId: mgr, role: 'MANAGER', stationId: sid });
+      for (const w of workers[sid] ?? []) {
+        assignments.push({ userId: w, role: 'WORKER', stationId: sid });
+      }
+    }
+    return assignments;
+  }
+
+  saveCycleAssignments(): void {
+    const pid = this.selectedProjectId();
+    const cycle = this.selectedCycle();
+    if (!pid || !cycle || cycle.status === 'DRAFT') return;
+    const assignments = this.buildCycleAssignments(cycle);
+    this.cycleSaving.set(true);
+    this.workCyclesError.set(null);
+    const target = this.cycleDailyTarget();
+    this.api
+      .setWorkCycleAssignments(pid, cycle.id, assignments)
+      .pipe(
+        concatMap(() =>
+          this.api.setWorkCycleDailyTarget(pid, cycle.id, target),
+        ),
+        take(1),
+        finalize(() => this.cycleSaving.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.loadWorkCycles();
+          this.closeCycleAssignModal();
+        },
+        error: () =>
+          this.workCyclesError.set('PLANNING_NEW.WIZARD_CYCLE_SAVE_FAILED'),
+      });
+  }
+
+  launchSelectedCycle(): void {
+    const pid = this.selectedProjectId();
+    const cycle = this.selectedCycle();
+    if (!pid || !cycle || cycle.status !== 'DRAFT') return;
+    const assignments = this.buildCycleAssignments(cycle);
+    this.cycleLaunching.set(true);
+    this.workCyclesError.set(null);
+    const target = this.cycleDailyTarget();
+    this.api
+      .launchWorkCycle(pid, cycle.id, assignments, target)
+      .pipe(
+        take(1),
+        finalize(() => this.cycleLaunching.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.loadWorkCycles();
+          this.closeCycleAssignModal();
+        },
+        error: () =>
+          this.workCyclesError.set('PLANNING_NEW.WIZARD_UNIT_LAUNCH_FAILED'),
       });
   }
 
@@ -367,11 +655,28 @@ export class AdminPlanningNewComponent implements OnInit {
     this.lineMaterial.set(d.lineMaterial);
     this.machiningRoute.set(d.machiningRoute);
     this.angleSourcing.set(d.angleSourcing ?? 'INTERNAL_LASER');
+    this.selectedProjectManagerId.set(d.projectManagerUserId ?? null);
     const hasData = (d.windowTypeCount ?? 0) > 0 || d.itemCount > 0;
-    this.step.set(hasData ? 3 : 2);
+    // A project already in production resumes on the upload step so the planner
+    // can add more production instructions (each opens a new work cycle).
+    const inProduction = d.flowStatus === 'IN_PRODUCTION';
+    this.step.set(inProduction ? 2 : hasData ? 3 : 2);
+    this.resetCycleSelection();
     if (hasData) {
       this.loadAssignees();
+      this.loadWorkCycles();
     }
+  }
+
+  private resetCycleSelection(): void {
+    this.workCycles.set([]);
+    this.selectedCycleId.set(null);
+    this.cycleDailyTarget.set(null);
+    this.cycleStationManager.set({});
+    this.cycleStationWorkers.set({});
+    this.workCyclesError.set(null);
+    this.cycleAssignModalOpen.set(false);
+    this.selectedAssignStationId.set(null);
   }
 
   panelMode(): 'uploadPreview' | 'summaryApprove' {
@@ -380,6 +685,9 @@ export class AdminPlanningNewComponent implements OnInit {
 
   onPlanningChanged(): void {
     this.reloadDrafts();
+    if (this.step() === 3 && this.selectedProjectId()) {
+      this.loadWorkCycles();
+    }
   }
 
   onPlanningApproved(): void {
@@ -434,8 +742,10 @@ export class AdminPlanningNewComponent implements OnInit {
     this.selectedName.set(null);
     this.selectedSawsManagerId.set(null);
     this.selectedWorkerIds.set([]);
+    this.resetCycleSelection();
     this.newProjectName.set('');
     this.newProjectDetails.set('');
+    this.selectedProjectManagerId.set(null);
     this.lineMaterial.set('ALUMINUM');
     this.machiningRoute.set('GLASS');
     this.angleSourcing.set('INTERNAL_LASER');

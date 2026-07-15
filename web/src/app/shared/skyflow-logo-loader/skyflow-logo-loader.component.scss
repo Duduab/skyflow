@@ -61,6 +61,47 @@
   animation: skyflow-logo-aura 10s linear infinite reverse;
 }
 
+/* —— מצב התקדמות: מכבים את הטבעת הדקורטיבית ומציגים טבעת מדויקת —— */
+.skyflow-logo-loader--progress .skyflow-logo-loader__ring::before,
+.skyflow-logo-loader--progress .skyflow-logo-loader__ring::after {
+  content: none;
+}
+
+.skyflow-logo-loader__track {
+  position: absolute;
+  inset: -9px;
+  width: calc(100% + 18px);
+  height: calc(100% + 18px);
+  transform: rotate(-90deg);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.skyflow-logo-loader__track-bg {
+  fill: none;
+  stroke: rgba(85, 143, 195, 0.16);
+  stroke-width: 4;
+}
+
+.skyflow-logo-loader__track-fill {
+  fill: none;
+  stroke: url(#sf-loader-grad);
+  stroke-width: 4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(14, 165, 233, 0.45));
+  transition: stroke-dashoffset 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* שלב עיבוד — קשת קצרה שמסתובבת סביב הלוגו */
+.skyflow-logo-loader__track--indeterminate {
+  animation: skyflow-logo-progress 1.15s linear infinite;
+}
+
+.skyflow-logo-loader__track--indeterminate .skyflow-logo-loader__track-fill {
+  stroke-dasharray: 70 213;
+  transition: none;
+}
+
 .skyflow-logo-loader__img {
   position: relative;
   z-index: 1;
@@ -101,7 +142,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skyflow-logo-loader__ring::before,
-  .skyflow-logo-loader__ring::after {
+  .skyflow-logo-loader__ring::after,
+  .skyflow-logo-loader__track--indeterminate {
     animation: none;
   }
 }

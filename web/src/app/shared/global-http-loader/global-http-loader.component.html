@@ -6,8 +6,24 @@
     aria-busy="true"
     [attr.aria-label]="'HTTP_LOADER.ARIA' | translate"
   >
-    <div class="http-loader-overlay__panel">
-      <skyflow-logo-loader size="lg" />
+    <div
+      class="http-loader-overlay__panel"
+      [class.http-loader-overlay__panel--task]="loading.label()"
+    >
+      <skyflow-logo-loader size="lg" [progress]="ringProgress()" />
+
+      @if (loading.label(); as label) {
+        <div class="http-loader-overlay__text">
+          <p class="http-loader-overlay__label">{{ label | translate }}</p>
+          @if (showPercent()) {
+            <p class="http-loader-overlay__pct" dir="ltr">{{ loading.progress() }}%</p>
+          } @else {
+            <p class="http-loader-overlay__pct http-loader-overlay__pct--muted">
+              {{ 'HTTP_LOADER.PROCESSING' | translate }}
+            </p>
+          }
+        </div>
+      }
     </div>
   </div>
 }
