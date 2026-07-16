@@ -1,8 +1,7 @@
 name: DB Migrate (Render)
 
-# Runs `prisma migrate deploy` from a GitHub runner, which is NOT behind the
-# local Zscaler agent, so it can reach the Render Postgres directly.
-# Trigger manually: Actions tab → "DB Migrate (Render)" → Run workflow.
+# Runs `prisma migrate deploy` from a GitHub runner (bypasses local Zscaler).
+# Only ONE secret needed: DB_PASSWORD (the password from Render → Connect → External).
 on:
   workflow_dispatch:
 
@@ -12,6 +11,10 @@ jobs:
     defaults:
       run:
         working-directory: api
+    env:
+      DB_HOST: dpg-d804ohegvqtc73d6kdj0-a.frankfurt-postgres.render.com
+      DB_USER: skyflow_db_user
+      DB_NAME: skyflow_db
     steps:
       - uses: actions/checkout@v4
 
@@ -24,41 +27,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Normalize DATABASE_URL secret
+      - name: Build DATABASE_URL from Render credentials
         env:
-          RAW_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          if [ -z "$RAW_DATABASE_URL" ]; then
-            echo "::error::GitHub secret DATABASE_URL is missing."
-            echo "::error::Repo → Settings → Secrets and variables → Actions → New repository secret"
-            echo "::error::Name: DATABASE_URL   Value: postgresql://USER:PASS@HOST/DB?sslmode=require"
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "::error::Missing GitHub secret DB_PASSWORD"
+            echo "::error::Render → skyflow-db → Connect → copy the PASSWORD only"
+            echo "::error::GitHub → Settings → Secrets → Actions → New secret"
+            echo "::error::  Name:  DB_PASSWORD"
+            echo "::error::  Value: (paste password only — no URL, no quotes)"
             exit 1
           fi
-
-          url="$(printf '%s' "$RAW_DATABASE_URL" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-          # Common paste mistakes: surrounding quotes, or the whole .env line.
-          url="$(printf '%s' "$url" | sed -E \
-            -e 's/^"//' -e 's/"$//' \
-            -e "s/^'//" -e "s/'$//" \
-            -e 's/^[Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee]_[Uu][Rr][Ll][[:space:]]*=[[:space:]]*//')"
-
-          case "$url" in
-            postgresql://*|postgres://*)
-              echo "DATABASE_URL looks valid (starts with $(printf '%.12s' "$url")…)"
-              ;;
-            *)
-              echo "::error::DATABASE_URL must start with postgresql:// or postgres://"
-              echo "::error::Got prefix: $(printf '%.24s' "$url")… (length ${#url})"
-              echo "::error::"
-              echo "::error::In GitHub Secrets use TWO fields:"
-              echo "::error::  Name:  DATABASE_URL"
-              echo "::error::  Value: postgresql://skyflow_db_user:PASSWORD@dpg-....render.com/skyflow_db?sslmode=require"
-              echo "::error::Do NOT paste DATABASE_URL= or quotes into the Value box."
-              exit 1
-              ;;
-          esac
-
+          pass="$(printf '%s' "$DB_PASSWORD" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
+          if [ -z "$pass" ]; then
+            echo "::error::DB_PASSWORD is empty after trimming"
+            exit 1
+          fi
+          url="postgresql://${DB_USER}:${pass}@${DB_HOST}/${DB_NAME}?sslmode=require"
           echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
+          echo "Built DATABASE_URL for ${DB_USER}@${DB_HOST}/${DB_NAME}"
 
       - name: Show migration status
         run: npx prisma migrate status
