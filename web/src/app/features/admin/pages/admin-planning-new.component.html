@@ -312,7 +312,7 @@
             }
 
             <div class="planning-wizard__card-actions planning-wizard__card-actions--start">
-              <skyflow-ui-button variant="ghost" btnClass="planning-wizard__btn" (click)="goStep2()">
+              <skyflow-ui-button variant="primary" btnClass="planning-wizard__btn" (click)="goStep2()">
                 {{ 'PLANNING_NEW.WIZARD_BACK_STEP2' | translate }}
               </skyflow-ui-button>
             </div>
@@ -334,6 +334,7 @@
             (planningChanged)="onPlanningChanged()"
             (planningApproved)="onPlanningApproved()"
             (wizardContinue)="goStep3()"
+            (wizardLaunchUnit)="onLaunchUnit($event)"
           />
         </div>
       }

@@ -188,6 +188,24 @@ export class ApiService {
     );
   }
 
+  /** Station 3 — save parts-mapping checklist for a unit */
+  saveAssemblyPartsCheck(
+    projectId: string,
+    unitCode: string,
+    checkedItemKeys: string[],
+    highlightActive: boolean,
+  ) {
+    return this.http.post<{
+      ok: boolean;
+      assemblyPartsCheck: import('./skyflow.models').AssemblyPartsCheckDto;
+    }>(`${this.base}/stations/3/assembly-parts-check`, {
+      projectId,
+      unitCode,
+      checkedItemKeys,
+      highlightActive,
+    });
+  }
+
   /** Station 4 — אישור / ביטול הדבקות לפי TYPE */
   setGluingTypeDone(
     projectId: string,

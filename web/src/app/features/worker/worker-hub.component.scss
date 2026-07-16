@@ -1000,7 +1000,7 @@ html[dir='ltr'] .worker-hub__row {
   position: relative;
   z-index: 2;
   padding: 4.35rem 1.5rem 1.35rem;
-  border-radius: var(--sf-radius);
+  border-radius: 0 0 var(--sf-radius) var(--sf-radius);
   background: linear-gradient(
     165deg,
     rgba(255, 255, 255, 0.07) 0%,

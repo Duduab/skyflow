@@ -1,4 +1,4 @@
-@import './admin-card';
+@use './admin-card' as *;
 
 .admin-page__loading {
   padding: 2rem;

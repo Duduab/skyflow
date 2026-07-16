@@ -38,6 +38,7 @@ import {
   AssemblyWindowUnitDto,
   AssemblyWindowTypeDocDto,
   AssemblyWindowPartSection,
+  AssemblyPartsCheckDto,
   GluingStationContextDto,
   GluingTypeGroupDto,
   LaserAngleDto,
@@ -416,13 +417,15 @@ export class WorkerTerminalComponent implements OnInit {
   cyclesSectionTitleKey(): string {
     if (this.stationId === 2) return 'WORKER.CYCLES_TITLE_CNC';
     if (this.stationId === 3) return 'WORKER.CYCLES_TITLE_ASSEMBLY';
+    if (this.stationId === 4) return 'WORKER.CYCLES_TITLE_GLUING';
     return 'WORKER.CYCLES_TITLE';
   }
 
   /** Work-cycles block icon (Material Symbols). */
   cyclesSectionIcon(): string {
     if (this.stationId === 2) return 'precision_manufacturing';
-    if (this.stationId === 3) return 'construction';
+    if (this.stationId === 3) return 'handyman';
+    if (this.stationId === 4) return 'window';
     return 'carpenter';
   }
 
@@ -1610,6 +1613,24 @@ export class WorkerTerminalComponent implements OnInit {
     this.assemblyDocSelectedCode.set(code);
   }
 
+  /** Window-type code of the unit chosen in the top-bar cycle picker. */
+  selectedCycleUnitCode(): string | null {
+    const id = this.projectSelection.selectedCycleId();
+    if (!id) return null;
+    return this.projectCycles().find((c) => c.cycleId === id)?.code ?? null;
+  }
+
+  /**
+   * Gluing station follows the unit chosen in the top-bar picker (no internal
+   * tabs). Falls back to the first unit that has an instruction PDF.
+   */
+  gluingDocUnit(ctx: WorkerContext): AssemblyWindowTypeDocDto | null {
+    const list = this.assemblyDocUnits(ctx);
+    if (!list.length) return null;
+    const code = this.selectedCycleUnitCode();
+    return list.find((w) => w.code === code) ?? list[0] ?? null;
+  }
+
   /** Open the instruction PDF at a specific 1-based page (page 1 / page 2). */
   openAssemblyDocPage(unit: AssemblyWindowTypeDocDto | null, page: number): void {
     if (!unit?.instructionPdfUrl) return;
@@ -1625,9 +1646,73 @@ export class WorkerTerminalComponent implements OnInit {
   // The worker ticks off each part; reporting stays locked until all are done.
   /** Set of checked item keys `${unitCode}#${sectionIdx}#${rowIdx}`. */
   readonly assemblyCheckedKeys = signal<ReadonlySet<string>>(new Set<string>());
+  /** Units where row highlighting is active after "mark existing items". */
+  readonly assemblyHighlightUnits = signal<ReadonlySet<string>>(new Set<string>());
+  readonly assemblyPartsSavingUnit = signal<string | null>(null);
 
   private assemblyItemKey(unitCode: string, si: number, ri: number): string {
     return `${unitCode}#${si}#${ri}`;
+  }
+
+  private assemblyItemKeysForUnit(unitCode: string): string[] {
+    const prefix = `${unitCode}#`;
+    const keys: string[] = [];
+    for (const full of this.assemblyCheckedKeys()) {
+      if (!full.startsWith(prefix)) continue;
+      const rest = full.slice(prefix.length);
+      if (/^\d+#\d+$/.test(rest)) keys.push(rest);
+    }
+    return keys.sort();
+  }
+
+  private applyAssemblyPartsCheckFromContext(
+    check: AssemblyPartsCheckDto | null | undefined,
+  ): void {
+    if (!check) return;
+    const keys = new Set<string>();
+    for (const [unitCode, items] of Object.entries(check.checkedByUnit ?? {})) {
+      for (const item of items) {
+        if (typeof item === 'string' && /^\d+#\d+$/.test(item)) {
+          keys.add(`${unitCode}#${item}`);
+        }
+      }
+    }
+    this.assemblyCheckedKeys.set(keys);
+    this.assemblyHighlightUnits.set(
+      new Set(
+        Object.entries(check.highlightByUnit ?? {})
+          .filter(([, active]) => active === true)
+          .map(([unitCode]) => unitCode),
+      ),
+    );
+  }
+
+  private async persistAssemblyPartsCheck(
+    unitCode: string,
+    highlightActive: boolean,
+  ): Promise<void> {
+    const pid = this.projectSelection.selectedProjectId();
+    if (!pid) return;
+    this.assemblyPartsSavingUnit.set(unitCode);
+    try {
+      const res = await firstValueFrom(
+        this.api.saveAssemblyPartsCheck(
+          pid,
+          unitCode,
+          this.assemblyItemKeysForUnit(unitCode),
+          highlightActive,
+        ),
+      );
+      this.applyAssemblyPartsCheckFromContext(res.assemblyPartsCheck);
+    } catch (err) {
+      this.error.set(
+        httpErrorMessage(err, 'שגיאה בשמירת סימון החלקים — נסה שוב'),
+      );
+    } finally {
+      if (this.assemblyPartsSavingUnit() === unitCode) {
+        this.assemblyPartsSavingUnit.set(null);
+      }
+    }
   }
 
   isAssemblyItemChecked(unitCode: string, si: number, ri: number): boolean {
@@ -1642,6 +1727,27 @@ export class WorkerTerminalComponent implements OnInit {
       else next.add(key);
       return next;
     });
+  }
+
+  async markAssemblyExistingItems(unitCode: string): Promise<void> {
+    if (this.assemblyPartsSavingUnit() === unitCode) return;
+    this.assemblyHighlightUnits.update((set) => {
+      const next = new Set(set);
+      next.add(unitCode);
+      return next;
+    });
+    await this.persistAssemblyPartsCheck(unitCode, true);
+  }
+
+  isAssemblyHighlightActive(unitCode: string): boolean {
+    return this.assemblyHighlightUnits().has(unitCode);
+  }
+
+  isAssemblyRowMarked(unitCode: string, si: number, ri: number): boolean {
+    return (
+      this.isAssemblyHighlightActive(unitCode) &&
+      this.isAssemblyItemChecked(unitCode, si, ri)
+    );
   }
 
   /** How many items of the unit are checked (only counting existing rows). */
@@ -2333,6 +2439,10 @@ export class WorkerTerminalComponent implements OnInit {
     });
     this.managerPhotoFailed.set(false);
     this.teamPhotoFailedIdx.set(new Set());
+
+    if (this.stationId === 3) {
+      this.applyAssemblyPartsCheckFromContext(ctx.assemblyPartsCheck);
+    }
 
     if (this.stationId === 3 && ctx.assemblyStation?.windows.length) {
       const cur = this.assemblySelectedWindowId();

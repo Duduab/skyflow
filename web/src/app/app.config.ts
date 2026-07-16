@@ -2,7 +2,6 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideTranslateService, TranslateLoader } from '@ngx-translate/core';
-import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 import { authInterceptor } from './core/auth.interceptor';
 import { httpLoadingInterceptor } from './core/http-loading.interceptor';
@@ -21,7 +20,6 @@ export const appConfig: ApplicationConfig = {
         useFactory: bundledTranslateLoader,
       },
     }),
-    provideCharts(withDefaultRegisterables()),
     provideRouter(routes),
   ],
 };

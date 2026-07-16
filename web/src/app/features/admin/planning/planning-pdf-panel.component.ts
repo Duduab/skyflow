@@ -66,6 +66,8 @@ export class PlanningPdfPanelComponent {
   readonly planningChanged = output<void>();
   readonly planningApproved = output<void>();
   readonly wizardContinue = output<void>();
+  /** Planner launched a specific unit from the elevation popup (→ step 3, open it). */
+  readonly wizardLaunchUnit = output<string>();
 
   readonly preview = signal<PlanningPdfPreviewDto | null>(null);
   readonly uploadingKind = signal<PlanningPdfKind | null>(null);
@@ -294,6 +296,23 @@ export class PlanningPdfPanelComponent {
   ): void {
     const file = fileList && fileList.length ? fileList[0] : null;
     if (!file) return;
+    this.uploadWindowTypeDoc(windowTypeId, kind, file);
+  }
+
+  /** Upload triggered from inside the elevation-map cell popup. */
+  onMapDocUpload(e: {
+    windowTypeId: string;
+    kind: PlanningPdfKind;
+    file: File;
+  }): void {
+    this.uploadWindowTypeDoc(e.windowTypeId, e.kind, e.file);
+  }
+
+  private uploadWindowTypeDoc(
+    windowTypeId: string,
+    kind: PlanningPdfKind,
+    file: File,
+  ): void {
     const id = this.projectId();
     if (!id) return;
     this.uploadingRowKey.set(`${windowTypeId}:${kind}`);
@@ -359,10 +378,10 @@ export class PlanningPdfPanelComponent {
   });
 
   readonly slots = computed((): PdfSlot[] => {
-    const angDetected = (this.preview()?.angles.length ?? 0) > 0;
     const ready = this.quantitiesReady();
     // כמויות + Stages תמיד ראשון — הוא שמזין את החזיתות והשלבים ומשחרר את השאר.
     // מפת החזיתות אינה סלוט גנרי אלא צ'ק-ליסט per-facade (ראה למטה).
+    // הוראות ANG — per יחידה בלבד (pdf-panel__u-card), לא סלוט גלובלי.
     const defs: Omit<PdfSlot, 'done' | 'locked'>[] = [
       {
         kind: 'QUANTITIES_PDF',
@@ -374,16 +393,6 @@ export class PlanningPdfPanelComponent {
         titleKey: 'PLANNING_PDF.SLOT_WINDOW_TITLE',
         descKey: 'PLANNING_PDF.SLOT_WINDOW_DESC',
       },
-      // סלוט העלאת ה-ANG מוצג רק כשזוהה ANG בקובץ הוראות החלונות.
-      ...(angDetected
-        ? [
-            {
-              kind: 'ANGLE_INSTRUCTION_PDF' as const,
-              titleKey: 'PLANNING_PDF.SLOT_ANGLE_TITLE',
-              descKey: 'PLANNING_PDF.SLOT_ANGLE_DESC',
-            },
-          ]
-        : []),
     ];
     return defs.map((d) => ({
       ...d,
@@ -438,6 +447,26 @@ export class PlanningPdfPanelComponent {
     return Math.max(0, p.facadeGroupCount - p.facadeGroupsWithElevation);
   });
 
+  /** Which direction groups in the elevation checklist are expanded. */
+  private readonly elevDirExpanded = signal<ReadonlySet<FacadeDirection>>(new Set());
+
+  isElevDirExpanded(direction: FacadeDirection): boolean {
+    return this.elevDirExpanded().has(direction);
+  }
+
+  toggleElevDir(direction: FacadeDirection): void {
+    this.elevDirExpanded.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(direction)) next.delete(direction);
+      else next.add(direction);
+      return next;
+    });
+  }
+
+  elevDirPanelId(direction: FacadeDirection): string {
+    return `pdf-panel-elev-dir-${direction.toLowerCase()}`;
+  }
+
   onFacadeGroupElevationSelected(
     groupKey: string,
     fileList: FileList | null,
@@ -487,9 +516,9 @@ export class PlanningPdfPanelComponent {
     },
   );
 
-  /** סלוט ANG מאפשר כמה קבצים (ANG-1A, ANG-1B ...); שאר הסלוטים — קובץ אחד. */
-  isMultiKind(kind: PlanningPdfKind): boolean {
-    return kind === 'ANGLE_INSTRUCTION_PDF';
+  /** סלוטים גלובליים — קובץ אחד בכל העלאה (ANG per יחידה בלבד). */
+  isMultiKind(_kind: PlanningPdfKind): boolean {
+    return false;
   }
 
   onFilesSelected(kind: PlanningPdfKind, fileList: FileList | null): void {
@@ -564,6 +593,12 @@ export class PlanningPdfPanelComponent {
 
   onContinue(): void {
     this.wizardContinue.emit();
+  }
+
+  /** From the elevation popup: close the map and jump to step 3 for this unit. */
+  onLaunchUnit(e: { windowTypeId: string; code: string }): void {
+    this.closeGroupMap();
+    this.wizardLaunchUnit.emit(e.windowTypeId);
   }
 
   approve(): void {

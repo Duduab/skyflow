@@ -267,6 +267,7 @@
 .admin-shell__main:has(skyflow-admin-planning-new) {
   padding: 0;
   background: transparent;
+  overflow-x: hidden;
 }
 
 .admin-shell__main:has(skyflow-elevation-map) {

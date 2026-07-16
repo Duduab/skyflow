@@ -106,6 +106,8 @@ export class AdminPlanningNewComponent implements OnInit {
   /** פופאפ שיבוץ ליחידה שנבחרה מהגריד. */
   readonly cycleAssignModalOpen = signal(false);
   readonly cycleLaunching = signal(false);
+  /** windowTypeId שהמתכנן ביקש "להוציא לפועל" מפופאפ החזיתות — לפתיחה אוטומטית בשלב 3. */
+  private readonly pendingLaunchWindowTypeId = signal<string | null>(null);
   /** תחנה פעילה בתוך פופאפ השיבוץ. */
   readonly selectedAssignStationId = signal<number | null>(null);
 
@@ -358,6 +360,12 @@ export class AdminPlanningNewComponent implements OnInit {
     this.loadWorkCycles();
   }
 
+  /** מפופאפ החזיתות: מעבר לשלב 3 ופתיחת פופאפ השיבוץ ליחידה שנבחרה. */
+  onLaunchUnit(windowTypeId: string): void {
+    this.pendingLaunchWindowTypeId.set(windowTypeId);
+    this.goStep3();
+  }
+
   goStep2(): void {
     this.step.set(2);
   }
@@ -401,6 +409,15 @@ export class AdminPlanningNewComponent implements OnInit {
           ) {
             this.step.set(2);
             return;
+          }
+          const pendingWt = this.pendingLaunchWindowTypeId();
+          if (pendingWt) {
+            const unit = cycles.find((c) => c.windowTypeId === pendingWt);
+            this.pendingLaunchWindowTypeId.set(null);
+            if (unit) {
+              this.openCycleAssignModal(unit);
+              return;
+            }
           }
           const cur = this.selectedCycleId();
           if (cur) {

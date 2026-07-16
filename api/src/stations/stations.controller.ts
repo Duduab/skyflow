@@ -34,6 +34,7 @@ import { ReportCycleProgressDto } from '../work-cycles/dto/report-cycle-progress
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { SetAssemblyWindowQtyDto } from './dto/set-assembly-window-qty.dto.js';
+import { SaveAssemblyPartsCheckDto } from './dto/save-assembly-parts-check.dto.js';
 import { SetGluingTypeDoneDto } from './dto/set-gluing-type-done.dto.js';
 import { IssueDeliveryNoteDto } from './dto/issue-delivery-note.dto.js';
 
@@ -125,6 +126,20 @@ export class StationsController {
       dto.projectId.trim(),
       dto.productItemId.trim(),
       dto.assembledQty,
+      req.user?.userId ?? null,
+    );
+  }
+
+  @Post('3/assembly-parts-check')
+  async saveAssemblyPartsCheck(
+    @Req() req: { user?: { userId?: string } },
+    @Body() dto: SaveAssemblyPartsCheckDto,
+  ) {
+    return this.stationsService.saveAssemblyPartsCheck(
+      dto.projectId.trim(),
+      dto.unitCode.trim(),
+      dto.checkedItemKeys ?? [],
+      dto.highlightActive === true,
       req.user?.userId ?? null,
     );
   }

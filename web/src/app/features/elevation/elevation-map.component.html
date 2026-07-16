@@ -1,12 +1,17 @@
 <section class="elev">
-  <header class="elev__head">
+  <header class="elev__head" [class.elev__head--embedded]="embedded()">
     <div class="elev__title">
       @if (!embedded()) {
         <a [routerLink]="backRoute()" class="elev__back">←</a>
       }
       <h1>{{ 'ELEVATION_MAP.TITLE' | translate }}</h1>
+      @if (activeFacadeLabel(); as fl) {
+        <span class="elev__facade-name" dir="ltr">{{ fl }}</span>
+      }
       @if (map(); as m) {
-        <span class="elev__doc">{{ m.title }}</span>
+        @if (!embedded()) {
+          <span class="elev__doc">{{ m.title }}</span>
+        }
       }
     </div>
 
@@ -31,7 +36,7 @@
     }
   </header>
 
-  @if (facades().length) {
+  @if (facades().length && !embedded()) {
     <div class="elev__facades" role="tablist" aria-label="facades">
       @for (f of facades(); track f.groupKey) {
         <button
@@ -67,24 +72,26 @@
   } @else {
     <!-- toolbar -->
     <div class="elev__toolbar">
-      <div class="elev__floors">
-        <button
-          class="elev__floor"
-          [ngClass]="{ 'is-active': floorFilter() === '' }"
-          (click)="setFloor('')"
-        >
-          {{ 'ELEVATION_MAP.ALL_FLOORS' | translate }}
-        </button>
-        @for (f of floors(); track f) {
+      @if (floors().length) {
+        <div class="elev__floors">
           <button
             class="elev__floor"
-            [ngClass]="{ 'is-active': floorFilter() === f }"
-            (click)="setFloor(f)"
+            [ngClass]="{ 'is-active': floorFilter() === '' }"
+            (click)="setFloor('')"
           >
-            {{ f }}
+            {{ 'ELEVATION_MAP.ALL_FLOORS' | translate }}
           </button>
-        }
-      </div>
+          @for (f of floors(); track f) {
+            <button
+              class="elev__floor"
+              [ngClass]="{ 'is-active': floorFilter() === f }"
+              (click)="setFloor(f)"
+            >
+              {{ f }}
+            </button>
+          }
+        </div>
+      }
 
       <div class="elev__legend">
         @if ((progress()?.spandrel?.total ?? 0) > 0) {
@@ -124,13 +131,6 @@
 
     @if (windowTypeCodes().length) {
       <div class="elev__wtypes">
-        <button
-          class="elev__wtype elev__wtype--all"
-          [ngClass]="{ 'is-active': windowTypeFilter() === '' }"
-          (click)="setWindowType('')"
-        >
-          {{ 'ELEVATION_MAP.ALL_WINDOW_TYPES' | translate }}
-        </button>
         @for (wt of windowTypeCodes(); track wt) {
           <button
             class="elev__wtype"
@@ -187,6 +187,14 @@
           >
             <img class="elev__img" [src]="page.imageUrl" alt="elevation" />
             <div class="elev__overlay">
+              @if (floorBandRect(); as band) {
+                <div
+                  class="elev__floor-band"
+                  [style.top.%]="band.top * 100"
+                  [style.height.%]="band.height * 100"
+                  aria-hidden="true"
+                ></div>
+              }
               @for (cell of visibleCells(); track cell.id) {
                 <button
                   class="elev__cell"
@@ -195,7 +203,9 @@
                     'elev__cell--spandrel': cell.kind === 'SPANDREL',
                     'elev__cell--done': cell.status === 'DONE',
                     'elev__cell--selected': isSelected(cell.id),
-                    'elev__cell--active': activeCell()?.id === cell.id
+                    'elev__cell--active': activeCell()?.id === cell.id,
+                    'elev__cell--highlighted': isCellHighlighted(cell),
+                    'elev__cell--dimmed': isCellDimmed(cell)
                   }"
                   [style.left.%]="cell.bbox.x * 100"
                   [style.top.%]="cell.bbox.y * 100"
@@ -257,6 +267,125 @@
             {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.STATUS_DONE' : 'ELEVATION_MAP.STATUS_PENDING') | translate }}
           </span>
         </div>
+
+        @if (activeCellDocs(); as docs) {
+          <h3 class="elev__docs-title">{{ 'ELEVATION_MAP.DOCS_TITLE' | translate }}</h3>
+          <div class="elev__docs">
+            <!-- הוראות ייצור לחלון -->
+            <div class="elev__doc-card" [class.is-done]="!!docs.instructionPdfUrl">
+              <div class="elev__doc-head">
+                <span class="material-symbols-outlined" aria-hidden="true">description</span>
+                <span class="elev__doc-name">{{ 'PLANNING_PDF.U_INSTRUCTIONS' | translate }}</span>
+              </div>
+              <div class="elev__doc-foot">
+                @if (docs.instructionPdfUrl) {
+                  <a class="elev__doc-open" [href]="docs.instructionPdfUrl" target="_blank" rel="noopener">
+                    <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                    {{ 'PLANNING_PDF.OPEN' | translate }}
+                  </a>
+                }
+                @if (docsEditable()) {
+                  <label class="elev__doc-upload">
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      hidden
+                      (change)="onDocFileSelected(docs.windowTypeId, 'WINDOW_INSTRUCTION_PDF', $any($event.target).files)"
+                    />
+                    <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+                    @if (isDocUploading(docs.windowTypeId, 'WINDOW_INSTRUCTION_PDF')) {
+                      {{ 'PLANNING_PDF.UPLOADING' | translate }}
+                    } @else {
+                      {{ (docs.instructionPdfUrl ? 'PLANNING_PDF.REPLACE' : 'PLANNING_PDF.CHOOSE') | translate }}
+                    }
+                  </label>
+                }
+              </div>
+            </div>
+
+            <!-- נספח פרטי חיבור וזוויות -->
+            <div class="elev__doc-card" [class.is-done]="!!docs.connectionPdfUrl">
+              <div class="elev__doc-head">
+                <span class="material-symbols-outlined" aria-hidden="true">attach_file</span>
+                <span class="elev__doc-name">{{ 'PLANNING_PDF.U_CONNECTION' | translate }}</span>
+              </div>
+              <div class="elev__doc-foot">
+                @if (docs.connectionPdfUrl) {
+                  <a class="elev__doc-open" [href]="docs.connectionPdfUrl" target="_blank" rel="noopener">
+                    <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                    {{ 'PLANNING_PDF.OPEN' | translate }}
+                  </a>
+                }
+                @if (docsEditable()) {
+                  <label class="elev__doc-upload">
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      hidden
+                      (change)="onDocFileSelected(docs.windowTypeId, 'CONNECTION_DETAILS_PDF', $any($event.target).files)"
+                    />
+                    <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+                    @if (isDocUploading(docs.windowTypeId, 'CONNECTION_DETAILS_PDF')) {
+                      {{ 'PLANNING_PDF.UPLOADING' | translate }}
+                    } @else {
+                      {{ (docs.connectionPdfUrl ? 'PLANNING_PDF.REPLACE' : 'PLANNING_PDF.CHOOSE') | translate }}
+                    }
+                  </label>
+                }
+              </div>
+            </div>
+
+            <!-- הוראות ANG (per קוד זווית) -->
+            @if (docs.hasAngles) {
+              <div class="elev__doc-card">
+                <div class="elev__doc-head">
+                  <span class="material-symbols-outlined" aria-hidden="true">square_foot</span>
+                  <span class="elev__doc-name">{{ 'PLANNING_PDF.U_ANG' | translate }}</span>
+                </div>
+                <div class="elev__doc-chips">
+                  @for (a of docs.angles; track a.code) {
+                    @if (a.url) {
+                      <a class="elev__doc-chip" [href]="a.url" target="_blank" rel="noopener" dir="ltr">{{ a.code }} ↗</a>
+                    } @else {
+                      <span class="elev__doc-chip elev__doc-chip--missing" dir="ltr">{{ a.code }}</span>
+                    }
+                  }
+                </div>
+                @if (docsEditable()) {
+                  <div class="elev__doc-foot">
+                    <label class="elev__doc-upload">
+                      <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        hidden
+                        (change)="onDocFileSelected(docs.windowTypeId, 'ANGLE_INSTRUCTION_PDF', $any($event.target).files)"
+                      />
+                      <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+                      @if (isDocUploading(docs.windowTypeId, 'ANGLE_INSTRUCTION_PDF')) {
+                        {{ 'PLANNING_PDF.UPLOADING' | translate }}
+                      } @else {
+                        {{ 'PLANNING_PDF.CHOOSE' | translate }}
+                      }
+                    </label>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <button
+            type="button"
+            class="elev__launch"
+            [disabled]="!canLaunchUnit()"
+            (click)="launchUnit()"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">rocket_launch</span>
+            {{ 'ELEVATION_MAP.LAUNCH_UNIT' | translate }}
+          </button>
+          @if (!canLaunchUnit()) {
+            <p class="elev__launch-hint">{{ 'ELEVATION_MAP.LAUNCH_LOCKED' | translate }}</p>
+          }
+        }
 
         <h3 class="elev__cycle-title">{{ 'ELEVATION_MAP.WORK_CYCLE' | translate }}</h3>
         <div class="elev__cycle">

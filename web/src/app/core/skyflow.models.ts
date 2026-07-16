@@ -164,6 +164,8 @@ export interface WorkerContext {
   steelworkStation?: SteelworkStationContextDto | null;
   /** Station 3 — סוגי חלונות עם הוראות ייצור (זרימת 4 PDF) */
   assemblyWindowTypes?: AssemblyWindowTypeDocDto[];
+  /** Station 3 — persisted parts-mapping checklist per unit */
+  assemblyPartsCheck?: AssemblyPartsCheckDto;
   /** פגמים שהוחזרו לתחנה זו ממפת החזיתות */
   reworkDefects?: ReworkDefectDto[];
 }
@@ -213,6 +215,15 @@ export interface AssemblyWindowPartsDto {
   sections: AssemblyWindowPartSection[];
 }
 
+export type GlassPanelKind = 'WINDOW' | 'FIXED';
+
+export interface GlassPanelDto {
+  code: string;
+  kind: GlassPanelKind;
+  imagePath: string;
+  order: number;
+}
+
 export interface AssemblyWindowTypeDocDto {
   code: string;
   totalQty: number;
@@ -223,6 +234,12 @@ export interface AssemblyWindowTypeDocDto {
   instructionPdfUrl: string | null;
   instructionPage: number | null;
   parts: AssemblyWindowPartsDto | null;
+  glass?: GlassPanelDto[];
+}
+
+export interface AssemblyPartsCheckDto {
+  checkedByUnit: Record<string, string[]>;
+  highlightByUnit: Record<string, boolean>;
 }
 
 export interface ReworkDefectDto {

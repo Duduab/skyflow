@@ -38,6 +38,16 @@ import {
 } from '../common/gluing-context.util';
 import { lineQtyFromLabel } from '../planning/planning-assembly-media';
 import { loadAssemblyManifest } from '../planning/planning-assembly-media';
+import {
+  loadGlassManifest,
+  type GlassPanelEntry,
+} from '../planning/window-glass-media';
+import {
+  assemblyPartsCheckFromLogPayload,
+  countAssemblyPartsChecked,
+  emptyAssemblyPartsCheck,
+  type AssemblyPartsCheckState,
+} from '../common/assembly-parts-check.util';
 
 export type WorkerActivityLogEntry = {
   id: string;
@@ -726,11 +736,16 @@ export class StationsService {
       );
     }
 
-    // New 4-PDF flow: assembly station shows the window production-instruction
-    // PDFs + sets tables per window type.
+    // New 4-PDF flow: assembly (3) + gluing (4) show the window
+    // production-instruction PDFs per window type.
     const assemblyWindowTypes =
-      stationId === 3
+      stationId === 3 || stationId === 4
         ? await this.buildAssemblyWindowTypeDocs(projectId)
+        : undefined;
+
+    const assemblyPartsCheck =
+      stationId === 3
+        ? await this.latestAssemblyPartsCheck(projectId)
         : undefined;
 
     let assemblyStation: AssemblyStationContextDto | undefined;
@@ -801,12 +816,93 @@ export class StationsService {
       ...(packReport ? { packReport } : {}),
       ...(deliveryNote ? { deliveryNote } : {}),
       ...(assemblyStation ? { assemblyStation } : {}),
+      ...(assemblyPartsCheck ? { assemblyPartsCheck } : {}),
       ...(gluingStation ? { gluingStation } : {}),
       ...(laserStationCtx ? { laserStation: laserStationCtx } : {}),
       ...(steelworkStationCtx ? { steelworkStation: steelworkStationCtx } : {}),
       ...(assemblyWindowTypes?.length ? { assemblyWindowTypes } : {}),
       ...(reworkDefects.length ? { reworkDefects } : {}),
     };
+  }
+
+  /** Latest assembly parts checklist snapshot from station 3 logs. */
+  private async latestAssemblyPartsCheck(
+    projectId: string,
+  ): Promise<AssemblyPartsCheckState> {
+    const logs = await this.prisma.stationLog.findMany({
+      where: { projectId, stationId: 3 },
+      orderBy: { createdAt: 'desc' },
+      take: 80,
+      select: { extraPayload: true },
+    });
+    for (const log of logs) {
+      const parsed = assemblyPartsCheckFromLogPayload(log.extraPayload);
+      if (parsed) return parsed;
+    }
+    return emptyAssemblyPartsCheck();
+  }
+
+  async saveAssemblyPartsCheck(
+    projectId: string,
+    unitCode: string,
+    checkedItemKeys: string[],
+    highlightActive: boolean,
+    reporterUserId: string | null,
+  ) {
+    this.assertStation(3);
+    const order = await this.ordersService.findOne(projectId);
+    if (order.flowStatus !== ProjectFlowStatus.IN_PRODUCTION) {
+      throw new BadRequestException('Project is not in production');
+    }
+
+    const code = unitCode.trim();
+    if (!code) {
+      throw new BadRequestException('unitCode is required');
+    }
+
+    const windowType = await this.prisma.windowType.findFirst({
+      where: { projectId, code },
+      select: { id: true },
+    });
+    if (!windowType) {
+      throw new BadRequestException('Window type unit not found');
+    }
+
+    const validKeys = checkedItemKeys
+      .map((k) => k.trim())
+      .filter((k) => /^\d+#\d+$/.test(k));
+    const uniqueKeys = [...new Set(validKeys)];
+
+    const current = await this.latestAssemblyPartsCheck(projectId);
+    const checkedByUnit = { ...current.checkedByUnit };
+    const highlightByUnit = { ...current.highlightByUnit };
+
+    if (uniqueKeys.length) checkedByUnit[code] = uniqueKeys;
+    else delete checkedByUnit[code];
+
+    if (highlightActive) highlightByUnit[code] = true;
+    else delete highlightByUnit[code];
+
+    const assemblyPartsCheck: AssemblyPartsCheckState = {
+      checkedByUnit,
+      highlightByUnit,
+    };
+
+    await this.prisma.stationLog.create({
+      data: {
+        projectId,
+        stationId: 3,
+        processedQty: countAssemblyPartsChecked(checkedByUnit),
+        workerId: reporterUserId,
+        extraPayload: {
+          assemblyPartsCheckSnapshot: true,
+          checkedByUnit,
+          highlightByUnit,
+        },
+      },
+    });
+
+    return { ok: true as const, assemblyPartsCheck };
   }
 
   /** Assembly (station 3) — window types with instruction PDFs + sets tables. */
@@ -831,6 +927,7 @@ export class StationsService {
           }[];
         }[];
       } | null;
+      glass: GlassPanelEntry[];
     }[]
   > {
     const windowTypes = await this.prisma.windowType.findMany({
@@ -838,6 +935,7 @@ export class StationsService {
       orderBy: { sortOrder: 'asc' },
       include: { instructionDoc: { select: { pdfPath: true } } },
     });
+    const glassManifest = loadGlassManifest(projectId);
     return windowTypes.map((w) => ({
       code: w.code,
       totalQty: w.totalQty,
@@ -850,6 +948,9 @@ export class StationsService {
       instructionPdfUrl: w.instructionDoc?.pdfPath ?? null,
       instructionPage: w.instructionPage,
       parts: normalizeWindowParts(w.partsPayload),
+      glass: [...(glassManifest?.byWindowType[w.code] ?? [])].sort(
+        (a, b) => a.order - b.order,
+      ),
     }));
   }
 

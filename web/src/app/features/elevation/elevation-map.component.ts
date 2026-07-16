@@ -6,6 +6,7 @@ import {
   inject,
   input,
   OnInit,
+  output,
   signal,
   ViewChild,
 } from '@angular/core';
@@ -16,12 +17,22 @@ import { finalize, take } from 'rxjs/operators';
 import { ApiService } from '../../core/api.service';
 import { CurrentUserService } from '../../core/current-user.service';
 import {
+  AnglePreviewDto,
   ElevationCellDto,
   ElevationFacadeOptionDto,
   ElevationMapResponse,
   ElevationProgressDto,
+  PlanningPdfKind,
+  WindowTypePreviewDto,
 } from '../../core/skyflow.models';
 import { UiButtonComponent } from '../../shared/ui-button.component';
+
+/** Per-unit document set shown inside the cell popup (planning/embedded mode). */
+export interface ElevationCellDocUpload {
+  windowTypeId: string;
+  kind: PlanningPdfKind;
+  file: File;
+}
 
 @Component({
   selector: 'skyflow-elevation-map',
@@ -44,6 +55,79 @@ export class ElevationMapComponent implements OnInit {
   readonly embeddedProjectId = input<string | null>(null);
   readonly embeddedGroup = input<string | null>(null);
   readonly embedded = computed(() => !!this.embeddedProjectId());
+
+  /**
+   * Per-unit production documents (planning/embedded mode only). When provided,
+   * the cell popup surfaces the matching window type's instruction / connection
+   * / ANG files with open + upload controls.
+   */
+  readonly windowTypeDocs = input<WindowTypePreviewDto[]>([]);
+  readonly angleDocs = input<AnglePreviewDto[]>([]);
+  /** `${windowTypeId}:${kind}` of the doc currently uploading (parent-driven). */
+  readonly uploadingDocKey = input<string | null>(null);
+  /** Emitted when the planner picks a file for a unit document in the popup. */
+  readonly docUpload = output<ElevationCellDocUpload>();
+  /** Emitted when the planner launches the unit to production (→ wizard step 3). */
+  readonly launchRequested = output<{ windowTypeId: string; code: string }>();
+
+  /** Unit docs can be edited whenever the map is embedded in the planner. */
+  readonly docsEditable = computed(() => this.embedded() || this.canEdit());
+
+  /** Documents for the window type of the currently open cell (embedded mode). */
+  readonly activeCellDocs = computed(() => {
+    if (!this.embedded()) return null;
+    const cell = this.activeCell();
+    if (!cell) return null;
+    const docs = this.windowTypeDocs();
+    if (!docs.length) return null;
+    const wt =
+      docs.find((w) => cell.windowTypeId && w.id === cell.windowTypeId) ??
+      docs.find(
+        (w) => cell.windowTypeCode && w.code === cell.windowTypeCode,
+      ) ??
+      null;
+    if (!wt) return null;
+    const byCode = new Map(this.angleDocs().map((a) => [a.code, a]));
+    const angles = (wt.angleCodes ?? []).map((code) => {
+      const a = byCode.get(code);
+      return { code, url: a?.instructionPdfUrl ?? null };
+    });
+    return {
+      windowTypeId: wt.id,
+      code: wt.code,
+      instructionPdfUrl: wt.instructionPdfUrl,
+      connectionPdfUrl: wt.connectionPdfUrl,
+      hasAngles: wt.hasAngles,
+      angles,
+    };
+  });
+
+  isDocUploading(windowTypeId: string, kind: PlanningPdfKind): boolean {
+    return this.uploadingDocKey() === `${windowTypeId}:${kind}`;
+  }
+
+  onDocFileSelected(
+    windowTypeId: string,
+    kind: PlanningPdfKind,
+    fileList: FileList | null,
+  ): void {
+    const file = fileList && fileList.length ? fileList[0] : null;
+    if (!file) return;
+    this.docUpload.emit({ windowTypeId, kind, file });
+  }
+
+  /** Whether the active unit can be launched (its instruction PDF is uploaded). */
+  readonly canLaunchUnit = computed(
+    () => !!this.activeCellDocs()?.instructionPdfUrl,
+  );
+
+  /** Launch the unit to production and hand off to wizard step 3. */
+  launchUnit(): void {
+    const docs = this.activeCellDocs();
+    if (!docs || !docs.instructionPdfUrl) return;
+    this.launchRequested.emit({ windowTypeId: docs.windowTypeId, code: docs.code });
+    this.closePopup();
+  }
 
   readonly projectId = signal('');
   readonly loading = signal(true);
@@ -85,6 +169,13 @@ export class ElevationMapComponent implements OnInit {
     return path.startsWith('/admin/projects') ? '/admin/projects' : '/worker';
   }
 
+  /** Label of the currently selected facade group (e.g. "דרום 5" / "S4"). */
+  readonly activeFacadeLabel = computed(() => {
+    const key = this.selectedFacadeGroup();
+    if (!key) return null;
+    return this.facades().find((f) => f.groupKey === key)?.label ?? null;
+  });
+
   readonly currentPage = computed(() => {
     const m = this.map();
     if (!m) return null;
@@ -114,19 +205,30 @@ export class ElevationMapComponent implements OnInit {
 
   readonly visibleCells = computed(() => {
     const pi = this.pageIndex();
-    const ff = this.floorFilter();
-    const wt = this.windowTypeFilter();
     const sec = this.activeSection();
     return this.cells().filter((c) => {
       if (c.pageIndex !== pi) return false;
-      if (ff && c.floor !== ff) return false;
-      if (wt && (c.windowTypeCode ?? '') !== wt) return false;
       if (sec) {
         const cx = c.bbox.x + c.bbox.w / 2;
         if (cx < sec.x0 || cx >= sec.x1) return false;
       }
       return true;
     });
+  });
+
+  /** Bounding band (normalized y-range) of the highlighted floor, for the overlay. */
+  readonly floorBandRect = computed(() => {
+    const ff = this.floorFilter();
+    if (!ff) return null;
+    const cells = this.visibleCells().filter((c) => (c.floor ?? '') === ff);
+    if (!cells.length) return null;
+    let top = 1;
+    let bottom = 0;
+    for (const c of cells) {
+      top = Math.min(top, c.bbox.y);
+      bottom = Math.max(bottom, c.bbox.y + c.bbox.h);
+    }
+    return { top, height: Math.max(0, bottom - top) };
   });
 
   readonly selectedCount = computed(() => this.selectedIds().size);
@@ -235,16 +337,44 @@ export class ElevationMapComponent implements OnInit {
   selectAllVisible(): void {
     if (!this.canEdit()) return;
     const next = new Set(this.selectedIds());
-    for (const c of this.visibleCells()) next.add(c.id);
+    for (const c of this.visibleCells()) {
+      if (this.hasActiveFilter() && !this.matchesFilters(c)) continue;
+      next.add(c.id);
+    }
     this.selectedIds.set(next);
   }
 
+  /** True while any highlight filter (floor / window-type) is active. */
+  readonly hasActiveFilter = computed(
+    () => !!this.windowTypeFilter() || !!this.floorFilter(),
+  );
+
+  private matchesFilters(cell: ElevationCellDto): boolean {
+    const wt = this.windowTypeFilter();
+    const ff = this.floorFilter();
+    if (wt && (cell.windowTypeCode ?? '') !== wt) return false;
+    if (ff && (cell.floor ?? '') !== ff) return false;
+    return true;
+  }
+
+  /** Whether this cell matches the active filter(s) and should be highlighted. */
+  isCellHighlighted(cell: ElevationCellDto): boolean {
+    return this.hasActiveFilter() && this.matchesFilters(cell);
+  }
+
+  /** Whether this cell should be dimmed while a filter is active. */
+  isCellDimmed(cell: ElevationCellDto): boolean {
+    return this.hasActiveFilter() && !this.matchesFilters(cell);
+  }
+
   setFloor(floor: string): void {
-    this.floorFilter.set(floor);
+    this.floorFilter.set(this.floorFilter() === floor ? '' : floor);
+    this.activeCell.set(null);
+    this.clearSelection();
   }
 
   setWindowType(code: string): void {
-    this.windowTypeFilter.set(code);
+    this.windowTypeFilter.set(this.windowTypeFilter() === code ? '' : code);
     this.activeCell.set(null);
     this.clearSelection();
   }

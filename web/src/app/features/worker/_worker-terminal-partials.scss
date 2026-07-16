@@ -1,10 +1,10 @@
 /* Worker terminal section styles — global so component style budget stays under limit */
-@import './finish-verify';
-@import './pack-report';
-@import './delivery-note';
-@import './activity-log';
-@import './station-brief';
-@import './assembly-station';
-@import './pdf-flow-station';
-@import './gluing-station';
-@import './station-report-popup';
+@use './finish-verify';
+@use './pack-report';
+@use './delivery-note';
+@use './activity-log';
+@use './station-brief';
+@use './assembly-station';
+@use './pdf-flow-station';
+@use './gluing-station';
+@use './station-report-popup';

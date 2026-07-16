@@ -103,6 +103,54 @@ function extractFloor(code: string): string | null {
   return m ? m[1].toUpperCase() : null;
 }
 
+interface FloorMarker {
+  /** Floor label as printed on the drawing, e.g. "01". */
+  label: string;
+  /** Normalized y (0 = top of page) of the slab line. */
+  y: number;
+}
+
+/**
+ * Detect floor/slab markers from the left margin of an elevation drawing.
+ * Each real marker is a short 1–2 digit number paired with an elevation
+ * height token (e.g. "+9.45") at the same vertical position, just to its left.
+ * The height pairing reliably filters out stray quantity numbers elsewhere on
+ * the sheet. Returns [] when fewer than two markers are found.
+ */
+function detectFloorMarkers(frags: Frag[], W: number, H: number): FloorMarker[] {
+  const HEIGHT = /^[+\-]?\d{1,3}\.\d{2}$/;
+  const NUM = /^\d{1,2}$/;
+  const marginX = W * 0.18;
+  const tol = H * 0.02;
+  const heights = frags.filter((f) => f.cx < marginX && HEIGHT.test(f.str));
+  if (heights.length < 2) return [];
+
+  const byLabel = new Map<string, FloorMarker>();
+  for (const f of frags) {
+    if (f.cx >= marginX || !NUM.test(f.str)) continue;
+    const paired = heights.some(
+      (h) => h.cx < f.cx && Math.abs(h.y - f.y) < tol,
+    );
+    if (!paired) continue;
+    if (!byLabel.has(f.str)) byLabel.set(f.str, { label: f.str, y: f.y / H });
+  }
+  const markers = [...byLabel.values()];
+  return markers.length >= 2 ? markers : [];
+}
+
+/**
+ * Map a cell's vertical center to a floor label: the story is bounded below by
+ * the nearest slab marker beneath it, which is the floor the unit stands on.
+ * Cells above the topmost slab clamp to the highest floor.
+ */
+function floorForCenter(cy: number, markers: FloorMarker[]): string | null {
+  if (!markers.length) return null;
+  const below = markers.filter((m) => m.y >= cy);
+  const pool = below.length ? below : markers;
+  const pick = pool.reduce((a, b) => (b.y < a.y ? b : a));
+  return pick.label;
+}
+
 /** Prefer a mullion code (…-M\d+) as the cell's primary code. */
 function pickPrimaryCode(items: string[]): string {
   const mull = items.find((i) => /-M\d+/i.test(i));
@@ -296,6 +344,17 @@ async function renderOnePage(
   // to the color-band cells when the sheet has no code-label grid.
   const anchorCells = buildAnchorCells(frags, W, H);
   const cells = anchorCells.length >= 3 ? anchorCells : bandCells;
+
+  // Floor detection: prefer floor tokens embedded in the code (…-L2/…-F5);
+  // otherwise fall back to left-margin slab markers mapped by vertical position.
+  const floorMarkers = detectFloorMarkers(frags, W, H);
+  if (floorMarkers.length >= 2) {
+    for (const c of cells) {
+      if (c.floor) continue;
+      const cy = c.bbox.y + c.bbox.h / 2;
+      c.floor = floorForCenter(cy, floorMarkers);
+    }
+  }
 
   const sections = computeSections(frags, cells, W);
 

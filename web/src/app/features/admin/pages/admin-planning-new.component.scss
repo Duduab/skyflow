@@ -4,12 +4,17 @@
 
 :host {
   display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .planning-new {
   position: relative;
   min-height: 100%;
-  overflow-x: visible;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
   padding: 1.75rem 2rem 2.5rem;
   background: transparent;
   --planning-wizard-brand-gradient: linear-gradient(
@@ -62,6 +67,8 @@
 .planning-new__inner {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* —— Hero —— */
@@ -2096,6 +2103,8 @@
 /* —— Planning panel below —— */
 .planning-new__panel-wrap {
   margin-top: 1.5rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -329,6 +329,31 @@
       }
     </div>
 
+    @if (preview(); as p) {
+      <div class="pdf-panel__kpis">
+        <div class="pdf-panel__kpi">
+          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_WINDOW_TYPES' | translate }}</span>
+          <strong class="pdf-panel__kpi-val">{{ p.windowTypeCount }}</strong>
+        </div>
+        <div class="pdf-panel__kpi">
+          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_UNITS' | translate }}</span>
+          <strong class="pdf-panel__kpi-val">{{ p.totalUnits }}</strong>
+        </div>
+        <div class="pdf-panel__kpi">
+          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_STAGES' | translate }}</span>
+          <strong class="pdf-panel__kpi-val">{{ p.stages.length }}</strong>
+        </div>
+        <div class="pdf-panel__kpi">
+          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_ANGLES' | translate }}</span>
+          <strong class="pdf-panel__kpi-val">{{ p.angles.length }}</strong>
+        </div>
+        <div class="pdf-panel__kpi">
+          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_CELLS' | translate }}</span>
+          <strong class="pdf-panel__kpi-val">{{ p.elevationCellCount }}</strong>
+        </div>
+      </div>
+    }
+
     @if (quantitiesReady() && facadeGroupsByDirection().length) {
       <section class="pdf-panel__elev">
         <div class="pdf-panel__elev-head">
@@ -346,12 +371,33 @@
         </div>
 
         @for (d of facadeGroupsByDirection(); track d.direction) {
-          <div class="pdf-panel__elev-group">
-            <div class="pdf-panel__dir-head">
-              <span class="pdf-panel__dir-name">{{ directionKey(d.direction) | translate }}</span>
+          <div
+            class="pdf-panel__elev-group"
+            [class.pdf-panel__elev-group--open]="isElevDirExpanded(d.direction)"
+          >
+            <button
+              type="button"
+              class="pdf-panel__dir-head"
+              (click)="toggleElevDir(d.direction)"
+              [attr.aria-expanded]="isElevDirExpanded(d.direction)"
+              [attr.aria-controls]="elevDirPanelId(d.direction)"
+              [attr.aria-label]="
+                (isElevDirExpanded(d.direction)
+                  ? 'PLANNING_PDF.ELEV_DIR_COLLAPSE'
+                  : 'PLANNING_PDF.ELEV_DIR_EXPAND')
+                  | translate: { direction: (directionKey(d.direction) | translate) }
+              "
+            >
+              <span class="pdf-panel__dir-head-main">
+                <span class="material-symbols-outlined pdf-panel__dir-chevron" aria-hidden="true">
+                  expand_more
+                </span>
+                <span class="pdf-panel__dir-name">{{ directionKey(d.direction) | translate }}</span>
+              </span>
               <span class="pdf-panel__dir-count" dir="ltr">{{ d.groups.length }}</span>
-            </div>
-            <div class="pdf-panel__elev-tiles">
+            </button>
+            @if (isElevDirExpanded(d.direction)) {
+              <div class="pdf-panel__elev-tiles" [id]="elevDirPanelId(d.direction)">
               @for (g of d.groups; track g.key) {
                 <div
                   class="pdf-panel__elev-tile"
@@ -366,13 +412,16 @@
                     <span class="pdf-panel__elev-label" dir="ltr">{{ g.key }}</span>
                     <span class="pdf-panel__elev-qty" dir="ltr">{{ g.totalQty }}</span>
                   </div>
-                  @if (g.subLabels.length > 1) {
-                    <div class="pdf-panel__elev-subs">
+                  <div
+                    class="pdf-panel__elev-subs"
+                    [class.pdf-panel__elev-subs--empty]="g.subLabels.length <= 1"
+                  >
+                    @if (g.subLabels.length > 1) {
                       @for (sub of g.subLabels; track sub) {
                         <span class="pdf-panel__elev-sub-chip" dir="ltr">{{ sub }}</span>
                       }
-                    </div>
-                  }
+                    }
+                  </div>
                   <div class="pdf-panel__elev-tile-foot">
                     @if (g.elevationPdfUrl) {
                       <button
@@ -407,6 +456,7 @@
                 </div>
               }
             </div>
+            }
           </div>
         }
 
@@ -493,28 +543,6 @@
 
   @if (preview(); as p) {
     <div class="pdf-panel__summary">
-      <div class="pdf-panel__kpis">
-        <div class="pdf-panel__kpi">
-          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_WINDOW_TYPES' | translate }}</span>
-          <strong class="pdf-panel__kpi-val">{{ p.windowTypeCount }}</strong>
-        </div>
-        <div class="pdf-panel__kpi">
-          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_UNITS' | translate }}</span>
-          <strong class="pdf-panel__kpi-val">{{ p.totalUnits }}</strong>
-        </div>
-        <div class="pdf-panel__kpi">
-          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_STAGES' | translate }}</span>
-          <strong class="pdf-panel__kpi-val">{{ p.stages.length }}</strong>
-        </div>
-        <div class="pdf-panel__kpi">
-          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_ANGLES' | translate }}</span>
-          <strong class="pdf-panel__kpi-val">{{ p.angles.length }}</strong>
-        </div>
-        <div class="pdf-panel__kpi">
-          <span class="pdf-panel__kpi-label">{{ 'PLANNING_PDF.KPI_CELLS' | translate }}</span>
-          <strong class="pdf-panel__kpi-val">{{ p.elevationCellCount }}</strong>
-        </div>
-      </div>
 
       @if (p.stages.length) {
         <section class="pdf-panel__block">
@@ -729,28 +757,6 @@
         </section>
       }
 
-      @if (p.angles.length) {
-        <div class="pdf-panel__angles">
-          <p class="pdf-panel__angles-title">{{ 'PLANNING_PDF.ANGLES_TITLE' | translate }}</p>
-          <div class="pdf-panel__angles-list">
-            @for (a of p.angles; track a.code) {
-              <span
-                class="pdf-panel__angle-chip"
-                [class.pdf-panel__angle-chip--missing]="!a.instructionPdfUrl"
-                [title]="(a.instructionPdfUrl ? 'PLANNING_PDF.ANG_HAS_PDF' : 'PLANNING_PDF.ANG_MISSING_PDF') | translate"
-              >
-                {{ a.code }} · {{ a.qty }}
-                @if (a.instructionPdfUrl) {
-                  <a [href]="a.instructionPdfUrl" target="_blank" rel="noopener">↗</a>
-                } @else {
-                  <span class="pdf-panel__angle-flag" aria-hidden="true">!</span>
-                }
-              </span>
-            }
-          </div>
-        </div>
-      }
-
       @if (requiresAngleUpload()) {
         <p class="pdf-panel__alert" role="alert">
           {{ 'PLANNING_PDF.ANG_REQUIRED_WARN' | translate }}
@@ -887,6 +893,11 @@
         <skyflow-elevation-map
           [embeddedProjectId]="projectId()"
           [embeddedGroup]="groupKey"
+          [windowTypeDocs]="preview()?.windowTypes ?? []"
+          [angleDocs]="preview()?.angles ?? []"
+          [uploadingDocKey]="uploadingRowKey()"
+          (docUpload)="onMapDocUpload($event)"
+          (launchRequested)="onLaunchUnit($event)"
         />
       </div>
     </div>

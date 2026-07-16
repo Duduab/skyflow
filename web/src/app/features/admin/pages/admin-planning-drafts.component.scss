@@ -1,4 +1,4 @@
-@import './admin-card';
+@use './admin-card' as *;
 
 .sr-only {
   position: absolute;

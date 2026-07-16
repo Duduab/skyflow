@@ -15,6 +15,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartDataset, ChartType } from 'chart.js';
 import * as XLSX from 'xlsx';
+
+import './admin-chart-register';
 import { Subject } from 'rxjs';
 import { finalize, switchMap } from 'rxjs/operators';
 

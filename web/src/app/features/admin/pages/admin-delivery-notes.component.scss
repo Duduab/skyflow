@@ -1,4 +1,4 @@
-@import './admin-card';
+@use './admin-card' as *;
 
 .admin-dn__hero {
   display: flex;

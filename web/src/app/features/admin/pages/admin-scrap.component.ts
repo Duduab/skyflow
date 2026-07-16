@@ -18,6 +18,8 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartDataset, ChartType } from 'chart.js';
 import * as XLSX from 'xlsx';
 import { forkJoin } from 'rxjs';
+
+import '../admin-chart-register';
 import { finalize } from 'rxjs/operators';
 
 import { ApiService } from '../../../core/api.service';

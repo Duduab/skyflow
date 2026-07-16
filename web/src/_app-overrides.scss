@@ -1,0 +1,53 @@
+/* כותרות — משקל אחיד; דורס Tailwind font-black/font-bold על כותרות */
+h1.font-black,
+h2.font-black,
+h3.font-black,
+h4.font-black,
+h5.font-black,
+h6.font-black,
+h1.font-bold,
+h2.font-bold,
+h3.font-bold,
+h4.font-bold,
+h5.font-bold,
+h6.font-bold,
+h1.font-extrabold,
+h2.font-extrabold,
+h3.font-extrabold,
+h4.font-extrabold,
+h5.font-extrabold,
+h6.font-extrabold {
+  font-weight: 500 !important;
+}
+
+/* radius אחיד — inputs, selects, textareas, כפתורי UI */
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+textarea,
+select,
+.sf-ui-btn,
+a.sf-ui-btn {
+  border-radius: var(--sf-control-radius) !important;
+}
+
+/* select dropdown — תמיד מעל תוכן admin/worker */
+body > .sf-ui-select__panel {
+  z-index: 250 !important;
+}
+
+/* Admin toolbars — radius אחיד לשדות חיפוש ו-select */
+.admin-proj-search__input,
+.admin-users__search-input,
+.admin-proj-filter__select .sf-ui-select__trigger,
+.admin-users__filter-select .sf-ui-select__trigger,
+.admin-dn__filter-select .sf-ui-select__trigger,
+.admin-files__filter-select .sf-ui-select__trigger {
+  border-radius: var(--sf-radius) !important;
+}
+
+.admin-proj-filter__select,
+.admin-users__filter-select,
+.admin-dn__filter-select,
+.admin-files__filter-select {
+  --sf-ui-select-radius: var(--sf-radius);
+}
+

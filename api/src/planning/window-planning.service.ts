@@ -11,6 +11,8 @@ import {
   extractWindowPartsFromPdf,
   type WindowPartsMapping,
 } from './pdf/window-parts-vision';
+import { extractWindowGlassFromPdf } from './pdf/window-glass-vision';
+import { saveGlassPanelsForWindowType } from './window-glass-media';
 import { WINDOW_CODE_RE } from './pdf/pdf-text.util';
 import {
   normalizeWindowParts,
@@ -93,6 +95,12 @@ export class WindowPlanningService {
         },
         select: { id: true },
       });
+      await this.detectAndStoreGlass(
+        projectId,
+        win.code,
+        buffer,
+        win.startPage ?? (win.pages?.[0] ?? 0),
+      );
       await this.workCycles.syncCycleStations(projectId, windowType.id);
     }
 
@@ -157,6 +165,13 @@ export class WindowPlanningService {
         angleCodes: angleCodes as unknown as Prisma.InputJsonValue,
       },
     });
+
+    await this.detectAndStoreGlass(
+      projectId,
+      wt.code,
+      buffer,
+      win?.startPage ?? pages[0] ?? 0,
+    );
 
     await this.ensureRequiredAngles(projectId, merged);
     await this.linkElevationCellsToWindowTypes(projectId);
@@ -233,6 +248,36 @@ export class WindowPlanningService {
         `Parts vision extraction failed: ${err instanceof Error ? err.message : err}`,
       );
       return { sections: [] };
+    }
+  }
+
+  /**
+   * Detect the glass panels (WM / GM codes) from the colored elevation drawing so
+   * the gluing station can show the actual glass rectangles. Runs on the first
+   * page (the drawing/composition page). Saves crops + manifest; no-op when
+   * vision is unavailable or nothing is found.
+   */
+  private async detectAndStoreGlass(
+    projectId: string,
+    windowTypeCode: string,
+    buffer: Buffer,
+    drawingPage: number,
+  ): Promise<void> {
+    if (!this.anthropic) return;
+    try {
+      const panels = await extractWindowGlassFromPdf(
+        buffer,
+        drawingPage,
+        this.anthropic,
+        this.anthropicModel,
+      );
+      if (panels.length) {
+        saveGlassPanelsForWindowType(projectId, windowTypeCode, panels);
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Glass vision detection failed for ${windowTypeCode}: ${err instanceof Error ? err.message : err}`,
+      );
     }
   }
 

@@ -2121,54 +2121,16 @@ html.theme-light
 
 /* ── Assembly production-instruction docs panel (station 3) ───────── */
 .asm-docs {
-  --asm-accent: #6366f1;
-  --asm-accent-2: #22d3ee;
-}
-
-.asm-docs__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.asm-docs__head-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.asm-docs__eyebrow {
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--asm-accent) 70%, #fff);
-}
-
-.asm-docs__title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #fff;
+  --asm-docs-accent: #34d399;
 }
 
 .asm-docs__hint {
-  max-width: 46ch;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.asm-docs__head-icon {
-  display: grid;
-  place-items: center;
-  width: 3.25rem;
-  height: 3.25rem;
-  flex: none;
-  border-radius: 16px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--asm-accent), var(--asm-accent-2));
-  box-shadow: 0 10px 26px -12px color-mix(in srgb, var(--asm-accent) 80%, transparent);
+  margin: 0.35rem 0 0;
+  max-width: 42ch;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .asm-docs__tabs {
@@ -2193,14 +2155,18 @@ html.theme-light
 }
 
 .asm-docs__tab:hover {
-  border-color: color-mix(in srgb, var(--asm-accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--asm-docs-accent) 55%, transparent);
 }
 
 .asm-docs__tab.is-active {
   color: #fff;
   border-color: transparent;
-  background: linear-gradient(135deg, var(--asm-accent), var(--asm-accent-2));
-  box-shadow: 0 8px 22px -12px color-mix(in srgb, var(--asm-accent) 80%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--asm-docs-accent) 72%, #fff),
+    var(--asm-docs-accent)
+  );
+  box-shadow: 0 8px 22px -12px color-mix(in srgb, var(--asm-docs-accent) 80%, transparent);
 }
 
 .asm-docs__tab-code {
@@ -2236,71 +2202,230 @@ html.theme-light
 .asm-docs__unit-qty {
   font-size: 0.95rem;
   font-weight: 700;
-  color: color-mix(in srgb, var(--asm-accent-2) 80%, #fff);
+  color: color-mix(in srgb, var(--asm-docs-accent) 80%, #fff);
 }
 
 .asm-docs__views {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  gap: 0.85rem;
-  margin-top: 1.35rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.1rem;
 }
 
 .asm-docs__view-btn {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.85rem;
-  padding: 1rem 1.1rem;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 5.35rem;
+  min-width: 0;
+  padding: 0.7rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
   color: #fff;
-  text-align: start;
+  text-align: center;
   cursor: pointer;
-  transition: all 0.18s ease;
+  overflow: hidden;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .asm-docs__view-btn:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--asm-accent) 55%, transparent);
-  background: rgba(255, 255, 255, 0.09);
-  box-shadow: 0 16px 34px -20px color-mix(in srgb, var(--asm-accent) 85%, transparent);
+  border-color: color-mix(in srgb, var(--asm-docs-accent) 55%, rgba(255, 255, 255, 0.18));
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow:
+    var(--sf-shadow-inset),
+    0 0 0 1px color-mix(in srgb, var(--asm-docs-accent) 24%, transparent);
+}
+
+.asm-docs__view-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--asm-docs-accent) 85%, #fff);
+  outline-offset: 2px;
 }
 
 .asm-docs__view-icon {
   display: grid;
   place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.35rem;
+  height: 2.35rem;
   flex: none;
-  border-radius: 13px;
+  border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, var(--asm-accent), var(--asm-accent-2));
-}
-
-.asm-docs__view-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  flex: 1 1 auto;
-  min-width: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--asm-docs-accent) 55%, #fff),
+    var(--asm-docs-accent)
+  );
+  box-shadow:
+    0 4px 14px -6px color-mix(in srgb, var(--asm-docs-accent) 70%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--asm-docs-accent) 28%, transparent);
 }
 
 .asm-docs__view-label {
-  font-size: 1.02rem;
+  font-size: 0.86rem;
   font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
-.asm-docs__view-sub {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.66);
+.asm-docs__view-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--asm-docs-accent);
+  line-height: 1.2;
 }
 
-.asm-docs__view-arrow {
+.asm-docs__view-action skyflow-mat-icon {
+  color: inherit;
+}
+
+/* ── Glass panels (gluing station) ──────────────────────────────── */
+.glass-panels {
+  padding: 1.1rem 1.2rem 1.3rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in srgb, var(--asm-docs-accent) 18%, transparent),
+      transparent 55%
+    ),
+    rgba(8, 15, 30, 0.4);
+}
+
+.glass-panels__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.glass-panels__eyebrow {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
+
+.glass-panels__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--asm-docs-accent);
+  background: color-mix(in srgb, var(--asm-docs-accent) 20%, transparent);
+}
+
+.glass-panels__grid {
   display: grid;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.55);
-  flex: none;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.9rem;
+}
+
+.glass-panel {
+  margin: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(6, 12, 24, 0.55);
+  display: flex;
+  flex-direction: column;
+}
+
+.glass-panel__img {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.02)
+    );
+}
+
+.glass-panel__img img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.glass-panel__cap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-panel__code {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.glass-panel__kind {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.glass-panel--window .glass-panel__kind {
+  color: #22d3ee;
+  background: color-mix(in srgb, #22d3ee 18%, transparent);
+}
+
+.glass-panel--fixed .glass-panel__kind {
+  color: #a3b2c7;
+  background: color-mix(in srgb, #a3b2c7 16%, transparent);
+}
+
+:host-context(html.theme-light) .glass-panels {
+  border-color: rgba(15, 23, 42, 0.1);
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in srgb, var(--asm-docs-accent) 12%, transparent),
+      transparent 55%
+    ),
+    rgba(255, 255, 255, 0.6);
+}
+
+:host-context(html.theme-light) .glass-panels__eyebrow,
+:host-context(html.theme-light) .glass-panel__code {
+  color: #0f172a;
+}
+
+:host-context(html.theme-light) .glass-panel {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+:host-context(html.theme-light) .glass-panel--fixed .glass-panel__kind {
+  color: #475569;
+  background: color-mix(in srgb, #475569 12%, transparent);
 }
 
 /* ── Parts mapping element ──────────────────────────────────────── */
@@ -2310,7 +2435,11 @@ html.theme-light
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(99, 102, 241, 0.14), transparent 55%),
+    radial-gradient(
+      120% 140% at 100% 0%,
+      color-mix(in srgb, var(--asm-docs-accent) 18%, transparent),
+      transparent 55%
+    ),
     rgba(8, 15, 30, 0.4);
 }
 
@@ -2335,8 +2464,12 @@ html.theme-light
   width: 0.7rem;
   height: 0.7rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--asm-accent), var(--asm-accent-2));
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--asm-accent) 25%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--asm-docs-accent) 72%, #fff),
+    var(--asm-docs-accent)
+  );
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--asm-docs-accent) 25%, transparent);
 }
 
 .asm-map__count {
@@ -2344,9 +2477,9 @@ html.theme-light
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: color-mix(in srgb, var(--asm-accent-2) 85%, #fff);
-  background: rgba(34, 211, 238, 0.12);
-  border: 1px solid rgba(34, 211, 238, 0.28);
+  color: color-mix(in srgb, var(--asm-docs-accent) 85%, #fff);
+  background: color-mix(in srgb, var(--asm-docs-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--asm-docs-accent) 30%, transparent);
 }
 
 .asm-map__sections {
@@ -2502,17 +2635,18 @@ html.theme-light
   }
 }
 
-.asm-map__row--checked {
-  background: color-mix(in srgb, var(--sec-accent) 9%, transparent);
+.asm-map__row--marked {
+  background: rgba(34, 197, 94, 0.2);
 }
 
-.asm-map__row--checked .asm-map__cell--desc {
-  color: color-mix(in srgb, var(--sec-accent) 70%, #fff);
+.asm-map__row--marked:hover {
+  background: rgba(34, 197, 94, 0.26);
 }
 
 /* Checklist progress bar above the sections */
 .asm-map__checkbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem;
   margin: 0.25rem 0 1rem;
@@ -2550,6 +2684,73 @@ html.theme-light
   color: #06280f;
   font-weight: 800;
   font-size: 0.78rem;
+}
+
+.asm-map__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.asm-map__save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 3.35rem;
+  padding: 0.7rem 1.15rem;
+  border: 0;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #72b7e9, #3e5d88);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 900;
+  box-shadow: 0 9px 22px rgba(62, 93, 136, 0.26);
+  transition:
+    filter 0.15s ease,
+    transform 0.12s ease,
+    opacity 0.15s ease;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.72;
+  }
+
+  &--active {
+    background: linear-gradient(135deg, #4ade80, #15803d);
+    box-shadow: 0 9px 22px rgba(21, 128, 61, 0.28);
+  }
+}
+
+.asm-map__save-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.asm-map__save-spinner {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: asm-map-spin 0.7s linear infinite;
+}
+
+@keyframes asm-map-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 :host-context(html.theme-light) .asm-map__checkbar-text {
@@ -2590,7 +2791,6 @@ html.theme-light
 }
 
 /* Light mode */
-:host-context(html.theme-light) .asm-docs__title,
 :host-context(html.theme-light) .asm-docs__unit-code,
 :host-context(html.theme-light) .asm-map__title {
   color: #0f172a;
@@ -2598,7 +2798,7 @@ html.theme-light
 
 :host-context(html.theme-light) .asm-docs__hint,
 :host-context(html.theme-light) .asm-docs__unit-eyebrow {
-  color: #475569;
+  color: #64748b;
 }
 
 :host-context(html.theme-light) .asm-docs__tab {
@@ -2608,19 +2808,28 @@ html.theme-light
 }
 
 :host-context(html.theme-light) .asm-docs__view-btn {
-  border-color: rgba(15, 23, 42, 0.12);
-  background: #fff;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
   color: #0f172a;
 }
 
-:host-context(html.theme-light) .asm-docs__view-sub {
-  color: #64748b;
+:host-context(html.theme-light) .asm-docs__view-btn:hover {
+  border-color: color-mix(in srgb, var(--asm-docs-accent) 45%, rgba(15, 23, 42, 0.14));
+  background: rgba(15, 23, 42, 0.06);
+}
+
+:host-context(html.theme-light) .asm-docs__view-action {
+  color: color-mix(in srgb, var(--asm-docs-accent) 82%, #0f172a);
 }
 
 :host-context(html.theme-light) .asm-map {
   border-color: rgba(15, 23, 42, 0.1);
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(99, 102, 241, 0.1), transparent 55%),
+    radial-gradient(
+      120% 140% at 100% 0%,
+      color-mix(in srgb, var(--asm-docs-accent) 12%, transparent),
+      transparent 55%
+    ),
     #f8fafc;
 }
 
@@ -2648,6 +2857,38 @@ html.theme-light
 
 :host-context(html.theme-light) .asm-map__row:not(.asm-map__row--head) {
   border-color: rgba(15, 23, 42, 0.06);
+}
+
+:host-context(html.theme-light) .asm-map__row--marked {
+  background: rgba(34, 197, 94, 0.14);
+}
+
+:host-context(html.theme-light) .asm-map__row--marked:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+:host-context(html.theme-light) .asm-map__footer {
+  border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+:host-context(html.theme-light) .asm-map__save {
+  background: linear-gradient(
+    180deg,
+    #72b7e9 0%,
+    var(--sf-blue, #558fc3) 52%,
+    var(--sf-navy, #3e5d88) 100%
+  );
+  color: #fff;
+  box-shadow:
+    0 8px 18px rgba(62, 93, 136, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  &--active {
+    background: linear-gradient(180deg, #86efac 0%, #22c55e 52%, #15803d 100%);
+    box-shadow:
+      0 8px 18px rgba(21, 128, 61, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
 }
 
 :host-context(html.theme-light) .asm-map__empty {

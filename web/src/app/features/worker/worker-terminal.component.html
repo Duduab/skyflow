@@ -391,17 +391,29 @@
             class="sf-panel md:p-8 assembly-window-guide"
             [attr.aria-label]="'WORKER.ASSEMBLY_WINDOW_GUIDE_TITLE' | translate"
           >
-            <header class="assembly-section-head">
-              <h2 class="assembly-section-head__title">
+            <div class="worker-cycles__title-row">
+              <h2 class="worker-cycles__title worker-station-panel__title text-white drop-shadow-md">
                 {{ 'WORKER.ASSEMBLY_WINDOW_GUIDE_TITLE' | translate }}
               </h2>
-              <p class="assembly-section-head__hint">
-                {{ 'WORKER.ASSEMBLY_WINDOW_GUIDE_HINT' | translate }}
-              </p>
-            </header>
+              <span
+                class="worker-cycles__saw-icon"
+                [style.background]="cycleSelectEmphasisColor()"
+                aria-hidden="true"
+              >
+                <skyflow-mat-icon
+                  [icon]="cyclesSectionIcon()"
+                  [size]="28"
+                  [weight]="600"
+                  [filled]="true"
+                />
+              </span>
+            </div>
+            <p class="mt-2 text-touch text-white/75">
+              {{ 'WORKER.ASSEMBLY_WINDOW_GUIDE_HINT' | translate }}
+            </p>
 
             @if (assemblyInstructionWindows(ctx).length > 1) {
-              <div class="assembly-window-guide__tabs" role="tablist">
+              <div class="assembly-window-guide__tabs mt-6" role="tablist">
                 @for (w of assemblyInstructionWindows(ctx); track w.id) {
                   <button
                     type="button"
@@ -424,7 +436,7 @@
                 </p>
               }
 
-              <div class="assembly-window-guide__viewer">
+              <div class="assembly-window-guide__viewer mt-6">
                 @if (assemblyInstructionPhotoUrl(guideWin); as guideUrl) {
                   <button
                     type="button"
@@ -473,23 +485,32 @@
     @if (stationId === 3 && assemblyDocUnits(ctx).length) {
       <section
         class="sf-panel md:p-8 asm-docs"
+        [style.--asm-docs-accent]="cycleSelectEmphasisColor()"
         [attr.aria-label]="'WORKER.ASM_DOCS_TITLE' | translate"
       >
-        <header class="asm-docs__head">
-          <div class="asm-docs__head-copy">
-            <span class="asm-docs__eyebrow">{{
-              'WORKER.ASM_DOCS_EYEBROW' | translate
-            }}</span>
-            <h2 class="asm-docs__title">{{ 'WORKER.ASM_DOCS_TITLE' | translate }}</h2>
-            <p class="asm-docs__hint">{{ 'WORKER.ASM_DOCS_HINT' | translate }}</p>
-          </div>
-          <span class="asm-docs__head-icon" aria-hidden="true">
-            <skyflow-mat-icon icon="menu_book" [size]="30" [weight]="600" [filled]="true" />
+        <div class="worker-cycles__title-row">
+          <h2 class="worker-cycles__title worker-station-panel__title text-white drop-shadow-md">
+            {{ 'WORKER.ASM_DOCS_TITLE' | translate }}
+          </h2>
+          <span
+            class="worker-cycles__saw-icon"
+            [style.background]="cycleSelectEmphasisColor()"
+            aria-hidden="true"
+          >
+            <skyflow-mat-icon
+              [icon]="cyclesSectionIcon()"
+              [size]="28"
+              [weight]="600"
+              [filled]="true"
+            />
           </span>
-        </header>
+        </div>
+        <p class="asm-docs__hint">
+          {{ 'WORKER.ASM_DOCS_HINT' | translate }}
+        </p>
 
         @if (assemblyDocUnits(ctx).length > 1) {
-          <div class="asm-docs__tabs" role="tablist">
+          <div class="asm-docs__tabs mt-6" role="tablist">
             @for (u of assemblyDocUnits(ctx); track u.code) {
               <button
                 type="button"
@@ -507,7 +528,7 @@
         }
 
         @if (assemblyDocSelected(ctx); as unit) {
-          <div class="asm-docs__unit-bar">
+          <div class="asm-docs__unit-bar mt-6">
             <span class="asm-docs__unit-eyebrow">{{
               'WORKER.ASM_DOCS_UNIT' | translate
             }}</span>
@@ -522,18 +543,14 @@
               (click)="openAssemblyDocPage(unit, 1)"
             >
               <span class="asm-docs__view-icon" aria-hidden="true">
-                <skyflow-mat-icon icon="image" [size]="26" [weight]="600" [filled]="true" />
+                <skyflow-mat-icon icon="picture_as_pdf" [size]="20" [weight]="600" [filled]="true" />
               </span>
-              <span class="asm-docs__view-text">
-                <span class="asm-docs__view-label">{{
-                  'WORKER.ASM_DOCS_VIEW_PAGE1' | translate
-                }}</span>
-                <span class="asm-docs__view-sub">{{
-                  'WORKER.ASM_DOCS_VIEW_PAGE1_SUB' | translate
-                }}</span>
-              </span>
-              <span class="asm-docs__view-arrow" aria-hidden="true">
-                <skyflow-mat-icon icon="open_in_full" [size]="18" [weight]="600" />
+              <span class="asm-docs__view-label">{{
+                'WORKER.ASM_DOCS_VIEW_PAGE1' | translate
+              }}</span>
+              <span class="asm-docs__view-action">
+                {{ 'WORKER.ASM_DOCS_VIEW_ACTION' | translate }}
+                <skyflow-mat-icon icon="visibility" [size]="16" [weight]="600" />
               </span>
             </button>
 
@@ -543,18 +560,14 @@
               (click)="openAssemblyDocPage(unit, 2)"
             >
               <span class="asm-docs__view-icon" aria-hidden="true">
-                <skyflow-mat-icon icon="table_chart" [size]="26" [weight]="600" [filled]="true" />
+                <skyflow-mat-icon icon="picture_as_pdf" [size]="20" [weight]="600" [filled]="true" />
               </span>
-              <span class="asm-docs__view-text">
-                <span class="asm-docs__view-label">{{
-                  'WORKER.ASM_DOCS_VIEW_PAGE2' | translate
-                }}</span>
-                <span class="asm-docs__view-sub">{{
-                  'WORKER.ASM_DOCS_VIEW_PAGE2_SUB' | translate
-                }}</span>
-              </span>
-              <span class="asm-docs__view-arrow" aria-hidden="true">
-                <skyflow-mat-icon icon="open_in_full" [size]="18" [weight]="600" />
+              <span class="asm-docs__view-label">{{
+                'WORKER.ASM_DOCS_VIEW_PAGE2' | translate
+              }}</span>
+              <span class="asm-docs__view-action">
+                {{ 'WORKER.ASM_DOCS_VIEW_ACTION' | translate }}
+                <skyflow-mat-icon icon="visibility" [size]="16" [weight]="600" />
               </span>
             </button>
           </div>
@@ -632,7 +645,7 @@
                         <div
                           class="asm-map__row"
                           role="row"
-                          [class.asm-map__row--checked]="isAssemblyItemChecked(unit.code, si, ri)"
+                          [class.asm-map__row--marked]="isAssemblyRowMarked(unit.code, si, ri)"
                         >
                           <span class="asm-map__cell asm-map__cell--check">
                             <button
@@ -665,6 +678,29 @@
                   </article>
                 }
               </div>
+
+              <div class="asm-map__footer">
+                <button
+                  type="button"
+                  class="asm-map__save"
+                  [class.asm-map__save--active]="isAssemblyHighlightActive(unit.code)"
+                  [disabled]="assemblyPartsSavingUnit() === unit.code"
+                  [attr.aria-busy]="assemblyPartsSavingUnit() === unit.code"
+                  (click)="markAssemblyExistingItems(unit.code)"
+                >
+                  @if (assemblyPartsSavingUnit() === unit.code) {
+                    <span class="asm-map__save-spinner" aria-hidden="true"></span>
+                  } @else {
+                    <skyflow-mat-icon
+                      class="asm-map__save-icon"
+                      icon="task_alt"
+                      [size]="18"
+                      [weight]="600"
+                    />
+                  }
+                  {{ 'WORKER.ASM_MAP_MARK_EXISTING' | translate }}
+                </button>
+              </div>
             } @else {
               <p class="asm-map__empty">
                 <skyflow-mat-icon icon="hourglass_empty" [size]="22" [weight]="600" />
@@ -672,6 +708,118 @@
               </p>
             }
           </div>
+        }
+      </section>
+    }
+
+    @if (stationId === 4 && assemblyDocUnits(ctx).length) {
+      <section
+        class="sf-panel md:p-8 asm-docs"
+        [style.--asm-docs-accent]="cycleSelectEmphasisColor()"
+        [attr.aria-label]="'WORKER.GLU_DOCS_TITLE' | translate"
+      >
+        <div class="worker-cycles__title-row">
+          <h2 class="worker-cycles__title worker-station-panel__title text-white drop-shadow-md">
+            {{ 'WORKER.GLU_DOCS_TITLE' | translate }}
+          </h2>
+          <span
+            class="worker-cycles__saw-icon"
+            [style.background]="cycleSelectEmphasisColor()"
+            aria-hidden="true"
+          >
+            <skyflow-mat-icon
+              [icon]="cyclesSectionIcon()"
+              [size]="28"
+              [weight]="600"
+              [filled]="true"
+            />
+          </span>
+        </div>
+        <p class="asm-docs__hint">
+          {{ 'WORKER.GLU_DOCS_HINT' | translate }}
+        </p>
+
+        @if (gluingDocUnit(ctx); as unit) {
+          <div class="asm-docs__unit-bar mt-6">
+            <span class="asm-docs__unit-eyebrow">{{
+              'WORKER.ASM_DOCS_UNIT' | translate
+            }}</span>
+            <span class="asm-docs__unit-code" dir="ltr">{{ unit.code }}</span>
+            <span class="asm-docs__unit-qty" dir="ltr">×{{ unit.totalQty }}</span>
+          </div>
+
+          <div class="asm-docs__views">
+            <button
+              type="button"
+              class="asm-docs__view-btn"
+              (click)="openAssemblyDocPage(unit, 1)"
+            >
+              <span class="asm-docs__view-icon" aria-hidden="true">
+                <skyflow-mat-icon icon="picture_as_pdf" [size]="20" [weight]="600" [filled]="true" />
+              </span>
+              <span class="asm-docs__view-label">{{
+                'WORKER.GLU_DOCS_VIEW_PAGE1' | translate
+              }}</span>
+              <span class="asm-docs__view-action">
+                {{ 'WORKER.ASM_DOCS_VIEW_ACTION' | translate }}
+                <skyflow-mat-icon icon="visibility" [size]="16" [weight]="600" />
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="asm-docs__view-btn"
+              (click)="openAssemblyDocPage(unit, 2)"
+            >
+              <span class="asm-docs__view-icon" aria-hidden="true">
+                <skyflow-mat-icon icon="picture_as_pdf" [size]="20" [weight]="600" [filled]="true" />
+              </span>
+              <span class="asm-docs__view-label">{{
+                'WORKER.GLU_DOCS_VIEW_PAGE2' | translate
+              }}</span>
+              <span class="asm-docs__view-action">
+                {{ 'WORKER.ASM_DOCS_VIEW_ACTION' | translate }}
+                <skyflow-mat-icon icon="visibility" [size]="16" [weight]="600" />
+              </span>
+            </button>
+          </div>
+
+          @if (unit.glass?.length) {
+            <div class="glass-panels mt-6">
+              <div class="glass-panels__head">
+                <span class="glass-panels__eyebrow">{{
+                  'WORKER.GLU_GLASS_TITLE' | translate
+                }}</span>
+                <span class="glass-panels__count" dir="ltr">
+                  {{ unit.glass?.length }}
+                </span>
+              </div>
+              <div class="glass-panels__grid">
+                @for (g of unit.glass; track g.code) {
+                  <figure
+                    class="glass-panel"
+                    [class.glass-panel--window]="g.kind === 'WINDOW'"
+                    [class.glass-panel--fixed]="g.kind === 'FIXED'"
+                  >
+                    <div class="glass-panel__img">
+                      <img [src]="g.imagePath" [alt]="g.code" loading="lazy" />
+                    </div>
+                    <figcaption class="glass-panel__cap">
+                      <span class="glass-panel__code" dir="ltr">{{ g.code }}</span>
+                      <span class="glass-panel__kind">
+                        {{
+                          (g.kind === 'WINDOW'
+                            ? 'WORKER.GLU_GLASS_WINDOW'
+                            : 'WORKER.GLU_GLASS_FIXED'
+                          ) | translate
+                        }}
+                      </span>
+                    </figcaption>
+                  </figure>
+                }
+              </div>
+            </div>
+          }
         }
       </section>
     }
@@ -817,164 +965,6 @@
           }
         </ul>
       </section>
-    }
-
-    @if (stationId === 4 && gluingCtx(ctx); as glu) {
-      <div class="gluing-station">
-        <header
-          class="gluing-hero sf-panel"
-          [attr.aria-label]="'WORKER.GLUING_TITLE' | translate"
-        >
-          <div class="gluing-hero__head">
-            <div class="gluing-hero__copy">
-              <p class="gluing-hero__eyebrow">
-                {{ 'WORKER.GLUING_HERO_EYEBROW' | translate }}
-              </p>
-              <h2 class="gluing-hero__title">
-                {{ 'WORKER.GLUING_TITLE' | translate }}
-              </h2>
-              <p class="gluing-hero__hint">
-                {{ 'WORKER.GLUING_HINT' | translate }}
-              </p>
-              @if (glu.typesWithGluing > 0) {
-                <div class="gluing-hero__pills">
-                  <span class="gluing-hero__pill">
-                    {{ 'WORKER.GLUING_KPI_TYPES' | translate }}:
-                    <strong dir="ltr"
-                      >{{ glu.typesDone }}/{{ glu.typesWithGluing }}</strong
-                    >
-                  </span>
-                  <span class="gluing-hero__pill gluing-hero__pill--done">
-                    {{ 'WORKER.GLUING_KPI_UNITS' | translate }}:
-                    <strong dir="ltr"
-                      >{{ glu.doneGlUnitQty }}/{{ glu.totalGlUnitQty }}</strong
-                    >
-                  </span>
-                </div>
-              }
-            </div>
-            @if (glu.typesWithGluing > 0) {
-              <div
-                class="gluing-hero__ring"
-                role="img"
-                [attr.aria-label]="
-                  'WORKER.GLUING_PROGRESS'
-                    | translate
-                      : {
-                          done: glu.typesDone,
-                          total: glu.typesWithGluing,
-                        }
-                "
-              >
-                <svg viewBox="0 0 100 100" aria-hidden="true">
-                  <circle class="gluing-hero__ring-track" cx="50" cy="50" r="42" />
-                  <circle
-                    class="gluing-hero__ring-arc"
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    [attr.stroke-dasharray]="progressCircumference"
-                    [attr.stroke-dashoffset]="
-                      progressDashOffset(gluingProgressPercent(ctx))
-                    "
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
-                <div class="gluing-hero__ring-label" dir="ltr">
-                  <span class="gluing-hero__ring-value">{{
-                    gluingProgressPercent(ctx)
-                  }}</span>
-                  <span class="gluing-hero__ring-sign">%</span>
-                </div>
-              </div>
-            }
-          </div>
-        </header>
-
-        <section
-          class="sf-panel md:p-8"
-          [attr.aria-label]="'WORKER.GLUING_TYPES_TITLE' | translate"
-        >
-          @if (glu.groups.length === 0) {
-            <p class="gluing-empty">{{ 'WORKER.GLUING_EMPTY' | translate }}</p>
-          } @else {
-            <div
-              class="gluing-grid"
-              role="list"
-              [attr.aria-label]="'WORKER.GLUING_TYPES_TITLE' | translate"
-            >
-              @for (g of glu.groups; track g.instructionKind) {
-                <article
-                  class="gluing-type-card"
-                  [class.gluing-type-card--locked]="g.locked && !g.done"
-                  [class.gluing-type-card--done]="g.done"
-                  role="listitem"
-                >
-                  <div class="gluing-type-card__head">
-                    <h3 class="gluing-type-card__title" dir="ltr">
-                      {{ sawInstructionKindTitle(g.instructionKind, g.typeNum) }}
-                    </h3>
-                    @if (g.done) {
-                      <span class="gluing-type-card__badge gluing-type-card__badge--done">
-                        {{ 'WORKER.GLUING_BADGE_DONE' | translate }}
-                      </span>
-                    } @else if (g.locked) {
-                      <span class="gluing-type-card__badge gluing-type-card__badge--locked">
-                        {{ 'WORKER.GLUING_BADGE_LOCKED' | translate }}
-                      </span>
-                    }
-                  </div>
-
-                  <div class="gluing-type-card__units" aria-label="GL units">
-                    @for (u of g.units; track u.productItemId) {
-                      <span class="gluing-type-card__chip" dir="ltr">{{
-                        u.displayLabel
-                      }}</span>
-                    }
-                  </div>
-
-                  <div
-                    class="gluing-type-card__cnc"
-                    [class.gluing-type-card__cnc--ok]="
-                      g.cncTargetQty > 0 && g.cncDoneQty >= g.cncTargetQty
-                    "
-                  >
-                    <span>{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span>
-                    <span class="gluing-type-card__cnc-bar" aria-hidden="true">
-                      <span
-                        class="gluing-type-card__cnc-fill"
-                        [style.width.%]="gluingCncPercent(g)"
-                      ></span>
-                    </span>
-                    <span dir="ltr">{{ g.cncDoneQty }}/{{ g.cncTargetQty }}</span>
-                  </div>
-
-                  @if (g.locked && !g.done) {
-                    <p class="gluing-type-card__locked-hint">
-                      {{ 'WORKER.GLUING_LOCKED_WAIT_CNC' | translate }}
-                    </p>
-                  }
-
-                  @if (!g.locked || g.done) {
-                    <button
-                      type="button"
-                      class="gluing-type-card__action"
-                      [class.gluing-type-card__action--done]="g.done"
-                      (click)="openGluingTypeModal(g)"
-                    >
-                      {{
-                        g.done
-                          ? ('WORKER.GLUING_MODAL_REVIEW' | translate)
-                          : ('WORKER.ASSEMBLY_TYPE_REPORT_BTN' | translate)
-                      }}
-                    </button>
-                  }
-                </article>
-              }
-            </div>
-          }
-        </section>
-      </div>
     }
 
     <section
@@ -1546,11 +1536,6 @@
             }
             <span class="font-black text-white">{{ prog.target | number: '1.0-0' }}</span>
           </p>
-          @if (prog.noUpstreamTarget) {
-            <p class="text-touch font-semibold text-amber-200/95">
-              {{ 'WORKER.PROGRESS_NO_UPSTREAM' | translate }}
-            </p>
-          }
         </div>
       </div>
     </div>
@@ -1921,7 +1906,7 @@
           </header>
 
           <div class="delivery-note__body sf-panel">
-            @if ((ctx.deliveryNote.issuedNotes?.length ?? 0) > 0) {
+            @if (ctx.deliveryNote.issuedNotes.length > 0) {
               <div class="delivery-note__history">
                 <h3 class="delivery-note__preview-title">
                   {{ 'WORKER.DELIVERY_HISTORY_TITLE' | translate }}
@@ -2018,7 +2003,7 @@
               </div>
             </section>
 
-            @if (ctx.summaryStations?.length) {
+            @if (ctx.summaryStations.length) {
               <ul class="finish-verify__summary" role="list">
                 @for (row of ctx.summaryStations; track row.stationId) {
                   <li
@@ -2822,65 +2807,6 @@
       </skyflow-ui-popup>
     }
 
-    @if (stationId === 4 && gluingTypeModalGroup(); as gg) {
-      <skyflow-ui-popup
-        [open]="true"
-        size="sheet"
-        [hideIcon]="true"
-        (closed)="closeGluingTypeModal()"
-        [title]="sawInstructionKindTitle(gg.instructionKind, gg.typeNum)"
-        titleId="gluing-type-modal-title"
-        [zIndex]="85"
-        panelClass="station-report-popup station-report-popup--glu"
-      >
-        <p popup-header-extra class="station-report-modal__hint">
-          {{ 'WORKER.GLUING_MODAL_HINT' | translate }}
-        </p>
-
-        <div class="station-report-modal__body">
-          <div class="station-report-modal__chips" aria-label="GL units">
-            @for (u of gg.units; track u.productItemId) {
-              <span class="station-report-modal__chip" dir="ltr">{{ u.displayLabel }}</span>
-            }
-          </div>
-
-          <div
-            class="gluing-type-card__cnc"
-            [class.gluing-type-card__cnc--ok]="
-              gg.cncTargetQty > 0 && gg.cncDoneQty >= gg.cncTargetQty
-            "
-          >
-            <span>{{ 'WORKER.ASSEMBLY_BADGE_CNC' | translate }}</span>
-            <span class="gluing-type-card__cnc-bar" aria-hidden="true">
-              <span
-                class="gluing-type-card__cnc-fill"
-                [style.width.%]="gluingCncPercent(gg)"
-              ></span>
-            </span>
-            <span dir="ltr">{{ gg.cncDoneQty }}/{{ gg.cncTargetQty }}</span>
-          </div>
-        </div>
-
-        <div popup-actions>
-          <skyflow-ui-button variant="secondary" (click)="closeGluingTypeModal()">
-            {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
-          </skyflow-ui-button>
-          <skyflow-ui-button
-            variant="primary"
-            [loading]="gluingTogglingKind() === gg.instructionKind"
-            [disabled]="gluingTogglingKind() === gg.instructionKind"
-            (click)="toggleGluingType(gg)"
-          >
-            @if (gg.done) {
-              {{ 'WORKER.GLUING_UNDO' | translate }}
-            } @else {
-              {{ 'WORKER.GLUING_APPROVE' | translate }}
-            }
-          </skyflow-ui-button>
-        </div>
-      </skyflow-ui-popup>
-    }
-
     @if (stationId === 6 && packPhotoModalSlot() !== null) {
       @let packSlot = packPhotoModalSlot()!;
       @let packUrl = packPhotoUrl(ctx, packSlot);
@@ -3060,12 +2986,6 @@
               {{ 'WORKER.SITE_AWAITING_DELIVERY' | translate }}
             </p>
           </div>
-
-          <div popup-actions>
-            <skyflow-ui-button variant="secondary" (click)="closeSiteReportModal()">
-              {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
-            </skyflow-ui-button>
-          </div>
         } @else {
           <div class="station-report-modal__body" [formGroup]="form">
             <a
@@ -3137,7 +3057,15 @@
               </label>
             </div>
           </div>
+        }
 
+        @if (!ctx.siteAssembly?.deliveryNoteUrl) {
+          <div popup-actions>
+            <skyflow-ui-button variant="secondary" (click)="closeSiteReportModal()">
+              {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+            </skyflow-ui-button>
+          </div>
+        } @else {
           <div popup-actions>
             <skyflow-ui-button variant="secondary" (click)="closeSiteReportModal()">
               {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
