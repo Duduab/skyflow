@@ -29,19 +29,35 @@ jobs:
           RAW_DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -z "$RAW_DATABASE_URL" ]; then
-            echo "::error::GitHub secret DATABASE_URL is missing. Add it under Settings → Secrets and variables → Actions."
+            echo "::error::GitHub secret DATABASE_URL is missing."
+            echo "::error::Repo → Settings → Secrets and variables → Actions → New repository secret"
+            echo "::error::Name: DATABASE_URL   Value: postgresql://USER:PASS@HOST/DB?sslmode=require"
             exit 1
           fi
-          # Trim whitespace and strip accidental surrounding quotes from paste.
-          url="$(printf '%s' "$RAW_DATABASE_URL" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
+
+          url="$(printf '%s' "$RAW_DATABASE_URL" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          # Common paste mistakes: surrounding quotes, or the whole .env line.
+          url="$(printf '%s' "$url" | sed -E \
+            -e 's/^"//' -e 's/"$//' \
+            -e "s/^'//" -e "s/'$//" \
+            -e 's/^[Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee]_[Uu][Rr][Ll][[:space:]]*=[[:space:]]*//')"
+
           case "$url" in
-            postgresql://*|postgres://*) ;;
+            postgresql://*|postgres://*)
+              echo "DATABASE_URL looks valid (starts with $(printf '%.12s' "$url")…)"
+              ;;
             *)
               echo "::error::DATABASE_URL must start with postgresql:// or postgres://"
-              echo "::error::Tip: paste the full URL only — no quotes, no DATABASE_URL= prefix."
+              echo "::error::Got prefix: $(printf '%.24s' "$url")… (length ${#url})"
+              echo "::error::"
+              echo "::error::In GitHub Secrets use TWO fields:"
+              echo "::error::  Name:  DATABASE_URL"
+              echo "::error::  Value: postgresql://skyflow_db_user:PASSWORD@dpg-....render.com/skyflow_db?sslmode=require"
+              echo "::error::Do NOT paste DATABASE_URL= or quotes into the Value box."
               exit 1
               ;;
           esac
+
           echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
 
       - name: Show migration status
