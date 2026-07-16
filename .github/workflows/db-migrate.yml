@@ -24,6 +24,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate DATABASE_URL secret
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::GitHub secret DATABASE_URL is missing. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          case "$DATABASE_URL" in
+            postgresql://*|postgres://*) ;;
+            *)
+              echo "::error::DATABASE_URL must start with postgresql:// or postgres:// (no quotes, no spaces)."
+              exit 1
+              ;;
+          esac
+
       - name: Show migration status
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
