@@ -17,35 +17,35 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: api/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate DATABASE_URL secret
+      - name: Normalize DATABASE_URL secret
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RAW_DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
+          if [ -z "$RAW_DATABASE_URL" ]; then
             echo "::error::GitHub secret DATABASE_URL is missing. Add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
-          case "$DATABASE_URL" in
+          # Trim whitespace and strip accidental surrounding quotes from paste.
+          url="$(printf '%s' "$RAW_DATABASE_URL" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
+          case "$url" in
             postgresql://*|postgres://*) ;;
             *)
-              echo "::error::DATABASE_URL must start with postgresql:// or postgres:// (no quotes, no spaces)."
+              echo "::error::DATABASE_URL must start with postgresql:// or postgres://"
+              echo "::error::Tip: paste the full URL only — no quotes, no DATABASE_URL= prefix."
               exit 1
               ;;
           esac
+          echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
 
       - name: Show migration status
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma migrate status
 
       - name: Apply migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma migrate deploy
