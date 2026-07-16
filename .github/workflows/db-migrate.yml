@@ -1,55 +1,34 @@
 name: DB Migrate (Render)
 
-# Runs `prisma migrate deploy` from a GitHub runner (bypasses local Zscaler).
-# Only ONE secret needed: DB_PASSWORD (the password from Render → Connect → External).
+# GitHub runners CANNOT reach Render Postgres on port 5432 (P1001).
+# Migrations must run ON Render using the internal DATABASE_URL.
+#
+# Setup (once):
+#   1. Render → your API web service → Settings
+#   2. Pre-Deploy Command:  bash scripts/render-predeploy.sh
+#   3. Ensure DATABASE_URL is linked to skyflow-db (Internal URL)
+#   4. Copy Deploy Hook URL → GitHub secret RENDER_DEPLOY_HOOK
+#
+# Then: Actions → Run workflow → triggers a Render deploy → migrate runs there.
 on:
   workflow_dispatch:
 
 jobs:
-  migrate:
+  trigger-render-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
-    env:
-      DB_HOST: dpg-d804ohegvqtc73d6kdj0-a.frankfurt-postgres.render.com
-      DB_USER: skyflow_db_user
-      DB_NAME: skyflow_db
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: api/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build DATABASE_URL from Render credentials
+      - name: Trigger Render deploy (migrate runs in pre-deploy on Render)
         env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
-          if [ -z "$DB_PASSWORD" ]; then
-            echo "::error::Missing GitHub secret DB_PASSWORD"
-            echo "::error::Render → skyflow-db → Connect → copy the PASSWORD only"
-            echo "::error::GitHub → Settings → Secrets → Actions → New secret"
-            echo "::error::  Name:  DB_PASSWORD"
-            echo "::error::  Value: (paste password only — no URL, no quotes)"
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::error::Missing GitHub secret RENDER_DEPLOY_HOOK"
+            echo "::error::Render → API service → Settings → Deploy Hook → copy URL"
+            echo "::error::GitHub → Settings → Secrets → Actions → RENDER_DEPLOY_HOOK"
             exit 1
           fi
-          pass="$(printf '%s' "$DB_PASSWORD" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
-          if [ -z "$pass" ]; then
-            echo "::error::DB_PASSWORD is empty after trimming"
-            exit 1
-          fi
-          url="postgresql://${DB_USER}:${pass}@${DB_HOST}/${DB_NAME}?sslmode=require"
-          echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
-          echo "Built DATABASE_URL for ${DB_USER}@${DB_HOST}/${DB_NAME}"
-
-      - name: Show migration status
-        run: npx prisma migrate status
-
-      - name: Apply migrations
-        run: npx prisma migrate deploy
+          echo "Triggering Render deploy…"
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+          echo ""
+          echo "Deploy started. Open Render dashboard → Logs to watch:"
+          echo "  bash scripts/render-predeploy.sh  →  npx prisma migrate deploy"
