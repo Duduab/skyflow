@@ -14,6 +14,8 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
 import { PdfAnalysisModule } from './pdf-analysis/pdf-analysis.module.js';
 import { ElevationModule } from './elevation/elevation.module.js';
 import { WorkCyclesModule } from './work-cycles/work-cycle.module';
+import { TrackingModule } from './tracking/tracking.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { WorkCyclesModule } from './work-cycles/work-cycle.module';
     PdfAnalysisModule,
     ElevationModule,
     WorkCyclesModule,
+    TrackingModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

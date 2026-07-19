@@ -33,6 +33,11 @@ export class LoginPageComponent {
   password = '';
   readonly busy = signal(false);
   readonly errorMsg = signal<string | null>(null);
+  readonly showPassword = signal(false);
+
+  togglePassword(): void {
+    this.showPassword.update((v) => !v);
+  }
 
   submit(): void {
     const email = this.email.trim().toLowerCase();

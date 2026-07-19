@@ -139,6 +139,28 @@ export function buildDeliveryNoteLineItems(
   });
 }
 
+/** Catalog line items keyed by window-type unit code (e.g. 74-1-10B). */
+export function buildDeliveryNoteUnitLineItems(
+  windowTypes: { code: string; totalQty: number; sortOrder: number }[],
+): DeliveryNoteLineItem[] {
+  return windowTypes
+    .filter((w) => w.code.trim().length > 0 && w.totalQty > 0)
+    .sort(
+      (a, b) =>
+        a.sortOrder - b.sortOrder ||
+        a.code.localeCompare(b.code, 'he', { numeric: true }),
+    )
+    .map((w) => ({
+      lineKey: `unit:${w.code.trim()}`,
+      kind: 'WINDOW_UNIT',
+      profileCode: null,
+      description: w.code.trim(),
+      quantity: w.totalQty,
+      lengthMm: null,
+      instructionKind: null,
+    }));
+}
+
 export function computeShippedByLineKey(
   notes: { status: DeliveryNoteStatus; lineItems: unknown }[],
 ): Map<string, number> {
@@ -445,6 +467,7 @@ export function writeDeliveryNotePdf(
       }
       x = doc.page.margins.left;
       const rowY = doc.y;
+      const isUnit = li.kind.toUpperCase() === 'WINDOW_UNIT';
       const cells: { text: string; font: PdfFontName; align: 'center' | 'right' }[] = [
         { text: String(li.quantity), font: 'Helvetica', align: 'center' },
         {
@@ -452,15 +475,19 @@ export function writeDeliveryNotePdf(
           font: 'Helvetica',
           align: 'center',
         },
-        { text: li.description, font: pickPdfFont(li.description), align: 'right' },
         {
-          text: li.profileCode ?? DN_MISSING,
-          font: pickPdfFont(li.profileCode ?? DN_MISSING),
+          text: isUnit ? 'יחידה' : li.description,
+          font: 'Hebrew',
+          align: 'right',
+        },
+        {
+          text: isUnit ? DN_MISSING : (li.profileCode ?? DN_MISSING),
+          font: pickPdfFont(isUnit ? DN_MISSING : (li.profileCode ?? DN_MISSING)),
           align: 'center',
         },
         {
-          text: deliveryNoteKindLabel(li.kind),
-          font: 'Hebrew',
+          text: isUnit ? li.description : deliveryNoteKindLabel(li.kind),
+          font: pickPdfFont(isUnit ? li.description : deliveryNoteKindLabel(li.kind)),
           align: 'center',
         },
       ];

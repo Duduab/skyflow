@@ -1,13 +1,20 @@
 <skyflow-ui-popup
   [open]="open()"
   [closeOnScrim]="false"
-  [hideIcon]="true"
+  [hideIcon]="false"
   [title]="titleKey() | translate"
-  [subtitle]="subtitleKey() | translate"
   titleId="login-popup-title"
+  panelClass="login-popup-panel"
   [zIndex]="95"
   (closed)="onDismiss()"
 >
+  <skyflow-mat-icon
+    popup-icon
+    icon="engineering"
+    [size]="26"
+    [weight]="600"
+    [filled]="true"
+  />
   <div class="login-popup">
     <div class="login-popup__logo">
       <skyflow-logo-loader />

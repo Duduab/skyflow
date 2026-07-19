@@ -4,6 +4,10 @@
   flex-direction: column;
   gap: 1.25rem;
   margin-top: 1.5rem;
+
+  &--inline {
+    margin-top: 3px;
+  }
 }
 
 .pack-report__hero {
@@ -220,12 +224,18 @@
 
   @media (min-width: 900px) {
     grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+    grid-template-areas:
+      'steps uploads'
+      'steps footer';
     align-items: start;
     padding: 1.35rem;
   }
 }
 
 .pack-report__steps {
+  @media (min-width: 900px) {
+    grid-area: steps;
+  }
   padding: 1rem 1.05rem;
   border-radius: var(--sf-radius);
   border: 1px solid rgba(148, 163, 184, 0.32);
@@ -234,14 +244,17 @@
 
 .pack-report__steps-title {
   margin: 0;
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: rgba(226, 232, 240, 0.92);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
 }
 
 .pack-report__steps-list {
   margin: 0.75rem 0 0;
-  padding-inline-start: 1.15rem;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -250,9 +263,21 @@
   line-height: 1.45;
   color: rgba(203, 213, 225, 0.88);
 
-  li::marker {
-    color: rgba(148, 163, 184, 0.95);
-    font-weight: 800;
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+
+    &::before {
+      flex-shrink: 0;
+      width: 0.45rem;
+      height: 0.45rem;
+      margin-top: 0.42em;
+      border-radius: 50%;
+      content: '';
+      background: rgba(148, 163, 184, 0.95);
+      box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.22);
+    }
   }
 }
 
@@ -270,6 +295,27 @@
   flex-direction: column;
   gap: 1rem;
   min-width: 0;
+
+  @media (min-width: 900px) {
+    grid-area: uploads;
+  }
+}
+
+.pack-report__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  direction: ltr;
+  justify-content: flex-start;
+
+  @media (min-width: 900px) {
+    grid-area: footer;
+  }
+}
+
+.pack-report__save-btn {
+  min-height: 3.1rem;
 }
 
 .pack-report__add-btn {
@@ -277,9 +323,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  align-self: center;
-  width: 100%;
-  max-width: 22rem;
+  width: fit-content;
   padding: 0.85rem 1.15rem;
   border: 1px dashed color-mix(in srgb, var(--sf-blue, #558fc3) 45%, transparent);
   border-radius: var(--sf-radius);

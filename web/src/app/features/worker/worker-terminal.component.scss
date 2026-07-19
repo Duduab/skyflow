@@ -410,9 +410,9 @@ html.theme-light .saw-unit-hero__view--missing {
 }
 
 @media (min-width: 1280px) {
-  /* Stick below the desktop shell header */
+  /* Stick flush below the desktop shell header (67px tall) */
   .station-top-bar {
-    top: 4.85rem;
+    top: 4.1875rem;
   }
 }
 
@@ -2017,7 +2017,7 @@ html.theme-light
 }
 
 .laser-card--panel .laser-card__complete {
-  margin: 0;
+  margin: auto 0 0;
   padding: 0.55rem 0.75rem;
   border-radius: 12px;
   text-align: center;

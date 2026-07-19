@@ -633,6 +633,7 @@ export interface ProjectOpenedByUser {
   firstName: string;
   lastName: string;
   photoUrl: string | null;
+  role: SkyflowRole;
 }
 
 export interface AdminProjectRow {
@@ -1074,6 +1075,7 @@ export interface WorkCycle {
   status: WorkCycleStatus;
   targetQty: number;
   dailyTargetQty: number | null;
+  dailyTargetHours: number | null;
   currentStationId: number | null;
   openedAt: string | null;
   completedAt: string | null;
@@ -1095,6 +1097,62 @@ export interface WorkCycleAssignmentInput {
   userId: string;
   role: 'MANAGER' | 'WORKER';
   stationId?: number | null;
+}
+
+/** פעימת דיווח של תחנה בפרטי היחידה (מי דיווח, כמה, מתי). */
+export interface WorkCycleLogDto {
+  id: string;
+  stationId: number;
+  processedQty: number;
+  cutLength: number | null;
+  createdAt: string;
+  worker: { id: string; firstName: string; lastName: string } | null;
+}
+
+/** נתוני היחידה שמופו מה-PDF — לצפייה/עריכה מכרטיס היחידה בשלב 3. */
+export interface WorkCycleWindowDataDto {
+  id: string;
+  code: string;
+  totalQty: number;
+  hasAngles: boolean;
+  composition: string[];
+  angleCodes: string[];
+  parts: AssemblyWindowPartsDto | null;
+  instructionPage: number | null;
+  instructionPdfUrl: string | null;
+  instructionTitle: string | null;
+  connectionPdfUrl: string | null;
+}
+
+/** תשובת פרטי היחידה: נתונים ממופים + מסע התחנות (התקדמות + יומן). */
+export interface WorkCycleDetailsDto {
+  cycle: {
+    id: string;
+    projectId: string;
+    windowTypeId: string;
+    status: WorkCycleStatus;
+    targetQty: number;
+    currentStationId: number | null;
+    openedAt: string | null;
+    completedAt: string | null;
+    returnedAt: string | null;
+    returnedFromStationId: number | null;
+    returnReason: string | null;
+  };
+  windowType: WorkCycleWindowDataDto;
+  stationProgress: WorkCycleStationProgress[];
+  assignments: WorkCycleAssignment[];
+  logs: WorkCycleLogDto[];
+}
+
+/** גוף בקשת עריכת נתוני יחידה — רק הקבוצות שנגעו בהן נשלחות. */
+export interface EditWorkCycleWindowBody {
+  totalQty?: number;
+  composition?: string[];
+  hasAngles?: boolean;
+  angleCodes?: string[];
+  sections?: AssemblyWindowPartSection[];
+  fullReroute?: boolean;
 }
 
 export interface StationWorkCycleRow {
@@ -1130,4 +1188,135 @@ export interface WorkerProjectCycle {
   currentStationId: number | null;
   targetQty: number;
   stations: WorkerCycleStation[];
+}
+
+/* ===== מעקב ובקרה מודולים — עמוד מנהל הפרויקט (תחנת הרכבה באתר) ===== */
+
+export type TrackingPhase = 'PRODUCTION' | 'SUPPLY' | 'INSTALL';
+export type TrackingPhaseStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE';
+
+/** פעימת דיווח בודדת — תאריך + כמות (+ תעודה לאספקה). */
+export interface TrackingBeatDto {
+  id: string;
+  phase: TrackingPhase;
+  occurredOn: string;
+  qty: number;
+  note: string | null;
+  deliveryNoteId: string | null;
+  deliveryNoteNumber: string | null;
+  createdAt: string;
+}
+
+/** מצב שלב (ייצור / אספקה / התקנה) בשורת מעקב. */
+export interface TrackingPhaseState {
+  qty: number;
+  remaining: number;
+  status: TrackingPhaseStatus;
+}
+
+/** שורת מעקב = מודול בודד (חזית × קוד מודול). */
+export interface TrackingRowDto {
+  id: string;
+  stageCode: string;
+  facadeLabel: string;
+  facadeGroup: string;
+  floor: string | null;
+  moduleCode: string;
+  windowTypeId: string | null;
+  plannedQty: number;
+  notes: string;
+  sortOrder: number;
+  production: TrackingPhaseState;
+  supply: TrackingPhaseState;
+  install: TrackingPhaseState;
+  beats: TrackingBeatDto[];
+}
+
+export interface TrackingSummaryDto {
+  plannedQty: number;
+  producedQty: number;
+  suppliedQty: number;
+  installedQty: number;
+  remainingProduction: number;
+  remainingSupply: number;
+  remainingInstall: number;
+  producedPct: number;
+  suppliedPct: number;
+  installedPct: number;
+}
+
+export interface TrackingStageSummaryDto {
+  code: string;
+  facadeCount: number;
+  moduleCount: number;
+  plannedQty: number;
+}
+
+export interface TrackingDeliveryNoteDto {
+  id: string;
+  noteNumber: string;
+  shippingType: 'INTERNAL' | 'EXTERNAL';
+  status: 'ACTIVE' | 'CANCELLED';
+  active: boolean;
+  documentUrl: string;
+  externalPrice: string | null;
+  issuedAt: string;
+  issuedByName: string | null;
+}
+
+export interface TrackingResponse {
+  project: { id: string; name: string };
+  summary: TrackingSummaryDto;
+  stageSummary: TrackingStageSummaryDto[];
+  filters: { stages: string[]; facadeLabels: string[]; moduleCodes: string[] };
+  deliveryNotes: TrackingDeliveryNoteDto[];
+  rows: TrackingRowDto[];
+}
+
+/** גוף בקשה להוספת פעימת דיווח. */
+export interface AddTrackingBeatBody {
+  phase: TrackingPhase;
+  occurredOn: string;
+  qty: number;
+  deliveryNoteId?: string | null;
+  note?: string | null;
+}
+
+/* ===== מערכת התראות ===== */
+
+/** סוג אירוע התראה — קובע אייקון + תבנית טקסט. */
+export type NotificationKind =
+  | 'CYCLE_LAUNCHED'
+  | 'CYCLE_REPORTED'
+  | 'CYCLE_COMPLETED'
+  | 'CYCLE_RETURNED'
+  | 'STATION_LOG'
+  | 'DAILY_TARGET_MANUAL'
+  | 'DELIVERY_NOTE_ISSUED'
+  | 'ELEVATION_CELL_DONE'
+  | 'ELEVATION_DEFECT'
+  | 'PLANNING_APPROVED'
+  | 'PROJECT_COMPLETED'
+  | 'TRACKING_BEAT';
+
+/** התראה בודדת עבור המשתמש הנוכחי. */
+export interface NotificationDto {
+  id: string;
+  kind: NotificationKind;
+  titleKey: string;
+  bodyKey: string | null;
+  params: Record<string, unknown> | null;
+  link: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  stationId: number | null;
+  actorName: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+/** תשובת רשימת ההתראות + ספירת הלא-נקראו. */
+export interface NotificationListResponse {
+  items: NotificationDto[];
+  unreadCount: number;
 }

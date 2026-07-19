@@ -34,6 +34,7 @@ import { UiSelectComponent } from '../../shared/ui-select/ui-select.component';
 import { UiSelectOption } from '../../shared/ui-select/ui-select.types';
 import { UiPopupComponent } from '../../shared/ui-popup/ui-popup.component';
 import { StationLabelPipe } from '../../shared/station-label.pipe';
+import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import {
   stationDescKey,
   stationDisplayNumber,
@@ -50,6 +51,7 @@ import {
     UiSelectComponent,
     UiPopupComponent,
     StationLabelPipe,
+    MatIconComponent,
   ],
   templateUrl: './worker-hub.component.html',
   styleUrl: './worker-hub.component.scss',

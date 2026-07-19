@@ -379,6 +379,21 @@
                 </span>
                 <span>{{ 'WORKER.OPEN_ELEVATION_MAP' | translate }}</span>
               </a>
+              <a
+                class="site-station-cta__btn site-station-cta__btn--control"
+                [routerLink]="['/projects', projectSelection.selectedProjectId(), 'control']"
+              >
+                <span class="site-station-cta__btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                      d="M3 3v18h18M8 15l3-3 2 2 5-5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>{{ 'WORKER.OPEN_PROJECT_CONTROL' | translate }}</span>
+              </a>
             }
           </div>
         </div>
@@ -404,7 +419,7 @@
                   [icon]="cyclesSectionIcon()"
                   [size]="28"
                   [weight]="600"
-                  [filled]="true"
+                  [filled]="cyclesSectionIconFilled()"
                 />
               </span>
             </div>
@@ -501,7 +516,7 @@
               [icon]="cyclesSectionIcon()"
               [size]="28"
               [weight]="600"
-              [filled]="true"
+              [filled]="cyclesSectionIconFilled()"
             />
           </span>
         </div>
@@ -731,7 +746,7 @@
               [icon]="cyclesSectionIcon()"
               [size]="28"
               [weight]="600"
-              [filled]="true"
+              [filled]="cyclesSectionIconFilled()"
             />
           </span>
         </div>
@@ -1160,7 +1175,7 @@
       </div>
     }
 
-    @if (visibleStationCycles().length && stationId !== 8) {
+    @if (showWorkerCyclesBlock()) {
       <div
         class="worker-station-panel__block worker-cycles"
         [attr.aria-label]="cyclesSectionTitleKey() | translate"
@@ -1178,39 +1193,392 @@
               [icon]="cyclesSectionIcon()"
               [size]="28"
               [weight]="600"
-              [filled]="true"
+              [filled]="cyclesSectionIconFilled()"
             />
           </span>
         </div>
         <p class="mt-2 text-touch text-white/75">
-          {{ 'WORKER.CYCLES_HINT' | translate }}
+          {{ cyclesSectionHintKey() | translate }}
         </p>
-        @if (selectedCycleNotAtStation()) {
-          <p class="mt-2 text-touch text-amber-300/90">
-            {{ 'WORKER.CYCLES_UNIT_NOT_HERE' | translate }}
-          </p>
-        }
-        <div class="mt-6 worker-cycles__list" role="list">
-          @for (row of visibleStationCycles(); track row.cycleId) {
-            <skyflow-work-cycle-report-card
-              role="listitem"
-              [row]="row"
-              [stationId]="stationId"
-              [inboundQty]="usesInboundCycleMetrics() ? cycleInboundQty(row.cycleId) : null"
-              [quantity]="cycleQty(row.cycleId)"
-              [loading]="cycleReportingId() === row.cycleId"
-              [locked]="assemblyReportLocked(ctx, stationId, row)"
-              [lockedHint]="'WORKER.ASM_REPORT_LOCKED' | translate"
-              (quantityChange)="setCycleQtyValue(row.cycleId, $event)"
-              (submitted)="reportCycle(row)"
-            />
+        @if (stationId === 6) {
+          <div
+            class="pack-report pack-report--inline mt-6"
+            [attr.aria-label]="'WORKER.PACK_PHOTOS_TITLE' | translate"
+          >
+            <header class="pack-report__hero sf-panel">
+              <div class="pack-report__hero-head">
+                <div class="pack-report__hero-copy">
+                  <p class="pack-report__eyebrow">
+                    {{ 'WORKER.PACK_PHOTOS_EYEBROW' | translate }}
+                  </p>
+                  <h3 class="pack-report__title">
+                    {{ 'WORKER.PACK_PHOTOS_TITLE' | translate }}
+                  </h3>
+                </div>
+                <div
+                  class="pack-report__hero-ring"
+                  role="img"
+                  [attr.aria-label]="
+                    'WORKER.PACK_PHOTOS_PROGRESS'
+                      | translate
+                        : {
+                            done: packPhotosUploadedCount(ctx),
+                            total: packReportRequiredCount(ctx),
+                          }
+                  "
+                >
+                  <svg viewBox="0 0 100 100" aria-hidden="true">
+                    <circle class="pack-report__ring-track" cx="50" cy="50" r="42" />
+                    <circle
+                      class="pack-report__ring-arc"
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      [attr.stroke-dasharray]="progressCircumference"
+                      [attr.stroke-dashoffset]="
+                        progressDashOffset(packPhotosProgressPercent(ctx))
+                      "
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                  <div class="pack-report__ring-pct" dir="ltr">
+                    <span class="pack-report__ring-value">{{
+                      packPhotosProgressPercent(ctx)
+                    }}</span
+                    ><span class="pack-report__ring-sign">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pack-report__stats" role="list">
+                <div class="pack-report__stat" role="listitem">
+                  <p class="pack-report__stat-label">
+                    {{ 'WORKER.PACK_PHOTOS_PROGRESS_DONE' | translate }}
+                  </p>
+                  <p class="pack-report__stat-value" dir="ltr">
+                    {{ packPhotosUploadedCount(ctx) | number: '1.0-0' }}
+                  </p>
+                </div>
+                <div class="pack-report__stat pack-report__stat--blue" role="listitem">
+                  <p class="pack-report__stat-label">
+                    {{ 'WORKER.PACK_PHOTOS_PROGRESS_REMAINING' | translate }}
+                  </p>
+                  <p class="pack-report__stat-value" dir="ltr">
+                    {{
+                      packReportRequiredCount(ctx) - packPhotosUploadedCount(ctx)
+                        | number: '1.0-0'
+                    }}
+                  </p>
+                </div>
+                <div class="pack-report__stat pack-report__stat--blue" role="listitem">
+                  <p class="pack-report__stat-label">
+                    {{ 'WORKER.PACK_PHOTOS_PROGRESS_TARGET' | translate }}
+                  </p>
+                  <p class="pack-report__stat-value" dir="ltr">
+                    {{ packReportRequiredCount(ctx) | number: '1.0-0' }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="pack-report__progress-wrap">
+                <div
+                  class="pack-report__progress-track"
+                  role="progressbar"
+                  [attr.aria-valuenow]="packPhotosUploadedCount(ctx)"
+                  aria-valuemin="0"
+                  [attr.aria-valuemax]="packReportRequiredCount(ctx)"
+                >
+                  <div
+                    class="pack-report__progress-fill"
+                    [style.width.%]="packPhotosProgressPercent(ctx)"
+                  ></div>
+                </div>
+                <p class="pack-report__progress-label">
+                  {{
+                    'WORKER.PACK_PHOTOS_PROGRESS'
+                      | translate
+                        : {
+                            done: packPhotosUploadedCount(ctx),
+                            total: packReportRequiredCount(ctx),
+                          }
+                  }}
+                </p>
+              </div>
+            </header>
+
+            <div class="pack-report__body sf-panel">
+              <aside class="pack-report__steps">
+                <h4 class="pack-report__steps-title">
+                  {{ 'WORKER.PACK_PHOTOS_STEPS_TITLE' | translate }}
+                </h4>
+                <ul class="pack-report__steps-list">
+                  <li>{{ 'WORKER.PACK_PHOTOS_STEP_1' | translate }}</li>
+                  <li>{{ 'WORKER.PACK_PHOTOS_STEP_2' | translate }}</li>
+                  <li>{{ 'WORKER.PACK_PHOTOS_STEP_3' | translate }}</li>
+                </ul>
+              </aside>
+
+              <div class="pack-report__uploads">
+                <ul class="pack-report__grid" role="list">
+                  @for (slot of packPhotoSlotIndexes(ctx); track slot) {
+                    @let photoUrl = packPhotoUrl(ctx, slot);
+                    @let uploading = isPackPhotoSlotUploading(slot);
+                    @let optional = isPackPhotoSlotOptional(ctx, slot);
+                    <li class="pack-report__slot" role="listitem">
+                      <article
+                        class="pack-report__slot-card"
+                        [class.pack-report__slot-card--done]="!!photoUrl"
+                        [class.pack-report__slot-card--uploading]="uploading"
+                        [class.pack-report__slot-card--optional]="optional"
+                      >
+                        <span class="pack-report__slot-index" aria-hidden="true">{{
+                          slot + 1
+                        }}</span>
+                        <input
+                          [id]="'pack-photo-input-' + slot"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          class="pack-report__file-input"
+                          (change)="onPackPhotoSelected($event, slot)"
+                          [disabled]="uploading"
+                        />
+                        <button
+                          type="button"
+                          class="pack-report__slot-btn"
+                          [disabled]="uploading"
+                          (click)="openPackPhotoModal(slot)"
+                        >
+                          @if (photoUrl) {
+                            <img [src]="photoUrl" alt="" class="pack-report__thumb" />
+                            <span class="pack-report__slot-badge" aria-hidden="true"
+                              >✓</span
+                            >
+                          } @else {
+                            <span class="pack-report__slot-empty">
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="1.6"
+                                />
+                              </svg>
+                              <span>{{ 'WORKER.PACK_PHOTOS_UPLOAD' | translate }}</span>
+                              <span class="pack-report__slot-empty-sub">{{
+                                'WORKER.PACK_PHOTOS_SLOT_EMPTY' | translate
+                              }}</span>
+                            </span>
+                          }
+                          @if (uploading) {
+                            <span class="pack-report__slot-loading">…</span>
+                          }
+                        </button>
+                        <p class="pack-report__slot-label">
+                          @if (optional) {
+                            {{
+                              'WORKER.PACK_PHOTOS_SLOT_EXTRA'
+                                | translate: { n: slot + 1 }
+                            }}
+                          } @else {
+                            {{
+                              'WORKER.PACK_PHOTOS_SLOT'
+                                | translate
+                                  : {
+                                      n: slot + 1,
+                                      total: packReportRequiredCount(ctx),
+                                    }
+                            }}
+                          }
+                        </p>
+                      </article>
+                    </li>
+                  }
+                </ul>
+              </div>
+
+              <div class="pack-report__footer">
+                <button
+                  type="button"
+                  class="finish-verify__save pack-report__save-btn"
+                  [disabled]="saving() || !packReportComplete(ctx)"
+                  [attr.aria-busy]="saving()"
+                  (click)="submit()"
+                >
+                  @if (saving()) {
+                    <span class="finish-verify__spinner" aria-hidden="true"></span>
+                  } @else {
+                    <skyflow-mat-icon
+                      class="finish-verify__save-icon"
+                      icon="task_alt"
+                      [size]="20"
+                      [weight]="500"
+                    />
+                  }
+                  {{ 'WORKER.CYCLE_REPORT_SAVE' | translate }}
+                </button>
+                @if (canAddPackPhotoSlot(ctx)) {
+                  <button
+                    type="button"
+                    class="pack-report__add-btn"
+                    (click)="addPackPhotoSlot()"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 5v14M5 12h14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-width="2"
+                      />
+                    </svg>
+                    {{ 'WORKER.PACK_PHOTOS_ADD_MORE' | translate }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            @if (!packReportComplete(ctx)) {
+              <p class="pack-report__next-hint">
+                {{ 'WORKER.PACK_PHOTOS_NEXT_HINT' | translate }}
+              </p>
+            } @else if (!deliveryNoteAllShipped(ctx)) {
+              <p class="pack-report__next-hint">
+                {{ 'WORKER.DELIVERY_NEXT_HINT' | translate }}
+              </p>
+            } @else if (deliveryNoteAllShipped(ctx)) {
+              <p class="pack-report__complete" role="status">
+                {{ 'WORKER.PACK_AND_DELIVERY_COMPLETE' | translate }}
+              </p>
+            } @else if (deliveryNoteHasActive(ctx)) {
+              <p class="pack-report__complete" role="status">
+                {{ 'WORKER.DELIVERY_PARTIAL_COMPLETE' | translate }}
+              </p>
+            }
+          </div>
+        } @else if (stationId === 5 && form) {
+          <div class="finish-verify mt-6" [formGroup]="form">
+            <div formGroupName="checks">
+              <p class="finish-verify__progress-label">
+                {{
+                  'WORKER.FINISH_VERIFY_PROGRESS'
+                    | translate
+                      : {
+                          done: finishingChecksDoneCount(),
+                          total: finishingCheckSteps.length,
+                        }
+                }}
+              </p>
+              <ul class="finish-verify__steps" role="list">
+                @for (step of finishingCheckSteps; track step.key) {
+                  @let done = isFinishingCheckDone(step.key);
+                  @let row = summaryRowForStation(ctx, step.stationId);
+                  <li role="listitem">
+                    <div
+                      class="finish-verify__step"
+                      [class.finish-verify__step--done]="done"
+                      [style.--step-accent]="step.accent"
+                    >
+                      <span class="finish-verify__step-index" dir="ltr">{{
+                        step.stationId
+                      }}</span>
+                      <span class="finish-verify__step-main">
+                        <span class="finish-verify__step-name">{{
+                          step.stationId | stationLabel: ctx.order | translate
+                        }}</span>
+                        <span class="finish-verify__step-meta">
+                          @if (row) {
+                            {{ row.processedQty | number: '1.0-0' }}
+                            {{ 'WORKER.FINISH_VERIFY_UNITS' | translate }}
+                          }
+                        </span>
+                      </span>
+                      <span class="finish-verify__step-status">
+                        @if (done) {
+                          <span class="finish-verify__step-chip finish-verify__step-chip--done">
+                            <span aria-hidden="true">✓</span>
+                            {{ 'WORKER.FINISH_VERIFY_STEP_DONE' | translate }}
+                          </span>
+                        } @else {
+                          <span class="finish-verify__step-chip finish-verify__step-chip--pending">
+                            {{ 'WORKER.FINISH_VERIFY_STEP_PENDING' | translate }}
+                          </span>
+                        }
+                      </span>
+                      <button
+                        type="button"
+                        class="finish-verify__step-cta"
+                        (click)="openFinishingVerify(step.key)"
+                      >
+                        {{
+                          done
+                            ? ('WORKER.FINISH_VERIFY_REVIEW' | translate)
+                            : ('WORKER.FINISH_VERIFY_OPEN' | translate)
+                        }}
+                      </button>
+                    </div>
+                  </li>
+                }
+              </ul>
+
+              @if (form.get('checks')?.invalid && form.get('checks')?.touched) {
+                <p class="finish-verify__error" role="alert">
+                  {{ 'WORKER.VERIFY_HINT' | translate }}
+                </p>
+              }
+
+              <div class="finish-verify__actions">
+                <button
+                  type="button"
+                  class="finish-verify__save"
+                  [disabled]="saving() || form.get('checks')?.invalid"
+                  [attr.aria-busy]="saving()"
+                  (click)="submit()"
+                >
+                  @if (saving()) {
+                    <span class="finish-verify__spinner" aria-hidden="true"></span>
+                  } @else {
+                    <skyflow-mat-icon
+                      class="finish-verify__save-icon"
+                      icon="task_alt"
+                      [size]="20"
+                      [weight]="500"
+                    />
+                  }
+                  {{ 'WORKER.CYCLE_REPORT_SAVE' | translate }}
+                </button>
+              </div>
+            </div>
+          </div>
+        } @else {
+          @if (selectedCycleNotAtStation()) {
+            <p class="mt-2 text-touch text-amber-300/90">
+              {{ 'WORKER.CYCLES_UNIT_NOT_HERE' | translate }}
+            </p>
           }
-        </div>
+          <div class="mt-6 worker-cycles__list" role="list">
+            @for (row of visibleStationCycles(); track row.cycleId) {
+              <skyflow-work-cycle-report-card
+                role="listitem"
+                [row]="row"
+                [stationId]="stationId"
+                [inboundQty]="usesInboundCycleMetrics() ? cycleInboundQty(row.cycleId) : null"
+                [quantity]="cycleQty(row.cycleId)"
+                [loading]="cycleReportingId() === row.cycleId"
+                [locked]="assemblyReportLocked(ctx, stationId, row)"
+                [lockedHint]="'WORKER.ASM_REPORT_LOCKED' | translate"
+                (quantityChange)="setCycleQtyValue(row.cycleId, $event)"
+                (submitted)="reportCycle(row)"
+              />
+            }
+          </div>
+        }
       </div>
     }
 
     @if (showSawProfileLines(ctx)) {
-      @if (visibleStationCycles().length && stationId !== 8) {
+      @if (showWorkerCyclesBlock()) {
         <hr class="worker-station-panel__hr" />
       }
       <div
@@ -1419,7 +1787,7 @@
     }
 
     @if (
-      (visibleStationCycles().length && stationId !== 8) ||
+      showWorkerCyclesBlock() ||
       showSawProfileLines(ctx) ||
       (stationId === 8 && ctx.laserStation)
     ) {
@@ -1569,7 +1937,14 @@
                 (click)="toggleActivityLogStation(sid)"
               >
                 <span class="activity-log__trigger-main">
-                  <span class="activity-log__station-id" dir="ltr">{{ sid }}</span>
+                  <span class="activity-log__station-id" dir="ltr">
+                    <skyflow-mat-icon
+                      [icon]="stationIcon(sid)"
+                      [size]="20"
+                      [weight]="600"
+                      [filled]="sid !== 5"
+                    />
+                  </span>
                   <span class="activity-log__station-name">{{
                     sid | stationLabel: ctx.order | translate
                   }}</span>
@@ -1640,256 +2015,13 @@
     </div>
     </section>
 
-    @if (stationId === 6) {
-      <section
-        class="pack-report"
-        [attr.aria-label]="'WORKER.PACK_PHOTOS_TITLE' | translate"
-      >
-        <header class="pack-report__hero sf-panel">
-          <div class="pack-report__hero-head">
-            <div class="pack-report__hero-copy">
-              <p class="pack-report__eyebrow">
-                {{ 'WORKER.PACK_PHOTOS_EYEBROW' | translate }}
-              </p>
-              <h2 class="pack-report__title">
-                {{ 'WORKER.PACK_PHOTOS_TITLE' | translate }}
-              </h2>
-              <p class="pack-report__hint">
-                {{ 'WORKER.PACK_PHOTOS_HINT' | translate }}
-              </p>
-            </div>
-            <div
-              class="pack-report__hero-ring"
-              role="img"
-              [attr.aria-label]="
-                'WORKER.PACK_PHOTOS_PROGRESS'
-                  | translate
-                    : {
-                        done: packPhotosUploadedCount(ctx),
-                        total: packReportRequiredCount(ctx),
-                      }
-              "
-            >
-              <svg viewBox="0 0 100 100" aria-hidden="true">
-                <circle class="pack-report__ring-track" cx="50" cy="50" r="42" />
-                <circle
-                  class="pack-report__ring-arc"
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  [attr.stroke-dasharray]="progressCircumference"
-                  [attr.stroke-dashoffset]="
-                    progressDashOffset(packPhotosProgressPercent(ctx))
-                  "
-                  transform="rotate(-90 50 50)"
-                />
-              </svg>
-              <div class="pack-report__ring-pct" dir="ltr">
-                <span class="pack-report__ring-value">{{
-                  packPhotosProgressPercent(ctx)
-                }}</span
-                ><span class="pack-report__ring-sign">%</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="pack-report__stats" role="list">
-            <div class="pack-report__stat" role="listitem">
-              <p class="pack-report__stat-label">
-                {{ 'WORKER.PACK_PHOTOS_PROGRESS_DONE' | translate }}
-              </p>
-              <p class="pack-report__stat-value" dir="ltr">
-                {{ packPhotosUploadedCount(ctx) | number: '1.0-0' }}
-              </p>
-            </div>
-            <div class="pack-report__stat pack-report__stat--blue" role="listitem">
-              <p class="pack-report__stat-label">
-                {{ 'WORKER.PACK_PHOTOS_PROGRESS_REMAINING' | translate }}
-              </p>
-              <p class="pack-report__stat-value" dir="ltr">
-                {{
-                  packReportRequiredCount(ctx) - packPhotosUploadedCount(ctx)
-                    | number: '1.0-0'
-                }}
-              </p>
-            </div>
-            <div class="pack-report__stat pack-report__stat--blue" role="listitem">
-              <p class="pack-report__stat-label">
-                {{ 'WORKER.PACK_PHOTOS_PROGRESS_TARGET' | translate }}
-              </p>
-              <p class="pack-report__stat-value" dir="ltr">
-                {{ packReportRequiredCount(ctx) | number: '1.0-0' }}
-              </p>
-            </div>
-          </div>
-
-          <div class="pack-report__progress-wrap">
-            <div
-              class="pack-report__progress-track"
-              role="progressbar"
-              [attr.aria-valuenow]="packPhotosUploadedCount(ctx)"
-              aria-valuemin="0"
-              [attr.aria-valuemax]="packReportRequiredCount(ctx)"
-            >
-              <div
-                class="pack-report__progress-fill"
-                [style.width.%]="packPhotosProgressPercent(ctx)"
-              ></div>
-            </div>
-            <p class="pack-report__progress-label">
-              {{
-                'WORKER.PACK_PHOTOS_PROGRESS'
-                  | translate
-                    : {
-                        done: packPhotosUploadedCount(ctx),
-                        total: packReportRequiredCount(ctx),
-                      }
-              }}
-            </p>
-          </div>
-        </header>
-
-        <div class="pack-report__body sf-panel">
-          <aside class="pack-report__steps">
-            <h3 class="pack-report__steps-title">
-              {{ 'WORKER.PACK_PHOTOS_STEPS_TITLE' | translate }}
-            </h3>
-            <ol class="pack-report__steps-list">
-              <li>{{ 'WORKER.PACK_PHOTOS_STEP_1' | translate }}</li>
-              <li>{{ 'WORKER.PACK_PHOTOS_STEP_2' | translate }}</li>
-              <li>{{ 'WORKER.PACK_PHOTOS_STEP_3' | translate }}</li>
-            </ol>
-          </aside>
-
-          <div class="pack-report__uploads">
-            <ul class="pack-report__grid" role="list">
-              @for (slot of packPhotoSlotIndexes(ctx); track slot) {
-                @let photoUrl = packPhotoUrl(ctx, slot);
-                @let uploading = isPackPhotoSlotUploading(slot);
-                @let optional = isPackPhotoSlotOptional(ctx, slot);
-                <li class="pack-report__slot" role="listitem">
-                  <article
-                    class="pack-report__slot-card"
-                    [class.pack-report__slot-card--done]="!!photoUrl"
-                    [class.pack-report__slot-card--uploading]="uploading"
-                    [class.pack-report__slot-card--optional]="optional"
-                  >
-                    <span class="pack-report__slot-index" aria-hidden="true">{{
-                      slot + 1
-                    }}</span>
-                    <input
-                      [id]="'pack-photo-input-' + slot"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      class="pack-report__file-input"
-                      (change)="onPackPhotoSelected($event, slot)"
-                      [disabled]="uploading"
-                    />
-                    <button
-                      type="button"
-                      class="pack-report__slot-btn"
-                      [disabled]="uploading"
-                      (click)="openPackPhotoModal(slot)"
-                    >
-                      @if (photoUrl) {
-                        <img [src]="photoUrl" alt="" class="pack-report__thumb" />
-                        <span class="pack-report__slot-badge" aria-hidden="true"
-                          >✓</span
-                        >
-                      } @else {
-                        <span class="pack-report__slot-empty">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="1.6"
-                            />
-                          </svg>
-                          <span>{{ 'WORKER.PACK_PHOTOS_UPLOAD' | translate }}</span>
-                          <span class="pack-report__slot-empty-sub">{{
-                            'WORKER.PACK_PHOTOS_SLOT_EMPTY' | translate
-                          }}</span>
-                        </span>
-                      }
-                      @if (uploading) {
-                        <span class="pack-report__slot-loading">…</span>
-                      }
-                    </button>
-                    <p class="pack-report__slot-label">
-                      @if (optional) {
-                        {{
-                          'WORKER.PACK_PHOTOS_SLOT_EXTRA'
-                            | translate: { n: slot + 1 }
-                        }}
-                      } @else {
-                        {{
-                          'WORKER.PACK_PHOTOS_SLOT'
-                            | translate
-                              : {
-                                  n: slot + 1,
-                                  total: packReportRequiredCount(ctx),
-                                }
-                        }}
-                      }
-                    </p>
-                  </article>
-                </li>
-              }
-            </ul>
-
-            @if (canAddPackPhotoSlot(ctx)) {
-              <button
-                type="button"
-                class="pack-report__add-btn"
-                (click)="addPackPhotoSlot()"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M12 5v14M5 12h14"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-width="2"
-                  />
-                </svg>
-                {{ 'WORKER.PACK_PHOTOS_ADD_MORE' | translate }}
-              </button>
-            }
-          </div>
-        </div>
-
-        @if (!packReportComplete(ctx)) {
-          <p class="pack-report__next-hint">
-            {{ 'WORKER.PACK_PHOTOS_NEXT_HINT' | translate }}
-          </p>
-        } @else if (!deliveryNoteAllShipped(ctx) && deliveryNoteCanIssue(ctx)) {
-          <p class="pack-report__next-hint">
-            {{ 'WORKER.DELIVERY_NEXT_HINT' | translate }}
-          </p>
-        } @else if (deliveryNoteAllShipped(ctx)) {
-          <p class="pack-report__complete" role="status">
-            {{ 'WORKER.PACK_AND_DELIVERY_COMPLETE' | translate }}
-          </p>
-        } @else if (deliveryNoteHasActive(ctx)) {
-          <p class="pack-report__complete" role="status">
-            {{ 'WORKER.DELIVERY_PARTIAL_COMPLETE' | translate }}
-          </p>
-        }
-      </section>
-
-      @if (packReportComplete(ctx) && ctx.deliveryNote) {
+    @if (stationId === 6 && ctx.deliveryNote) {
         <section
           class="delivery-note"
           [attr.aria-label]="'WORKER.DELIVERY_TITLE' | translate"
         >
           <header class="delivery-note__hero sf-panel">
             <div class="delivery-note__hero-copy">
-              <p class="delivery-note__eyebrow">
-                {{ 'WORKER.DELIVERY_EYEBROW' | translate }}
-              </p>
               <h2 class="delivery-note__title">
                 {{ 'WORKER.DELIVERY_TITLE' | translate }}
               </h2>
@@ -1903,187 +2035,47 @@
                 }
               </p>
             </div>
+            <button
+              type="button"
+              class="delivery-note__issue-btn"
+              (click)="openDeliveryNoteModal(ctx)"
+            >
+              <skyflow-mat-icon
+                class="delivery-note__issue-btn-icon"
+                icon="local_shipping"
+                [size]="20"
+                [weight]="600"
+              />
+              {{ 'WORKER.DELIVERY_ISSUE_BTN' | translate }}
+            </button>
           </header>
 
-          <div class="delivery-note__body sf-panel">
-            @if (ctx.deliveryNote.issuedNotes.length > 0) {
-              <div class="delivery-note__history">
-                <h3 class="delivery-note__preview-title">
-                  {{ 'WORKER.DELIVERY_HISTORY_TITLE' | translate }}
-                </h3>
-                <ul class="delivery-note__history-list" role="list">
-                  @for (n of ctx.deliveryNote.issuedNotes; track n.id) {
-                    <li class="delivery-note__history-item">
-                      <span class="delivery-note__history-num" dir="ltr">{{ n.noteNumber }}</span>
-                      <span>{{ n.lineItemCount }} {{ 'WORKER.DELIVERY_ITEMS_UNIT' | translate }}</span>
-                      @if (n.status === 'CANCELLED') {
-                        <span class="delivery-note__history-cancelled">{{ 'WORKER.DELIVERY_CANCELLED' | translate }}</span>
-                      } @else {
-                        <a
-                          class="delivery-note__doc-link"
-                          [href]="n.documentUrl"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >{{ 'WORKER.DELIVERY_OPEN_DOC' | translate }}</a>
-                      }
-                    </li>
-                  }
-                </ul>
-              </div>
-            }
-
-            @if (!canIssueDeliveryNote(ctx)) {
-              <p class="delivery-note__manager-only" role="status">
-                {{ 'WORKER.DELIVERY_MANAGER_ONLY' | translate }}
-              </p>
-            } @else if (deliveryNoteCanIssue(ctx)) {
-              <div class="delivery-note__preview">
-                <h3 class="delivery-note__preview-title">
-                  {{ 'WORKER.DELIVERY_REMAINING_TITLE' | translate }}
-                </h3>
-                <ul class="delivery-note__items" role="list">
-                  @for (li of ctx.deliveryNote.availableLineItems; track li.lineKey) {
-                    <li class="delivery-note__item">
-                      <span class="delivery-note__item-kind">{{ li.kind }}</span>
-                      @if (li.profileCode) {
-                        <span class="delivery-note__item-profile" dir="ltr">{{ li.profileCode }}</span>
-                      }
-                      <span class="delivery-note__item-desc">{{ li.description }}</span>
-                      <span class="delivery-note__item-qty" dir="ltr">×{{ li.remainingQuantity }}</span>
-                    </li>
-                  }
-                </ul>
-              </div>
-              <button
-                type="button"
-                class="delivery-note__issue-btn"
-                (click)="openDeliveryNoteModal(ctx)"
-              >
-                {{ 'WORKER.DELIVERY_ISSUE_BTN' | translate }}
-              </button>
-            }
-          </div>
-        </section>
-      }
-    }
-
-    @if (stationId === 5) {
-      <div [formGroup]="form" class="space-y-10">
-          <div class="finish-verify" formGroupName="checks">
-            <section class="finish-verify__hero sf-panel">
-              <p class="finish-verify__eyebrow">
-                {{ 'WORKER.FINISH_VERIFY_EYEBROW' | translate }}
-              </p>
-              <h3 class="finish-verify__title">{{ 'WORKER.VERIFY_TITLE' | translate }}</h3>
-              <p class="finish-verify__hint">{{ 'WORKER.VERIFY_HINT' | translate }}</p>
-              <div class="finish-verify__progress-wrap">
-                <div
-                  class="finish-verify__progress-track"
-                  role="progressbar"
-                  [attr.aria-valuenow]="finishingChecksDoneCount()"
-                  aria-valuemin="0"
-                  [attr.aria-valuemax]="finishingCheckSteps.length"
-                  [attr.aria-label]="'WORKER.VERIFY_TITLE' | translate"
-                >
-                  <div
-                    class="finish-verify__progress-fill"
-                    [style.width.%]="finishingChecksPercent()"
-                  ></div>
-                </div>
-                <p class="finish-verify__progress-label">
-                  {{
-                    'WORKER.FINISH_VERIFY_PROGRESS'
-                      | translate
-                        : {
-                            done: finishingChecksDoneCount(),
-                            total: finishingCheckSteps.length,
-                          }
-                  }}
-                </p>
-              </div>
-            </section>
-
-            @if (ctx.summaryStations.length) {
-              <ul class="finish-verify__summary" role="list">
-                @for (row of ctx.summaryStations; track row.stationId) {
-                  <li
-                    class="finish-verify__summary-card finish-verify__summary-card--{{
-                      row.stationId
-                    }}"
-                    role="listitem"
-                  >
-                    <span class="finish-verify__summary-id" dir="ltr">{{
-                      row.stationId
-                    }}</span>
-                    <div class="finish-verify__summary-body">
-                      <p class="finish-verify__summary-name">
-                        {{ row.stationId | stationLabel: ctx.order | translate }}
-                      </p>
-                      <p class="finish-verify__summary-qty">
-                        {{ row.processedQty | number: '1.0-0' }}
-                        {{ 'WORKER.FINISH_VERIFY_UNITS' | translate }}
-                      </p>
-                    </div>
+          @if (ctx.deliveryNote.issuedNotes.length > 0) {
+            <div class="delivery-note__history sf-panel">
+              <h3 class="delivery-note__preview-title">
+                {{ 'WORKER.DELIVERY_HISTORY_TITLE' | translate }}
+              </h3>
+              <ul class="delivery-note__history-list" role="list">
+                @for (n of ctx.deliveryNote.issuedNotes; track n.id) {
+                  <li class="delivery-note__history-item">
+                    <span class="delivery-note__history-num" dir="ltr">{{ n.noteNumber }}</span>
+                    <span>{{ n.lineItemCount }} {{ 'WORKER.DELIVERY_ITEMS_UNIT' | translate }}</span>
+                    @if (n.status === 'CANCELLED') {
+                      <span class="delivery-note__history-cancelled">{{ 'WORKER.DELIVERY_CANCELLED' | translate }}</span>
+                    } @else {
+                      <a
+                        class="delivery-note__doc-link"
+                        [href]="n.documentUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >{{ 'WORKER.DELIVERY_OPEN_DOC' | translate }}</a>
+                    }
                   </li>
                 }
               </ul>
-            }
-
-            <ul class="finish-verify__steps" role="list">
-              @for (step of finishingCheckSteps; track step.key) {
-                @let done = isFinishingCheckDone(step.key);
-                @let row = summaryRowForStation(ctx, step.stationId);
-                <li role="listitem">
-                  <button
-                    type="button"
-                    class="finish-verify__step"
-                    [class.finish-verify__step--done]="done"
-                    [style.--step-accent]="step.accent"
-                    (click)="openFinishingVerify(step.key)"
-                  >
-                    <span class="finish-verify__step-index" dir="ltr">{{
-                      step.stationId
-                    }}</span>
-                    <span class="finish-verify__step-main">
-                      <span class="finish-verify__step-name">{{
-                        step.stationId | stationLabel: ctx.order | translate
-                      }}</span>
-                      <span class="finish-verify__step-meta">
-                        @if (row) {
-                          {{ row.processedQty | number: '1.0-0' }}
-                          {{ 'WORKER.FINISH_VERIFY_UNITS' | translate }}
-                        }
-                      </span>
-                    </span>
-                    <span class="finish-verify__step-status">
-                      @if (done) {
-                        <span class="finish-verify__step-chip finish-verify__step-chip--done">
-                          <span aria-hidden="true">✓</span>
-                          {{ 'WORKER.FINISH_VERIFY_STEP_DONE' | translate }}
-                        </span>
-                      } @else {
-                        <span class="finish-verify__step-chip finish-verify__step-chip--pending">
-                          {{ 'WORKER.FINISH_VERIFY_STEP_PENDING' | translate }}
-                        </span>
-                      }
-                    </span>
-                    <span class="finish-verify__step-cta">{{
-                      done
-                        ? ('WORKER.FINISH_VERIFY_REVIEW' | translate)
-                        : ('WORKER.FINISH_VERIFY_OPEN' | translate)
-                    }}</span>
-                  </button>
-                </li>
-              }
-            </ul>
-
-            @if (form.get('checks')?.invalid && form.get('checks')?.touched) {
-              <p class="finish-verify__error" role="alert">
-                {{ 'WORKER.VERIFY_HINT' | translate }}
-              </p>
-            }
-          </div>
-      </div>
+            </div>
+          }
+        </section>
     }
 
     @if (canMoveToNextStation(ctx) && nextStationId(); as nextSid) {
@@ -2880,83 +2872,257 @@
         panelClass="station-report-popup delivery-note-popup"
         [closeOnScrim]="!issuingDeliveryNote()"
       >
-        <p popup-header-extra class="station-report-modal__hint">
-          {{ 'WORKER.DELIVERY_MODAL_HINT' | translate }}
-        </p>
+        <div popup-header-extra class="delivery-stepper__head">
+          <ol class="delivery-stepper__track" role="list">
+            @for (s of [1, 2, 3]; track s) {
+              <li
+                class="delivery-stepper__node"
+                [class.delivery-stepper__node--active]="deliveryStep() === s"
+                [class.delivery-stepper__node--done]="deliveryStep() > s"
+              >
+                <span class="delivery-stepper__dot" aria-hidden="true">
+                  @if (deliveryStep() > s) {
+                    <span class="delivery-stepper__dot-check">✓</span>
+                  } @else {
+                    {{ s }}
+                  }
+                </span>
+                <span class="delivery-stepper__node-label">
+                  @switch (s) {
+                    @case (1) { {{ 'WORKER.DELIVERY_STEP_METHOD' | translate }} }
+                    @case (2) { {{ 'WORKER.DELIVERY_STEP_ITEMS' | translate }} }
+                    @case (3) { {{ 'WORKER.DELIVERY_STEP_REVIEW' | translate }} }
+                  }
+                </span>
+                @if (s < 3) {
+                  <span class="delivery-stepper__bar" aria-hidden="true"></span>
+                }
+              </li>
+            }
+          </ol>
+        </div>
 
-        <div class="delivery-note-modal__body">
-          <label class="delivery-note-modal__field">
-            <span>{{ 'WORKER.DELIVERY_SHIPPING_LABEL' | translate }}</span>
-            <skyflow-ui-select
-              class="delivery-note-modal__select"
-              [options]="deliveryShippingSelectOptions()"
-              [value]="deliveryShippingType()"
-              (valueChange)="onDeliveryShippingChange($event)"
-              [panelZIndex]="150"
-            />
-          </label>
+        <div class="delivery-stepper__body">
+          @switch (deliveryStep()) {
+            @case (1) {
+              <div class="delivery-stepper__pane">
+                <p class="delivery-stepper__pane-sub">
+                  {{ 'WORKER.DELIVERY_STEP_METHOD_SUB' | translate }}
+                </p>
+                <div class="delivery-method" role="radiogroup">
+                  <button
+                    type="button"
+                    class="delivery-method__card"
+                    [class.delivery-method__card--active]="deliveryShippingType() === 'INTERNAL'"
+                    role="radio"
+                    [attr.aria-checked]="deliveryShippingType() === 'INTERNAL'"
+                    (click)="setDeliveryShippingType('INTERNAL')"
+                  >
+                    <span class="delivery-method__icon" aria-hidden="true">
+                      <skyflow-mat-icon icon="local_shipping" [size]="26" [weight]="600" [filled]="true" />
+                    </span>
+                    <span class="delivery-method__text">
+                      <span class="delivery-method__title">{{ 'WORKER.DELIVERY_SHIPPING_INTERNAL' | translate }}</span>
+                      <span class="delivery-method__desc">{{ 'WORKER.DELIVERY_SHIPPING_INTERNAL_DESC' | translate }}</span>
+                    </span>
+                    <span class="delivery-method__radio" aria-hidden="true"></span>
+                  </button>
+                  <button
+                    type="button"
+                    class="delivery-method__card"
+                    [class.delivery-method__card--active]="deliveryShippingType() === 'EXTERNAL'"
+                    role="radio"
+                    [attr.aria-checked]="deliveryShippingType() === 'EXTERNAL'"
+                    (click)="setDeliveryShippingType('EXTERNAL')"
+                  >
+                    <span class="delivery-method__icon" aria-hidden="true">
+                      <skyflow-mat-icon icon="package_2" [size]="26" [weight]="600" [filled]="true" />
+                    </span>
+                    <span class="delivery-method__text">
+                      <span class="delivery-method__title">{{ 'WORKER.DELIVERY_SHIPPING_EXTERNAL' | translate }}</span>
+                      <span class="delivery-method__desc">{{ 'WORKER.DELIVERY_SHIPPING_EXTERNAL_DESC' | translate }}</span>
+                    </span>
+                    <span class="delivery-method__radio" aria-hidden="true"></span>
+                  </button>
+                </div>
 
-          @if (deliveryShippingType() === 'EXTERNAL') {
-            <label class="delivery-note-modal__field">
-              <span>{{ 'WORKER.DELIVERY_PRICE_LABEL' | translate }}</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                class="delivery-note-modal__input"
-                [value]="deliveryExternalPrice()"
-                (input)="deliveryExternalPrice.set($any($event.target).value)"
-                dir="ltr"
-              />
-            </label>
-          }
+                @if (deliveryShippingType() === 'EXTERNAL') {
+                  <label class="delivery-note-modal__field delivery-stepper__price">
+                    <span>{{ 'WORKER.DELIVERY_PRICE_LABEL' | translate }}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="delivery-note-modal__input"
+                      [value]="deliveryExternalPrice()"
+                      (input)="deliveryExternalPrice.set($any($event.target).value)"
+                      dir="ltr"
+                    />
+                  </label>
+                }
+              </div>
+            }
+            @case (2) {
+              <div class="delivery-stepper__pane">
+                <div class="delivery-stepper__items-head">
+                  <p class="delivery-stepper__pane-sub">
+                    {{ 'WORKER.DELIVERY_STEP_ITEMS_SUB' | translate }}
+                  </p>
+                  <div class="delivery-stepper__items-tools">
+                    <button type="button" class="delivery-stepper__tool" (click)="selectAllDeliveryLines(ctx)">
+                      {{ 'WORKER.DELIVERY_SELECT_ALL' | translate }}
+                    </button>
+                    <button type="button" class="delivery-stepper__tool" (click)="clearAllDeliveryLines()">
+                      {{ 'WORKER.DELIVERY_CLEAR_ALL' | translate }}
+                    </button>
+                  </div>
+                </div>
 
-          <div class="delivery-note-modal__items">
-            <h3>{{ 'WORKER.DELIVERY_PARTIAL_SELECT' | translate }}</h3>
-            <ul class="delivery-note-modal__qty-list" role="list">
-              @for (li of ctx.deliveryNote.availableLineItems; track li.lineKey) {
-                <li class="delivery-note-modal__qty-row">
-                  <div class="delivery-note-modal__qty-desc">
-                    <span>{{ li.kind }}</span>
-                    @if (li.profileCode) {
-                      <span dir="ltr"> · {{ li.profileCode }}</span>
-                    }
-                    <span> · {{ li.description }}</span>
-                    <span class="delivery-note-modal__qty-max" dir="ltr">
-                      ({{ 'WORKER.DELIVERY_MAX_QTY' | translate : { max: li.remainingQuantity } }})
+                <ul class="delivery-stepper__items" role="list">
+                  @if (!ctx.deliveryNote.availableLineItems.length) {
+                    <li class="delivery-stepper__count delivery-stepper__count--empty">
+                      {{ 'WORKER.DELIVERY_NO_UNITS_AVAILABLE' | translate }}
+                    </li>
+                  }
+                  @for (li of ctx.deliveryNote.availableLineItems; track li.lineKey) {
+                    @let qty = deliveryLineQty(li.lineKey, li.remainingQuantity ?? 0);
+                    <li
+                      class="delivery-stepper__item"
+                      [class.delivery-stepper__item--picked]="qty > 0"
+                    >
+                      <div class="delivery-stepper__item-info">
+                        <span class="delivery-stepper__item-kind" dir="ltr">{{ li.description }}</span>
+                        @if (li.totalQuantity != null && li.totalQuantity !== li.remainingQuantity) {
+                          <span class="delivery-stepper__item-desc">
+                            {{ 'WORKER.DELIVERY_UNIT_TOTAL_HINT' | translate : { total: li.totalQuantity, shipped: li.shippedQuantity ?? 0 } }}
+                          </span>
+                        } @else {
+                          <span class="delivery-stepper__item-desc">
+                            {{ 'WORKER.DELIVERY_UNIT_LABEL' | translate }}
+                          </span>
+                        }
+                        <span class="delivery-stepper__item-max" dir="ltr">
+                          {{ 'WORKER.DELIVERY_MAX_QTY' | translate : { max: li.remainingQuantity } }}
+                        </span>
+                      </div>
+                      <div class="delivery-stepper__stepper" dir="ltr">
+                        <button
+                          type="button"
+                          class="delivery-stepper__step-btn"
+                          [disabled]="qty <= 0"
+                          (click)="nudgeDeliveryLineQty(li.lineKey, -1, li.remainingQuantity ?? 0)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_MINUS_A11Y' | translate"
+                        >−</button>
+                        <input
+                          type="number"
+                          class="delivery-stepper__step-input"
+                          [min]="0"
+                          [max]="li.remainingQuantity"
+                          [value]="qty"
+                          (input)="setDeliveryLineQty(li.lineKey, $any($event.target).value, li.remainingQuantity ?? 0)"
+                          dir="ltr"
+                        />
+                        <button
+                          type="button"
+                          class="delivery-stepper__step-btn"
+                          [disabled]="qty >= (li.remainingQuantity ?? 0)"
+                          (click)="nudgeDeliveryLineQty(li.lineKey, 1, li.remainingQuantity ?? 0)"
+                          [attr.aria-label]="'WORKER.SAW_CARD_PLUS_A11Y' | translate"
+                        >+</button>
+                      </div>
+                    </li>
+                  }
+                </ul>
+
+                <p class="delivery-stepper__count" [class.delivery-stepper__count--empty]="deliverySelectedLineCount() === 0">
+                  @if (deliverySelectedLineCount() > 0) {
+                    {{ 'WORKER.DELIVERY_SELECTED_SUMMARY' | translate : { count: deliverySelectedLineCount(), qty: deliverySelectedTotalQty() } }}
+                  } @else {
+                    {{ 'WORKER.DELIVERY_NO_ITEMS_SELECTED' | translate }}
+                  }
+                </p>
+              </div>
+            }
+            @case (3) {
+              <div class="delivery-stepper__pane">
+                <p class="delivery-stepper__pane-sub">
+                  {{ 'WORKER.DELIVERY_STEP_REVIEW_SUB' | translate }}
+                </p>
+
+                <div class="delivery-review">
+                  <div class="delivery-review__row">
+                    <span class="delivery-review__label">{{ 'WORKER.DELIVERY_REVIEW_METHOD' | translate }}</span>
+                    <span class="delivery-review__value">
+                      {{ (deliveryShippingType() === 'EXTERNAL' ? 'WORKER.DELIVERY_SHIPPING_EXTERNAL' : 'WORKER.DELIVERY_SHIPPING_INTERNAL') | translate }}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    class="delivery-note-modal__qty-input"
-                    [min]="0"
-                    [max]="li.remainingQuantity"
-                    [value]="deliveryLineQty(li.lineKey, li.remainingQuantity ?? 0)"
-                    (input)="setDeliveryLineQty(li.lineKey, $any($event.target).value, li.remainingQuantity ?? 0)"
-                    dir="ltr"
-                  />
-                </li>
-              }
-            </ul>
-          </div>
+                  @if (deliveryShippingType() === 'EXTERNAL') {
+                    <div class="delivery-review__row">
+                      <span class="delivery-review__label">{{ 'WORKER.DELIVERY_REVIEW_PRICE' | translate }}</span>
+                      <span class="delivery-review__value" dir="ltr">₪{{ deliveryExternalPrice() || '0' }}</span>
+                    </div>
+                  }
+                  <div class="delivery-review__row">
+                    <span class="delivery-review__label">{{ 'WORKER.DELIVERY_REVIEW_ITEMS_COUNT' | translate }}</span>
+                    <span class="delivery-review__value" dir="ltr">{{ deliverySelectedLineCount() }}</span>
+                  </div>
+                  <div class="delivery-review__row">
+                    <span class="delivery-review__label">{{ 'WORKER.DELIVERY_REVIEW_TOTAL_QTY' | translate }}</span>
+                    <span class="delivery-review__value" dir="ltr">{{ deliverySelectedTotalQty() }}</span>
+                  </div>
+                </div>
+
+                <h4 class="delivery-review__items-title">{{ 'WORKER.DELIVERY_REVIEW_ITEMS_TITLE' | translate }}</h4>
+                <ul class="delivery-review__items" role="list">
+                  @for (row of deliverySelectedLineItems(ctx); track row.item.lineKey) {
+                    <li class="delivery-review__item">
+                      <span class="delivery-review__item-desc" dir="ltr">{{ row.item.description }}</span>
+                      <span class="delivery-review__item-qty" dir="ltr">×{{ row.qty }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          }
         </div>
 
         <div popup-actions>
-          <skyflow-ui-button
-            variant="secondary"
-            (click)="closeDeliveryNoteModal()"
-            [disabled]="issuingDeliveryNote()"
-          >
-            {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
-          </skyflow-ui-button>
-          <skyflow-ui-button
-            variant="primary"
-            [loading]="issuingDeliveryNote()"
-            [disabled]="issuingDeliveryNote()"
-            (click)="submitDeliveryNote(ctx)"
-          >
-            {{ 'WORKER.DELIVERY_ISSUE_CONFIRM' | translate }}
-          </skyflow-ui-button>
+          @if (deliveryStep() > 1) {
+            <skyflow-ui-button
+              variant="secondary"
+              (click)="deliveryPrevStep()"
+              [disabled]="issuingDeliveryNote()"
+            >
+              {{ 'WORKER.DELIVERY_BACK' | translate }}
+            </skyflow-ui-button>
+          } @else {
+            <skyflow-ui-button
+              variant="secondary"
+              (click)="closeDeliveryNoteModal()"
+              [disabled]="issuingDeliveryNote()"
+            >
+              {{ 'WORKER.FINISH_VERIFY_CLOSE' | translate }}
+            </skyflow-ui-button>
+          }
+
+          @if (deliveryStep() < deliveryTotalSteps) {
+            <skyflow-ui-button
+              variant="primary"
+              [disabled]="!deliveryStepValid(deliveryStep())"
+              (click)="deliveryNextStep()"
+            >
+              {{ 'WORKER.DELIVERY_NEXT' | translate }}
+            </skyflow-ui-button>
+          } @else {
+            <skyflow-ui-button
+              variant="primary"
+              [loading]="issuingDeliveryNote()"
+              [disabled]="issuingDeliveryNote() || deliverySelectedLineCount() === 0"
+              (click)="submitDeliveryNote(ctx)"
+            >
+              {{ 'WORKER.DELIVERY_ISSUE_CONFIRM' | translate }}
+            </skyflow-ui-button>
+          }
         </div>
       </skyflow-ui-popup>
     }

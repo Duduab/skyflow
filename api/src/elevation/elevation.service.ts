@@ -7,12 +7,14 @@ import {
 import {
   ElevationCellStatus,
   ElevationMapStatus,
+  NotificationKind,
   SkyflowRole,
 } from '@prisma/client';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkCycleService } from '../work-cycles/work-cycle.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   detectElevationSignature,
   renderElevation,
@@ -53,6 +55,7 @@ export class ElevationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workCycles: WorkCycleService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Content probe: does this PDF look like an elevation map? */
@@ -371,7 +374,7 @@ export class ElevationService {
 
     const cell = await this.prisma.elevationCell.findFirst({
       where: { id: cellId, map: { projectId } },
-      select: { id: true, windowTypeId: true },
+      select: { id: true, windowTypeId: true, windowTypeCode: true, code: true },
     });
     if (!cell) throw new NotFoundException('Cell not found for this project');
 
@@ -396,6 +399,28 @@ export class ElevationService {
       returnedToStationId,
       reason,
     );
+
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: { name: true },
+    });
+    await this.notifications.emit({
+      kind: NotificationKind.ELEVATION_DEFECT,
+      titleKey: 'NOTIFICATIONS.ELEVATION_DEFECT_TITLE',
+      bodyKey: 'NOTIFICATIONS.ELEVATION_DEFECT_BODY',
+      params: {
+        code: cell.windowTypeCode ?? cell.code ?? '',
+        project: project?.name ?? '',
+        station: returnedToStationId,
+        reason: reason.trim().slice(0, 200),
+      },
+      link: `/admin/projects/${projectId}/control`,
+      projectId,
+      projectName: project?.name ?? null,
+      stationId: returnedToStationId,
+      actorUserId: user.userId || null,
+    });
+
     return { ok: true, defectId: defect.id };
   }
 
@@ -516,7 +541,29 @@ export class ElevationService {
       ),
     ];
     for (const wtId of windowTypeIds) {
-      await this.workCycles.recomputeCompletionFromElevation(projectId, wtId);
+      await this.workCycles.recomputeCompletionFromElevation(
+        projectId,
+        wtId,
+        user.userId,
+      );
+    }
+
+    if (done && res.count > 0) {
+      const project = await this.prisma.projectOrder.findUnique({
+        where: { id: projectId },
+        select: { name: true },
+      });
+      await this.notifications.emit({
+        kind: NotificationKind.ELEVATION_CELL_DONE,
+        titleKey: 'NOTIFICATIONS.ELEVATION_CELL_DONE_TITLE',
+        bodyKey: 'NOTIFICATIONS.ELEVATION_CELL_DONE_BODY',
+        params: { count: res.count, project: project?.name ?? '' },
+        link: `/admin/projects/${projectId}/elevation-map`,
+        projectId,
+        projectName: project?.name ?? null,
+        stationId: SITE_STATION_ID,
+        actorUserId: user.userId,
+      });
     }
 
     return { updated: res.count };

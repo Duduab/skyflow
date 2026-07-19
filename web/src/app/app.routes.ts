@@ -97,6 +97,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'projects/:projectId/control',
+        canActivate: [adminOrPlanningGuard],
+        loadComponent: () =>
+          import('./features/project-control/project-control.component').then(
+            (m) => m.ProjectControlComponent,
+          ),
+      },
+      {
         path: 'scrap',
         canActivate: [adminOnlyGuard],
         loadComponent: () =>
@@ -183,6 +191,14 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/elevation/elevation-map.component').then(
         (m) => m.ElevationMapComponent,
+      ),
+  },
+  {
+    path: 'projects/:projectId/control',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/project-control/project-control.component').then(
+        (m) => m.ProjectControlComponent,
       ),
   },
   {

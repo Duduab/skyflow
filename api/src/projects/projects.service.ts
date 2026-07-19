@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  NotificationKind,
   OrderStatus,
   Prisma,
   ProductComponentKind,
@@ -42,6 +43,7 @@ import { DailyTargetPlanningService } from '../users/daily-target-planning.servi
 import { ElevationService } from '../elevation/elevation.service.js';
 import { WindowPlanningService } from '../planning/window-planning.service.js';
 import { WorkCycleService } from '../work-cycles/work-cycle.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { readFileSync } from 'fs';
 
 /** PDFs attached to projects — served as static files from the web app. */
@@ -86,6 +88,7 @@ export class ProjectsService {
     private readonly elevation: ElevationService,
     private readonly windowPlanning: WindowPlanningService,
     private readonly workCycles: WorkCycleService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async createPlanningDraft(
@@ -674,7 +677,11 @@ export class ProjectsService {
     return this.planningUpload.buildPreview(projectId);
   }
 
-  async approvePlanning(projectId: string, dto?: ApprovePlanningDto) {
+  async approvePlanning(
+    projectId: string,
+    dto?: ApprovePlanningDto,
+    actorUserId?: string | null,
+  ) {
     const teamMode = dto != null && Array.isArray(dto.sawsWorkerUserIds);
 
     let planningSawsManagerUserId: string | null = null;
@@ -776,7 +783,7 @@ export class ProjectsService {
       _count: true,
     });
     if (windowAgg._count > 0) {
-      return this.approvePlanningFromWindowTypes({
+      const res = await this.approvePlanningFromWindowTypes({
         projectId,
         projectName: order.name,
         lineMaterial: order.lineMaterial,
@@ -787,6 +794,8 @@ export class ProjectsService {
         planningSawsManagerUserId,
         planningAssigneeUserId,
       });
+      await this.emitPlanningApproved(projectId, order.name, actorUserId);
+      return res;
     }
 
     if (!order.productItems.length) {
@@ -939,7 +948,26 @@ export class ProjectsService {
 
     clearPlanningImportDir(projectId);
 
+    await this.emitPlanningApproved(projectId, order.name, actorUserId);
+
     return { ok: true, flowStatus: ProjectFlowStatus.IN_PRODUCTION };
+  }
+
+  private async emitPlanningApproved(
+    projectId: string,
+    projectName: string,
+    actorUserId?: string | null,
+  ): Promise<void> {
+    await this.notifications.emit({
+      kind: NotificationKind.PLANNING_APPROVED,
+      titleKey: 'NOTIFICATIONS.PLANNING_APPROVED_TITLE',
+      bodyKey: 'NOTIFICATIONS.PLANNING_APPROVED_BODY',
+      params: { project: projectName },
+      link: `/admin/projects/${projectId}/control`,
+      projectId,
+      projectName,
+      actorUserId,
+    });
   }
 
   /** Approve a project built from the 4-PDF flow (window types drive totals). */
@@ -1011,7 +1039,7 @@ export class ProjectsService {
     return { ok: true, flowStatus: ProjectFlowStatus.IN_PRODUCTION };
   }
 
-  async completeProject(projectId: string) {
+  async completeProject(projectId: string, actorUserId?: string | null) {
     const order = await this.prisma.projectOrder.findUnique({
       where: { id: projectId },
     });
@@ -1067,6 +1095,17 @@ export class ProjectsService {
         flowStatus: ProjectFlowStatus.COMPLETED,
         status: OrderStatus.COMPLETED,
       },
+    });
+
+    await this.notifications.emit({
+      kind: NotificationKind.PROJECT_COMPLETED,
+      titleKey: 'NOTIFICATIONS.PROJECT_COMPLETED_TITLE',
+      bodyKey: 'NOTIFICATIONS.PROJECT_COMPLETED_BODY',
+      params: { project: order.name },
+      link: `/admin/projects/${projectId}/control`,
+      projectId,
+      projectName: order.name,
+      actorUserId,
     });
 
     return { ok: true, flowStatus: ProjectFlowStatus.COMPLETED };

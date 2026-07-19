@@ -212,6 +212,16 @@
               </div>
 
               <span class="station-card__cta">
+                @if (unlocked) {
+                  <skyflow-mat-icon
+                    icon="arrow_circle_left"
+                    [size]="22"
+                    [weight]="600"
+                    [filled]="true"
+                  />
+                } @else {
+                  <skyflow-mat-icon icon="lock" [size]="20" [weight]="500" />
+                }
                 <span class="station-card__cta-label" dir="rtl">{{
                   unlocked ? ('WORKER_HUB.CTA' | translate) : ('WORKER_HUB.CTA_LOCKED' | translate)
                 }}</span>

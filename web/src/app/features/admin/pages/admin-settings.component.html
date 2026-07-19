@@ -120,8 +120,9 @@
         </dl>
         <div class="admin-settings-card__footer">
           <div class="admin-settings__account-actions">
-            <skyflow-ui-button variant="danger" btnClass="admin-settings__btn-danger" (click)="logout()">
-              {{ 'APP.HEADER_LOGOUT' | translate }}
+            <skyflow-ui-button variant="danger" btnClass="admin-settings__btn-danger admin-settings__btn-logout" (click)="logout()">
+              <skyflow-mat-icon icon="lock" [size]="18" [weight]="500" />
+              <span>{{ 'APP.HEADER_LOGOUT' | translate }}</span>
             </skyflow-ui-button>
             <skyflow-ui-button variant="ghost" btnClass="admin-settings__btn-ghost" (click)="clearLocalData()">
               {{ 'ADMIN_SETTINGS_PAGE.CLEAR_LOCAL' | translate }}

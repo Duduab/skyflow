@@ -6,8 +6,8 @@
 
     <div class="p-6 md:p-8">
       <div class="mb-7 flex items-start gap-4">
-        <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#558fc3] to-[#3e5d88] text-white shadow-lg shadow-[#3e5d88]/30">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="upload-form__hero-icon flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#558fc3] to-[#3e5d88] shadow-lg shadow-[#3e5d88]/30">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <path d="M14 2v6h6" />
             <path d="M12 18v-6" />
@@ -59,19 +59,19 @@
 
       <button
         type="button"
-        class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#558fc3] to-[#4b689d] px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-[#3e5d88]/30 transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
+        class="upload-form__submit mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-b from-[#558fc3] to-[#4b689d] px-6 py-3.5 text-base font-bold shadow-lg shadow-[#3e5d88]/30 transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none md:w-auto"
         [disabled]="analyzing() || !selectedFile()"
         (click)="submit()"
       >
         @if (analyzing()) {
           <span class="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-          {{ 'UPLOAD_PLAN.ANALYZING' | translate }}
+          <span class="upload-form__submit-label">{{ 'UPLOAD_PLAN.ANALYZING' | translate }}</span>
         } @else {
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M22 2L11 13" />
             <path d="M22 2l-7 20-4-9-9-4 20-7z" />
           </svg>
-          {{ 'UPLOAD_PLAN.SUBMIT' | translate }}
+          <span class="upload-form__submit-label">{{ 'UPLOAD_PLAN.SUBMIT' | translate }}</span>
         }
       </button>
 
@@ -114,20 +114,6 @@
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <a
-              [href]="analysis.s3Url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-[#3e5d88] shadow-sm transition hover:border-[#558fc3] hover:bg-[#558fc3]/5"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <path d="M15 3h6v6" />
-                <path d="M10 14L21 3" />
-              </svg>
-              {{ 'UPLOAD_PLAN.OPEN_BACKUP' | translate }}
-            </a>
-
             @if (saved()) {
               <a
                 routerLink="/admin/purchase-orders"
@@ -143,17 +129,17 @@
                 type="button"
                 (click)="savePurchaseOrder()"
                 [disabled]="saving()"
-                class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-[#558fc3] to-[#4b689d] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#3e5d88]/30 transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+                class="upload-form__save-order inline-flex items-center gap-2 rounded-lg bg-gradient-to-b from-[#558fc3] to-[#4b689d] px-5 py-2.5 text-xs font-bold shadow-lg shadow-[#3e5d88]/30 transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
               >
                 @if (saving()) {
                   <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                  {{ 'UPLOAD_PLAN.SAVING_ORDER' | translate }}
+                  <span class="upload-form__submit-label">{{ 'UPLOAD_PLAN.SAVING_ORDER' | translate }}</span>
                 } @else {
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                     <path d="M17 21v-8H7v8M7 3v5h8" />
                   </svg>
-                  {{ 'UPLOAD_PLAN.SAVE_ORDER' | translate }}
+                  <span class="upload-form__submit-label">{{ 'UPLOAD_PLAN.SAVE_ORDER' | translate }}</span>
                 }
               </button>
             }
@@ -197,7 +183,7 @@
             (click)="setViewMode('table')"
             class="rounded-lg px-4 py-2 text-sm font-semibold transition"
             [ngClass]="viewMode() === 'table'
-              ? 'bg-gradient-to-b from-[#558fc3] to-[#4b689d] text-white shadow'
+              ? 'upload-form__view-tab--active bg-gradient-to-b from-[#558fc3] to-[#4b689d] shadow'
               : 'text-slate-500 hover:text-[#3e5d88]'"
           >
             {{ 'UPLOAD_PLAN.VIEW_TABLE' | translate }}
@@ -207,7 +193,7 @@
             (click)="setViewMode('cards')"
             class="rounded-lg px-4 py-2 text-sm font-semibold transition"
             [ngClass]="viewMode() === 'cards'
-              ? 'bg-gradient-to-b from-[#558fc3] to-[#4b689d] text-white shadow'
+              ? 'upload-form__view-tab--active bg-gradient-to-b from-[#558fc3] to-[#4b689d] shadow'
               : 'text-slate-500 hover:text-[#3e5d88]'"
           >
             {{ 'UPLOAD_PLAN.VIEW_CARDS' | translate }}

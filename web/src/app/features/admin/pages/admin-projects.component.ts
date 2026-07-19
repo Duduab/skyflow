@@ -20,10 +20,10 @@ import {
   ProjectActivityResponse,
   ProjectOpenedByUser,
 } from '../../../core/skyflow.models';
+import { avatarIconForRole } from '../../../core/user-avatar-icon.util';
 import { LanguageService } from '../../../core/language.service';
 import { ThemeService } from '../../../core/theme.service';
 import { MatIconComponent } from '../../../shared/mat-icon/mat-icon.component';
-import { StationsIconComponent } from '../../../shared/icons/stations-icon.component';
 import { UiCardActionComponent } from '../../../shared/ui-card-action/ui-card-action.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
 import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
@@ -48,7 +48,6 @@ type AdminProjectsStatusFilter =
     UiSelectComponent,
     UiCardActionComponent,
     MatIconComponent,
-    StationsIconComponent,
     StationLabelPipe,
   ],
   templateUrl: './admin-projects.component.html',
@@ -134,10 +133,8 @@ export class AdminProjectsComponent implements OnInit {
     return `${u.firstName} ${u.lastName}`.trim();
   }
 
-  openedByInitials(u: ProjectOpenedByUser): string {
-    const a = u.firstName?.trim().charAt(0) ?? '';
-    const b = u.lastName?.trim().charAt(0) ?? '';
-    return (a + b).toUpperCase() || '?';
+  openedByAvatarIcon(u: ProjectOpenedByUser): string {
+    return avatarIconForRole(u.role);
   }
 
   openedByPhotoVisible(u: ProjectOpenedByUser): boolean {

@@ -1,6 +1,6 @@
 import { Component, input } from '@angular/core';
 
-/** Stations network icon — same artwork as bottom navigation. */
+/** Work-station bays along a production line — subtle outline icon. */
 @Component({
   selector: 'skyflow-stations-icon',
   standalone: true,
@@ -10,12 +10,15 @@ import { Component, input } from '@angular/core';
       fill="none"
       stroke="currentColor"
       [attr.stroke-width]="strokeWidth()"
+      stroke-linecap="round"
+      stroke-linejoin="round"
       aria-hidden="true"
     >
-      <rect x="3" y="5" width="5.5" height="5.5" rx="1.3" />
-      <rect x="15.5" y="5" width="5.5" height="5.5" rx="1.3" />
-      <rect x="9.25" y="13.5" width="5.5" height="5.5" rx="1.3" />
-      <path d="M8.5 7.75h7M12 10.5v3" stroke-linecap="round" />
+      <path d="M3.75 16.25h16.5" opacity="0.28" />
+      <rect x="3.75" y="9" width="4.5" height="7.25" rx="1.15" />
+      <rect x="9.75" y="9" width="4.5" height="7.25" rx="1.15" />
+      <rect x="15.75" y="9" width="4.5" height="7.25" rx="1.15" />
+      <path d="M5.2 12.8h1.6M11.2 12.8h1.6M17.2 12.8h1.6" opacity="0.42" />
     </svg>
   `,
   styles: `
@@ -36,5 +39,5 @@ import { Component, input } from '@angular/core';
 })
 export class StationsIconComponent {
   readonly size = input(18);
-  readonly strokeWidth = input(1.9);
+  readonly strokeWidth = input(1.3);
 }

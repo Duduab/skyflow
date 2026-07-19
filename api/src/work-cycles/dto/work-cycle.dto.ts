@@ -3,6 +3,7 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -36,4 +37,10 @@ export class SetWorkCycleDailyTargetDto {
   @IsInt()
   @Min(0)
   dailyTargetQty?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0.25)
+  @Max(24)
+  dailyTargetHours?: number | null;
 }

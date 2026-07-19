@@ -339,14 +339,21 @@ export class ProjectsController {
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Post(':id/approve-planning')
-  approve(@Param('id') id: string, @Body() dto: ApprovePlanningDto) {
-    return this.projectsService.approvePlanning(id, dto);
+  approve(
+    @Param('id') id: string,
+    @Body() dto: ApprovePlanningDto,
+    @Req() req: Request & { user?: { userId?: string } },
+  ) {
+    return this.projectsService.approvePlanning(id, dto, req.user?.userId ?? null);
   }
 
   @Roles(SkyflowRole.ADMIN)
   @Post(':id/complete')
-  complete(@Param('id') id: string) {
-    return this.projectsService.completeProject(id);
+  complete(
+    @Param('id') id: string,
+    @Req() req: Request & { user?: { userId?: string } },
+  ) {
+    return this.projectsService.completeProject(id, req.user?.userId ?? null);
   }
 
   @Roles(SkyflowRole.ADMIN)

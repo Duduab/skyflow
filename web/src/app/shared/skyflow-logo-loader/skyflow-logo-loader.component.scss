@@ -8,8 +8,8 @@
 }
 
 .skyflow-logo-loader--lg {
-  width: clamp(7.5rem, 18vw, 10rem);
-  height: clamp(7.5rem, 18vw, 10rem);
+  width: clamp(11rem, 28vw, 15rem);
+  height: clamp(11rem, 28vw, 15rem);
 }
 
 .skyflow-logo-loader__ring {
@@ -115,6 +115,20 @@
 
 :host-context(.http-loader-overlay) .skyflow-logo-loader__img {
   mix-blend-mode: normal;
+  filter:
+    drop-shadow(0 10px 24px rgba(2, 6, 23, 0.38))
+    drop-shadow(0 0 18px rgba(186, 230, 253, 0.18));
+}
+
+:host-context(.http-loader-overlay) .skyflow-logo-loader__ring {
+  background: transparent;
+  box-shadow:
+    0 0 0 1px rgba(186, 230, 253, 0.1),
+    0 0 38px rgba(14, 165, 233, 0.18);
+}
+
+:host-context(.http-loader-overlay) .skyflow-logo-loader__track-bg {
+  stroke: rgba(255, 255, 255, 0.16);
 }
 
 @keyframes skyflow-logo-progress {

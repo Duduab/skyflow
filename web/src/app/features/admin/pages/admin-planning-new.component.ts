@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { concatMap, finalize, take } from 'rxjs/operators';
@@ -5,6 +6,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { ApiService } from '../../../core/api.service';
 import {
+  AssemblyWindowPartSection,
+  EditWorkCycleWindowBody,
   PlanningAssigneeOptionDto,
   PlanningDraftListItemDto,
   ProjectAngleSourcing,
@@ -13,17 +16,25 @@ import {
   ProjectMachiningRoute,
   WorkCycle,
   WorkCycleAssignmentInput,
+  WorkCycleDetailsDto,
   WorkCycleStatus,
 } from '../../../core/skyflow.models';
 import {
   planningStation1ManagerSectionKey,
   stationLabelKey,
+  stationMatIcon,
+  stationMatIconFilled,
+  workerFlowSequence,
 } from '../../../core/station-presentation';
 import { PlanningPdfPanelComponent } from '../planning/planning-pdf-panel.component';
+import { MatIconComponent } from '../../../shared/mat-icon/mat-icon.component';
 import { UiButtonComponent } from '../../../shared/ui-button.component';
 import { UiPopupComponent } from '../../../shared/ui-popup/ui-popup.component';
+import { UiSelectComponent } from '../../../shared/ui-select/ui-select.component';
+import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 
 type WizardStep = 1 | 2 | 3;
+type UnitStatusFilter = 'all' | WorkCycleStatus;
 
 interface WizardCardOption<T extends string> {
   value: T;
@@ -45,10 +56,13 @@ export interface PlanningSuccessSnapshot {
   selector: 'skyflow-admin-planning-new',
   standalone: true,
   imports: [
+    DatePipe,
     TranslateModule,
     PlanningPdfPanelComponent,
+    MatIconComponent,
     UiButtonComponent,
     UiPopupComponent,
+    UiSelectComponent,
   ],
   templateUrl: './admin-planning-new.component.html',
   styleUrl: './admin-planning-new.component.scss',
@@ -99,6 +113,8 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly cycleSaving = signal(false);
   /** יעד יומי ידני לסבב הנבחר (null = חישוב אוטומטי). */
   readonly cycleDailyTarget = signal<number | null>(null);
+  /** מסגרת זמן ליעד (שעות; null = חישוב אוטומטי). */
+  readonly cycleDailyTargetHours = signal<number | null>(null);
   /** stationId → מנהל תחנה שנבחר לסבב הנבחר. */
   readonly cycleStationManager = signal<Record<number, string | null>>({});
   /** stationId → עובדים שנבחרו לסבב הנבחר. */
@@ -110,6 +126,32 @@ export class AdminPlanningNewComponent implements OnInit {
   private readonly pendingLaunchWindowTypeId = signal<string | null>(null);
   /** תחנה פעילה בתוך פופאפ השיבוץ. */
   readonly selectedAssignStationId = signal<number | null>(null);
+  readonly unitStatusFilter = signal<UnitStatusFilter>('all');
+  readonly unitSearchQuery = signal('');
+
+  readonly unitsForAssignment = computed((): WorkCycle[] =>
+    this.workCycles().filter((c) => this.hasInstructions(c)),
+  );
+
+  readonly filteredUnitsForAssignment = computed((): WorkCycle[] => {
+    const list = this.unitsForAssignment();
+    const status = this.unitStatusFilter();
+    const q = this.unitSearchQuery().trim().toLowerCase();
+    return list.filter((c) => {
+      if (status !== 'all' && c.status !== status) return false;
+      if (q && !c.windowType.code.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  });
+
+  readonly unitCodeSuggestions = computed((): string[] => {
+    const q = this.unitSearchQuery().trim().toLowerCase();
+    const codes = [
+      ...new Set(this.unitsForAssignment().map((c) => c.windowType.code)),
+    ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    if (!q) return codes;
+    return codes.filter((code) => code.toLowerCase().includes(q));
+  });
 
   ngOnInit(): void {
     this.reloadDrafts();
@@ -430,13 +472,52 @@ export class AdminPlanningNewComponent implements OnInit {
       });
   }
 
+  setUnitSearch(value: string): void {
+    this.unitSearchQuery.set(value);
+  }
+
+  setUnitStatusFilter(value: string | number | null): void {
+    const v = value == null ? 'all' : String(value);
+    if (
+      v === 'all' ||
+      v === 'DRAFT' ||
+      v === 'OPEN' ||
+      v === 'IN_PROGRESS' ||
+      v === 'COMPLETED' ||
+      v === 'RETURNED'
+    ) {
+      this.unitStatusFilter.set(v);
+    }
+  }
+
+  unitStatusFilterOptions(): UiSelectOption<UnitStatusFilter>[] {
+    const statuses: WorkCycleStatus[] = [
+      'DRAFT',
+      'OPEN',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'RETURNED',
+    ];
+    return [
+      {
+        value: 'all',
+        label: this.translate.instant('PLANNING_NEW.UNIT_FILTER_ALL'),
+      },
+      ...statuses.map((status) => ({
+        value: status,
+        label: this.translate.instant(this.cycleStatusKey(status)),
+      })),
+    ];
+  }
+
+  private resetUnitFilters(): void {
+    this.unitStatusFilter.set('all');
+    this.unitSearchQuery.set('');
+  }
+
   /** A unit appears in step 3 once production instructions were uploaded. */
   hasInstructions(c: WorkCycle): boolean {
     return !!c.windowType.instructionDocId;
-  }
-
-  unitsForAssignment(): WorkCycle[] {
-    return this.workCycles().filter((c) => this.hasInstructions(c));
   }
 
   isDraftUnit(c: WorkCycle): boolean {
@@ -453,20 +534,45 @@ export class AdminPlanningNewComponent implements OnInit {
   }
 
   stationsForSelectedCycle(): number[] {
-    return (this.selectedCycle()?.stationProgress ?? []).map((p) => p.stationId);
+    const stationIds = (this.selectedCycle()?.stationProgress ?? []).map(
+      (p) => p.stationId,
+    );
+    const stationSet = new Set(stationIds);
+    const productionOrder = workerFlowSequence(stationSet.has(8));
+
+    return [
+      ...productionOrder.filter((id) => stationSet.has(id)),
+      ...stationIds.filter((id) => !productionOrder.includes(id)),
+    ];
   }
 
   stationLabelKeyFor(stationId: number): string {
     return stationLabelKey(this.selectedVariantOrder(), stationId);
   }
 
+  stationIconFor(stationId: number): string {
+    return stationMatIcon(stationId);
+  }
+
+  stationIconFilledFor(stationId: number): boolean {
+    return stationMatIconFilled(stationId);
+  }
+
   cycleStatusKey(status: WorkCycleStatus): string {
     return `PLANNING_NEW.CYCLE_STATUS_${status}`;
+  }
+
+  assignedWorkerCount(c: WorkCycle): number {
+    const ids = new Set(
+      c.assignments.filter((a) => a.role === 'WORKER').map((a) => a.userId),
+    );
+    return ids.size;
   }
 
   selectCycle(c: WorkCycle): void {
     this.selectedCycleId.set(c.id);
     this.cycleDailyTarget.set(c.dailyTargetQty ?? null);
+    this.cycleDailyTargetHours.set(c.dailyTargetHours ?? null);
     const managers: Record<number, string | null> = {};
     const workers: Record<number, string[]> = {};
     for (const p of c.stationProgress) {
@@ -543,6 +649,16 @@ export class AdminPlanningNewComponent implements OnInit {
     );
   }
 
+  onCycleDailyTargetHoursInput(ev: Event): void {
+    const raw = (ev.target as HTMLInputElement).value;
+    const n = Number(raw);
+    this.cycleDailyTargetHours.set(
+      raw.trim().length && Number.isFinite(n) && n >= 0.25 && n <= 24
+        ? Math.round(n * 4) / 4
+        : null,
+    );
+  }
+
   private buildCycleAssignments(cycle: WorkCycle): WorkCycleAssignmentInput[] {
     const managers = this.cycleStationManager();
     const workers = this.cycleStationWorkers();
@@ -566,11 +682,12 @@ export class AdminPlanningNewComponent implements OnInit {
     this.cycleSaving.set(true);
     this.workCyclesError.set(null);
     const target = this.cycleDailyTarget();
+    const targetHours = this.cycleDailyTargetHours();
     this.api
       .setWorkCycleAssignments(pid, cycle.id, assignments)
       .pipe(
         concatMap(() =>
-          this.api.setWorkCycleDailyTarget(pid, cycle.id, target),
+          this.api.setWorkCycleDailyTarget(pid, cycle.id, target, targetHours),
         ),
         take(1),
         finalize(() => this.cycleSaving.set(false)),
@@ -593,8 +710,9 @@ export class AdminPlanningNewComponent implements OnInit {
     this.cycleLaunching.set(true);
     this.workCyclesError.set(null);
     const target = this.cycleDailyTarget();
+    const targetHours = this.cycleDailyTargetHours();
     this.api
-      .launchWorkCycle(pid, cycle.id, assignments, target)
+      .launchWorkCycle(pid, cycle.id, assignments, target, targetHours)
       .pipe(
         take(1),
         finalize(() => this.cycleLaunching.set(false)),
@@ -665,6 +783,7 @@ export class AdminPlanningNewComponent implements OnInit {
     this.createErrorKey.set(null);
     this.selectedSawsManagerId.set(null);
     this.selectedWorkerIds.set([]);
+    this.resetUnitFilters();
     this.selectedProjectId.set(d.id);
     this.applyPick(d);
     this.newProjectName.set(d.name);
@@ -689,11 +808,362 @@ export class AdminPlanningNewComponent implements OnInit {
     this.workCycles.set([]);
     this.selectedCycleId.set(null);
     this.cycleDailyTarget.set(null);
+    this.cycleDailyTargetHours.set(null);
     this.cycleStationManager.set({});
     this.cycleStationWorkers.set({});
     this.workCyclesError.set(null);
     this.cycleAssignModalOpen.set(false);
     this.selectedAssignStationId.set(null);
+    this.closeUnitDetails();
+    this.closeUnitEdit();
+    this.closeDeleteUnit();
+  }
+
+  // ── Unit card actions: edit / delete / details ────────────────────────────
+
+  /** ניתן לערוך יחידה כל עוד היא לא הושלמה. */
+  canEditUnit(c: WorkCycle): boolean {
+    return c.status !== 'COMPLETED';
+  }
+
+  /** ניתן למחוק רק יחידת טיוטה (לפני שהוצאה לפועל). */
+  canDeleteUnit(c: WorkCycle): boolean {
+    return c.status === 'DRAFT';
+  }
+
+  // ── Details modal ─────────────────────────────────────────────────────────
+  readonly detailsOpen = signal(false);
+  readonly detailsLoading = signal(false);
+  readonly detailsError = signal<string | null>(null);
+  readonly details = signal<WorkCycleDetailsDto | null>(null);
+
+  openUnitDetails(c: WorkCycle): void {
+    const pid = this.selectedProjectId();
+    if (!pid) return;
+    this.details.set(null);
+    this.detailsError.set(null);
+    this.detailsLoading.set(true);
+    this.detailsOpen.set(true);
+    this.api
+      .getWorkCycleDetails(pid, c.id)
+      .pipe(
+        take(1),
+        finalize(() => this.detailsLoading.set(false)),
+      )
+      .subscribe({
+        next: (d) => this.details.set(d),
+        error: () => this.detailsError.set('PLANNING_NEW.UNIT_DETAILS_FAILED'),
+      });
+  }
+
+  closeUnitDetails(): void {
+    this.detailsOpen.set(false);
+    this.details.set(null);
+    this.detailsError.set(null);
+  }
+
+  /** יומן הדיווחים של תחנה מסוימת (מתוך פרטי היחידה). */
+  logsForStation(stationId: number) {
+    return (this.details()?.logs ?? []).filter((l) => l.stationId === stationId);
+  }
+
+  // ── Edit modal ────────────────────────────────────────────────────────────
+  readonly editOpen = signal(false);
+  readonly editLoading = signal(false);
+  readonly editSaving = signal(false);
+  readonly editUploading = signal(false);
+  readonly editError = signal<string | null>(null);
+  readonly editCycleId = signal<string | null>(null);
+  readonly editWindowTypeId = signal<string | null>(null);
+  readonly editWindowCode = signal<string>('');
+  readonly editLaunched = signal(false);
+  readonly editInstructionUrl = signal<string | null>(null);
+  readonly editTotalQty = signal<number>(0);
+  readonly editHasAngles = signal(false);
+  readonly editComposition = signal<string[]>([]);
+  readonly editAngleCodes = signal<string[]>([]);
+  readonly editSections = signal<AssemblyWindowPartSection[]>([]);
+  readonly editCompDraft = signal('');
+  readonly editAngleDraft = signal('');
+  private editOriginal: {
+    totalQty: number;
+    hasAngles: boolean;
+    composition: string[];
+    angleCodes: string[];
+    sections: AssemblyWindowPartSection[];
+  } | null = null;
+
+  openUnitEdit(c: WorkCycle): void {
+    if (!this.canEditUnit(c)) return;
+    const pid = this.selectedProjectId();
+    if (!pid) return;
+    this.editError.set(null);
+    this.editOpen.set(true);
+    this.editLoading.set(true);
+    this.editCycleId.set(c.id);
+    this.api
+      .getWorkCycleDetails(pid, c.id)
+      .pipe(
+        take(1),
+        finalize(() => this.editLoading.set(false)),
+      )
+      .subscribe({
+        next: (d) => this.applyEditPrefill(d),
+        error: () => this.editError.set('PLANNING_NEW.UNIT_DETAILS_FAILED'),
+      });
+  }
+
+  private applyEditPrefill(d: WorkCycleDetailsDto): void {
+    const wt = d.windowType;
+    const sections = (wt.parts?.sections ?? []).map((s) => ({
+      key: s.key,
+      title: s.title,
+      rows: s.rows.map((r) => ({ ...r })),
+    }));
+    this.editWindowTypeId.set(wt.id);
+    this.editWindowCode.set(wt.code);
+    this.editLaunched.set(d.cycle.status !== 'DRAFT');
+    this.editInstructionUrl.set(wt.instructionPdfUrl);
+    this.editTotalQty.set(wt.totalQty);
+    this.editHasAngles.set(wt.hasAngles);
+    this.editComposition.set([...wt.composition]);
+    this.editAngleCodes.set([...wt.angleCodes]);
+    this.editSections.set(sections);
+    this.editCompDraft.set('');
+    this.editAngleDraft.set('');
+    this.editOriginal = {
+      totalQty: wt.totalQty,
+      hasAngles: wt.hasAngles,
+      composition: [...wt.composition],
+      angleCodes: [...wt.angleCodes],
+      sections: JSON.parse(JSON.stringify(sections)) as AssemblyWindowPartSection[],
+    };
+  }
+
+  closeUnitEdit(): void {
+    this.editOpen.set(false);
+    this.editCycleId.set(null);
+    this.editWindowTypeId.set(null);
+    this.editError.set(null);
+    this.editOriginal = null;
+  }
+
+  onEditQtyInput(ev: Event): void {
+    const n = Number((ev.target as HTMLInputElement).value);
+    this.editTotalQty.set(Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
+  }
+
+  toggleEditHasAngles(): void {
+    this.editHasAngles.update((v) => !v);
+  }
+
+  onEditCompDraft(ev: Event): void {
+    this.editCompDraft.set((ev.target as HTMLInputElement).value);
+  }
+
+  addEditComposition(): void {
+    const v = this.editCompDraft().trim();
+    if (!v) return;
+    this.editComposition.update((list) => [...list, v]);
+    this.editCompDraft.set('');
+  }
+
+  removeEditComposition(i: number): void {
+    this.editComposition.update((list) => list.filter((_, idx) => idx !== i));
+  }
+
+  onEditAngleDraft(ev: Event): void {
+    this.editAngleDraft.set((ev.target as HTMLInputElement).value);
+  }
+
+  addEditAngleCode(): void {
+    const v = this.editAngleDraft().trim();
+    if (!v) return;
+    this.editAngleCodes.update((list) => [...list, v]);
+    this.editAngleDraft.set('');
+  }
+
+  removeEditAngleCode(i: number): void {
+    this.editAngleCodes.update((list) => list.filter((_, idx) => idx !== i));
+  }
+
+  updateEditCell(
+    si: number,
+    ri: number,
+    field: 'partNumber' | 'description' | 'blockNumber',
+    ev: Event,
+  ): void {
+    const value = (ev.target as HTMLInputElement).value;
+    this.editSections.update((secs) => {
+      const next = JSON.parse(JSON.stringify(secs)) as AssemblyWindowPartSection[];
+      const row = next[si]?.rows?.[ri];
+      if (row) row[field] = value;
+      return next;
+    });
+  }
+
+  updateEditSectionTitle(si: number, ev: Event): void {
+    const value = (ev.target as HTMLInputElement).value;
+    this.editSections.update((secs) => {
+      const next = JSON.parse(JSON.stringify(secs)) as AssemblyWindowPartSection[];
+      if (next[si]) next[si].title = value;
+      return next;
+    });
+  }
+
+  addEditRow(si: number): void {
+    this.editSections.update((secs) => {
+      const next = JSON.parse(JSON.stringify(secs)) as AssemblyWindowPartSection[];
+      next[si]?.rows.push({ partNumber: '', description: '', blockNumber: '' });
+      return next;
+    });
+  }
+
+  removeEditRow(si: number, ri: number): void {
+    this.editSections.update((secs) => {
+      const next = JSON.parse(JSON.stringify(secs)) as AssemblyWindowPartSection[];
+      next[si]?.rows.splice(ri, 1);
+      return next;
+    });
+  }
+
+  addEditSection(): void {
+    this.editSections.update((secs) => {
+      const next = JSON.parse(JSON.stringify(secs)) as AssemblyWindowPartSection[];
+      next.push({ key: 'OTHER', title: '', rows: [] });
+      return next;
+    });
+  }
+
+  removeEditSection(si: number): void {
+    this.editSections.update((secs) => {
+      const next = JSON.parse(JSON.stringify(secs)) as AssemblyWindowPartSection[];
+      next.splice(si, 1);
+      return next;
+    });
+  }
+
+  /** העלאת קובץ הוראות ייצור חדש ליחידה (מסלול "החלף PDF"). */
+  onEditPdfSelected(kind: 'WINDOW_INSTRUCTION_PDF', fileList: FileList | null): void {
+    const file = fileList && fileList.length ? fileList[0] : null;
+    const pid = this.selectedProjectId();
+    const wtId = this.editWindowTypeId();
+    const cycleId = this.editCycleId();
+    if (!file || !pid || !wtId || !cycleId) return;
+    this.editUploading.set(true);
+    this.editError.set(null);
+    this.api
+      .uploadWindowTypePdf(pid, wtId, file, kind)
+      .pipe(
+        concatMap(() =>
+          this.editLaunched()
+            ? this.api.editWorkCycleWindow(pid, cycleId, { fullReroute: true })
+            : this.api.getWorkCycles(pid),
+        ),
+        take(1),
+        finalize(() => this.editUploading.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.loadWorkCycles();
+          this.closeUnitEdit();
+        },
+        error: () => this.editError.set('PLANNING_NEW.UNIT_EDIT_FAILED'),
+      });
+  }
+
+  private buildEditBody(): EditWorkCycleWindowBody {
+    const body: EditWorkCycleWindowBody = {};
+    const orig = this.editOriginal;
+    if (!orig) return body;
+    if (this.editTotalQty() !== orig.totalQty) body.totalQty = this.editTotalQty();
+    if (this.editHasAngles() !== orig.hasAngles)
+      body.hasAngles = this.editHasAngles();
+    if (!this.sameArr(this.editComposition(), orig.composition))
+      body.composition = this.editComposition();
+    if (!this.sameArr(this.editAngleCodes(), orig.angleCodes))
+      body.angleCodes = this.editAngleCodes();
+    if (
+      JSON.stringify(this.editSections()) !== JSON.stringify(orig.sections)
+    )
+      body.sections = this.editSections();
+    return body;
+  }
+
+  private sameArr(a: string[], b: string[]): boolean {
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  }
+
+  hasEditChanges(): boolean {
+    return Object.keys(this.buildEditBody()).length > 0;
+  }
+
+  saveEdit(): void {
+    const pid = this.selectedProjectId();
+    const cycleId = this.editCycleId();
+    if (!pid || !cycleId) return;
+    const body = this.buildEditBody();
+    if (!Object.keys(body).length) {
+      this.closeUnitEdit();
+      return;
+    }
+    this.editSaving.set(true);
+    this.editError.set(null);
+    this.api
+      .editWorkCycleWindow(pid, cycleId, body)
+      .pipe(
+        take(1),
+        finalize(() => this.editSaving.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.loadWorkCycles();
+          this.closeUnitEdit();
+        },
+        error: () => this.editError.set('PLANNING_NEW.UNIT_EDIT_FAILED'),
+      });
+  }
+
+  // ── Delete confirmation ─────────────────────────────────────────────────────
+  readonly deleteOpen = signal(false);
+  readonly deleteCycleId = signal<string | null>(null);
+  readonly deleteCode = signal<string>('');
+  readonly deleting = signal(false);
+  readonly deleteError = signal<string | null>(null);
+
+  askDeleteUnit(c: WorkCycle): void {
+    if (!this.canDeleteUnit(c)) return;
+    this.deleteCycleId.set(c.id);
+    this.deleteCode.set(c.windowType.code);
+    this.deleteError.set(null);
+    this.deleteOpen.set(true);
+  }
+
+  closeDeleteUnit(): void {
+    this.deleteOpen.set(false);
+    this.deleteCycleId.set(null);
+    this.deleteError.set(null);
+  }
+
+  confirmDeleteUnit(): void {
+    const pid = this.selectedProjectId();
+    const cycleId = this.deleteCycleId();
+    if (!pid || !cycleId) return;
+    this.deleting.set(true);
+    this.deleteError.set(null);
+    this.api
+      .deleteWorkCycle(pid, cycleId)
+      .pipe(
+        take(1),
+        finalize(() => this.deleting.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.loadWorkCycles();
+          this.closeDeleteUnit();
+        },
+        error: () => this.deleteError.set('PLANNING_NEW.UNIT_DELETE_FAILED'),
+      });
   }
 
   panelMode(): 'uploadPreview' | 'summaryApprove' {

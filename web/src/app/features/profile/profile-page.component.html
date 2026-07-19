@@ -1,110 +1,194 @@
-<section class="profile-page">
-  <div class="profile-hero">
-    <div class="profile-hero__avatar">
-      @if (user.photoUrl(); as src) {
-        <img [src]="src" alt="" width="128" height="128" />
-      } @else {
-        <span>{{ user.initials() }}</span>
-      }
+<div class="admin-settings profile-settings">
+  <header class="admin-settings__hero">
+    <div class="admin-settings__hero-copy">
+      <p class="admin-settings__eyebrow">{{ 'ADMIN_SETTINGS_PAGE.EYEBROW' | translate }}</p>
+      <h1 class="admin-page__title">{{ 'ADMIN_SETTINGS_PAGE.TITLE' | translate }}</h1>
+      <p class="admin-page__sub">{{ 'ADMIN_SETTINGS_PAGE.SUB' | translate }}</p>
     </div>
-    <div class="profile-hero__body">
-      <p class="profile-hero__eyebrow">{{ 'PROFILE.ACCOUNT_CENTER' | translate }}</p>
-      <h1>{{ user.displayName() }}</h1>
-      <p>{{ 'PROFILE.SUBTITLE' | translate }}</p>
-    </div>
-  </div>
+    <aside class="admin-settings__account" aria-label="account">
+      <div class="admin-settings__avatar" aria-hidden="true">
+        @if (draftPhoto.trim() && !avatarBroken) {
+          <img
+            [src]="draftPhoto.trim()"
+            alt=""
+            class="admin-settings__avatar-img"
+            (error)="onAvatarError()"
+          />
+        } @else {
+          <span class="admin-settings__avatar-initials">{{ previewInitials() }}</span>
+        }
+      </div>
+      <div class="admin-settings__account-text">
+        <span class="admin-settings__account-name">{{ user.displayName() }}</span>
+        <span class="admin-settings__account-role">{{ roleLabelKey() | translate }}</span>
+        <span class="admin-settings__account-email" dir="ltr">{{ sessionEmail() }}</span>
+      </div>
+    </aside>
+  </header>
 
-  <div class="profile-grid">
-    <section class="profile-card profile-card--identity">
-      <div class="profile-card__head">
-        <span class="profile-card__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-        </span>
-        <div>
-          <h2>{{ 'PROFILE.EDIT_NAME' | translate }}</h2>
-          <p>{{ 'PROFILE.EDIT_NAME_HINT' | translate }}</p>
+  <section class="admin-settings__kpis" aria-label="settings summary">
+    <article class="admin-settings-kpi">
+      <span class="admin-settings-kpi__label">{{ 'ADMIN_SETTINGS_PAGE.KPI_LANG' | translate }}</span>
+      <span class="admin-settings-kpi__value admin-settings-kpi__value--text">
+        {{ currentLangLabelKey() | translate }}
+      </span>
+    </article>
+    <article class="admin-settings-kpi">
+      <span class="admin-settings-kpi__label">{{ 'ADMIN_SETTINGS_PAGE.KPI_THEME' | translate }}</span>
+      <span class="admin-settings-kpi__value admin-settings-kpi__value--text">
+        {{ currentThemeLabelKey() | translate }}
+      </span>
+    </article>
+    <article class="admin-settings-kpi admin-settings-kpi--accent">
+      <span class="admin-settings-kpi__label">{{ 'ADMIN_SETTINGS_PAGE.KPI_ROLE' | translate }}</span>
+      <span class="admin-settings-kpi__value admin-settings-kpi__value--text">
+        {{ roleLabelKey() | translate }}
+      </span>
+    </article>
+  </section>
+
+  <div class="admin-settings__grid">
+    <section class="admin-settings-card">
+      <header class="admin-settings-card__head">
+        <h2>{{ 'ADMIN_SETTINGS_PAGE.APPEARANCE_TITLE' | translate }}</h2>
+        <p>{{ 'ADMIN_SETTINGS_PAGE.APPEARANCE_SUB' | translate }}</p>
+      </header>
+
+      <div class="admin-settings-card__body">
+        <div class="admin-settings-block">
+          <span class="admin-settings-block__label">{{ 'ADMIN_SETTINGS_PAGE.LANG' | translate }}</span>
+          <div class="admin-settings__lang-grid" role="group" [attr.aria-label]="'ADMIN_SETTINGS_PAGE.LANG' | translate">
+            @for (opt of languages; track opt.code) {
+              <button
+                type="button"
+                class="admin-settings__lang-card"
+                [class.admin-settings__lang-card--active]="lang.current() === opt.code"
+                (click)="setLanguage(opt.code)"
+              >
+                <span class="admin-settings__lang-glyph" aria-hidden="true">{{ opt.glyph }}</span>
+                <span class="admin-settings__lang-name">{{ opt.labelKey | translate }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="admin-settings-block">
+          <span class="admin-settings-block__label">{{ 'ADMIN_SETTINGS_PAGE.THEME' | translate }}</span>
+          <div class="admin-settings__theme-grid" role="group" [attr.aria-label]="'ADMIN_SETTINGS_PAGE.THEME' | translate">
+            <button
+              type="button"
+              class="admin-settings__theme-card"
+              [class.admin-settings__theme-card--active]="theme.mode() === 'light'"
+              (click)="setTheme('light')"
+            >
+              <span class="admin-settings__theme-preview admin-settings__theme-preview--light" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span>{{ 'APP.THEME_SWITCH_LIGHT' | translate }}</span>
+            </button>
+            <button
+              type="button"
+              class="admin-settings__theme-card"
+              [class.admin-settings__theme-card--active]="theme.mode() === 'dark'"
+              (click)="setTheme('dark')"
+            >
+              <span class="admin-settings__theme-preview admin-settings__theme-preview--dark" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span>{{ 'APP.THEME_SWITCH_DARK' | translate }}</span>
+            </button>
+          </div>
         </div>
       </div>
+    </section>
 
-      <form class="profile-form" (ngSubmit)="saveProfile()">
-        <label class="profile-field">
+    <section class="admin-settings-card">
+      <header class="admin-settings-card__head">
+        <h2>{{ 'ADMIN_SETTINGS_PAGE.ACCOUNT_TITLE' | translate }}</h2>
+        <p>{{ 'ADMIN_SETTINGS_PAGE.ACCOUNT_SUB' | translate }}</p>
+      </header>
+      <div class="admin-settings-card__body">
+        <dl class="admin-settings__meta">
+          <div>
+            <dt>{{ 'ADMIN_USERS_PAGE.EMAIL' | translate }}</dt>
+            <dd dir="ltr">{{ sessionEmail() }}</dd>
+          </div>
+          <div>
+            <dt>{{ 'PROFILE.ROLE' | translate }}</dt>
+            <dd>{{ roleLabelKey() | translate }}</dd>
+          </div>
+        </dl>
+        <div class="admin-settings-card__footer">
+          <div class="admin-settings__account-actions">
+            <skyflow-ui-button variant="danger" btnClass="admin-settings__btn-danger admin-settings__btn-logout" (click)="logout()">
+              <skyflow-mat-icon icon="lock" [size]="18" [weight]="500" />
+              <span>{{ 'APP.HEADER_LOGOUT' | translate }}</span>
+            </skyflow-ui-button>
+            <skyflow-ui-button variant="ghost" btnClass="admin-settings__btn-ghost" (click)="clearLocalData()">
+              {{ 'ADMIN_SETTINGS_PAGE.CLEAR_LOCAL' | translate }}
+            </skyflow-ui-button>
+          </div>
+          <p class="admin-settings__hint">{{ 'ADMIN_SETTINGS_PAGE.CLEAR_LOCAL_HINT' | translate }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-settings-card">
+      <header class="admin-settings-card__head">
+        <h2>{{ 'ADMIN_SETTINGS_PAGE.PROFILE' | translate }}</h2>
+        <p>{{ 'ADMIN_SETTINGS_PAGE.PROFILE_SUB' | translate }}</p>
+      </header>
+
+      <div class="admin-settings-card__body">
+        <div class="admin-settings__profile-preview">
+          <div class="admin-settings__avatar admin-settings__avatar--lg" aria-hidden="true">
+            @if (draftPhoto.trim() && !avatarBroken) {
+              <img
+                [src]="draftPhoto.trim()"
+                alt=""
+                class="admin-settings__avatar-img"
+                (error)="onAvatarError()"
+              />
+            } @else {
+              <span class="admin-settings__avatar-initials">{{ previewInitials() }}</span>
+            }
+          </div>
+          <span class="admin-settings__profile-preview-name">
+            {{ draftFirst.trim() || user.firstName() }}
+            {{ draftLast.trim() || user.lastName() }}
+          </span>
+        </div>
+
+        <label class="admin-settings-field">
           <span>{{ 'PROFILE.FIRST_NAME' | translate }}</span>
-          <input class="profile-input" name="firstName" [(ngModel)]="draftFirst" />
+          <input class="admin-settings-field__input" [(ngModel)]="draftFirst" autocomplete="given-name" />
         </label>
-        <label class="profile-field">
+        <label class="admin-settings-field">
           <span>{{ 'PROFILE.LAST_NAME' | translate }}</span>
-          <input class="profile-input" name="lastName" [(ngModel)]="draftLast" />
+          <input class="admin-settings-field__input" [(ngModel)]="draftLast" autocomplete="family-name" />
         </label>
-        <skyflow-ui-button type="submit" variant="primary" [block]="true">
-          {{ 'PROFILE.SAVE' | translate }}
-        </skyflow-ui-button>
-        @if (saved()) {
-          <p class="profile-saved" role="status">{{ 'PROFILE.SAVED' | translate }}</p>
-        }
-      </form>
-    </section>
+        <label class="admin-settings-field">
+          <span>{{ 'ADMIN_SETTINGS_PAGE.PHOTO_URL' | translate }}</span>
+          <input
+            class="admin-settings-field__input"
+            [(ngModel)]="draftPhoto"
+            type="url"
+            autocomplete="off"
+            dir="ltr"
+            (input)="avatarBroken = false"
+          />
+        </label>
 
-    <section class="profile-card">
-      <div class="profile-card__head">
-        <span class="profile-card__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-            <circle cx="12" cy="12" r="4.2" />
-            <path d="M12 2.5v2M12 19.5v2M4.57 4.57l1.42 1.42M18.01 18.01l1.42 1.42M2.5 12h2M19.5 12h2M4.57 19.43l1.42-1.42M18.01 5.99l1.42-1.42" stroke-linecap="round" />
-          </svg>
-        </span>
-        <div>
-          <h2>{{ 'PROFILE.APPEARANCE' | translate }}</h2>
-          <p>{{ 'PROFILE.APPEARANCE_HINT' | translate }}</p>
+        <div class="admin-settings-card__footer">
+          @if (profileSaved()) {
+            <p class="admin-settings__saved" role="status">{{ 'PROFILE.SAVED' | translate }}</p>
+          }
+
+          <skyflow-ui-button variant="primary" btnClass="admin-settings__save" (click)="saveProfile()">
+            {{ 'ADMIN_SETTINGS_PAGE.SAVE' | translate }}
+          </skyflow-ui-button>
         </div>
-      </div>
-
-      <div class="profile-segment">
-        <button
-          type="button"
-          [class.is-active]="theme.mode() === 'light'"
-          (click)="setTheme('light')"
-        >
-          {{ 'APP.THEME_STATE_LIGHT' | translate }}
-        </button>
-        <button
-          type="button"
-          [class.is-active]="theme.mode() === 'dark'"
-          (click)="setTheme('dark')"
-        >
-          {{ 'APP.THEME_STATE_DARK' | translate }}
-        </button>
-      </div>
-    </section>
-
-    <section class="profile-card">
-      <div class="profile-card__head">
-        <span class="profile-card__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M3.5 9h17M3.5 15h17M12 3a14 14 0 0 1 3.1 9A14 14 0 0 1 12 21a14 14 0 0 1-3.1-9A14 14 0 0 1 12 3Z" />
-          </svg>
-        </span>
-        <div>
-          <h2>{{ 'PROFILE.LANGUAGE' | translate }}</h2>
-          <p>{{ 'PROFILE.LANGUAGE_HINT' | translate }}</p>
-        </div>
-      </div>
-
-      <div class="profile-lang-grid">
-        @for (l of langs; track l.code) {
-          <button
-            type="button"
-            [class.is-active]="lang.current() === l.code"
-            (click)="setLanguage(l.code)"
-          >
-            <span>{{ l.short }}</span>
-            {{ l.labelKey | translate }}
-          </button>
-        }
       </div>
     </section>
   </div>
-</section>
+</div>

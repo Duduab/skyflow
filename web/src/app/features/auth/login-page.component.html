@@ -23,54 +23,79 @@
     </div>
 
     <form class="login-page__form" (ngSubmit)="submit()">
-      <label class="login-page__label">
-        <span>{{ 'LOGIN.EMAIL' | translate }}</span>
-        <input
-          type="email"
-          name="email"
-          class="login-page__input"
-          [(ngModel)]="email"
-          autocomplete="username"
-          required
-        />
-      </label>
-      <label class="login-page__label">
-        <span>{{ 'LOGIN.PASSWORD' | translate }}</span>
-        <input
-          type="password"
-          name="password"
-          class="login-page__input"
-          [(ngModel)]="password"
-          autocomplete="current-password"
-          required
-        />
-      </label>
+      <div class="login-page__fields">
+        <label class="login-page__label">
+          <span class="login-page__label-text">{{ 'LOGIN.USERNAME' | translate }}</span>
+          <span class="login-page__input-wrap">
+            <input
+              type="email"
+              name="email"
+              class="login-page__input"
+              [(ngModel)]="email"
+              autocomplete="username"
+              [placeholder]="'LOGIN.USERNAME' | translate"
+              required
+            />
+          </span>
+        </label>
 
-      @if (errorMsg(); as err) {
-        <p class="login-page__err" role="alert">
-          {{ err | translate }}
-        </p>
-      }
+        <label class="login-page__label">
+          <span class="login-page__label-text">{{ 'LOGIN.PASSWORD' | translate }}</span>
+          <span class="login-page__input-wrap">
+            <input
+              [type]="showPassword() ? 'text' : 'password'"
+              name="password"
+              class="login-page__input"
+              [(ngModel)]="password"
+              autocomplete="current-password"
+              [placeholder]="'LOGIN.PASSWORD' | translate"
+              required
+            />
+            <button
+              type="button"
+              class="login-page__input-toggle"
+              [attr.aria-label]="
+                (showPassword() ? 'LOGIN.HIDE_PASSWORD' : 'LOGIN.SHOW_PASSWORD') | translate
+              "
+              [attr.aria-pressed]="showPassword()"
+              (click)="togglePassword()"
+            >
+              <skyflow-mat-icon
+                [icon]="showPassword() ? 'visibility' : 'visibility_off'"
+                [size]="16"
+                [weight]="400"
+              />
+            </button>
+          </span>
+        </label>
+      </div>
 
-      <skyflow-ui-button
-        type="submit"
-        variant="primary"
-        size="lg"
-        style="padding-top: 27px;"
-        [loading]="busy()"
-        [block]="true"
-        btnClass="login-page__submit"
-      >
-        <span class="login-page__submit-inner">
-          <skyflow-mat-icon
-            class="login-page__submit-icon"
-            icon="west"
-            [size]="22"
-            [weight]="300"
-          />
-          <span class="login-page__submit-label">{{ 'LOGIN.SUBMIT' | translate }}</span>
-        </span>
-      </skyflow-ui-button>
+      <div class="login-page__form-actions">
+        @if (errorMsg(); as err) {
+          <p class="login-page__err" role="alert">
+            {{ err | translate }}
+          </p>
+        }
+
+        <skyflow-ui-button
+          type="submit"
+          variant="primary"
+          size="lg"
+          [loading]="busy()"
+          [block]="true"
+          btnClass="login-page__submit"
+        >
+          <span class="login-page__submit-inner">
+            <skyflow-mat-icon
+              class="login-page__submit-icon"
+              icon="login"
+              [size]="24"
+              [weight]="400"
+            />
+            <span class="login-page__submit-label">{{ 'LOGIN.SUBMIT' | translate }}</span>
+          </span>
+        </skyflow-ui-button>
+      </div>
     </form>
   </div>
 </section>

@@ -1,9 +1,15 @@
-import { HttpClient, HttpEventType, HttpHeaders } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpContext,
+  HttpEventType,
+  HttpHeaders,
+} from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { filter, finalize, map, tap } from 'rxjs/operators';
 
 import { HttpLoadingService } from './http-loading.service';
+import { SKIP_HTTP_LOADING } from './http-loading.interceptor';
 import {
   AdminDashboard,
   AssemblyWindowPartsDto,
@@ -35,8 +41,13 @@ import {
   SkyflowRole,
   WorkCycle,
   WorkCycleAssignmentInput,
+  WorkCycleDetailsDto,
+  EditWorkCycleWindowBody,
   StationWorkCycleRow,
   WorkerProjectCycle,
+  TrackingResponse,
+  AddTrackingBeatBody,
+  NotificationListResponse,
 } from './skyflow.models';
 
 @Injectable({ providedIn: 'root' })
@@ -757,12 +768,13 @@ export class ApiService {
     projectId: string,
     cycleId: string,
     dailyTargetQty: number | null,
+    dailyTargetHours: number | null,
   ): Observable<WorkCycle> {
     return this.http.post<WorkCycle>(
       `${this.base}/projects/${encodeURIComponent(
         projectId,
       )}/work-cycles/${encodeURIComponent(cycleId)}/daily-target`,
-      { dailyTargetQty },
+      { dailyTargetQty, dailyTargetHours },
     );
   }
 
@@ -771,12 +783,128 @@ export class ApiService {
     cycleId: string,
     assignments: WorkCycleAssignmentInput[],
     dailyTargetQty: number | null,
+    dailyTargetHours: number | null,
   ): Observable<WorkCycle> {
     return this.http.post<WorkCycle>(
       `${this.base}/projects/${encodeURIComponent(
         projectId,
       )}/work-cycles/${encodeURIComponent(cycleId)}/launch`,
-      { assignments, dailyTargetQty },
+      { assignments, dailyTargetQty, dailyTargetHours },
+    );
+  }
+
+  /** פרטי יחידה: נתונים ממופים + מסע התחנות (התקדמות + יומן דיווחים). */
+  getWorkCycleDetails(
+    projectId: string,
+    cycleId: string,
+  ): Observable<WorkCycleDetailsDto> {
+    return this.http.get<WorkCycleDetailsDto>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/work-cycles/${encodeURIComponent(cycleId)}/details`,
+    );
+  }
+
+  /** עריכת נתוני יחידה + ניתוב מחדש לתחנה הרלוונטית. */
+  editWorkCycleWindow(
+    projectId: string,
+    cycleId: string,
+    body: EditWorkCycleWindowBody,
+  ): Observable<WorkCycle> {
+    return this.http.patch<WorkCycle>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/work-cycles/${encodeURIComponent(cycleId)}`,
+      body,
+    );
+  }
+
+  /** מחיקת יחידת טיוטה (סוג-חלון + כל הנגזרות). */
+  deleteWorkCycle(projectId: string, cycleId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/work-cycles/${encodeURIComponent(cycleId)}`,
+    );
+  }
+
+  /* ===== מעקב ובקרה מודולים (מנהל הפרויקט) ===== */
+
+  getProjectTracking(projectId: string): Observable<TrackingResponse> {
+    return this.http.get<TrackingResponse>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/tracking`,
+    );
+  }
+
+  regenerateProjectTracking(projectId: string): Observable<TrackingResponse> {
+    return this.http.post<TrackingResponse>(
+      `${this.base}/projects/${encodeURIComponent(projectId)}/tracking/generate`,
+      {},
+    );
+  }
+
+  addTrackingBeat(
+    projectId: string,
+    rowId: string,
+    body: AddTrackingBeatBody,
+  ): Observable<TrackingResponse> {
+    return this.http.post<TrackingResponse>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/tracking/rows/${encodeURIComponent(rowId)}/beats`,
+      body,
+    );
+  }
+
+  deleteTrackingBeat(
+    projectId: string,
+    beatId: string,
+  ): Observable<TrackingResponse> {
+    return this.http.delete<TrackingResponse>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/tracking/beats/${encodeURIComponent(beatId)}`,
+    );
+  }
+
+  updateTrackingRowNotes(
+    projectId: string,
+    rowId: string,
+    notes: string,
+  ): Observable<TrackingResponse> {
+    return this.http.patch<TrackingResponse>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/tracking/rows/${encodeURIComponent(rowId)}/notes`,
+      { notes },
+    );
+  }
+
+  /* ===== מערכת התראות ===== */
+
+  getNotifications(limit = 40): Observable<NotificationListResponse> {
+    return this.http.get<NotificationListResponse>(
+      `${this.base}/notifications`,
+      {
+        params: { limit, _: Date.now() },
+        context: new HttpContext().set(SKIP_HTTP_LOADING, true),
+      },
+    );
+  }
+
+  markNotificationRead(id: string): Observable<{ unreadCount: number }> {
+    return this.http.post<{ unreadCount: number }>(
+      `${this.base}/notifications/${encodeURIComponent(id)}/read`,
+      {},
+      { context: new HttpContext().set(SKIP_HTTP_LOADING, true) },
+    );
+  }
+
+  markAllNotificationsRead(): Observable<{ unreadCount: number }> {
+    return this.http.post<{ unreadCount: number }>(
+      `${this.base}/notifications/read-all`,
+      {},
+      { context: new HttpContext().set(SKIP_HTTP_LOADING, true) },
     );
   }
 }

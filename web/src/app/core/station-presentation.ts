@@ -148,6 +148,33 @@ export function stationHeroImagePath(
   return stationVisualTokens(order, stationId).heroImage;
 }
 
+/** Canonical Material Symbols icon for any station id. */
+export function stationMatIcon(stationId: number): string {
+  switch (stationId) {
+    case 2:
+      return 'precision_manufacturing';
+    case 3:
+      return 'handyman';
+    case 4:
+      return 'window';
+    case 5:
+      return 'check';
+    case 6:
+      return 'inventory_2';
+    case 7:
+      return 'construction';
+    case 8:
+      return 'flare';
+    default:
+      return 'carpenter';
+  }
+}
+
+/** Filled icon for station — finishes (5) uses outline check only. */
+export function stationMatIconFilled(stationId: number): boolean {
+  return stationId !== 5;
+}
+
 export function stationVisualTokens(
   order: StationVariantOrder | null | undefined,
   stationId: number,

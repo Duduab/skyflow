@@ -39,6 +39,7 @@ import {
   AssemblyWindowTypeDocDto,
   AssemblyWindowPartSection,
   AssemblyPartsCheckDto,
+  DeliveryNoteLineItemDto,
   GluingStationContextDto,
   GluingTypeGroupDto,
   LaserAngleDto,
@@ -222,6 +223,9 @@ export class WorkerTerminalComponent implements OnInit {
   readonly deliveryExternalPrice = signal('');
   /** כמויות לבחירה במשלוח חלקי — lineKey → qty */
   readonly deliveryLineQtys = signal<Map<string, number>>(new Map());
+  /** שלב במחולל תעודת המשלוח (1..3) */
+  readonly deliveryStep = signal(1);
+  readonly deliveryTotalSteps = 3;
 
   readonly sawTypeModalSaving = signal(false);
 
@@ -418,15 +422,56 @@ export class WorkerTerminalComponent implements OnInit {
     if (this.stationId === 2) return 'WORKER.CYCLES_TITLE_CNC';
     if (this.stationId === 3) return 'WORKER.CYCLES_TITLE_ASSEMBLY';
     if (this.stationId === 4) return 'WORKER.CYCLES_TITLE_GLUING';
+    if (this.stationId === 5) return 'WORKER.CYCLES_TITLE_FINISHES';
+    if (this.stationId === 6) return 'WORKER.CYCLES_TITLE_PACKING';
     return 'WORKER.CYCLES_TITLE';
+  }
+
+  /** Work-cycles block hint — finishes uses verification copy. */
+  cyclesSectionHintKey(): string {
+    if (this.stationId === 5) return 'WORKER.VERIFY_HINT';
+    if (this.stationId === 6) return 'WORKER.PACK_PHOTOS_HINT';
+    return 'WORKER.CYCLES_HINT';
+  }
+
+  showWorkerCyclesBlock(): boolean {
+    return (
+      (this.visibleStationCycles().length > 0 && this.stationId !== 8) ||
+      this.stationId === 5 ||
+      this.stationId === 6
+    );
+  }
+
+  /** Canonical Material Symbols icon for any station id. */
+  stationIcon(stationId: number): string {
+    switch (stationId) {
+      case 2:
+        return 'precision_manufacturing';
+      case 3:
+        return 'handyman';
+      case 4:
+        return 'window';
+      case 5:
+        return 'check';
+      case 6:
+        return 'inventory_2';
+      case 7:
+        return 'construction';
+      case 8:
+        return 'flare';
+      default:
+        return 'carpenter';
+    }
   }
 
   /** Work-cycles block icon (Material Symbols). */
   cyclesSectionIcon(): string {
-    if (this.stationId === 2) return 'precision_manufacturing';
-    if (this.stationId === 3) return 'handyman';
-    if (this.stationId === 4) return 'window';
-    return 'carpenter';
+    return this.stationIcon(this.stationId);
+  }
+
+  /** Filled icon for work-cycles block — finishes uses outline check only. */
+  cyclesSectionIconFilled(): boolean {
+    return this.stationId !== 5;
   }
 
   /** Downstream stations show upstream arrival qty instead of unit target. */
@@ -2012,12 +2057,6 @@ export class WorkerTerminalComponent implements OnInit {
     ctrl.setValue(true);
     ctrl.markAsTouched();
     this.closeFinishingVerify();
-    if (
-      this.finishingChecksDoneCount() === this.finishingCheckSteps.length &&
-      this.form?.valid
-    ) {
-      void this.submit();
-    }
   }
 
   packPhotoSlotIndexes(ctx: WorkerContext): number[] {
@@ -2181,19 +2220,12 @@ export class WorkerTerminalComponent implements OnInit {
     return ctx.deliveryNote?.allShipped === true;
   }
 
-  canIssueDeliveryNote(ctx: WorkerContext): boolean {
-    return (
-      this.currentUser.isManagerOfStation(6) ||
-      this.currentUser.isAdmin()
-    );
+  canIssueDeliveryNote(_ctx: WorkerContext): boolean {
+    return true;
   }
 
-  deliveryNoteCanIssue(ctx: WorkerContext): boolean {
-    return (
-      this.packReportComplete(ctx) &&
-      ctx.deliveryNote?.canIssue === true &&
-      this.canIssueDeliveryNote(ctx)
-    );
+  deliveryNoteCanIssue(_ctx: WorkerContext): boolean {
+    return true;
   }
 
   deliveryLineQty(lineKey: string, fallback: number): number {
@@ -2211,9 +2243,91 @@ export class WorkerTerminalComponent implements OnInit {
     this.deliveryLineQtys.set(next);
   }
 
+  nudgeDeliveryLineQty(lineKey: string, delta: number, max: number): void {
+    const current = this.deliveryLineQty(lineKey, 0);
+    const qty = Math.min(max, Math.max(0, current + delta));
+    const next = new Map(this.deliveryLineQtys());
+    next.set(lineKey, qty);
+    this.deliveryLineQtys.set(next);
+  }
+
+  selectAllDeliveryLines(ctx: WorkerContext): void {
+    const next = new Map<string, number>();
+    for (const li of ctx.deliveryNote?.availableLineItems ?? []) {
+      next.set(li.lineKey, li.remainingQuantity ?? li.quantity);
+    }
+    this.deliveryLineQtys.set(next);
+  }
+
+  clearAllDeliveryLines(): void {
+    this.deliveryLineQtys.set(new Map());
+  }
+
+  /** מספר שורות פריטים שנבחרו (qty > 0) */
+  deliverySelectedLineCount(): number {
+    let count = 0;
+    for (const qty of this.deliveryLineQtys().values()) {
+      if (qty > 0) count++;
+    }
+    return count;
+  }
+
+  /** סך היחידות שנבחרו לכל השורות */
+  deliverySelectedTotalQty(): number {
+    let sum = 0;
+    for (const qty of this.deliveryLineQtys().values()) {
+      if (qty > 0) sum += qty;
+    }
+    return sum;
+  }
+
+  deliverySelectedLineItems(ctx: WorkerContext): {
+    item: DeliveryNoteLineItemDto;
+    qty: number;
+  }[] {
+    return (ctx.deliveryNote?.availableLineItems ?? [])
+      .map((item) => ({
+        item,
+        qty: this.deliveryLineQty(
+          item.lineKey,
+          item.remainingQuantity ?? item.quantity,
+        ),
+      }))
+      .filter((x) => x.qty > 0);
+  }
+
+  /** האם מחיר המשלוח החיצוני תקין (למשלוח חיצוני בלבד) */
+  deliveryPriceValid(): boolean {
+    if (this.deliveryShippingType() !== 'EXTERNAL') return true;
+    const raw = this.deliveryExternalPrice().trim().replace(',', '.');
+    if (!raw.length) return false;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0;
+  }
+
+  /** האם ניתן להתקדם מהשלב הנוכחי */
+  deliveryStepValid(step: number): boolean {
+    if (step === 1) return this.deliveryPriceValid();
+    if (step === 2) return this.deliverySelectedLineCount() > 0;
+    return true;
+  }
+
+  deliveryNextStep(): void {
+    const step = this.deliveryStep();
+    if (step >= this.deliveryTotalSteps || !this.deliveryStepValid(step)) return;
+    this.deliveryStep.set(step + 1);
+  }
+
+  deliveryPrevStep(): void {
+    const step = this.deliveryStep();
+    if (step <= 1) return;
+    this.deliveryStep.set(step - 1);
+  }
+
   openDeliveryNoteModal(ctx: WorkerContext): void {
     this.deliveryShippingType.set('INTERNAL');
     this.deliveryExternalPrice.set('');
+    this.deliveryStep.set(1);
     const next = new Map<string, number>();
     for (const li of ctx.deliveryNote?.availableLineItems ?? []) {
       next.set(li.lineKey, li.remainingQuantity ?? li.quantity);
@@ -2227,22 +2341,8 @@ export class WorkerTerminalComponent implements OnInit {
     this.deliveryNoteModalOpen.set(false);
   }
 
-  onDeliveryShippingChange(value: string | number | null): void {
-    const v = value == null ? 'INTERNAL' : String(value);
-    this.deliveryShippingType.set(v === 'EXTERNAL' ? 'EXTERNAL' : 'INTERNAL');
-  }
-
-  deliveryShippingSelectOptions(): UiSelectOption[] {
-    return [
-      {
-        value: 'INTERNAL',
-        label: this.translate.instant('WORKER.DELIVERY_SHIPPING_INTERNAL'),
-      },
-      {
-        value: 'EXTERNAL',
-        label: this.translate.instant('WORKER.DELIVERY_SHIPPING_EXTERNAL'),
-      },
-    ];
+  setDeliveryShippingType(type: 'INTERNAL' | 'EXTERNAL'): void {
+    this.deliveryShippingType.set(type);
   }
 
   async submitDeliveryNote(ctx: WorkerContext): Promise<void> {
@@ -2702,6 +2802,9 @@ export class WorkerTerminalComponent implements OnInit {
     if (this.stationId === 1) {
       return;
     }
+    if (this.stationId === 6 && (!ctx || !this.packReportComplete(ctx))) {
+      return;
+    }
 
     const raw = this.form.getRawValue();
     const sid = this.stationId;
@@ -2723,7 +2826,7 @@ export class WorkerTerminalComponent implements OnInit {
       processedQty = 1;
       extraPayload = { finishingChecks: raw['checks'] };
     } else if (sid === 6) {
-      processedQty = Number(raw['packedQty']);
+      processedQty = ctx ? this.packPhotosUploadedCount(ctx) : 0;
     } else if (sid === 7) {
       processedQty = 1;
       extraPayload = {

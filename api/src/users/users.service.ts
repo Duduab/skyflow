@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DailyTargetSource, SkyflowRole } from '@prisma/client';
+import { DailyTargetSource, NotificationKind, SkyflowRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { resolveStationDisplayNameHe } from '../common/station-presentation.util.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
@@ -28,6 +29,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
     private readonly dailyTargetPlanning: DailyTargetPlanningService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async findAll() {
@@ -373,6 +375,7 @@ export class UsersService {
   async upsertDailyTarget(
     userId: string,
     dto: CreateUserDailyTargetDto,
+    actorUserId?: string | null,
   ): Promise<UserDailyTargetsResponse> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException();
@@ -396,6 +399,19 @@ export class UsersService {
         description,
         targetMinutes: dto.targetMinutes,
       },
+    });
+
+    await this.notifications.emit({
+      kind: NotificationKind.DAILY_TARGET_MANUAL,
+      titleKey: 'NOTIFICATIONS.DAILY_TARGET_MANUAL_TITLE',
+      bodyKey: 'NOTIFICATIONS.DAILY_TARGET_MANUAL_BODY',
+      params: {
+        worker: `${user.firstName} ${user.lastName}`.trim(),
+        description,
+        date: targetDate,
+      },
+      link: '/admin/users',
+      actorUserId,
     });
 
     return this.getDailyTargets(userId);

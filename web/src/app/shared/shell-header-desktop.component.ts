@@ -10,12 +10,31 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
+import { avatarIconForRole } from '../core/user-avatar-icon.util';
 import { CurrentUserService } from '../core/current-user.service';
 import { LanguageService, SkyflowLang } from '../core/language.service';
-import { ThemeService } from '../core/theme.service';
+import { NotificationsService } from '../core/notifications.service';
+import { NotificationDto, NotificationKind } from '../core/skyflow.models';
+import { MatIconComponent } from './mat-icon/mat-icon.component';
 import { ThemeToggleComponent } from './theme-toggle.component';
 
 type NavHit = { titleKey: string; path: string };
+
+/** Material Symbol per notification kind. */
+const NOTIF_ICONS: Record<NotificationKind, string> = {
+  CYCLE_LAUNCHED: 'rocket_launch',
+  CYCLE_REPORTED: 'conveyor_belt',
+  CYCLE_COMPLETED: 'task_alt',
+  CYCLE_RETURNED: 'undo',
+  STATION_LOG: 'factory',
+  DAILY_TARGET_MANUAL: 'flag',
+  DELIVERY_NOTE_ISSUED: 'local_shipping',
+  ELEVATION_CELL_DONE: 'grid_view',
+  ELEVATION_DEFECT: 'report',
+  PLANNING_APPROVED: 'verified',
+  PROJECT_COMPLETED: 'celebration',
+  TRACKING_BEAT: 'timeline',
+};
 
 @Component({
   selector: 'skyflow-shell-header-desktop',
@@ -23,6 +42,7 @@ type NavHit = { titleKey: string; path: string };
     RouterLink,
     TranslateModule,
     ThemeToggleComponent,
+    MatIconComponent,
   ],
   templateUrl: './shell-header-desktop.component.html',
   styleUrl: './shell-header-desktop.component.scss',
@@ -30,15 +50,18 @@ type NavHit = { titleKey: string; path: string };
 export class ShellHeaderDesktopComponent {
   readonly user = inject(CurrentUserService);
   readonly langSvc = inject(LanguageService);
+  readonly notifs = inject(NotificationsService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
-  private readonly theme = inject(ThemeService);
 
   private readonly profileMenu = viewChild<ElementRef<HTMLDetailsElement>>(
     'profileMenu',
   );
   private readonly langMenu = viewChild<ElementRef<HTMLDetailsElement>>(
     'langMenu',
+  );
+  private readonly notifMenu = viewChild<ElementRef<HTMLDetailsElement>>(
+    'notifMenu',
   );
   private readonly searchField = viewChild<ElementRef<HTMLInputElement>>(
     'searchField',
@@ -53,10 +76,11 @@ export class ShellHeaderDesktopComponent {
     { code: 'en', labelKey: 'LANG.EN' },
   ];
 
-  readonly headerLogoSrc = computed(() =>
-    this.theme.mode() === 'light'
-      ? '/assets/logo/dark-mode.png'
-      : '/assets/logo/bright-mode.png',
+  readonly headerLogoSrc = computed(() => '/assets/logo/bright-mode.png');
+
+  /** Role-based avatar icon shown when the user has no profile photo. */
+  readonly avatarIcon = computed(() =>
+    avatarIconForRole(this.user.sessionUser()?.role),
   );
 
   readonly navHits = computed((): NavHit[] => {
@@ -154,6 +178,7 @@ export class ShellHeaderDesktopComponent {
   private closeHeaderMenus(): void {
     this.closeProfile();
     this.closeLangMenu();
+    this.closeNotifMenu();
   }
 
   closeProfile(): void {
@@ -164,6 +189,46 @@ export class ShellHeaderDesktopComponent {
   closeLangMenu(): void {
     const el = this.langMenu()?.nativeElement;
     if (el) el.open = false;
+  }
+
+  closeNotifMenu(): void {
+    const el = this.notifMenu()?.nativeElement;
+    if (el) el.open = false;
+  }
+
+  /** Toggle handler on the bell — refresh the feed when it opens. */
+  onNotifToggle(open: boolean): void {
+    if (open) this.notifs.refresh();
+  }
+
+  iconForNotif(kind: NotificationKind): string {
+    return NOTIF_ICONS[kind] ?? 'notifications';
+  }
+
+  onNotifClick(n: NotificationDto): void {
+    this.notifs.markRead(n.id);
+    this.closeNotifMenu();
+    if (n.link) void this.router.navigateByUrl(n.link);
+  }
+
+  markAllNotifsRead(ev: Event): void {
+    ev.stopPropagation();
+    this.notifs.markAllRead();
+  }
+
+  /** Localized relative time (e.g. "לפני 5 דק'"). */
+  timeAgo(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (!Number.isFinite(then)) return '';
+    const diffSec = Math.round((then - Date.now()) / 1000);
+    const abs = Math.abs(diffSec);
+    const rtf = new Intl.RelativeTimeFormat(this.langSvc.current(), {
+      numeric: 'auto',
+    });
+    if (abs < 60) return rtf.format(Math.round(diffSec), 'second');
+    if (abs < 3600) return rtf.format(Math.round(diffSec / 60), 'minute');
+    if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
+    return rtf.format(Math.round(diffSec / 86400), 'day');
   }
 
   pickLang(code: SkyflowLang): void {

@@ -1,5 +1,63 @@
 @use './admin-card' as *;
 
+.po-header__icon {
+  display: flex;
+  height: 3.5rem;
+  width: 3.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  color: #fff !important;
+  background: linear-gradient(to bottom right, #558fc3, #3e5d88);
+  box-shadow:
+    0 10px 15px -3px rgba(62, 93, 136, 0.3),
+    0 4px 6px -4px rgba(62, 93, 136, 0.3);
+
+  svg {
+    color: #fff !important;
+  }
+}
+
+.po-header__new-btn,
+.po-empty__new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff !important;
+  text-decoration: none;
+  background: linear-gradient(to bottom, #558fc3, #4b689d);
+  box-shadow:
+    0 10px 15px -3px rgba(62, 93, 136, 0.3),
+    0 4px 6px -4px rgba(62, 93, 136, 0.3);
+  transition: filter 0.15s ease, transform 0.15s ease;
+
+  svg {
+    color: #fff !important;
+  }
+
+  &:hover {
+    filter: brightness(1.05);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.po-header__new-btn {
+  padding-block: 0.75rem;
+}
+
+.po-empty__new-btn {
+  margin-top: 0.25rem;
+  padding-block: 0.625rem;
+}
+
 .po-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
@@ -135,4 +193,25 @@
 .po-card__pdf:hover {
   border-color: rgba(85, 143, 195, 0.45);
   background: rgba(85, 143, 195, 0.08);
+}
+
+.po-modal-cards__loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 20rem;
+  padding: 3rem 1rem;
+}
+
+.po-modal-cards__loader-text {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--admin-muted, #64748b);
+}
+
+.po-modal-view-tab--active {
+  color: #fff !important;
 }

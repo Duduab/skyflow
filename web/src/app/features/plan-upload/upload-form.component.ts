@@ -15,6 +15,7 @@ import { ItemCardComponent } from './item-card.component';
   standalone: true,
   imports: [CommonModule, RouterLink, TranslateModule, ItemCardComponent],
   templateUrl: './upload-form.component.html',
+  styleUrl: './upload-form.component.scss',
 })
 export class UploadFormComponent {
   private readonly planUpload = inject(PlanUploadService);

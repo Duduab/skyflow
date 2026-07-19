@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   DeliveryNoteShippingType,
   DeliveryNoteStatus,
+  NotificationKind,
   Prisma,
   ProjectFlowStatus,
   SkyflowRole,
@@ -16,9 +17,10 @@ import {
 import { MailService } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { OrdersService } from '../orders/orders.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { packPhotoRequiredCount } from '../common/pack-photo.util.js';
 import {
-  buildDeliveryNoteLineItems,
+  buildDeliveryNoteUnitLineItems,
   buildLineItemPreviews,
   computeShippedByLineKey,
   deliveryNoteAbsolutePath,
@@ -65,6 +67,7 @@ export class DeliveryNotesService {
     private readonly ordersService: OrdersService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   assertCanIssue(role: SkyflowRole, managedStationId: number | null): void {
@@ -80,37 +83,12 @@ export class DeliveryNotesService {
   }
 
   private async loadCatalog(projectId: string) {
-    const [sawLines, productItems] = await Promise.all([
-      this.prisma.sawStationWorkLine.findMany({
-        where: { projectId },
-        orderBy: { sortOrder: 'asc' },
-      }),
-      this.prisma.productItem.findMany({
-        where: { projectId },
-        orderBy: { sortOrder: 'asc' },
-        include: { components: true },
-      }),
-    ]);
-    return buildDeliveryNoteLineItems(
-      sawLines.map((l) => ({
-        componentKind: l.componentKind,
-        description: l.description,
-        quantity: l.quantity,
-        instructionKind: l.instructionKind,
-        planningCutLengthMm: l.planningCutLengthMm,
-        sawsProfileCode: l.sawsProfileCode,
-      })),
-      productItems.map((pi) => ({
-        instructionKind: pi.instructionKind,
-        label: pi.label,
-        components: pi.components.map((c) => ({
-          kind: c.kind,
-          description: c.description,
-          quantity: c.quantity,
-          sawsProfileCode: c.sawsProfileCode,
-        })),
-      })),
-    );
+    const windowTypes = await this.prisma.windowType.findMany({
+      where: { projectId },
+      orderBy: { sortOrder: 'asc' },
+      select: { code: true, totalQty: true, sortOrder: true },
+    });
+    return buildDeliveryNoteUnitLineItems(windowTypes);
   }
 
   private async loadProjectNotes(projectId: string) {
@@ -160,7 +138,7 @@ export class DeliveryNotesService {
     const allShipped = remainingItemCount === 0 && catalog.length > 0;
 
     return {
-      canIssue: packComplete && remainingItemCount > 0,
+      canIssue: true,
       hasActiveNote: activeNotes.length > 0,
       allShipped,
       issuedCount: activeNotes.length,
@@ -213,15 +191,6 @@ export class DeliveryNotesService {
     if (order.flowStatus === ProjectFlowStatus.PENDING_PLANNING) {
       throw new BadRequestException(
         'Planning not approved — stations are locked',
-      );
-    }
-    const packComplete = await this.packReportComplete(
-      dto.projectId,
-      order.totalItems,
-    );
-    if (!packComplete) {
-      throw new BadRequestException(
-        'Complete pack photos before issuing a delivery note',
       );
     }
     if (
@@ -300,6 +269,22 @@ export class DeliveryNotesService {
       this.logger.warn(
         `Site manager notification failed for ${created.noteNumber}: ${err instanceof Error ? err.message : err}`,
       );
+    });
+
+    await this.notifications.emit({
+      kind: NotificationKind.DELIVERY_NOTE_ISSUED,
+      titleKey: 'NOTIFICATIONS.DELIVERY_NOTE_ISSUED_TITLE',
+      bodyKey: 'NOTIFICATIONS.DELIVERY_NOTE_ISSUED_BODY',
+      params: {
+        note: created.noteNumber,
+        project: order.name,
+        partial: isPartial,
+      },
+      link: '/admin/delivery-notes',
+      projectId: dto.projectId,
+      projectName: order.name,
+      stationId: 6,
+      actorUserId: reporterUserId ?? null,
     });
 
     const expected = sumExpectedCountsFromNotes(

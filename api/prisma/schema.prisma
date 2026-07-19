@@ -123,6 +123,13 @@ enum WorkCycleAssignmentRole {
   WORKER
 }
 
+/// שלב במעקב ובקרה של מנהל הפרויקט — ייצור / אספקה / התקנה
+enum TrackingPhase {
+  PRODUCTION
+  SUPPLY
+  INSTALL
+}
+
 model User {
   id               String      @id @default(uuid())
   email            String      @unique
@@ -146,6 +153,8 @@ model User {
   completedElevationCells       ElevationCell[]
   reportedCellDefects           CellDefect[]
   workCycleAssignments          WorkCycleAssignment[]
+  trackingBeats                 ModuleTrackingBeat[]
+  notifications                 Notification[]              @relation("NotificationRecipient")
 
   @@index([role])
   @@index([managedStationId])
@@ -229,6 +238,7 @@ model ProjectOrder {
   packReportPhotos    PackReportPhoto[]
   dailyTargets        UserDailyTarget[]
   deliveryNotes       ProjectDeliveryNote[]
+  moduleTrackingRows  ModuleTrackingRow[]
   elevationMaps       ElevationMap[]
   windowTypes         WindowType[]
   productionStages    ProductionStage[]
@@ -436,6 +446,8 @@ model ProjectDeliveryNote {
 
   project  ProjectOrder @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issuedBy User?        @relation(fields: [issuedByUserId], references: [id], onDelete: SetNull)
+
+  trackingBeats ModuleTrackingBeat[]
 
   @@index([projectId, issuedAt(sort: Desc)])
   @@index([projectId, status])
@@ -718,6 +730,8 @@ model WorkCycle {
   targetQty             Int             @default(0)
   /// יעד יומי שהוזן ידנית בשלב 3 (null = חישוב אוטומטי בלבד)
   dailyTargetQty        Int?
+  /// מסגרת זמן ליעד (שעות; null = חישוב אוטומטי בלבד)
+  dailyTargetHours      Float?
   /// התחנה שבה הסבב נמצא כעת (1–8)
   currentStationId      Int?
   openedAt              DateTime?
@@ -773,4 +787,108 @@ model WorkCycleAssignment {
   @@unique([workCycleId, userId, stationId])
   @@index([workCycleId])
   @@index([userId])
+}
+
+/// שורת מעקב ובקרה למנהל הפרויקט — מודול בודד (חזית × קוד מודול) בתחנת הרכבה באתר.
+/// נגזרת אוטומטית מכמויות התכנון (FacadeQuantity) ומהווה שכפול דיגיטלי של טבלת
+/// המעקב באקסל: מתוכנן / יוצר / סופק / הותקן + סטטוסים + הערות.
+model ModuleTrackingRow {
+  id           String  @id @default(uuid())
+  projectId    String
+  /// קוד השלב (A/B/C…) מהחזית
+  stageCode    String  @db.VarChar(16)
+  /// תווית החזית, e.g. E8 / N4-e / S4-w
+  facadeLabel  String  @db.VarChar(32)
+  /// קבוצת החזית (E / N4 / S4) — לקישור למפת החזיתות
+  facadeGroup  String  @default("") @db.VarChar(16)
+  /// קומה (אופציונלי — לא תמיד זמין בנתוני התכנון)
+  floor        String? @db.VarChar(16)
+  /// קוד המודול / סוג החלון, e.g. 74-1-10A
+  moduleCode   String  @db.VarChar(64)
+  /// קישור לסוג החלון (לצורך מפת חזיתות / הוראות ייצור)
+  windowTypeId String?
+  /// כמות מתוכננת (מקובץ הכמויות)
+  plannedQty   Int     @default(0)
+  /// הערות חופשיות (עמודת "הערות" באקסל)
+  notes        String  @default("") @db.Text
+  sortOrder    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project ProjectOrder         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  beats   ModuleTrackingBeat[]
+
+  @@unique([projectId, facadeLabel, moduleCode])
+  @@index([projectId])
+  @@index([projectId, stageCode])
+}
+
+/// פעימת דיווח על שורת מעקב — תאריך + כמות לשלב ייצור / אספקה / התקנה.
+/// באספקה ניתן לקשר תעודת משלוח (עמודת "תעודה" באקסל).
+model ModuleTrackingBeat {
+  id              String        @id @default(uuid())
+  rowId           String
+  phase           TrackingPhase
+  /// תאריך הפעימה YYYY-MM-DD (יום לוח מקומי)
+  occurredOn      String        @db.VarChar(10)
+  qty             Int           @default(0)
+  /// תעודת משלוח מקושרת (רק ל-SUPPLY) — היחידה נשארת מקושרת לתעודה מהתחנה הקודמת
+  deliveryNoteId  String?
+  note            String?       @db.Text
+  createdByUserId String?
+  createdAt       DateTime      @default(now())
+
+  row          ModuleTrackingRow    @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  deliveryNote ProjectDeliveryNote? @relation(fields: [deliveryNoteId], references: [id], onDelete: SetNull)
+  createdBy    User?                @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([rowId, phase])
+  @@index([deliveryNoteId])
+}
+
+/// סוג אירוע התראה — מנחה אייקון + תבנית טקסט בצד הלקוח
+enum NotificationKind {
+  CYCLE_LAUNCHED
+  CYCLE_REPORTED
+  CYCLE_COMPLETED
+  CYCLE_RETURNED
+  STATION_LOG
+  DAILY_TARGET_MANUAL
+  DELIVERY_NOTE_ISSUED
+  ELEVATION_CELL_DONE
+  ELEVATION_DEFECT
+  PLANNING_APPROVED
+  PROJECT_COMPLETED
+  TRACKING_BEAT
+}
+
+/// התראה פר-נמען — מצב "נקרא" (readAt) מנוהל לכל משתמש בנפרד (fan-out בכתיבה).
+/// הטקסט נשמר כמפתחות i18n + params כדי שכל משתמש יראה בשפה שלו.
+model Notification {
+  id              String           @id @default(uuid())
+  kind            NotificationKind
+  /// מפתח כותרת i18n (למשל NOTIFICATIONS.CYCLE_REPORTED_TITLE)
+  titleKey        String           @db.VarChar(120)
+  /// מפתח גוף i18n (אופציונלי)
+  bodyKey         String?          @db.VarChar(120)
+  /// פרמטרים להזרקה לתבנית i18n (projectName, qty, station, code, actor…)
+  params          Json?
+  /// יעד ניווט בלחיצה (route יחסי)
+  link            String?          @db.VarChar(300)
+  projectId       String?
+  projectName     String?          @db.VarChar(200)
+  stationId       Int?
+  /// מבצע הפעולה (denormalized — ללא FK)
+  actorUserId     String?
+  actorName       String?          @db.VarChar(200)
+  /// נמען ההתראה — כל שורה שייכת למשתמש אחד
+  recipientUserId String
+  readAt          DateTime?
+  createdAt       DateTime         @default(now())
+
+  recipient User @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, readAt])
+  @@index([recipientUserId, createdAt(sort: Desc)])
 }

@@ -12,10 +12,11 @@ import { TranslateModule } from '@ngx-translate/core';
 import { fromEvent } from 'rxjs';
 
 import { CurrentUserService } from '../../../core/current-user.service';
+import { MatIconComponent } from '../../../shared/mat-icon/mat-icon.component';
 
 @Component({
   selector: 'skyflow-admin-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslateModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslateModule, MatIconComponent],
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.scss',
 })

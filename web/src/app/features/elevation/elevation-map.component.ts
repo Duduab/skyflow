@@ -63,6 +63,13 @@ export class ElevationMapComponent implements OnInit {
    */
   readonly windowTypeDocs = input<WindowTypePreviewDto[]>([]);
   readonly angleDocs = input<AnglePreviewDto[]>([]);
+
+  /**
+   * Install-only mode (project-manager control page): keeps the interactive map
+   * with mark-done / return-to-station, but hides the per-unit document cards and
+   * the "launch unit" action, which belong to the planning flow.
+   */
+  readonly installMode = input<boolean>(false);
   /** `${windowTypeId}:${kind}` of the doc currently uploading (parent-driven). */
   readonly uploadingDocKey = input<string | null>(null);
   /** Emitted when the planner picks a file for a unit document in the popup. */
@@ -75,7 +82,7 @@ export class ElevationMapComponent implements OnInit {
 
   /** Documents for the window type of the currently open cell (embedded mode). */
   readonly activeCellDocs = computed(() => {
-    if (!this.embedded()) return null;
+    if (!this.embedded() || this.installMode()) return null;
     const cell = this.activeCell();
     if (!cell) return null;
     const docs = this.windowTypeDocs();

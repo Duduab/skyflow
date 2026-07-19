@@ -5,6 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { finalize, take } from 'rxjs/operators';
 
 import { LanguageService } from '../../../core/language.service';
+import { SkyflowLogoLoaderComponent } from '../../../shared/skyflow-logo-loader/skyflow-logo-loader.component';
 import { ItemCardComponent } from '../../plan-upload/item-card.component';
 import {
   PlanUploadResponseDto,
@@ -14,7 +15,7 @@ import {
 @Component({
   selector: 'skyflow-admin-purchase-orders',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, TranslateModule, ItemCardComponent],
+  imports: [CommonModule, RouterLink, DatePipe, TranslateModule, ItemCardComponent, SkyflowLogoLoaderComponent],
   templateUrl: './admin-purchase-orders.component.html',
   styleUrl: './admin-purchase-orders.component.scss',
 })
@@ -29,6 +30,7 @@ export class AdminPurchaseOrdersComponent implements OnInit {
   readonly selectedOrder = signal<PlanUploadResponseDto | null>(null);
   readonly modalViewMode = signal<'table' | 'cards'>('table');
   readonly modalCardImages = signal<Record<number, string>>({});
+  readonly modalCardImagesLoading = signal(false);
 
   readonly previewUrl = signal<string | null>(null);
   readonly previewLoading = signal(false);
@@ -71,11 +73,13 @@ export class AdminPurchaseOrdersComponent implements OnInit {
     this.selectedOrder.set(order);
     this.modalViewMode.set('table');
     this.modalCardImages.set({});
+    this.modalCardImagesLoading.set(false);
   }
 
   closeOrder(): void {
     this.selectedOrder.set(null);
     this.modalCardImages.set({});
+    this.modalCardImagesLoading.set(false);
   }
 
   setModalView(mode: 'table' | 'cards'): void {
@@ -88,15 +92,36 @@ export class AdminPurchaseOrdersComponent implements OnInit {
   private loadModalCardImages(): void {
     const order = this.selectedOrder();
     if (!order) return;
-    order.bomData.items.forEach((item, index) => {
-      if (!item.drawingImageUrl || this.modalCardImages()[index]) return;
+
+    const pending = order.bomData.items
+      .map((item, index) => ({ item, index }))
+      .filter(({ item, index }) => item.drawingImageUrl && !this.modalCardImages()[index]);
+
+    if (pending.length === 0) {
+      this.modalCardImagesLoading.set(false);
+      return;
+    }
+
+    this.modalCardImagesLoading.set(true);
+    let remaining = pending.length;
+
+    const finishOne = (): void => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        this.modalCardImagesLoading.set(false);
+      }
+    };
+
+    pending.forEach(({ item, index }) => {
       this.planUpload
-        .getDrawingPreview(item.drawingImageUrl)
+        .getDrawingPreview(item.drawingImageUrl!)
         .pipe(take(1))
         .subscribe({
-          next: ({ url }) =>
-            this.modalCardImages.update((map) => ({ ...map, [index]: url })),
-          error: () => undefined,
+          next: ({ url }) => {
+            this.modalCardImages.update((map) => ({ ...map, [index]: url }));
+            finishOne();
+          },
+          error: () => finishOne(),
         });
     });
   }

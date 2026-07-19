@@ -38,7 +38,6 @@ export class LoginPopupComponent {
   readonly open = input(true);
   readonly requiredRole = input<SkyflowRole>('SITE_MANAGER');
   readonly titleKey = input('LOGIN.SITE_MANAGER_POPUP_TITLE');
-  readonly subtitleKey = input('LOGIN.SITE_MANAGER_POPUP_HINT');
 
   readonly authenticated = output<void>();
   readonly dismissed = output<void>();

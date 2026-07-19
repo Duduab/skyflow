@@ -30,9 +30,10 @@
 
 .worker-hub__title {
   margin: 0;
-  font-size: clamp(2rem, 5vw, 3rem);
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.15rem, 5.5vw, 3.25rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
   color: #fff;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
 }
@@ -1078,12 +1079,14 @@ html[dir='ltr'] .worker-hub__row {
 
 .station-card__cta {
   display: flex;
+  direction: ltr;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   width: 100%;
   margin-top: 1.15rem;
-  padding: 0.88rem 1.35rem;
-  font-size: 1.08rem;
+  padding: 0.9rem 1.35rem;
+  font-size: 1.16rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-align: center;
@@ -1103,6 +1106,13 @@ html[dir='ltr'] .worker-hub__row {
 
 .station-card__cta-label {
   unicode-bidi: isolate;
+  line-height: 1.2;
+}
+
+.station-card__cta skyflow-mat-icon,
+.station-card__cta .sf-mat-icon {
+  flex-shrink: 0;
+  color: rgba(15, 23, 42, 0.88);
 }
 
 .station-card:hover .station-card__cta {

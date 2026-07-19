@@ -1,9 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
+  Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { SkyflowRole } from '@prisma/client';
@@ -11,10 +15,13 @@ import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { WorkCycleService } from './work-cycle.service';
 import { LaunchWorkCycleDto } from './dto/launch-work-cycle.dto';
+import { EditWorkCycleWindowDto } from './dto/edit-work-cycle.dto';
 import {
   SetWorkCycleAssignmentsDto,
   SetWorkCycleDailyTargetDto,
 } from './dto/work-cycle.dto';
+
+type AuthedRequest = { user?: { userId?: string } };
 
 @Controller('projects/:projectId/work-cycles')
 @UseGuards(RolesGuard)
@@ -34,6 +41,38 @@ export class WorkCycleController {
     @Param('cycleId') cycleId: string,
   ) {
     return this.workCycles.getCycle(projectId, cycleId);
+  }
+
+  /** Full detail view: mapped data + station journey (progress + logs). */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Get(':cycleId/details')
+  details(
+    @Param('projectId') projectId: string,
+    @Param('cycleId') cycleId: string,
+  ) {
+    return this.workCycles.getCycleDetails(projectId, cycleId);
+  }
+
+  /** Edit the unit's mapped data and reroute it to the affected station(s). */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Patch(':cycleId')
+  edit(
+    @Param('projectId') projectId: string,
+    @Param('cycleId') cycleId: string,
+    @Body() dto: EditWorkCycleWindowDto,
+  ) {
+    return this.workCycles.editCycleWindow(projectId, cycleId, dto);
+  }
+
+  /** Delete a draft unit (window type + cascade). */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Delete(':cycleId')
+  @HttpCode(204)
+  remove(
+    @Param('projectId') projectId: string,
+    @Param('cycleId') cycleId: string,
+  ) {
+    return this.workCycles.deleteCycle(projectId, cycleId);
   }
 
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
@@ -61,6 +100,7 @@ export class WorkCycleController {
       projectId,
       cycleId,
       dto.dailyTargetQty ?? null,
+      dto.dailyTargetHours ?? null,
     );
   }
 
@@ -71,12 +111,15 @@ export class WorkCycleController {
     @Param('projectId') projectId: string,
     @Param('cycleId') cycleId: string,
     @Body() dto: LaunchWorkCycleDto,
+    @Req() req: AuthedRequest,
   ) {
     return this.workCycles.launchCycle(
       projectId,
       cycleId,
       dto.assignments ?? [],
       dto.dailyTargetQty ?? null,
+      dto.dailyTargetHours ?? null,
+      req.user?.userId ?? null,
     );
   }
 }

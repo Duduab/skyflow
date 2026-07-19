@@ -25,14 +25,16 @@ export class App {
   private readonly router = inject(Router);
   readonly user = inject(CurrentUserService);
 
-  /** מסך ניהול מלא — בלי header כללי וכפתורי תחתית */
+  /** מסך מלא (ניהול / לוגין) — בלי padding של main, header וכפתורי תחתית */
   readonly adminChromeHidden = signal(false);
 
   constructor() {
-    const sync = () =>
+    const sync = () => {
+      const path = this.router.url.split('?')[0];
       this.adminChromeHidden.set(
-        this.router.url.split('?')[0].startsWith('/admin'),
+        path.startsWith('/admin') || path === '/login',
       );
+    };
     sync();
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))

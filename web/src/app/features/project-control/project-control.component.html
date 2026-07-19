@@ -1,0 +1,635 @@
+<section class="pc" dir="rtl">
+  <!-- ===== Header ===== -->
+  <header class="pc__head">
+    <button type="button" class="pc__back" (click)="goBack()" aria-label="חזרה">
+      <span aria-hidden="true">→</span>
+    </button>
+    <div class="pc__head-texts">
+      <h1 class="pc__title">
+        {{ data()?.project?.name || ('PROJECT_CONTROL.TITLE' | translate) }}
+      </h1>
+      <p class="pc__subtitle">{{ 'PROJECT_CONTROL.SUBTITLE' | translate }}</p>
+    </div>
+    @if (canReport()) {
+      <button
+        type="button"
+        class="pc__regen"
+        [disabled]="busy()"
+        (click)="regenerate()"
+        [attr.title]="'PROJECT_CONTROL.REGENERATE_HINT' | translate"
+      >
+        {{ 'PROJECT_CONTROL.REGENERATE' | translate }}
+      </button>
+    }
+  </header>
+
+  <!-- ===== Tabs ===== -->
+  <nav class="pc__tabs" role="tablist">
+    <button
+      type="button"
+      class="pc__tab"
+      [class.pc__tab--active]="activeTab() === 'tracking'"
+      (click)="setTab('tracking')"
+    >
+      {{ 'PROJECT_CONTROL.TAB_TRACKING' | translate }}
+    </button>
+    <button
+      type="button"
+      class="pc__tab"
+      [class.pc__tab--active]="activeTab() === 'map'"
+      (click)="setTab('map')"
+    >
+      {{ 'PROJECT_CONTROL.TAB_MAP' | translate }}
+    </button>
+    <button
+      type="button"
+      class="pc__tab"
+      [class.pc__tab--active]="activeTab() === 'mapping'"
+      (click)="setTab('mapping')"
+    >
+      {{ 'PROJECT_CONTROL.TAB_MAPPING' | translate }}
+    </button>
+    <button
+      type="button"
+      class="pc__tab"
+      [class.pc__tab--active]="activeTab() === 'notes'"
+      (click)="setTab('notes')"
+    >
+      {{ 'PROJECT_CONTROL.TAB_NOTES' | translate }}
+      @if ((data()?.deliveryNotes?.length ?? 0) > 0) {
+        <span class="pc__tab-badge">{{ data()?.deliveryNotes?.length }}</span>
+      }
+    </button>
+  </nav>
+
+  @if (loading()) {
+    <div class="pc__state">{{ 'COMMON.LOADING' | translate }}…</div>
+  } @else if (error()) {
+    <div class="pc__state pc__state--error">
+      @if (error() === 'FORBIDDEN') {
+        {{ 'PROJECT_CONTROL.FORBIDDEN' | translate }}
+      } @else {
+        {{ 'PROJECT_CONTROL.LOAD_ERROR' | translate }}
+      }
+    </div>
+  } @else if (data()) {
+    <!-- ============ TAB: TRACKING ============ -->
+    @if (activeTab() === 'tracking') {
+      <!-- KPI cards -->
+      <div class="pc__kpis">
+        <div class="kpi kpi--plan">
+          <span class="kpi__label">{{ 'PROJECT_CONTROL.KPI_PLANNED' | translate }}</span>
+          <span class="kpi__value">{{ data()!.summary.plannedQty }}</span>
+          <span class="kpi__sub">{{ 'PROJECT_CONTROL.KPI_MODULES' | translate }}</span>
+        </div>
+
+        <div class="kpi kpi--prod">
+          <span class="kpi__label">{{ 'PROJECT_CONTROL.KPI_PRODUCED' | translate }}</span>
+          <span class="kpi__value">
+            {{ data()!.summary.producedQty }}
+            <small>/ {{ data()!.summary.plannedQty }}</small>
+          </span>
+          <div class="kpi__bar"><i [style.width.%]="data()!.summary.producedPct"></i></div>
+          <span class="kpi__sub">
+            {{ data()!.summary.producedPct }}% ·
+            {{ 'PROJECT_CONTROL.KPI_REMAINING' | translate }}
+            {{ data()!.summary.remainingProduction }}
+          </span>
+        </div>
+
+        <div class="kpi kpi--supply">
+          <span class="kpi__label">{{ 'PROJECT_CONTROL.KPI_SUPPLIED' | translate }}</span>
+          <span class="kpi__value">
+            {{ data()!.summary.suppliedQty }}
+            <small>/ {{ data()!.summary.plannedQty }}</small>
+          </span>
+          <div class="kpi__bar"><i [style.width.%]="data()!.summary.suppliedPct"></i></div>
+          <span class="kpi__sub">
+            {{ data()!.summary.suppliedPct }}% ·
+            {{ 'PROJECT_CONTROL.KPI_REMAINING' | translate }}
+            {{ data()!.summary.remainingSupply }}
+          </span>
+        </div>
+
+        <div class="kpi kpi--install">
+          <span class="kpi__label">{{ 'PROJECT_CONTROL.KPI_INSTALLED' | translate }}</span>
+          <span class="kpi__value">
+            {{ data()!.summary.installedQty }}
+            <small>/ {{ data()!.summary.plannedQty }}</small>
+          </span>
+          <div class="kpi__bar"><i [style.width.%]="data()!.summary.installedPct"></i></div>
+          <span class="kpi__sub">
+            {{ data()!.summary.installedPct }}% ·
+            {{ 'PROJECT_CONTROL.KPI_REMAINING' | translate }}
+            {{ data()!.summary.remainingInstall }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Stage summary -->
+      @if (data()!.stageSummary.length) {
+        <div class="pc__stages">
+          @for (s of data()!.stageSummary; track s.code) {
+            <button
+              type="button"
+              class="stage-chip"
+              [class.stage-chip--active]="filterStage() === s.code"
+              [style.--stage]="stageColor(s.code)"
+              (click)="filterStage.set(filterStage() === s.code ? '' : s.code)"
+            >
+              <span class="stage-chip__code">{{ s.code || '—' }}</span>
+              <span class="stage-chip__meta">
+                {{ s.facadeCount }} {{ 'PROJECT_CONTROL.FACADES' | translate }} ·
+                {{ s.moduleCount }} {{ 'PROJECT_CONTROL.MODULES' | translate }}
+              </span>
+            </button>
+          }
+        </div>
+      }
+
+      <!-- Toolbar -->
+      <div class="pc__toolbar">
+        <input
+          type="search"
+          class="pc__field pc__search"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+          [placeholder]="'PROJECT_CONTROL.SEARCH_PH' | translate"
+        />
+        <select class="pc__field" [ngModel]="filterStage()" (ngModelChange)="filterStage.set($event)">
+          <option value="">{{ 'PROJECT_CONTROL.ALL_STAGES' | translate }}</option>
+          @for (st of data()!.filters.stages; track st) {
+            <option [value]="st">{{ 'PROJECT_CONTROL.STAGE' | translate }} {{ st }}</option>
+          }
+        </select>
+        <select class="pc__field" [ngModel]="filterFacade()" (ngModelChange)="filterFacade.set($event)">
+          <option value="">{{ 'PROJECT_CONTROL.ALL_FACADES' | translate }}</option>
+          @for (f of data()!.filters.facadeLabels; track f) {
+            <option [value]="f">{{ f }}</option>
+          }
+        </select>
+        <select class="pc__field" [ngModel]="filterModule()" (ngModelChange)="filterModule.set($event)">
+          <option value="">{{ 'PROJECT_CONTROL.ALL_MODULES' | translate }}</option>
+          @for (m of data()!.filters.moduleCodes; track m) {
+            <option [value]="m">{{ m }}</option>
+          }
+        </select>
+        <label class="pc__toggle">
+          <input
+            type="checkbox"
+            [ngModel]="hideCompleted()"
+            (ngModelChange)="hideCompleted.set($event)"
+          />
+          {{ 'PROJECT_CONTROL.HIDE_DONE' | translate }}
+        </label>
+        @if (hasActiveFilters()) {
+          <button type="button" class="pc__clear" (click)="clearFilters()">
+            {{ 'PROJECT_CONTROL.CLEAR' | translate }}
+          </button>
+        }
+        <span class="pc__count">
+          {{ filteredRows().length }} / {{ rows().length }}
+        </span>
+      </div>
+
+      <!-- Table -->
+      <div class="pc__table-wrap">
+        <table class="pc-table">
+          <thead>
+            <tr class="pc-table__group">
+              <th colspan="4" class="grp grp--base"></th>
+              <th colspan="3" class="grp grp--prod">{{ 'PROJECT_CONTROL.G_PRODUCTION' | translate }}</th>
+              <th colspan="3" class="grp grp--supply">{{ 'PROJECT_CONTROL.G_SUPPLY' | translate }}</th>
+              <th colspan="3" class="grp grp--install">{{ 'PROJECT_CONTROL.G_INSTALL' | translate }}</th>
+              <th class="grp grp--base"></th>
+            </tr>
+            <tr class="pc-table__head">
+              <th>{{ 'PROJECT_CONTROL.C_STAGE' | translate }}</th>
+              <th>{{ 'PROJECT_CONTROL.C_FACADE' | translate }}</th>
+              <th>{{ 'PROJECT_CONTROL.C_MODULE' | translate }}</th>
+              <th>{{ 'PROJECT_CONTROL.C_PLANNED' | translate }}</th>
+
+              <th class="col--prod">{{ 'PROJECT_CONTROL.C_DONE' | translate }}</th>
+              <th class="col--prod">{{ 'PROJECT_CONTROL.C_REMAIN' | translate }}</th>
+              <th class="col--prod">{{ 'PROJECT_CONTROL.C_STATUS' | translate }}</th>
+
+              <th class="col--supply">{{ 'PROJECT_CONTROL.C_DONE' | translate }}</th>
+              <th class="col--supply">{{ 'PROJECT_CONTROL.C_REMAIN' | translate }}</th>
+              <th class="col--supply">{{ 'PROJECT_CONTROL.C_STATUS' | translate }}</th>
+
+              <th class="col--install">{{ 'PROJECT_CONTROL.C_DONE' | translate }}</th>
+              <th class="col--install">{{ 'PROJECT_CONTROL.C_REMAIN' | translate }}</th>
+              <th class="col--install">{{ 'PROJECT_CONTROL.C_STATUS' | translate }}</th>
+
+              <th>{{ 'PROJECT_CONTROL.C_ACTION' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of filteredRows(); track r.id) {
+              <tr (click)="openReport(r)" class="pc-row" [class.pc-row--has-note]="r.notes">
+                <td>
+                  <span class="pc-stage" [style.--stage]="stageColor(r.stageCode)">
+                    {{ r.stageCode || '—' }}
+                  </span>
+                </td>
+                <td class="pc-row__facade">{{ r.facadeLabel }}</td>
+                <td class="pc-row__module">{{ r.moduleCode }}</td>
+                <td class="pc-row__planned">{{ r.plannedQty }}</td>
+
+                <td class="col--prod">{{ r.production.qty }}</td>
+                <td class="col--prod">{{ r.production.remaining }}</td>
+                <td class="col--prod">
+                  <span class="badge" [ngClass]="'badge--' + r.production.status.toLowerCase()">
+                    {{ statusKey('PRODUCTION', r.production.status) | translate }}
+                  </span>
+                </td>
+
+                <td class="col--supply">{{ r.supply.qty }}</td>
+                <td class="col--supply">{{ r.supply.remaining }}</td>
+                <td class="col--supply">
+                  <span class="badge" [ngClass]="'badge--' + r.supply.status.toLowerCase()">
+                    {{ statusKey('SUPPLY', r.supply.status) | translate }}
+                  </span>
+                </td>
+
+                <td class="col--install">{{ r.install.qty }}</td>
+                <td class="col--install">{{ r.install.remaining }}</td>
+                <td class="col--install">
+                  <span class="badge" [ngClass]="'badge--' + r.install.status.toLowerCase()">
+                    {{ statusKey('INSTALL', r.install.status) | translate }}
+                  </span>
+                </td>
+
+                <td class="pc-row__action">
+                  <span class="pc-report-btn">
+                    {{ (canReport() ? 'PROJECT_CONTROL.REPORT' : 'PROJECT_CONTROL.VIEW') | translate }}
+                  </span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="14" class="pc-table__empty">
+                  {{ 'PROJECT_CONTROL.NO_ROWS' | translate }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- ============ TAB: MAP ============ -->
+    @if (activeTab() === 'map') {
+      <div class="pc__map">
+        <!-- install progress banner -->
+        <div class="pc-mapbar">
+          <div class="pc-mapbar__texts">
+            <h2 class="pc-mapbar__title">{{ 'PROJECT_CONTROL.MAP_TITLE' | translate }}</h2>
+            <p class="pc-mapbar__desc">{{ 'PROJECT_CONTROL.MAP_DESC' | translate }}</p>
+          </div>
+          <div class="pc-mapbar__stat">
+            <span class="pc-mapbar__num">{{ data()!.summary.installedPct }}%</span>
+            <div class="pc-mapbar__bar"><i [style.width.%]="data()!.summary.installedPct"></i></div>
+            <span class="pc-mapbar__sub">
+              {{ data()!.summary.installedQty }} / {{ data()!.summary.plannedQty }}
+              {{ 'PROJECT_CONTROL.INSTALLED_LC' | translate }}
+            </span>
+          </div>
+        </div>
+
+        @if (previewLoading()) {
+          <div class="pc__state">{{ 'COMMON.LOADING' | translate }}…</div>
+        } @else if (hasFacadeMaps()) {
+          <p class="pc-mappick__hint">{{ 'PROJECT_CONTROL.MAP_PICK_HINT' | translate }}</p>
+          @for (d of facadeGroupsByDirection(); track d.direction) {
+            <div class="pc-mapdir">
+              <div class="pc-mapdir__head">
+                <span class="pc-mapdir__name">{{ directionKey(d.direction) | translate }}</span>
+                <span class="pc-mapdir__count" dir="ltr">{{ d.groups.length }}</span>
+              </div>
+              <div class="pc-maptiles">
+                @for (g of d.groups; track g.key) {
+                  <button type="button" class="pc-maptile" (click)="openGroupMap(g.key)">
+                    <span class="pc-maptile__badge material-symbols-outlined" aria-hidden="true">map</span>
+                    <span class="pc-maptile__label" dir="ltr">{{ g.key }}</span>
+                    <span class="pc-maptile__qty" dir="ltr">
+                      {{ g.totalQty }} {{ 'PROJECT_CONTROL.MODULES' | translate }}
+                    </span>
+                    @if (g.subLabels.length > 1) {
+                      <span class="pc-maptile__subs">
+                        @for (sub of g.subLabels; track sub) {
+                          <span class="pc-maptile__sub" dir="ltr">{{ sub }}</span>
+                        }
+                      </span>
+                    }
+                    <span class="pc-maptile__cta">{{ 'PLANNING_PDF.OPEN' | translate }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        } @else {
+          <div class="pc__state">{{ 'PROJECT_CONTROL.NO_FACADE_MAPS' | translate }}</div>
+        }
+      </div>
+    }
+
+    <!-- ============ TAB: MAPPING ============ -->
+    @if (activeTab() === 'mapping') {
+      @if (previewLoading()) {
+        <div class="pc__state">{{ 'COMMON.LOADING' | translate }}…</div>
+      } @else if (preview()) {
+        <div class="pc__mapping">
+          <div class="pc-map-metrics">
+            <div><b>{{ preview()!.windowTypeCount }}</b><span>{{ 'PROJECT_CONTROL.WINDOW_TYPES' | translate }}</span></div>
+            <div><b>{{ preview()!.facadeCount }}</b><span>{{ 'PROJECT_CONTROL.FACADES' | translate }}</span></div>
+            <div><b>{{ preview()!.totalUnits }}</b><span>{{ 'PROJECT_CONTROL.MODULES' | translate }}</span></div>
+            <div><b>{{ preview()!.stages.length }}</b><span>{{ 'PROJECT_CONTROL.STAGES' | translate }}</span></div>
+          </div>
+
+          <h3 class="pc-sec-title">{{ 'PROJECT_CONTROL.STAGES' | translate }}</h3>
+          <div class="pc-stage-grid">
+            @for (s of preview()!.stages; track s.code) {
+              <div class="pc-stage-card" [style.--stage]="s.colorHex || stageColor(s.code)">
+                <div class="pc-stage-card__head">
+                  <span class="pc-stage-card__code">{{ 'PROJECT_CONTROL.STAGE' | translate }} {{ s.code }}</span>
+                  <span class="pc-stage-card__qty">{{ s.facadeTotalQty || s.totalQty }}</span>
+                </div>
+                <div class="pc-stage-card__meta">
+                  {{ s.facadeCount }} {{ 'PROJECT_CONTROL.FACADES' | translate }} ·
+                  {{ s.windowTypeCount }} {{ 'PROJECT_CONTROL.WINDOW_TYPES' | translate }}
+                </div>
+                <div class="pc-stage-card__facades">
+                  @for (g of s.facadeGroups; track g.direction) {
+                    @for (f of g.facades; track f.id) {
+                      <span class="pc-facade-pill">{{ f.label }} <i>{{ f.totalQty }}</i></span>
+                    }
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <h3 class="pc-sec-title">{{ 'PROJECT_CONTROL.WINDOW_TYPES' | translate }}</h3>
+          <div class="pc__table-wrap">
+            <table class="pc-table pc-table--simple">
+              <thead>
+                <tr class="pc-table__head">
+                  <th>{{ 'PROJECT_CONTROL.C_MODULE' | translate }}</th>
+                  <th>{{ 'PROJECT_CONTROL.C_PLANNED' | translate }}</th>
+                  <th>{{ 'PROJECT_CONTROL.C_FACADE' | translate }}</th>
+                  <th>{{ 'PROJECT_CONTROL.CELLS' | translate }}</th>
+                  <th>{{ 'PROJECT_CONTROL.COMPOSITION' | translate }}</th>
+                  <th>{{ 'PROJECT_CONTROL.INSTRUCTIONS' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (w of preview()!.windowTypes; track w.id) {
+                  <tr>
+                    <td class="pc-row__module">{{ w.code }}</td>
+                    <td class="pc-row__planned">{{ w.totalQty }}</td>
+                    <td>{{ w.facadeCount }}</td>
+                    <td>{{ w.elevationCellCount }}</td>
+                    <td class="pc-comp">{{ w.composition.length ? w.composition.join(' · ') : '—' }}</td>
+                    <td>
+                      @if (w.instructionPdfUrl) {
+                        <a class="pc-link" [href]="w.instructionPdfUrl" target="_blank" rel="noopener">
+                          {{ 'PROJECT_CONTROL.OPEN_PDF' | translate }}
+                        </a>
+                      } @else {
+                        <span class="pc-muted">—</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      } @else {
+        <div class="pc__state">{{ 'PROJECT_CONTROL.NO_MAPPING' | translate }}</div>
+      }
+    }
+
+    <!-- ============ TAB: DELIVERY NOTES ============ -->
+    @if (activeTab() === 'notes') {
+      <div class="pc__notes">
+        @if (data()!.deliveryNotes.length) {
+          @for (n of data()!.deliveryNotes; track n.id) {
+            <div class="pc-note" [class.pc-note--cancelled]="!n.active">
+              <div class="pc-note__main">
+                <span class="pc-note__num">{{ 'PROJECT_CONTROL.NOTE_NO' | translate }} {{ n.noteNumber }}</span>
+                <span class="pc-note__badges">
+                  <span class="badge" [ngClass]="n.active ? 'badge--done' : 'badge--not_started'">
+                    {{ (n.active ? 'PROJECT_CONTROL.NOTE_ACTIVE' : 'PROJECT_CONTROL.NOTE_CANCELLED') | translate }}
+                  </span>
+                  <span class="badge badge--in_progress">
+                    {{ (n.shippingType === 'EXTERNAL' ? 'PROJECT_CONTROL.SHIP_EXTERNAL' : 'PROJECT_CONTROL.SHIP_INTERNAL') | translate }}
+                  </span>
+                </span>
+              </div>
+              <div class="pc-note__meta">
+                <span>{{ n.issuedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+                @if (n.issuedByName) { <span>· {{ n.issuedByName }}</span> }
+                @if (n.externalPrice) { <span>· ₪{{ n.externalPrice }}</span> }
+              </div>
+              <a class="pc-note__open" [href]="n.documentUrl" target="_blank" rel="noopener">
+                {{ 'PROJECT_CONTROL.OPEN_PDF' | translate }}
+              </a>
+            </div>
+          }
+        } @else {
+          <div class="pc__state">{{ 'PROJECT_CONTROL.NO_NOTES' | translate }}</div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ===== Report popup ===== -->
+  <skyflow-ui-popup
+    [open]="!!reportRow()"
+    [title]="reportRow()?.moduleCode || ''"
+    [subtitle]="
+      reportRow()
+        ? reportRow()!.facadeLabel + ' · ' + ('PROJECT_CONTROL.STAGE' | translate) + ' ' + reportRow()!.stageCode
+        : ''
+    "
+    size="wide"
+    [hideIcon]="true"
+    (closed)="closeReport()"
+  >
+    @if (reportRow(); as row) {
+      <div class="rp">
+        <!-- phase mini stats -->
+        <div class="rp__stats">
+          <div class="rp-stat rp-stat--prod">
+            <span>{{ 'PROJECT_CONTROL.G_PRODUCTION' | translate }}</span>
+            <b>{{ row.production.qty }} / {{ row.plannedQty }}</b>
+            <span class="badge" [ngClass]="'badge--' + row.production.status.toLowerCase()">
+              {{ statusKey('PRODUCTION', row.production.status) | translate }}
+            </span>
+          </div>
+          <div class="rp-stat rp-stat--supply">
+            <span>{{ 'PROJECT_CONTROL.G_SUPPLY' | translate }}</span>
+            <b>{{ row.supply.qty }} / {{ row.plannedQty }}</b>
+            <span class="badge" [ngClass]="'badge--' + row.supply.status.toLowerCase()">
+              {{ statusKey('SUPPLY', row.supply.status) | translate }}
+            </span>
+          </div>
+          <div class="rp-stat rp-stat--install">
+            <span>{{ 'PROJECT_CONTROL.G_INSTALL' | translate }}</span>
+            <b>{{ row.install.qty }} / {{ row.plannedQty }}</b>
+            <span class="badge" [ngClass]="'badge--' + row.install.status.toLowerCase()">
+              {{ statusKey('INSTALL', row.install.status) | translate }}
+            </span>
+          </div>
+        </div>
+
+        @if (canReport()) {
+          <!-- add beat form -->
+          <div class="rp__form">
+            <div class="rp__phase-seg">
+              <button
+                type="button"
+                [class.active]="beatPhase() === 'PRODUCTION'"
+                (click)="beatPhase.set('PRODUCTION')"
+              >{{ 'PROJECT_CONTROL.G_PRODUCTION' | translate }}</button>
+              <button
+                type="button"
+                [class.active]="beatPhase() === 'SUPPLY'"
+                (click)="beatPhase.set('SUPPLY')"
+              >{{ 'PROJECT_CONTROL.G_SUPPLY' | translate }}</button>
+              <button
+                type="button"
+                [class.active]="beatPhase() === 'INSTALL'"
+                (click)="beatPhase.set('INSTALL')"
+              >{{ 'PROJECT_CONTROL.G_INSTALL' | translate }}</button>
+            </div>
+
+            <div class="rp__fields">
+              <label class="rp__field">
+                <span>{{ 'PROJECT_CONTROL.F_DATE' | translate }}</span>
+                <input type="date" [ngModel]="beatDate()" (ngModelChange)="beatDate.set($event)" />
+              </label>
+              <label class="rp__field">
+                <span>
+                  {{ 'PROJECT_CONTROL.F_QTY' | translate }}
+                  <i class="rp__hint">({{ 'PROJECT_CONTROL.F_REMAIN' | translate }} {{ maxBeatQty() }})</i>
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  [max]="maxBeatQty()"
+                  [ngModel]="beatQty()"
+                  (ngModelChange)="beatQty.set($event)"
+                  [placeholder]="'0'"
+                />
+              </label>
+              @if (beatPhase() === 'SUPPLY') {
+                <label class="rp__field rp__field--wide">
+                  <span>{{ 'PROJECT_CONTROL.F_NOTE_LINK' | translate }}</span>
+                  <select [ngModel]="beatNoteId()" (ngModelChange)="beatNoteId.set($event)">
+                    <option value="">{{ 'PROJECT_CONTROL.F_NO_NOTE' | translate }}</option>
+                    @for (dn of data()!.deliveryNotes; track dn.id) {
+                      <option [value]="dn.id">
+                        {{ 'PROJECT_CONTROL.NOTE_NO' | translate }} {{ dn.noteNumber }}
+                        @if (!dn.active) { ({{ 'PROJECT_CONTROL.NOTE_CANCELLED' | translate }}) }
+                      </option>
+                    }
+                  </select>
+                </label>
+              }
+              <label class="rp__field rp__field--wide">
+                <span>{{ 'PROJECT_CONTROL.F_BEAT_NOTE' | translate }}</span>
+                <input type="text" [ngModel]="beatNote()" (ngModelChange)="beatNote.set($event)" />
+              </label>
+            </div>
+
+            <button
+              type="button"
+              class="rp__add"
+              [disabled]="busy() || !beatQty() || (beatQty() ?? 0) <= 0"
+              (click)="submitBeat()"
+            >
+              {{ 'PROJECT_CONTROL.ADD_BEAT' | translate }}
+            </button>
+          </div>
+        }
+
+        <!-- beats history for selected phase -->
+        <div class="rp__beats">
+          <h4>{{ 'PROJECT_CONTROL.BEATS_HISTORY' | translate }}</h4>
+          @if (beatsFor(row, beatPhase()).length) {
+            <ul class="rp-beat-list">
+              @for (b of beatsFor(row, beatPhase()); track b.id) {
+                <li class="rp-beat">
+                  <span class="rp-beat__date">{{ b.occurredOn }}</span>
+                  <span class="rp-beat__qty">+{{ b.qty }}</span>
+                  @if (b.deliveryNoteNumber) {
+                    <span class="rp-beat__note-ref">
+                      {{ 'PROJECT_CONTROL.NOTE_NO' | translate }} {{ b.deliveryNoteNumber }}
+                    </span>
+                  }
+                  @if (b.note) { <span class="rp-beat__text">{{ b.note }}</span> }
+                  @if (canReport()) {
+                    <button type="button" class="rp-beat__del" (click)="deleteBeat(b.id)" [disabled]="busy()">
+                      ✕
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="rp__empty">{{ 'PROJECT_CONTROL.NO_BEATS' | translate }}</p>
+          }
+        </div>
+
+        <!-- notes -->
+        <div class="rp__notes">
+          <label>
+            <span>{{ 'PROJECT_CONTROL.C_NOTES' | translate }}</span>
+            <textarea
+              rows="2"
+              [ngModel]="notesDraft()"
+              (ngModelChange)="notesDraft.set($event)"
+              [disabled]="!canReport()"
+            ></textarea>
+          </label>
+          @if (canReport()) {
+            <button type="button" class="rp__save-notes" [disabled]="busy()" (click)="saveNotes()">
+              {{ 'PROJECT_CONTROL.SAVE_NOTES' | translate }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <div popup-actions>
+      <skyflow-ui-button variant="secondary" (click)="closeReport()">
+        {{ 'COMMON.CLOSE' | translate }}
+      </skyflow-ui-button>
+    </div>
+  </skyflow-ui-popup>
+
+  <!-- ===== Interactive facade-map popup (install-only) ===== -->
+  @if (mapModalGroup(); as groupKey) {
+    <div class="pc-mapmodal__backdrop" (click)="closeGroupMap()"></div>
+    <div class="pc-mapmodal" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        class="pc-mapmodal__close"
+        (click)="closeGroupMap()"
+        [attr.aria-label]="'COMMON.CLOSE' | translate"
+      >
+        ✕
+      </button>
+      <div class="pc-mapmodal__body">
+        <skyflow-elevation-map
+          [embeddedProjectId]="projectId()"
+          [embeddedGroup]="groupKey"
+          [installMode]="true"
+        />
+      </div>
+    </div>
+  }
+</section>

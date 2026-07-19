@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { SkyflowRole } from '@prisma/client';
@@ -69,8 +70,9 @@ export class UsersController {
   upsertDailyTarget(
     @Param('id') id: string,
     @Body() dto: CreateUserDailyTargetDto,
+    @Req() req: { user?: { userId?: string } },
   ) {
-    return this.users.upsertDailyTarget(id, dto);
+    return this.users.upsertDailyTarget(id, dto, req.user?.userId ?? null);
   }
 
   @Post()

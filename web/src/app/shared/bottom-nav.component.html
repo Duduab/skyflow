@@ -23,24 +23,84 @@
       </div>
     }
 
-    <div class="sf-bottom-nav__bar">
-      <a
-        routerLink="/profile"
-        routerLinkActive="is-active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        class="sf-bottom-nav__item"
+    @if (stationsMenuOpen() && centerOpensMenu()) {
+      <div
+        class="sf-bottom-nav__flyout sf-bottom-nav__flyout--stations"
+        role="menu"
+        [attr.aria-label]="'BOTTOM_NAV.STATIONS' | translate"
       >
-        @if (user.photoUrl(); as src) {
-          <span class="sf-bottom-nav__avatar-wrap">
-            <img [src]="src" alt="" class="sf-bottom-nav__avatar" width="32" height="32" />
-          </span>
-        } @else {
-          <span class="sf-bottom-nav__avatar-fallback" aria-hidden="true">{{
-            user.initials()
-          }}</span>
+        <ng-container *ngTemplateOutlet="stationsMenuList" />
+      </div>
+    }
+
+    <div class="sf-bottom-nav__bar">
+      <div class="sf-bottom-nav__search-anchor">
+        @if (searchMenuOpen()) {
+          <div
+            class="sf-bottom-nav__flyout sf-bottom-nav__flyout--search sf-bottom-nav__flyout--from-tab"
+            role="dialog"
+            [attr.aria-label]="'APP.HEADER_SEARCH_TITLE' | translate"
+          >
+            <div class="sf-bottom-nav__search-head">
+              <span class="sf-bottom-nav__search-lead" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <circle cx="11" cy="11" r="7.5" />
+                  <path d="m21 21-4.2-4.2" stroke-linecap="round" />
+                </svg>
+              </span>
+              <input
+                #searchField
+                type="search"
+                class="sf-bottom-nav__search-input"
+                autocomplete="off"
+                [placeholder]="'APP.HEADER_SEARCH_PLACEHOLDER' | translate"
+                [attr.aria-label]="'APP.HEADER_GLOBAL_SEARCH_ARIA' | translate"
+                [value]="searchQuery()"
+                (input)="onSearchInput($any($event.target).value)"
+                (keydown.enter)="pickFirstSearchHit()"
+                (keydown.escape)="closeSearchMenu()"
+              />
+            </div>
+            @if (filteredSearchHits().length === 0 && searchQuery().trim()) {
+              <p class="sf-bottom-nav__search-empty">
+                {{ 'APP.HEADER_SEARCH_EMPTY' | translate }}
+              </p>
+            } @else {
+              <ul class="sf-bottom-nav__search-list">
+                @for (h of filteredSearchHits(); track h.path + h.titleKey) {
+                  <li>
+                    <a
+                      class="sf-bottom-nav__search-hit"
+                      [routerLink]="h.path"
+                      (click)="closeSearchMenu()"
+                    >
+                      {{ h.titleKey | translate }}
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
         }
-        <span class="sf-bottom-nav__label">{{ user.firstName() }}</span>
-      </a>
+
+        <button
+          type="button"
+          class="sf-bottom-nav__item sf-bottom-nav__item--soft-active"
+          [class.is-active]="searchMenuOpen()"
+          [attr.aria-expanded]="searchMenuOpen()"
+          [attr.aria-label]="'BOTTOM_NAV.SEARCH' | translate"
+          [title]="'BOTTOM_NAV.SEARCH' | translate"
+          (click)="toggleSearchMenu($event)"
+        >
+          <span class="sf-bottom-nav__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <circle cx="11" cy="11" r="7.5" />
+              <path d="m21 21-4.2-4.2" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.SEARCH' | translate }}</span>
+        </button>
+      </div>
 
       <button
         type="button"
@@ -52,29 +112,102 @@
         (click)="toggleLangMenu($event)"
       >
         <span class="sf-bottom-nav__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M3.5 9h17M3.5 15h17M12 3a14 14 0 0 1 3.1 9A14 14 0 0 1 12 21a14 14 0 0 1-3.1-9A14 14 0 0 1 12 3Z" />
-          </svg>
+          <skyflow-mat-icon icon="public" [size]="28" [weight]="400" />
         </span>
         <span class="sf-bottom-nav__label">{{ 'APP.LANGUAGE' | translate }}</span>
       </button>
 
-      <a
-        routerLink="/worker"
-        routerLinkActive="is-active"
-        class="sf-bottom-nav__item"
-      >
-        <span class="sf-bottom-nav__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-            <rect x="3" y="5" width="5.5" height="5.5" rx="1.3" />
-            <rect x="15.5" y="5" width="5.5" height="5.5" rx="1.3" />
-            <rect x="9.25" y="13.5" width="5.5" height="5.5" rx="1.3" />
-            <path d="M8.5 7.75h7M12 10.5v3" stroke-linecap="round" />
-          </svg>
+      <ng-template #centerInner>
+        <span class="sf-bottom-nav__center-holder">
+          <span class="sf-bottom-nav__center-ring">
+            @if (floorCenterStation(); as st) {
+              <span class="sf-bottom-nav__center-btn sf-bottom-nav__center-btn--station">
+                <skyflow-mat-icon
+                  [icon]="st.icon"
+                  [size]="30"
+                  [weight]="600"
+                  [filled]="st.iconFilled"
+                />
+              </span>
+            } @else {
+              <span class="sf-bottom-nav__center-btn">
+                <span class="sf-bottom-nav__center-icon" aria-hidden="true">
+                  <skyflow-mat-icon icon="activity_zone" [size]="30" [weight]="400" />
+                </span>
+              </span>
+            }
+          </span>
         </span>
-        <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.STATIONS' | translate }}</span>
-      </a>
+        <span class="sf-bottom-nav__label sf-bottom-nav__center-label">
+          @if (floorCenterStation(); as st) {
+            {{ st.labelKey | translate }}
+          } @else {
+            {{ 'BOTTOM_NAV.STATION' | translate }}
+          }
+        </span>
+      </ng-template>
+
+      @if (centerOpensMenu()) {
+        <button
+          type="button"
+          class="sf-bottom-nav__center"
+          [class.is-active]="stationsMenuOpen()"
+          [attr.aria-expanded]="stationsMenuOpen()"
+          [attr.aria-label]="'BOTTOM_NAV.STATIONS' | translate"
+          [title]="'BOTTOM_NAV.STATIONS' | translate"
+          (click)="toggleStationsMenu($event)"
+        >
+          <ng-container [ngTemplateOutlet]="centerInner" />
+        </button>
+      } @else {
+        <a
+          [routerLink]="floorCenterLink()"
+          routerLinkActive="is-active"
+          class="sf-bottom-nav__center"
+          [class.sf-bottom-nav__center--station]="!!floorCenterStation()"
+          [attr.aria-label]="
+            floorCenterStation()
+              ? (floorCenterStation()!.labelKey | translate)
+              : ('BOTTOM_NAV.STATION' | translate)
+          "
+          [title]="
+            floorCenterStation()
+              ? (floorCenterStation()!.labelKey | translate)
+              : ('BOTTOM_NAV.STATION' | translate)
+          "
+        >
+          <ng-container [ngTemplateOutlet]="centerInner" />
+        </a>
+      }
+
+      @if (showFloorStationsTab()) {
+        <div class="sf-bottom-nav__stations-anchor">
+          @if (stationsMenuOpen()) {
+            <div
+              class="sf-bottom-nav__flyout sf-bottom-nav__flyout--stations sf-bottom-nav__flyout--from-tab"
+              role="menu"
+              [attr.aria-label]="'BOTTOM_NAV.STATIONS' | translate"
+            >
+              <ng-container *ngTemplateOutlet="stationsMenuList" />
+            </div>
+          }
+
+          <button
+            type="button"
+            class="sf-bottom-nav__item sf-bottom-nav__item--soft-active"
+            [class.is-active]="stationsMenuOpen() || isWorkerHubRoute()"
+            [attr.aria-expanded]="stationsMenuOpen()"
+            [attr.aria-label]="'BOTTOM_NAV.STATIONS' | translate"
+            [title]="'BOTTOM_NAV.STATIONS' | translate"
+            (click)="toggleStationsMenu($event)"
+          >
+            <span class="sf-bottom-nav__icon" aria-hidden="true">
+              <skyflow-mat-icon icon="activity_zone" [size]="28" [weight]="400" />
+            </span>
+            <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.STATIONS' | translate }}</span>
+          </button>
+        </div>
+      }
 
       @if (user.isAdmin()) {
         <a
@@ -84,8 +217,7 @@
         >
           <span class="sf-bottom-nav__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-              <rect x="3" y="4" width="18" height="12" rx="2.2" />
-              <path d="M8 20h8M12 16v4M7.5 8h4M7.5 11h2.5M14 8.5h3M14 11.5h3" stroke-linecap="round" />
+              <path d="M12 3l7 2.7v5.3c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V5.7L12 3Z" stroke-linejoin="round" />
             </svg>
           </span>
           <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.ADMIN' | translate }}</span>
@@ -98,14 +230,57 @@
           class="sf-bottom-nav__item"
         >
           <span class="sf-bottom-nav__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
-              <path d="M7 3.5h7l3 3V20a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" />
-              <path d="M14 3.5V7h3M9 12h6M12 9v6" stroke-linecap="round" />
-            </svg>
+            <skyflow-mat-icon icon="person_edit" [size]="28" [weight]="400" />
           </span>
           <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.PLANNING' | translate }}</span>
         </a>
       }
+
+      <a
+        routerLink="/profile"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="sf-bottom-nav__item"
+      >
+        @if (user.photoUrl(); as src) {
+          <span class="sf-bottom-nav__avatar-wrap">
+            <img [src]="src" alt="" class="sf-bottom-nav__avatar" width="30" height="30" />
+          </span>
+        } @else {
+          <span class="sf-bottom-nav__icon" aria-hidden="true">
+            <skyflow-mat-icon icon="account_circle" [size]="28" [weight]="400" />
+          </span>
+        }
+        <span class="sf-bottom-nav__label">{{ 'BOTTOM_NAV.PROFILE' | translate }}</span>
+      </a>
     </div>
   </div>
+
+  <ng-template #stationsMenuList>
+    <div class="sf-bottom-nav__station-list">
+      @for (s of stations; track s.id; let i = $index) {
+        <button
+          type="button"
+          class="sf-bottom-nav__station"
+          role="menuitem"
+          [class.is-selected]="selectedStationId() === s.id"
+          [attr.aria-label]="s.labelKey | translate"
+          [title]="s.labelKey | translate"
+          [style.--sf-st-accent]="s.accent"
+          [style.animation-delay.ms]="i * 35"
+          (click)="pickStation(s.id)"
+        >
+          <span class="sf-bottom-nav__station-icon" aria-hidden="true">
+            <skyflow-mat-icon
+              [icon]="s.icon"
+              [size]="22"
+              [weight]="600"
+              [filled]="s.iconFilled"
+            />
+          </span>
+          <span class="sf-bottom-nav__station-name">{{ s.labelKey | translate }}</span>
+        </button>
+      }
+    </div>
+  </ng-template>
 </nav>

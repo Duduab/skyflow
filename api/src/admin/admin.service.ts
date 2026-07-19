@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, ProjectFlowStatus } from '@prisma/client';
+import { OrderStatus, ProjectFlowStatus, SkyflowRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CATALOG_PROFILE_CODES,
@@ -34,6 +34,7 @@ type OpenedByRow = {
   firstName: string;
   lastName: string;
   photoUrl: string | null;
+  role: SkyflowRole;
 };
 
 function mapOpenedBy(
@@ -46,6 +47,7 @@ function mapOpenedBy(
         firstName: u.firstName,
         lastName: u.lastName,
         photoUrl: u.photoUrl,
+        role: u.role,
       };
     }
   }
@@ -57,6 +59,7 @@ const openedByUserSelect = {
   firstName: true,
   lastName: true,
   photoUrl: true,
+  role: true,
 } as const;
 
 @Injectable()

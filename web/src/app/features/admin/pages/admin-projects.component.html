@@ -49,7 +49,20 @@
           [attr.aria-label]="'ADMIN_PROJECTS.CARD_OPEN_DETAIL' | translate"
         >
           <div class="admin-proj-card__top">
-            <h2 class="admin-proj-card__name">{{ p.name }}</h2>
+            <div class="admin-proj-card__title-group">
+              <h2 class="admin-proj-card__name">{{ p.name }}</h2>
+              @if (p.liveViewAvailable) {
+                <a
+                  [routerLink]="['/admin/projects', p.id, 'live']"
+                  class="admin-proj-card__live"
+                  (click)="$event.stopPropagation()"
+                  [attr.aria-label]="'ADMIN_PROJECTS.LIVE_VIEW' | translate"
+                >
+                  <skyflow-mat-icon icon="sensors" [size]="16" [weight]="400" />
+                  <span>{{ 'ADMIN_PROJECTS.LIVE_VIEW' | translate }}</span>
+                </a>
+              }
+            </div>
             <span class="admin-proj-card__badge">{{ ('ORDER_STATUS.' + p.status) | translate }}</span>
           </div>
 
@@ -67,9 +80,11 @@
                       (error)="onOpenedByPhotoError(opener.id)"
                     />
                   } @else {
-                    <span class="admin-proj-card__opener-initials">{{
-                      openedByInitials(opener)
-                    }}</span>
+                    <skyflow-mat-icon
+                      [icon]="openedByAvatarIcon(opener)"
+                      [size]="18"
+                      [weight]="500"
+                    />
                   }
                 </span>
                 <span class="admin-proj-card__opener-name">{{ openedByName(opener) }}</span>
@@ -78,9 +93,24 @@
           }
 
           <dl class="admin-proj-card__stats">
-            <div>
+            <div class="admin-proj-card__stat admin-proj-card__stat--progress">
               <dt>{{ 'ADMIN_PAGE.PROGRESS' | translate }}</dt>
-              <dd>{{ p.progressPct }}%</dd>
+              <dd class="admin-proj-card__progress">
+                <span class="admin-proj-card__progress-val" dir="ltr">{{ p.progressPct }}%</span>
+                <div
+                  class="admin-proj-card__progress-track"
+                  role="progressbar"
+                  [attr.aria-valuenow]="p.progressPct"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  [attr.aria-label]="('ADMIN_PAGE.PROGRESS' | translate) + ': ' + p.progressPct + '%'"
+                >
+                  <div
+                    class="admin-proj-card__progress-fill"
+                    [style.width.%]="p.progressPct"
+                  ></div>
+                </div>
+              </dd>
             </div>
             <div>
               <dt>{{ 'ADMIN_PAGE.TOTAL_ORDERS' | translate }}</dt>
@@ -102,45 +132,46 @@
 
           <p class="admin-proj-card__hint">{{ 'ADMIN_PROJECTS.CARD_HINT' | translate }}</p>
 
-          @if (p.liveViewAvailable) {
-            <a
-              [routerLink]="['/admin/projects', p.id, 'live']"
-              class="admin-proj-card__live"
-              (click)="$event.stopPropagation()"
-            >
-              {{ 'ADMIN_PROJECTS.LIVE_VIEW' | translate }}
-            </a>
-          }
+          <div
+            class="admin-proj-card__actions"
+            [class.admin-proj-card__actions--no-edit]="p.flowStatus === 'COMPLETED'"
+          >
+            @if (p.flowStatus !== 'COMPLETED') {
+              <skyflow-ui-card-action
+                class="admin-proj-card__action--left"
+                color="purple"
+                [pushBottom]="false"
+                [routerLink]="['/admin/planning-new']"
+                [queryParams]="{ draftId: p.id }"
+                (click)="$event.stopPropagation()"
+              >
+                <skyflow-mat-icon icon="edit_note" [size]="18" [weight]="400" />
+                {{ 'ADMIN_PROJECTS.CARD_EDIT' | translate }}
+              </skyflow-ui-card-action>
+            }
 
-          @if (p.flowStatus !== 'COMPLETED') {
             <skyflow-ui-card-action
-              color="purple"
-              [routerLink]="['/admin/planning-new']"
-              [queryParams]="{ draftId: p.id }"
+              class="admin-proj-card__action--center"
+              color="primary"
+              [pushBottom]="false"
+              [routerLink]="['/admin/projects', p.id, 'control']"
               (click)="$event.stopPropagation()"
             >
-              <skyflow-mat-icon icon="edit" [size]="18" [weight]="400" />
-              {{ 'ADMIN_PROJECTS.CARD_EDIT' | translate }}
+              <skyflow-mat-icon icon="monitoring" [size]="18" [weight]="400" />
+              {{ 'ADMIN_PROJECTS.QUICK_CONTROL' | translate }}
             </skyflow-ui-card-action>
-          }
 
-          <skyflow-ui-card-action
-            color="blue"
-            [routerLink]="['/admin/projects', p.id, 'stations']"
-            (click)="$event.stopPropagation()"
-          >
-            <skyflow-stations-icon [size]="18" />
-            {{ 'ADMIN_PROJECTS.QUICK_STATIONS' | translate }}
-          </skyflow-ui-card-action>
-
-          <skyflow-ui-card-action
-            color="primary"
-            [routerLink]="['/admin/projects', p.id, 'elevation-map']"
-            (click)="$event.stopPropagation()"
-          >
-            <skyflow-mat-icon icon="map" [size]="18" [weight]="400" />
-            {{ 'ADMIN_PROJECTS.QUICK_ELEVATION_MAP' | translate }}
-          </skyflow-ui-card-action>
+            <skyflow-ui-card-action
+              class="admin-proj-card__action--right"
+              color="blue"
+              [pushBottom]="false"
+              [routerLink]="['/admin/projects', p.id, 'stations']"
+              (click)="$event.stopPropagation()"
+            >
+              <skyflow-mat-icon icon="activity_zone" [size]="18" [weight]="400" />
+              {{ 'ADMIN_PROJECTS.QUICK_STATIONS' | translate }}
+            </skyflow-ui-card-action>
+          </div>
         </article>
       }
     </div>

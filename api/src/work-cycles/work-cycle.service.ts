@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   ElevationCellStatus,
+  NotificationKind,
   OrderStatus,
   Prisma,
   ProjectAngleSourcing,
@@ -14,6 +15,7 @@ import {
   WorkCycleStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /** Laser is the parallel angle station (mirrors stations.service LASER_STATION_ID). */
 const LASER_STATION_ID = 8;
@@ -25,7 +27,10 @@ const LINE_STATIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
 export class WorkCycleService {
   private readonly logger = new Logger(WorkCycleService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   /**
    * The set of stations a cycle for `windowType` in `project` passes through.
@@ -199,11 +204,14 @@ export class WorkCycleService {
       stationId?: number | null;
     }[],
     dailyTargetQty: number | null,
+    dailyTargetHours: number | null = null,
+    actorUserId?: string | null,
   ) {
     const cycle = await this.prisma.workCycle.findFirst({
       where: { id: workCycleId, projectId },
       include: {
-        windowType: { select: { id: true, instructionDocId: true } },
+        windowType: { select: { id: true, code: true, instructionDocId: true } },
+        project: { select: { name: true } },
       },
     });
     if (!cycle) throw new NotFoundException('Work cycle not found');
@@ -217,9 +225,25 @@ export class WorkCycleService {
     }
 
     await this.setAssignments(projectId, workCycleId, assignments);
-    await this.setDailyTarget(projectId, workCycleId, dailyTargetQty);
+    await this.setDailyTarget(
+      projectId,
+      workCycleId,
+      dailyTargetQty,
+      dailyTargetHours,
+    );
     await this.openCycleForWindowType(projectId, cycle.windowTypeId);
     await this.promoteProjectToProduction(projectId);
+
+    await this.notifications.emit({
+      kind: NotificationKind.CYCLE_LAUNCHED,
+      titleKey: 'NOTIFICATIONS.CYCLE_LAUNCHED_TITLE',
+      bodyKey: 'NOTIFICATIONS.CYCLE_LAUNCHED_BODY',
+      params: { code: cycle.windowType.code, project: cycle.project.name },
+      link: `/admin/projects/${projectId}/control`,
+      projectId,
+      projectName: cycle.project.name,
+      actorUserId,
+    });
 
     return this.getCycle(projectId, workCycleId);
   }
@@ -306,6 +330,7 @@ export class WorkCycleService {
     projectId: string,
     workCycleId: string,
     dailyTargetQty: number | null,
+    dailyTargetHours: number | null = null,
   ) {
     const cycle = await this.prisma.workCycle.findFirst({
       where: { id: workCycleId, projectId },
@@ -317,6 +342,10 @@ export class WorkCycleService {
       data: {
         dailyTargetQty:
           dailyTargetQty == null || dailyTargetQty <= 0 ? null : dailyTargetQty,
+        dailyTargetHours:
+          dailyTargetHours == null || dailyTargetHours <= 0
+            ? null
+            : dailyTargetHours,
       },
     });
     return this.getCycle(projectId, workCycleId);
@@ -424,7 +453,11 @@ export class WorkCycleService {
 
     const cycle = await this.prisma.workCycle.findFirst({
       where: { id: workCycleId, projectId },
-      include: { stationProgress: true },
+      include: {
+        stationProgress: true,
+        windowType: { select: { code: true } },
+        project: { select: { name: true } },
+      },
     });
     if (!cycle) throw new NotFoundException('Work cycle not found');
     if (cycle.status === WorkCycleStatus.DRAFT) {
@@ -491,6 +524,27 @@ export class WorkCycleService {
       });
     });
 
+    await this.notifications.emit({
+      kind: NotificationKind.CYCLE_REPORTED,
+      titleKey: stationDone
+        ? 'NOTIFICATIONS.STATION_DONE_TITLE'
+        : 'NOTIFICATIONS.CYCLE_REPORTED_TITLE',
+      bodyKey: stationDone
+        ? 'NOTIFICATIONS.STATION_DONE_BODY'
+        : 'NOTIFICATIONS.CYCLE_REPORTED_BODY',
+      params: {
+        code: cycle.windowType?.code ?? '',
+        project: cycle.project?.name ?? '',
+        qty: appliedQty,
+        station: stationId,
+      },
+      link: `/admin/projects/${projectId}/live`,
+      projectId,
+      projectName: cycle.project?.name ?? null,
+      stationId,
+      actorUserId: opts?.workerUserId ?? null,
+    });
+
     return this.getCycle(projectId, workCycleId);
   }
 
@@ -536,11 +590,18 @@ export class WorkCycleService {
   async recomputeCompletionFromElevation(
     projectId: string,
     windowTypeId: string | null | undefined,
+    actorUserId?: string | null,
   ): Promise<void> {
     if (!windowTypeId) return;
     const cycle = await this.prisma.workCycle.findUnique({
       where: { windowTypeId },
-      select: { id: true, projectId: true, status: true },
+      select: {
+        id: true,
+        projectId: true,
+        status: true,
+        windowType: { select: { code: true } },
+        project: { select: { name: true } },
+      },
     });
     if (!cycle || cycle.projectId !== projectId) return;
 
@@ -569,6 +630,19 @@ export class WorkCycleService {
           returnedFromStationId: null,
           returnReason: null,
         },
+      });
+      await this.notifications.emit({
+        kind: NotificationKind.CYCLE_COMPLETED,
+        titleKey: 'NOTIFICATIONS.CYCLE_COMPLETED_TITLE',
+        bodyKey: 'NOTIFICATIONS.CYCLE_COMPLETED_BODY',
+        params: {
+          code: cycle.windowType?.code ?? '',
+          project: cycle.project?.name ?? '',
+        },
+        link: `/admin/projects/${projectId}/control`,
+        projectId,
+        projectName: cycle.project?.name ?? null,
+        actorUserId,
       });
     } else if (!allDone && cycle.status === WorkCycleStatus.COMPLETED) {
       await this.prisma.workCycle.update({
@@ -604,6 +678,366 @@ export class WorkCycleService {
         completedAt: null,
       },
     });
+  }
+
+  /**
+   * Full detail view of a unit for the planner: its PDF-mapped data (composition,
+   * angles, part tables, instruction PDF) plus the station journey — per-station
+   * progress and the audit log of what each station reported.
+   */
+  async getCycleDetails(projectId: string, workCycleId: string) {
+    const cycle = await this.prisma.workCycle.findFirst({
+      where: { id: workCycleId, projectId },
+      include: {
+        windowType: {
+          select: {
+            id: true,
+            code: true,
+            totalQty: true,
+            hasAngles: true,
+            composition: true,
+            angleCodes: true,
+            partsPayload: true,
+            instructionPage: true,
+            instructionDoc: { select: { pdfPath: true, title: true } },
+            connectionDoc: { select: { pdfPath: true, title: true } },
+          },
+        },
+        stationProgress: { orderBy: { stationId: 'asc' } },
+        assignments: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, role: true },
+            },
+          },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+    if (!cycle) throw new NotFoundException('Work cycle not found');
+
+    const logs = await this.prisma.stationLog.findMany({
+      where: { projectId, workCycleId },
+      orderBy: { createdAt: 'asc' },
+    });
+    const workerIds = [
+      ...new Set(logs.map((l) => l.workerId).filter((v): v is string => !!v)),
+    ];
+    const workers = workerIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: workerIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const workerById = new Map(workers.map((w) => [w.id, w]));
+
+    const wt = cycle.windowType;
+    return {
+      cycle: {
+        id: cycle.id,
+        projectId: cycle.projectId,
+        windowTypeId: cycle.windowTypeId,
+        status: cycle.status,
+        targetQty: cycle.targetQty,
+        currentStationId: cycle.currentStationId,
+        openedAt: cycle.openedAt,
+        completedAt: cycle.completedAt,
+        returnedAt: cycle.returnedAt,
+        returnedFromStationId: cycle.returnedFromStationId,
+        returnReason: cycle.returnReason,
+      },
+      windowType: {
+        id: wt.id,
+        code: wt.code,
+        totalQty: wt.totalQty,
+        hasAngles: wt.hasAngles,
+        composition: this.asStringArray(wt.composition),
+        angleCodes: this.asStringArray(wt.angleCodes),
+        parts: (wt.partsPayload as unknown) ?? null,
+        instructionPage: wt.instructionPage,
+        instructionPdfUrl: wt.instructionDoc?.pdfPath ?? null,
+        instructionTitle: wt.instructionDoc?.title ?? null,
+        connectionPdfUrl: wt.connectionDoc?.pdfPath ?? null,
+      },
+      stationProgress: cycle.stationProgress.map((sp) => ({
+        stationId: sp.stationId,
+        targetQty: sp.targetQty,
+        processedQty: sp.processedQty,
+        remaining: Math.max(0, sp.targetQty - sp.processedQty),
+        status: sp.status,
+      })),
+      assignments: cycle.assignments.map((a) => ({
+        id: a.id,
+        userId: a.userId,
+        role: a.role,
+        stationId: a.stationId,
+        user: a.user,
+      })),
+      logs: logs.map((l) => {
+        const w = l.workerId ? workerById.get(l.workerId) : null;
+        return {
+          id: l.id,
+          stationId: l.stationId,
+          processedQty: l.processedQty,
+          cutLength: l.cutLength ? Number(l.cutLength) : null,
+          createdAt: l.createdAt,
+          worker: w
+            ? { id: w.id, firstName: w.firstName, lastName: w.lastName }
+            : null,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Manual edit of a unit's mapped data. Blocked once COMPLETED. Saves the new
+   * field values, then — for a launched cycle — reroutes the unit to the station
+   * that owns the changed component (glass/composition → gluing #4,
+   * beam/profile → saws #1, angle → laser #8, other parts → assembly #3) and
+   * resets that station and everything downstream so the change is re-produced.
+   */
+  async editCycleWindow(
+    projectId: string,
+    workCycleId: string,
+    dto: {
+      totalQty?: number;
+      composition?: string[];
+      hasAngles?: boolean;
+      angleCodes?: string[];
+      sections?: {
+        key?: string;
+        title?: string;
+        rows: {
+          partNumber?: string;
+          description?: string;
+          blockNumber?: string;
+        }[];
+      }[];
+      fullReroute?: boolean;
+    },
+  ) {
+    const cycle = await this.prisma.workCycle.findFirst({
+      where: { id: workCycleId, projectId },
+      include: {
+        windowType: {
+          select: {
+            id: true,
+            hasAngles: true,
+            totalQty: true,
+            composition: true,
+            angleCodes: true,
+            partsPayload: true,
+          },
+        },
+        stationProgress: true,
+      },
+    });
+    if (!cycle) throw new NotFoundException('Work cycle not found');
+    if (cycle.status === WorkCycleStatus.COMPLETED) {
+      throw new BadRequestException('A completed unit can no longer be edited');
+    }
+
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: { angleSourcing: true },
+    });
+    if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+
+    const wt = cycle.windowType;
+    const affected = new Set<number>();
+
+    const data: Prisma.WindowTypeUpdateInput = {};
+
+    if (
+      dto.composition !== undefined &&
+      !this.sameStringArray(this.asStringArray(wt.composition), dto.composition)
+    ) {
+      data.composition = this.asJson(dto.composition);
+      affected.add(4); // גלאס → הדבקות
+    }
+
+    if (dto.hasAngles !== undefined && dto.hasAngles !== wt.hasAngles) {
+      data.hasAngles = dto.hasAngles;
+      affected.add(LASER_STATION_ID);
+    }
+    if (
+      dto.angleCodes !== undefined &&
+      !this.sameStringArray(this.asStringArray(wt.angleCodes), dto.angleCodes)
+    ) {
+      data.angleCodes = this.asJson(dto.angleCodes);
+      affected.add(LASER_STATION_ID);
+    }
+
+    if (dto.sections !== undefined) {
+      const nextSections = dto.sections.map((s) => ({
+        key: s.key ?? 'OTHER',
+        title: s.title ?? '',
+        rows: (s.rows ?? []).map((r) => ({
+          partNumber: r.partNumber ?? '',
+          description: r.description ?? '',
+          blockNumber: r.blockNumber ?? '',
+        })),
+      }));
+      const prevSections = this.partsSections(wt.partsPayload);
+      const changedKeys = this.changedSectionKeys(prevSections, nextSections);
+      if (changedKeys.length) {
+        data.partsPayload = this.asJson({ sections: nextSections });
+        for (const key of changedKeys) {
+          affected.add(key === 'PROFILES' ? 1 : 3); // פרופילים → מסורים, אחר → הרכבה
+        }
+      }
+    }
+
+    let qtyChanged = false;
+    if (dto.totalQty !== undefined && dto.totalQty !== wt.totalQty) {
+      data.totalQty = dto.totalQty;
+      qtyChanged = true;
+    }
+
+    if (Object.keys(data).length) {
+      await this.prisma.windowType.update({ where: { id: wt.id }, data });
+    }
+
+    // A quantity change re-targets every station (no progress reset needed).
+    if (qtyChanged) {
+      await this.syncCycleStations(projectId, cycle.windowTypeId);
+    }
+
+    if (dto.fullReroute) affected.add(1);
+
+    // Only launched units carry station progress worth rerouting; a DRAFT unit
+    // simply keeps its edited data until it is launched.
+    const launched = cycle.status !== WorkCycleStatus.DRAFT;
+    if (launched && affected.size) {
+      const hasAngles = dto.hasAngles ?? wt.hasAngles;
+      const chain = this.stationChain(project, { hasAngles });
+      await this.rerouteCycle(workCycleId, chain, affected);
+    }
+
+    return this.getCycle(projectId, workCycleId);
+  }
+
+  /**
+   * Reset the station(s) that own an edited component (and everything downstream
+   * on the linear line) so the unit is re-produced from there. The laser (#8) is
+   * a parallel station and is reset on its own without touching the line.
+   */
+  private async rerouteCycle(
+    workCycleId: string,
+    chain: number[],
+    affected: Set<number>,
+  ): Promise<void> {
+    const lineAffected = [...affected].filter((s) => s >= 1 && s <= 7);
+    const earliestLine = lineAffected.length ? Math.min(...lineAffected) : null;
+    const resetStationIds = new Set<number>();
+    if (earliestLine != null) {
+      for (const s of chain) {
+        if (s >= earliestLine && s <= 7) resetStationIds.add(s);
+      }
+    }
+    if (affected.has(LASER_STATION_ID) && chain.includes(LASER_STATION_ID)) {
+      resetStationIds.add(LASER_STATION_ID);
+    }
+    if (!resetStationIds.size) return;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.workCycleStationProgress.updateMany({
+        where: { workCycleId, stationId: { in: [...resetStationIds] } },
+        data: { processedQty: 0, status: WorkCycleStationStatus.PENDING },
+      });
+      const progresses = await tx.workCycleStationProgress.findMany({
+        where: { workCycleId },
+        orderBy: { stationId: 'asc' },
+      });
+      const nextOpen = progresses.find(
+        (p) => !(p.targetQty > 0 && p.processedQty >= p.targetQty),
+      );
+      await tx.workCycle.update({
+        where: { id: workCycleId },
+        data: {
+          status: WorkCycleStatus.IN_PROGRESS,
+          currentStationId: nextOpen?.stationId ?? earliestLine ?? null,
+          completedAt: null,
+          returnedAt: null,
+          returnedFromStationId: null,
+          returnReason: null,
+        },
+      });
+    });
+  }
+
+  /**
+   * Delete a DRAFT unit entirely (the window type + its cascade: work cycle,
+   * station progress, quantities, stage links). Only DRAFT units can be removed
+   * so production history is never lost.
+   */
+  async deleteCycle(projectId: string, workCycleId: string): Promise<void> {
+    const cycle = await this.prisma.workCycle.findFirst({
+      where: { id: workCycleId, projectId },
+      select: { id: true, status: true, windowTypeId: true },
+    });
+    if (!cycle) throw new NotFoundException('Work cycle not found');
+    if (cycle.status !== WorkCycleStatus.DRAFT) {
+      throw new BadRequestException(
+        'Only draft units can be deleted; this unit is already in production',
+      );
+    }
+    // WorkCycle + all children cascade from the window type.
+    await this.prisma.windowType.delete({ where: { id: cycle.windowTypeId } });
+  }
+
+  /** Coerce a stored JSON value into a string array. */
+  private asStringArray(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.filter((v): v is string => typeof v === 'string');
+    }
+    return [];
+  }
+
+  private sameStringArray(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    return a.every((v, i) => v === b[i]);
+  }
+
+  private partsSections(payload: unknown): {
+    key: string;
+    rows: { partNumber: string; description: string; blockNumber: string }[];
+  }[] {
+    const sections = (payload as { sections?: unknown })?.sections;
+    if (!Array.isArray(sections)) return [];
+    return sections.map((s) => ({
+      key: (s as { key?: string }).key ?? 'OTHER',
+      rows: Array.isArray((s as { rows?: unknown }).rows)
+        ? ((s as { rows: unknown[] }).rows as Record<string, string>[]).map(
+            (r) => ({
+              partNumber: r.partNumber ?? '',
+              description: r.description ?? '',
+              blockNumber: r.blockNumber ?? '',
+            }),
+          )
+        : [],
+    }));
+  }
+
+  /** Section keys whose rows differ between the stored and incoming payloads. */
+  private changedSectionKeys(
+    prev: { key: string; rows: Record<string, string>[] }[],
+    next: { key: string; rows: Record<string, string>[] }[],
+  ): string[] {
+    const norm = (
+      rows: Record<string, string>[],
+    ): string =>
+      JSON.stringify(
+        rows.map((r) => [r.partNumber, r.description, r.blockNumber]),
+      );
+    const prevByKey = new Map(prev.map((s) => [s.key, norm(s.rows)]));
+    const changed = new Set<string>();
+    for (const s of next) {
+      if (prevByKey.get(s.key) !== norm(s.rows)) changed.add(s.key);
+      prevByKey.delete(s.key);
+    }
+    for (const key of prevByKey.keys()) changed.add(key);
+    return [...changed];
   }
 
   /** Whether the project uses the work-cycle model (any cycle exists). */

@@ -2,7 +2,9 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsInt,
+  IsNumber,
   IsOptional,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -18,4 +20,10 @@ export class LaunchWorkCycleDto {
   @IsInt()
   @Min(0)
   dailyTargetQty?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0.25)
+  @Max(24)
+  dailyTargetHours?: number | null;
 }

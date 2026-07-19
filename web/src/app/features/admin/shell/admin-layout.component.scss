@@ -238,7 +238,10 @@
 }
 
 .admin-shell__logout {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   width: 100%;
   margin-top: 0.35rem;
   padding: 0.45rem 0.75rem;
@@ -250,6 +253,11 @@
   font-family: inherit;
   cursor: pointer;
   color: var(--admin-muted);
+}
+
+.admin-shell__logout skyflow-mat-icon,
+.admin-shell__logout .sf-mat-icon {
+  flex-shrink: 0;
 }
 
 .admin-shell__logout:hover {

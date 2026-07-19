@@ -3,6 +3,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import {
+  NotificationKind,
   Prisma,
   ProjectFlowStatus,
   ProjectOrder,
@@ -19,6 +20,7 @@ import { packPhotoRequiredCount, MAX_PACK_PHOTO_SLOTS } from '../common/pack-pho
 import { DeliveryNotesService } from '../delivery-notes/delivery-notes.service.js';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateStationLogDto } from './dto/create-station-log.dto.js';
 import { CreateScrapReportDto } from './dto/create-scrap-report.dto.js';
 import {
@@ -94,6 +96,7 @@ export class StationsService {
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
     private readonly deliveryNotes: DeliveryNotesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private assertStation(stationId: number): void {
@@ -1616,6 +1619,22 @@ export class StationsService {
           ? (dto.extraPayload as Prisma.InputJsonValue)
           : undefined,
       },
+    });
+
+    await this.notifications.emit({
+      kind: NotificationKind.STATION_LOG,
+      titleKey: 'NOTIFICATIONS.STATION_LOG_TITLE',
+      bodyKey: 'NOTIFICATIONS.STATION_LOG_BODY',
+      params: {
+        project: orderRow.name,
+        station: stationId,
+        qty: dto.processedQty,
+      },
+      link: `/admin/projects/${dto.projectId}/live`,
+      projectId: dto.projectId,
+      projectName: orderRow.name,
+      stationId,
+      actorUserId: dto.workerId ?? reporterUserId ?? null,
     });
 
     return created;

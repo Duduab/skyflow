@@ -223,6 +223,7 @@
 
     <a routerLink="/" class="admin-shell__exit">{{ 'ADMIN_SHELL.BACK_APP' | translate }}</a>
     <button type="button" class="admin-shell__logout" (click)="logout()">
+      <skyflow-mat-icon icon="lock" [size]="16" [weight]="500" />
       {{ 'ADMIN_SHELL.LOGOUT' | translate }}
     </button>
   </aside>

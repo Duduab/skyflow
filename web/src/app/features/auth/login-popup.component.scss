@@ -1,3 +1,12 @@
+:host ::ng-deep .login-popup-panel .sf-ui-popup__icon {
+  color: var(--sf-blue, #558fc3);
+  background: color-mix(in srgb, var(--sf-blue, #558fc3) 14%, #fff);
+  border: 1px solid color-mix(in srgb, var(--sf-blue, #558fc3) 28%, rgba(15, 23, 42, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 8px 20px color-mix(in srgb, var(--sf-blue, #558fc3) 18%, transparent);
+}
+
 .login-popup {
   display: flex;
   flex-direction: column;
@@ -57,22 +66,26 @@
 :host ::ng-deep .login-popup__submit.sf-ui-btn--primary {
   min-height: 3.25rem;
   margin-top: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--sf-blue, #558fc3) 78%, #fff);
-  color: #fff;
-  background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.3) 0%, transparent 36%),
-    linear-gradient(
-      120deg,
-      #bae6fd 0%,
-      #7dd3fc 14%,
-      #38bdf8 32%,
-      var(--sf-blue, #558fc3) 58%,
-      #4899c9 82%,
-      var(--sf-navy, #3e5d88) 100%
-    );
+  border: 0.5px solid color-mix(in srgb, var(--sf-blue, #558fc3) 72%, #fff) !important;
+  border-radius: var(--sf-ui-btn-radius, 13px) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  background: linear-gradient(
+    180deg,
+    #72b7e9 0%,
+    var(--sf-blue, #558fc3) 52%,
+    var(--sf-navy, #3e5d88) 100%
+  ) !important;
   box-shadow:
-    0 4px 14px rgba(62, 93, 136, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    0 8px 18px rgba(62, 93, 136, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+:host ::ng-deep .login-popup__submit.sf-ui-btn--primary:hover:not(:disabled),
+:host ::ng-deep .login-popup__submit.sf-ui-btn--primary:focus-visible {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  color: #fff !important;
 }
 
 .login-popup__submit-inner {
@@ -80,4 +93,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+}
+
+.login-popup__submit-icon {
+  flex-shrink: 0;
+  color: inherit;
 }
