@@ -37,7 +37,8 @@ import { StationLabelPipe } from '../../shared/station-label.pipe';
 import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import {
   stationDescKey,
-  stationDisplayNumber,
+  stationMatIcon,
+  stationMatIconFilled,
   stationVisualModifierClass,
   stationVisualStyle,
 } from '../../core/station-presentation';
@@ -175,10 +176,8 @@ export class WorkerHubComponent implements OnInit {
     return rows;
   });
 
-  /** מספר התצוגה של תחנה לפי מיקום בזרימה (הלייזר לפני הרכבה, בלי "8"). */
-  displayNumber(stationId: number): number {
-    return stationDisplayNumber(stationId, this.laserActive());
-  }
+  readonly stationIcon = stationMatIcon;
+  readonly stationIconFilled = stationMatIconFilled;
 
   /** Worker context לפי הפרויקט הנבחר — מעגלי התקדמות ב־Hub */
   readonly contextByStation = signal<

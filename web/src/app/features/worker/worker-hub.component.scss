@@ -631,10 +631,11 @@
 }
 
 .worker-hub__overall-label {
-  font-size: 1rem;
-  font-weight: 600;
-  color: rgba(248, 250, 252, 0.92);
-  letter-spacing: 0.02em;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
 }
 
 .worker-hub__overall-pct {
@@ -677,8 +678,6 @@
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  max-width: 72rem;
-  margin-inline: auto;
   gap: 1.25rem;
 }
 
@@ -729,7 +728,9 @@ html[dir='ltr'] .worker-hub__row {
   --station-hero-h: 11.25rem;
 
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   overflow: visible;
   border-radius: var(--sf-radius);
   text-decoration: none;
@@ -758,7 +759,7 @@ html[dir='ltr'] .worker-hub__row {
   }
 }
 
-/* מספר תחנה — לבן, טקסט שחור, מסגרת בצבע accent של התחנה */
+/* אייקון תחנה — עיגול לבן, מסגרת בצבע accent של התחנה */
 .station-card__index {
   position: absolute;
   top: 0.85rem;
@@ -767,31 +768,30 @@ html[dir='ltr'] .worker-hub__row {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.35rem;
-  height: 2.35rem;
-  padding: 0 0.45rem;
-  border-radius: var(--sf-radius);
-  font-size: 1.2rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: #0f172a;
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 50%;
   background: #fff;
-  border: 2px solid var(--accent, #558fc3);
-  box-shadow: var(--sf-shadow-inset);
+  border: 2.5px solid var(--accent, #558fc3);
+  opacity: 0.9;
+  box-shadow:
+    rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset,
+    rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
   pointer-events: none;
   transition:
-    color 0.35s ease,
     background 0.35s ease,
     border-color 0.35s ease,
     box-shadow 0.35s ease,
-    border-radius 0.35s ease;
+    opacity 0.35s ease;
+
+  skyflow-mat-icon,
+  .sf-mat-icon {
+    color: var(--accent, #558fc3);
+  }
 }
 
 .station-card__index--done {
   border-radius: 50%;
-  box-shadow: var(--sf-shadow-inset);
 }
 
 .station-card--locked .station-card__index {
@@ -804,6 +804,7 @@ html[dir='ltr'] .worker-hub__row {
 
 .station-card__hero {
   position: relative;
+  flex-shrink: 0;
   height: var(--station-hero-h);
   border-top-left-radius: var(--sf-radius);
   border-top-right-radius: var(--sf-radius);
@@ -1000,6 +1001,9 @@ html[dir='ltr'] .worker-hub__row {
 .station-card__panel {
   position: relative;
   z-index: 2;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   padding: 4.35rem 1.5rem 1.35rem;
   border-radius: 0 0 var(--sf-radius) var(--sf-radius);
   background: linear-gradient(
@@ -1017,15 +1021,16 @@ html[dir='ltr'] .worker-hub__row {
 
 .station-card__headline {
   margin: 0;
-  font-size: 1.55rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   color: #fff;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   text-align: center;
 }
 
 .station-card__mgr {
   margin: 0.35rem 0 0.25rem;
+  min-height: 1.35rem;
   font-size: 0.82rem;
   font-weight: 700;
   color: rgba(248, 250, 252, 0.88);
@@ -1034,7 +1039,8 @@ html[dir='ltr'] .worker-hub__row {
 
 .station-card__desc {
   margin: 0.65rem 0 0;
-  font-size: 1rem;
+  min-height: calc(1.1rem * 1.45 * 2);
+  font-size: 1.1rem;
   font-weight: 600;
   line-height: 1.45;
   color: rgba(226, 232, 240, 0.82);
@@ -1051,7 +1057,7 @@ html[dir='ltr'] .worker-hub__row {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 1.35rem;
+  margin-top: auto;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   text-align: start;
@@ -1073,8 +1079,9 @@ html[dir='ltr'] .worker-hub__row {
 .station-card__ico {
   width: 1.15rem;
   height: 1.15rem;
-  opacity: 0.85;
   flex-shrink: 0;
+  color: var(--accent, #558fc3);
+  opacity: 0.95;
 }
 
 .station-card__cta {

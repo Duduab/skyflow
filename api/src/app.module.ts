@@ -16,6 +16,7 @@ import { ElevationModule } from './elevation/elevation.module.js';
 import { WorkCyclesModule } from './work-cycles/work-cycle.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ProcessingJobsModule } from './processing-jobs/processing-jobs.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     WorkCyclesModule,
     TrackingModule,
     NotificationsModule,
+    ProcessingJobsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

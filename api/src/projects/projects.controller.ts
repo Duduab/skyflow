@@ -27,10 +27,8 @@ import { UploadPlanningPdfDto } from './dto/upload-planning-pdf.dto';
 import { UploadWindowTypePdfDto } from './dto/upload-window-type-pdf.dto';
 import { SaveWindowTypePartsDto } from './dto/save-window-type-parts.dto';
 import { SendProjectDocumentEmailDto } from './dto/send-project-document-email.dto';
-import {
-  ensureProjectDocsUploadDir,
-  ProjectsService,
-} from './projects.service';
+import { ensureProjectDocsUploadDir } from './project-docs-path.util';
+import { ProjectsService } from './projects.service';
 
 const PLANNING_UPLOAD_LIMIT = 25 * 1024 * 1024;
 const PROJECT_DOC_UPLOAD_MAX = 12 * 1024 * 1024;
@@ -312,10 +310,16 @@ export class ProjectsController {
     return this.projectsService.ingestFacadeGroupElevation(id, groupKey, file);
   }
 
-  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING, SkyflowRole.SITE_MANAGER)
   @Get(':id/planning/pdf-preview')
-  pdfPreview(@Param('id') id: string) {
-    return this.projectsService.getPlanningPdfPreview(id);
+  pdfPreview(
+    @Param('id') id: string,
+    @Req() req: { user?: { userId?: string; role?: SkyflowRole } },
+  ) {
+    return this.projectsService.getPlanningPdfPreview(id, {
+      userId: req.user?.userId,
+      role: req.user?.role,
+    });
   }
 
   /** Save a planner-reviewed/edited parts mapping for a single window type. */

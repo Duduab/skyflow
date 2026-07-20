@@ -29,8 +29,8 @@
   --sf-bn-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
   --sf-bn-active: var(--sf-blue, #558fc3);
   --sf-bn-inactive: #9db2ce;
-  --sf-bn-accent: #613eea;
-  --sf-bn-accent-ring: #a9c0ff;
+  --sf-bn-accent: var(--sf-blue, #558fc3);
+  --sf-bn-accent-ring: color-mix(in srgb, var(--sf-blue, #558fc3) 38%, #ffffff);
 
   position: relative;
   display: flex;
@@ -212,7 +212,7 @@
   border: 6px solid var(--sf-bn-accent-ring);
   border-radius: 50%;
   background: var(--sf-bn-accent);
-  box-shadow: 0 14px 24px rgba(97, 62, 234, 0.45);
+  box-shadow: 0 14px 24px color-mix(in srgb, var(--sf-blue, #558fc3) 45%, transparent);
   transition: transform 0.15s ease;
 }
 

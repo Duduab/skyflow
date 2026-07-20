@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import nodemailer from 'nodemailer';
 import type Mail from 'nodemailer/lib/mailer';
 
@@ -42,7 +42,7 @@ export class MailService {
       auth: user && pass ? { user, pass } : undefined,
     });
 
-    const pdfBuffer = readFileSync(opts.absolutePdfPath);
+    const pdfBuffer = await readFile(opts.absolutePdfPath);
     const mail: Mail.Options = {
       from,
       to: opts.to.join(', '),

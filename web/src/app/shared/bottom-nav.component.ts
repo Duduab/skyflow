@@ -122,9 +122,9 @@ export class BottomNavComponent {
     return st ? ['/worker', st.id] : ['/worker'];
   });
 
-  readonly isWorkerHubRoute = computed(() => {
+  readonly isWorkerRoute = computed(() => {
     const path = this.routerUrl().split('?')[0]?.split('#')[0] ?? '';
-    return path === '/worker';
+    return path === '/worker' || /^\/worker\/\d+/.test(path);
   });
 
   readonly navSearchHits = computed(() =>

@@ -8,7 +8,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { from } from 'rxjs';
+import { firstValueFrom, from } from 'rxjs';
 import { concatMap, finalize, take } from 'rxjs/operators';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
@@ -16,10 +16,13 @@ import { ApiService } from '../../../core/api.service';
 import { httpErrorMessage } from '../../../core/http-error.util';
 import {
   AssemblyWindowPartsDto,
+  ElevationCellDto,
   FacadeDirection,
   FacadeGroupPreviewDto,
   PlanningPdfKind,
   PlanningPdfPreviewDto,
+  PlanningPdfUploadResponse,
+  ProcessingJobDto,
   ProjectAngleSourcing,
   ProjectFlowStatus,
   ProjectLineMaterial,
@@ -68,6 +71,8 @@ export class PlanningPdfPanelComponent {
   readonly wizardContinue = output<void>();
   /** Planner launched a specific unit from the elevation popup (→ step 3, open it). */
   readonly wizardLaunchUnit = output<string>();
+  /** Cell with instructions PDF — open unit-details popup in parent. */
+  readonly unitDetailsRequested = output<{ cell: ElevationCellDto }>();
 
   readonly preview = signal<PlanningPdfPreviewDto | null>(null);
   readonly uploadingKind = signal<PlanningPdfKind | null>(null);
@@ -308,26 +313,97 @@ export class PlanningPdfPanelComponent {
     this.uploadWindowTypeDoc(e.windowTypeId, e.kind, e.file);
   }
 
-  private uploadWindowTypeDoc(
+  /** Progress (0-100) of any background processing job currently tracked, keyed by row/group key. */
+  readonly jobProgressByKey = signal<ReadonlyMap<string, number>>(new Map());
+
+  jobProgressPercent(key: string): number | null {
+    return this.jobProgressByKey().get(key) ?? null;
+  }
+
+  /** Progress % for the currently-processing window-type row upload, if any. */
+  rowJobProgress(windowTypeId: string, kind: PlanningPdfKind): number | null {
+    return this.jobProgressPercent(`${windowTypeId}:${kind}`);
+  }
+
+  /** Progress % for the currently-processing facade-group elevation upload, if any. */
+  groupJobProgress(groupKey: string): number | null {
+    return this.jobProgressPercent(`elevation:${groupKey}`);
+  }
+
+  private setJobProgress(key: string, percent: number | null): void {
+    this.jobProgressByKey.update((m) => {
+      const next = new Map(m);
+      if (percent === null) next.delete(key);
+      else next.set(key, percent);
+      return next;
+    });
+  }
+
+  /**
+   * Elevation/window-type uploads may hand the heavy work (PDF render +
+   * Claude Vision) off to a background job — poll it until it settles, then
+   * refresh the full preview once (instead of blocking on the original request).
+   */
+  private async awaitProcessingJob(
+    jobId: string,
+    key: string,
+  ): Promise<'DONE' | 'FAILED'> {
+    for (;;) {
+      let job: ProcessingJobDto;
+      try {
+        job = await firstValueFrom(this.api.getProcessingJob(jobId));
+      } catch {
+        return 'FAILED';
+      }
+      this.setJobProgress(key, job.progress);
+      if (job.status === 'DONE' || job.status === 'FAILED') {
+        return job.status;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+  }
+
+  private async finishUploadResponse(
+    id: string,
+    key: string,
+    res: PlanningPdfUploadResponse,
+  ): Promise<void> {
+    if (!res.jobId) {
+      this.preview.set(res.preview);
+      this.planningChanged.emit();
+      return;
+    }
+    const status = await this.awaitProcessingJob(res.jobId, key);
+    this.setJobProgress(key, null);
+    if (status === 'FAILED') {
+      this.error.set(this.translate.instant('PLANNING_PDF.PROCESS_FAILED'));
+      return;
+    }
+    const preview = await firstValueFrom(this.api.getPlanningPdfPreview(id));
+    this.preview.set(preview);
+    this.planningChanged.emit();
+  }
+
+  private async uploadWindowTypeDoc(
     windowTypeId: string,
     kind: PlanningPdfKind,
     file: File,
-  ): void {
+  ): Promise<void> {
     const id = this.projectId();
     if (!id) return;
-    this.uploadingRowKey.set(`${windowTypeId}:${kind}`);
+    const key = `${windowTypeId}:${kind}`;
+    this.uploadingRowKey.set(key);
     this.error.set(null);
-    this.api
-      .uploadWindowTypePdf(id, windowTypeId, file, kind)
-      .pipe(finalize(() => this.uploadingRowKey.set(null)))
-      .subscribe({
-        next: (res) => {
-          this.preview.set(res.preview);
-          this.planningChanged.emit();
-        },
-        error: (err) =>
-          this.error.set(httpErrorMessage(err, 'Upload or parse failed')),
-      });
+    try {
+      const res = await firstValueFrom(
+        this.api.uploadWindowTypePdf(id, windowTypeId, file, kind),
+      );
+      await this.finishUploadResponse(id, key, res);
+    } catch (err) {
+      this.error.set(httpErrorMessage(err, 'Upload or parse failed'));
+    } finally {
+      this.uploadingRowKey.set(null);
+    }
   }
 
   constructor() {
@@ -467,27 +543,26 @@ export class PlanningPdfPanelComponent {
     return `pdf-panel-elev-dir-${direction.toLowerCase()}`;
   }
 
-  onFacadeGroupElevationSelected(
+  async onFacadeGroupElevationSelected(
     groupKey: string,
     fileList: FileList | null,
-  ): void {
+  ): Promise<void> {
     const file = fileList && fileList.length ? fileList[0] : null;
     if (!file) return;
     const id = this.projectId();
     if (!id) return;
     this.uploadingGroupKey.set(groupKey);
     this.error.set(null);
-    this.api
-      .uploadFacadeGroupElevation(id, groupKey, file)
-      .pipe(finalize(() => this.uploadingGroupKey.set(null)))
-      .subscribe({
-        next: (res) => {
-          this.preview.set(res.preview);
-          this.planningChanged.emit();
-        },
-        error: (err) =>
-          this.error.set(httpErrorMessage(err, 'Upload or parse failed')),
-      });
+    try {
+      const res = await firstValueFrom(
+        this.api.uploadFacadeGroupElevation(id, groupKey, file),
+      );
+      await this.finishUploadResponse(id, `elevation:${groupKey}`, res);
+    } catch (err) {
+      this.error.set(httpErrorMessage(err, 'Upload or parse failed'));
+    } finally {
+      this.uploadingGroupKey.set(null);
+    }
   }
 
   /** קודי ANG שזוהו מהשרטוט אך עדיין חסר להם קובץ הוראות. */
@@ -599,6 +674,11 @@ export class PlanningPdfPanelComponent {
   onLaunchUnit(e: { windowTypeId: string; code: string }): void {
     this.closeGroupMap();
     this.wizardLaunchUnit.emit(e.windowTypeId);
+  }
+
+  onMapUnitDetails(e: { cell: ElevationCellDto }): void {
+    this.unitDetailsRequested.emit(e);
+    this.closeGroupMap();
   }
 
   approve(): void {

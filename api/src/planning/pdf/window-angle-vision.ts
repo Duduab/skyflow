@@ -1,6 +1,10 @@
 import { createCanvas, type Canvas } from '@napi-rs/canvas';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type Anthropic from '@anthropic-ai/sdk';
+import { mapWithConcurrency } from '../../common/concurrency.util';
+
+/** Max simultaneous Claude calls per page's image set (full page + tiles). */
+const VISION_CONCURRENCY = 3;
 
 /**
  * Reads ANG angle codes from the window-instruction drawings using Claude vision.
@@ -175,21 +179,31 @@ async function detectAnglesOnImage(
   return parseAngleCodes(text);
 }
 
-/** Union the ANG codes detected across every image belonging to one page. */
+/**
+ * Union the ANG codes detected across every image belonging to one page.
+ * The images (full page + tiles) are independent Claude calls, so they run
+ * with bounded concurrency instead of one after another.
+ */
 async function detectAnglesOnPage(
   images: string[],
   anthropic: Anthropic,
   model: string,
 ): Promise<string[]> {
-  const codes = new Set<string>();
-  for (const img of images) {
-    try {
-      for (const c of await detectAnglesOnImage(img, anthropic, model)) {
-        codes.add(c);
+  const perImage = await mapWithConcurrency(
+    images,
+    VISION_CONCURRENCY,
+    async (img) => {
+      try {
+        return await detectAnglesOnImage(img, anthropic, model);
+      } catch {
+        // ignore a single failed crop; other crops still contribute
+        return [];
       }
-    } catch {
-      // ignore a single failed crop; other crops still contribute
-    }
+    },
+  );
+  const codes = new Set<string>();
+  for (const list of perImage) {
+    for (const c of list) codes.add(c);
   }
   return [...codes];
 }

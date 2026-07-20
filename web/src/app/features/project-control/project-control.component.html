@@ -1,8 +1,8 @@
 <section class="pc" dir="rtl">
   <!-- ===== Header ===== -->
   <header class="pc__head">
-    <button type="button" class="pc__back" (click)="goBack()" aria-label="חזרה">
-      <span aria-hidden="true">→</span>
+    <button type="button" class="pc__back" (click)="goBack()" [attr.aria-label]="'COMMON.BACK' | translate">
+      <span class="material-symbols-outlined pc__back-icon" aria-hidden="true">arrow_forward</span>
     </button>
     <div class="pc__head-texts">
       <h1 class="pc__title">
@@ -297,29 +297,33 @@
           </div>
         </div>
 
-        @if (previewLoading()) {
+        @if (elevationMapLoading()) {
           <div class="pc__state">{{ 'COMMON.LOADING' | translate }}…</div>
         } @else if (hasFacadeMaps()) {
           <p class="pc-mappick__hint">{{ 'PROJECT_CONTROL.MAP_PICK_HINT' | translate }}</p>
-          @for (d of facadeGroupsByDirection(); track d.direction) {
+          @for (d of elevationFacadesByDirection(); track d.direction) {
             <div class="pc-mapdir">
               <div class="pc-mapdir__head">
                 <span class="pc-mapdir__name">{{ directionKey(d.direction) | translate }}</span>
                 <span class="pc-mapdir__count" dir="ltr">{{ d.groups.length }}</span>
               </div>
               <div class="pc-maptiles">
-                @for (g of d.groups; track g.key) {
-                  <button type="button" class="pc-maptile" (click)="openGroupMap(g.key)">
+                @for (g of d.groups; track g.groupKey) {
+                  <button type="button" class="pc-maptile" (click)="openGroupMap(g.groupKey)">
                     <span class="pc-maptile__badge material-symbols-outlined" aria-hidden="true">map</span>
-                    <span class="pc-maptile__label" dir="ltr">{{ g.key }}</span>
-                    <span class="pc-maptile__qty" dir="ltr">
-                      {{ g.totalQty }} {{ 'PROJECT_CONTROL.MODULES' | translate }}
-                    </span>
-                    @if (g.subLabels.length > 1) {
-                      <span class="pc-maptile__subs">
-                        @for (sub of g.subLabels; track sub) {
-                          <span class="pc-maptile__sub" dir="ltr">{{ sub }}</span>
-                        }
+                    <span class="pc-maptile__label" dir="ltr">{{ g.label }}</span>
+                    @if (g.progress) {
+                      <span class="pc-maptile__qty" dir="ltr">
+                        {{ g.progress.done }}/{{ g.progress.total }} · {{ g.progress.pct }}%
+                      </span>
+                    }
+                    @if (g.status === 'PROCESSING') {
+                      <span class="pc-maptile__status pc-maptile__status--busy">
+                        {{ 'ELEVATION_MAP.PROCESSING' | translate }}
+                      </span>
+                    } @else if (g.status === 'FAILED') {
+                      <span class="pc-maptile__status pc-maptile__status--fail">
+                        {{ 'ELEVATION_MAP.FAILED' | translate }}
                       </span>
                     }
                     <span class="pc-maptile__cta">{{ 'PLANNING_PDF.OPEN' | translate }}</span>
@@ -338,6 +342,8 @@
     @if (activeTab() === 'mapping') {
       @if (previewLoading()) {
         <div class="pc__state">{{ 'COMMON.LOADING' | translate }}…</div>
+      } @else if (previewError()) {
+        <div class="pc__state">{{ 'PROJECT_CONTROL.' + previewError() | translate }}</div>
       } @else if (preview()) {
         <div class="pc__mapping">
           <div class="pc-map-metrics">

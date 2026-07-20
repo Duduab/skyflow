@@ -38,6 +38,12 @@ export interface GlassElement {
   order: number;
 }
 
+export interface WindowDrawingExtraction {
+  glass: GlassElement[];
+  /** Elevation stack top-to-bottom: SPANDREL | WINDOW | FIXED | SHADOW_BOX. */
+  compositionTopDown: string[];
+}
+
 interface VisionGlass {
   code: string;
   kind: GlassKind;
@@ -229,28 +235,62 @@ const SYSTEM_PROMPT =
   'colored FRONT-ELEVATION drawing (its column/title contains "ALUM. RAL"). In ' +
   'that elevation, GLASS panels are painted turquoise/cyan and each carries a ' +
   'code label. Opaque SPANDREL panels are gray and carry "SP-*" codes — those ' +
-  'are NOT glass and must be ignored. Codes look like "WM-1" (an openable ' +
-  'WINDOW, glazed) or "GM-1", "GM-2" (FIXED glazing). Report EVERY glass panel ' +
-  '(every WM-* and GM-*), ordered top-to-bottom as drawn.\n\n' +
+  'are NOT glass and must be ignored for glass[]. Codes look like "WM-1" ' +
+  '(openable WINDOW, glazed) or "GM-1", "GM-2" (FIXED glazing). Report EVERY ' +
+  'glass panel (every WM-* and GM-*), ordered top-to-bottom as drawn.\n\n' +
+  'Also read the full vertical stack of horizontal bands in that elevation ' +
+  '(top to bottom, ignore CORNER ANGLE headers). For each band return one of: ' +
+  '"SPANDREL" (gray opaque / SP-* / Hebrew ספנדרל), "WINDOW" (openable WM-* or ' +
+  'Hebrew חלון), "FIXED" (fixed GM-* or Hebrew קבוע), "SHADOW_BOX" (Shadow Box ' +
+  'label if present). Include repeated bands.\n\n' +
   'For each glass panel return: its exact code; kind = "WINDOW" when the code ' +
   'starts with WM (openable), "FIXED" when it starts with GM (fixed glazing); ' +
   'and a tight bounding box of the cyan panel as fractions of the FULL image ' +
   'width/height (x,y = top-left; w,h = size; all in 0..1).\n\n' +
   'Return ONLY compact JSON, no prose:\n' +
-  '{"glass":[{"code":"WM-1","kind":"WINDOW","x":0.0,"y":0.0,"w":0.0,"h":0.0}]}';
+  '{"composition":["SPANDREL","WINDOW","FIXED"],' +
+  '"glass":[{"code":"WM-1","kind":"WINDOW","x":0.0,"y":0.0,"w":0.0,"h":0.0}]}';
 
-function parseVision(text: string): VisionGlass[] {
-  if (!text) return [];
+const COMPOSITION_LABELS = new Set([
+  'SPANDREL',
+  'WINDOW',
+  'FIXED',
+  'SHADOW_BOX',
+]);
+
+function normalizeCompositionLabel(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  const u = s.toUpperCase().replace(/\s+/g, '_');
+  if (COMPOSITION_LABELS.has(u)) return u;
+  if (/SPANDREL|SP-\d|ספנדרל/.test(s)) return 'SPANDREL';
+  if (/SHADOW/.test(u)) return 'SHADOW_BOX';
+  if (/WINDOW|WM-|חלון/.test(s)) return 'WINDOW';
+  if (/FIXED|GM-|קבוע/.test(s)) return 'FIXED';
+  return null;
+}
+
+function parseVision(text: string): { glass: VisionGlass[]; composition: string[] } {
+  if (!text) return { glass: [], composition: [] };
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   let raw: unknown;
   try {
     raw = JSON.parse(jsonMatch ? jsonMatch[0] : text);
   } catch {
-    return [];
+    return { glass: [], composition: [] };
   }
-  const arr = (raw as { glass?: unknown })?.glass;
-  if (!Array.isArray(arr)) return [];
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  const composition: string[] = [];
+  if (Array.isArray(obj['composition'])) {
+    for (const item of obj['composition']) {
+      if (typeof item !== 'string') continue;
+      const label = normalizeCompositionLabel(item);
+      if (label) composition.push(label);
+    }
+  }
+  const arr = obj['glass'];
   const out: VisionGlass[] = [];
+  if (!Array.isArray(arr)) return { glass: out, composition };
   for (const g of arr) {
     const o = (g ?? {}) as Record<string, unknown>;
     const code = typeof o['code'] === 'string' ? o['code'].trim() : '';
@@ -269,7 +309,7 @@ function parseVision(text: string): VisionGlass[] {
       h: num('h'),
     });
   }
-  return out;
+  return { glass: out, composition };
 }
 
 /**
@@ -281,17 +321,19 @@ export async function extractWindowGlassFromPdf(
   drawingPage: number,
   anthropic: Anthropic,
   model: string,
-): Promise<GlassElement[]> {
+): Promise<WindowDrawingExtraction> {
   const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
   try {
-    if (drawingPage < 0 || drawingPage >= doc.numPages) return [];
+    if (drawingPage < 0 || drawingPage >= doc.numPages) {
+      return { glass: [], compositionTopDown: [] };
+    }
     const page = await doc.getPage(drawingPage + 1);
     const master = await renderMasterCanvas(page);
     const fullPage = exportFullPage(master);
 
     const res = await anthropic.messages.create({
       model,
-      max_tokens: 1500,
+      max_tokens: 2000,
       temperature: 0,
       system: SYSTEM_PROMPT,
       messages: [
@@ -309,8 +351,9 @@ export async function extractWindowGlassFromPdf(
             {
               type: 'text',
               text:
-                'List every glass panel (WM-* and GM-*) in the ALUM.RAL colored ' +
-                'elevation with its code, kind and tight cyan bounding box.',
+                'Read the ALUM.RAL colored elevation: return the full vertical ' +
+                'composition stack (top-to-bottom) and every glass panel (WM-* / ' +
+                'GM-*) with code, kind and tight cyan bounding box.',
             },
           ],
         },
@@ -321,10 +364,10 @@ export async function extractWindowGlassFromPdf(
       .join('\n')
       .trim();
 
-    const detected = parseVision(text);
+    const parsed = parseVision(text);
     // de-dupe by code, keep drawing order (top-to-bottom by y)
     const byCode = new Map<string, VisionGlass>();
-    for (const g of detected) if (!byCode.has(g.code)) byCode.set(g.code, g);
+    for (const g of parsed.glass) if (!byCode.has(g.code)) byCode.set(g.code, g);
     const ordered = [...byCode.values()].sort((a, b) => a.y - b.y);
 
     const out: GlassElement[] = [];
@@ -338,7 +381,7 @@ export async function extractWindowGlassFromPdf(
       const pngBase64 = cropToBase64(master, box.x, box.y, box.w, box.h);
       out.push({ code: g.code, kind: g.kind, pngBase64, order: order++ });
     }
-    return out;
+    return { glass: out, compositionTopDown: parsed.composition };
   } finally {
     await doc.destroy();
   }

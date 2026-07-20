@@ -1,12 +1,15 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import {
   NotificationKind,
   OrderStatus,
   Prisma,
+  ProcessingJob,
   ProductComponentKind,
   ProductType,
   ProjectAngleSourcing,
@@ -17,6 +20,7 @@ import {
   SkyflowRole,
 } from '@prisma/client';
 import { copyFileSync, existsSync, mkdirSync, rmSync } from 'fs';
+import { readFile as readFileAsync } from 'fs/promises';
 import { extname, join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanningUploadService } from '../planning/planning-upload.service';
@@ -44,34 +48,11 @@ import { ElevationService } from '../elevation/elevation.service.js';
 import { WindowPlanningService } from '../planning/window-planning.service.js';
 import { WorkCycleService } from '../work-cycles/work-cycle.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
-import { readFileSync } from 'fs';
-
-/** PDFs attached to projects — served as static files from the web app. */
-export function ensureProjectDocsUploadDir(): string {
-  const dir = join(
-    process.cwd(),
-    '..',
-    'web',
-    'public',
-    'assets',
-    'project-docs',
-    'uploads',
-  );
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-/** תמונות מסורים לאחר אישור — מוגשות מ־`web/public/planning-saws/{projectId}/` */
-export function ensureSawPlanningCaptureDir(projectId: string): string {
-  return join(
-    process.cwd(),
-    '..',
-    'web',
-    'public',
-    'planning-saws',
-    projectId,
-  );
-}
+import { ProcessingJobsService } from '../processing-jobs/processing-jobs.service.js';
+import {
+  ensureProjectDocsUploadDir,
+  ensureSawPlanningCaptureDir,
+} from './project-docs-path.util.js';
 
 function sheetNameFromProductLabelForSaws(label: string): string {
   const m = label.match(/^\[([^\]]+)\]\s*/);
@@ -79,7 +60,7 @@ function sheetNameFromProductLabelForSaws(label: string): string {
 }
 
 @Injectable()
-export class ProjectsService {
+export class ProjectsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planningUpload: PlanningUploadService,
@@ -89,7 +70,76 @@ export class ProjectsService {
     private readonly windowPlanning: WindowPlanningService,
     private readonly workCycles: WorkCycleService,
     private readonly notifications: NotificationsService,
+    private readonly processingJobs: ProcessingJobsService,
   ) {}
+
+  /**
+   * Registers this service as the processor for the two heavy PDF-upload
+   * flows (elevation map, per-window-type instructions) so their vision/render
+   * work runs on a background job instead of blocking the upload request.
+   */
+  onModuleInit(): void {
+    this.processingJobs.registerHandler('ELEVATION_PDF', (job) =>
+      this.runElevationJob(job),
+    );
+    this.processingJobs.registerHandler('WINDOW_TYPE_PDF', (job) =>
+      this.runWindowTypeJob(job),
+    );
+  }
+
+  private async runElevationJob(
+    job: ProcessingJob,
+  ): Promise<Prisma.InputJsonValue> {
+    const payload = job.payload as {
+      documentId: string;
+      title: string;
+      facadeGroup: string;
+      filename: string;
+    };
+    const buffer = await readFileAsync(
+      join(ensureProjectDocsUploadDir(), payload.filename),
+    );
+    const analyzed = await this.elevation.analyzeDocument({
+      projectId: job.projectId,
+      documentId: payload.documentId,
+      title: payload.title,
+      fileBuffer: buffer,
+      facadeGroup: payload.facadeGroup,
+      onProgress: (progress, message) =>
+        this.processingJobs.updateProgress(job.id, progress, message),
+    });
+    await this.processingJobs.updateProgress(
+      job.id,
+      95,
+      'ELEVATION.PROGRESS_LINKING_CELLS',
+    );
+    const linked = await this.windowPlanning.linkElevationCellsToWindowTypes(
+      job.projectId,
+    );
+    return { ...analyzed, linkedCells: linked };
+  }
+
+  private async runWindowTypeJob(
+    job: ProcessingJob,
+  ): Promise<Prisma.InputJsonValue> {
+    const payload = job.payload as {
+      documentId: string;
+      windowTypeId: string;
+      filename: string;
+    };
+    const buffer = await readFileAsync(
+      join(ensureProjectDocsUploadDir(), payload.filename),
+    );
+    const result = await this.windowPlanning.persistWindowInstructionsForType(
+      job.projectId,
+      payload.windowTypeId,
+      payload.documentId,
+      buffer,
+      (progress, message) =>
+        this.processingJobs.updateProgress(job.id, progress, message),
+    );
+    return result;
+  }
 
   async createPlanningDraft(
     name: string,
@@ -182,7 +232,7 @@ export class ProjectsService {
 
     let buffer: Buffer | null = null;
     try {
-      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+      buffer = await readFileAsync(join(ensureProjectDocsUploadDir(), file.filename));
     } catch {
       buffer = null;
     }
@@ -309,7 +359,7 @@ export class ProjectsService {
 
     let buffer: Buffer | null = null;
     try {
-      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+      buffer = await readFileAsync(join(ensureProjectDocsUploadDir(), file.filename));
     } catch {
       buffer = null;
     }
@@ -329,6 +379,7 @@ export class ProjectsService {
     });
 
     const result: Record<string, unknown> = { kind, windowTypeId };
+    let jobId: string | null = null;
     try {
       if (kind === ProjectDocumentKind.CONNECTION_DETAILS_PDF) {
         await this.windowPlanning.attachConnectionDetails(
@@ -338,15 +389,15 @@ export class ProjectsService {
         );
         result.connectionAttached = true;
       } else if (buffer && kind === ProjectDocumentKind.WINDOW_INSTRUCTION_PDF) {
-        Object.assign(
-          result,
-          await this.windowPlanning.persistWindowInstructionsForType(
-            projectId,
-            windowTypeId,
-            doc.id,
-            buffer,
-          ),
+        // Dominant cost here is 3 concurrent Claude Vision passes over the
+        // drawing — run it as a background job so the request returns at
+        // once; the client polls `jobId` and refreshes the preview when done.
+        const job = await this.processingJobs.createJob(
+          'WINDOW_TYPE_PDF',
+          projectId,
+          { documentId: doc.id, windowTypeId, filename: file.filename },
         );
+        jobId = job.id;
       } else if (buffer && kind === ProjectDocumentKind.ANGLE_INSTRUCTION_PDF) {
         Object.assign(
           result,
@@ -372,6 +423,7 @@ export class ProjectsService {
         createdAt: doc.createdAt.toISOString(),
       },
       parse: result,
+      jobId,
       preview,
     };
   }
@@ -407,7 +459,7 @@ export class ProjectsService {
 
     let buffer: Buffer | null = null;
     try {
-      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+      buffer = await readFileAsync(join(ensureProjectDocsUploadDir(), file.filename));
     } catch {
       buffer = null;
     }
@@ -421,9 +473,9 @@ export class ProjectsService {
       ),
     ];
     if (oldDocIds.length) {
-      for (const oldDocId of oldDocIds) {
-        await this.elevation.deleteForDocument(oldDocId);
-      }
+      await Promise.all(
+        oldDocIds.map((oldDocId) => this.elevation.deleteForDocument(oldDocId)),
+      );
       await this.prisma.facade.updateMany({
         where: { projectId, groupKey },
         data: { elevationDocId: null },
@@ -457,15 +509,17 @@ export class ProjectsService {
       data: { elevationDocId: doc.id },
     });
 
+    // Render + PNG writes + cell linking are the slow part — run them as a
+    // background job so the request returns immediately; the client polls
+    // `jobId` and refreshes the preview/map once the job is DONE.
+    let jobId: string | null = null;
     if (buffer) {
-      await this.elevation.analyzeDocument({
+      const job = await this.processingJobs.createJob(
+        'ELEVATION_PDF',
         projectId,
-        documentId: doc.id,
-        title: docTitle,
-        fileBuffer: buffer,
-        facadeGroup: groupKey,
-      });
-      await this.windowPlanning.linkElevationCellsToWindowTypes(projectId);
+        { documentId: doc.id, title: docTitle, facadeGroup: groupKey, filename: file.filename },
+      );
+      jobId = job.id;
     }
 
     const preview = await this.windowPlanning.buildPlanningPreview(projectId);
@@ -479,12 +533,37 @@ export class ProjectsService {
         createdAt: doc.createdAt.toISOString(),
       },
       facadeGroup: groupKey,
+      jobId,
       preview,
     };
   }
 
-  getPlanningPdfPreview(projectId: string) {
+  async getPlanningPdfPreview(
+    projectId: string,
+    actor?: { userId?: string; role?: SkyflowRole },
+  ) {
+    await this.assertProjectControlAccess(projectId, actor);
     return this.windowPlanning.buildPlanningPreview(projectId);
+  }
+
+  /** ADMIN/PLANNING — תמיד; SITE_MANAGER — רק אם משובץ כמנהל הפרויקט. */
+  private async assertProjectControlAccess(
+    projectId: string,
+    actor?: { userId?: string; role?: SkyflowRole },
+  ) {
+    const project = await this.prisma.projectOrder.findUnique({
+      where: { id: projectId },
+      select: { id: true, projectManagerUserId: true },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+    if (
+      actor?.role === SkyflowRole.SITE_MANAGER &&
+      project.projectManagerUserId &&
+      project.projectManagerUserId !== actor.userId
+    ) {
+      throw new ForbiddenException('לא משובץ כמנהל הפרויקט');
+    }
+    return project;
   }
 
   /** Save a planner-edited parts mapping for a window type, return fresh preview. */
@@ -878,9 +957,9 @@ export class ProjectsService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.sawStationWorkLine.deleteMany({ where: { projectId } });
-      for (const row of preparedSawLines) {
-        await tx.sawStationWorkLine.create({
-          data: {
+      if (preparedSawLines.length) {
+        await tx.sawStationWorkLine.createMany({
+          data: preparedSawLines.map((row) => ({
             projectId,
             componentKind: row.componentKind,
             description: row.description,
@@ -890,19 +969,20 @@ export class ProjectsService {
             instructionKind: row.instructionKind,
             planningCutLengthMm: row.planningCutLengthMm,
             sawsProfileCode: row.sawsProfileCode,
-          },
+          })),
         });
       }
 
       await tx.projectPlanningSawsWorker.deleteMany({ where: { projectId } });
 
       if (teamMode && workerIdsOrdered.length) {
-        let sort = 0;
-        for (const userId of workerIdsOrdered) {
-          await tx.projectPlanningSawsWorker.create({
-            data: { projectId, userId, sortOrder: sort++ },
-          });
-        }
+        await tx.projectPlanningSawsWorker.createMany({
+          data: workerIdsOrdered.map((userId, sort) => ({
+            projectId,
+            userId,
+            sortOrder: sort,
+          })),
+        });
       }
 
       await tx.projectOrder.update({
@@ -1001,12 +1081,13 @@ export class ProjectsService {
       await tx.sawStationWorkLine.deleteMany({ where: { projectId } });
       await tx.projectPlanningSawsWorker.deleteMany({ where: { projectId } });
       if (teamMode && workerIdsOrdered.length) {
-        let sort = 0;
-        for (const userId of workerIdsOrdered) {
-          await tx.projectPlanningSawsWorker.create({
-            data: { projectId, userId, sortOrder: sort++ },
-          });
-        }
+        await tx.projectPlanningSawsWorker.createMany({
+          data: workerIdsOrdered.map((userId, sort) => ({
+            projectId,
+            userId,
+            sortOrder: sort,
+          })),
+        });
       }
       await tx.projectOrder.update({
         where: { id: projectId },
@@ -1189,7 +1270,7 @@ export class ProjectsService {
     // Read the uploaded PDF once for content-based detection + analysis.
     let buffer: Buffer | null = null;
     try {
-      buffer = readFileSync(join(ensureProjectDocsUploadDir(), file.filename));
+      buffer = await readFileAsync(join(ensureProjectDocsUploadDir(), file.filename));
     } catch {
       buffer = null;
     }

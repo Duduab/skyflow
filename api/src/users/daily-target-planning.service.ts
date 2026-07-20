@@ -67,50 +67,53 @@ export class DailyTargetPlanningService {
       });
       const shares = splitQtyEvenly(totalQty, assigneeIds.length);
 
-      for (let i = 0; i < assigneeIds.length; i++) {
-        const userId = assigneeIds[i]!;
-        const targetQty = shares[i] ?? 0;
-        if (targetQty <= 0) continue;
+      // Each assignee's target row is independent — upsert them concurrently
+      // instead of one round-trip after another inside the transaction.
+      await Promise.all(
+        assigneeIds.map((userId, i) => {
+          const targetQty = shares[i] ?? 0;
+          if (targetQty <= 0) return null;
 
-        const lineItems = buildWorkerLineItems(
-          input.sawLines,
-          i,
-          assigneeIds.length,
-        );
-        const description = buildPlanningTargetDescription(
-          input.projectName,
-          stationName,
-          targetQty,
-        );
-        const dedupeKey = planningDailyTargetDedupeKey(
-          userId,
-          targetDate,
-          input.projectId,
-          input.stationId,
-        );
-
-        await tx.userDailyTarget.upsert({
-          where: { dedupeKey },
-          create: {
+          const lineItems = buildWorkerLineItems(
+            input.sawLines,
+            i,
+            assigneeIds.length,
+          );
+          const description = buildPlanningTargetDescription(
+            input.projectName,
+            stationName,
+            targetQty,
+          );
+          const dedupeKey = planningDailyTargetDedupeKey(
             userId,
             targetDate,
-            source: DailyTargetSource.PLANNING,
-            projectId: input.projectId,
-            stationId: input.stationId,
-            description,
-            targetQty,
-            lineItems,
-            targetMinutes: estimatePlanningTargetMinutes(targetQty),
-            dedupeKey,
-          },
-          update: {
-            description,
-            targetQty,
-            lineItems,
-            targetMinutes: estimatePlanningTargetMinutes(targetQty),
-          },
-        });
-      }
+            input.projectId,
+            input.stationId,
+          );
+
+          return tx.userDailyTarget.upsert({
+            where: { dedupeKey },
+            create: {
+              userId,
+              targetDate,
+              source: DailyTargetSource.PLANNING,
+              projectId: input.projectId,
+              stationId: input.stationId,
+              description,
+              targetQty,
+              lineItems,
+              targetMinutes: estimatePlanningTargetMinutes(targetQty),
+              dedupeKey,
+            },
+            update: {
+              description,
+              targetQty,
+              lineItems,
+              targetMinutes: estimatePlanningTargetMinutes(targetQty),
+            },
+          });
+        }),
+      );
     });
   }
 

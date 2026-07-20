@@ -14,8 +14,18 @@ import {
   WorkCycleStationStatus,
   WorkCycleStatus,
 } from '@prisma/client';
+import Anthropic from '@anthropic-ai/sdk';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { extractWindowGlassFromPdf } from '../planning/pdf/window-glass-vision';
+import {
+  deleteGlassPanel,
+  loadGlassManifest,
+  updateGlassPanel,
+} from '../planning/window-glass-media';
+import { ensureProjectDocsUploadDir } from '../projects/project-docs-path.util';
 
 /** Laser is the parallel angle station (mirrors stations.service LASER_STATION_ID). */
 const LASER_STATION_ID = 8;
@@ -26,11 +36,18 @@ const LINE_STATIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
 @Injectable()
 export class WorkCycleService {
   private readonly logger = new Logger(WorkCycleService.name);
+  private readonly anthropic: Anthropic | null;
+  private readonly anthropicModel: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
-  ) {}
+  ) {
+    const apiKey = process.env['ANTHROPIC_API_KEY']?.trim();
+    this.anthropicModel =
+      process.env['ANTHROPIC_MODEL']?.trim() || 'claude-3-5-sonnet-latest';
+    this.anthropic = apiKey ? new Anthropic({ apiKey }) : null;
+  }
 
   /**
    * The set of stations a cycle for `windowType` in `project` passes through.
@@ -118,20 +135,24 @@ export class WorkCycleService {
             select: { id: true },
           });
 
-      for (const stationId of stations) {
-        await tx.workCycleStationProgress.upsert({
-          where: {
-            workCycleId_stationId: { workCycleId: cycle.id, stationId },
-          },
-          update: { targetQty },
-          create: {
-            workCycleId: cycle.id,
-            stationId,
-            targetQty,
-            status: WorkCycleStationStatus.PENDING,
-          },
-        });
-      }
+      // Each station's row is independent — upsert them concurrently instead
+      // of one round-trip after another inside the transaction.
+      await Promise.all(
+        stations.map((stationId) =>
+          tx.workCycleStationProgress.upsert({
+            where: {
+              workCycleId_stationId: { workCycleId: cycle.id, stationId },
+            },
+            update: { targetQty },
+            create: {
+              workCycleId: cycle.id,
+              stationId,
+              targetQty,
+              status: WorkCycleStationStatus.PENDING,
+            },
+          }),
+        ),
+      );
     });
 
     this.logger.log(
@@ -205,6 +226,7 @@ export class WorkCycleService {
     }[],
     dailyTargetQty: number | null,
     dailyTargetHours: number | null = null,
+    scheduledStartAt: Date | null = null,
     actorUserId?: string | null,
   ) {
     const cycle = await this.prisma.workCycle.findFirst({
@@ -230,6 +252,7 @@ export class WorkCycleService {
       workCycleId,
       dailyTargetQty,
       dailyTargetHours,
+      scheduledStartAt,
     );
     await this.openCycleForWindowType(projectId, cycle.windowTypeId);
     await this.promoteProjectToProduction(projectId);
@@ -331,6 +354,7 @@ export class WorkCycleService {
     workCycleId: string,
     dailyTargetQty: number | null,
     dailyTargetHours: number | null = null,
+    scheduledStartAt: Date | null = null,
   ) {
     const cycle = await this.prisma.workCycle.findFirst({
       where: { id: workCycleId, projectId },
@@ -346,6 +370,11 @@ export class WorkCycleService {
           dailyTargetHours == null || dailyTargetHours <= 0
             ? null
             : dailyTargetHours,
+        // A past date is treated as "start immediately" (null).
+        scheduledStartAt:
+          scheduledStartAt && scheduledStartAt.getTime() > Date.now()
+            ? scheduledStartAt
+            : null,
       },
     });
     return this.getCycle(projectId, workCycleId);
@@ -732,6 +761,24 @@ export class WorkCycleService {
     const workerById = new Map(workers.map((w) => [w.id, w]));
 
     const wt = cycle.windowType;
+    const composition = await this.refreshCompositionIfNeeded(wt, projectId);
+    const glassManifest = await loadGlassManifest(projectId);
+    const glass = [...(glassManifest?.byWindowType[wt.code] ?? [])].sort(
+      (a, b) => a.order - b.order,
+    );
+    const angleCodes = this.asStringArray(wt.angleCodes);
+    const angleRows = angleCodes.length
+      ? await this.prisma.angle.findMany({
+          where: { projectId, code: { in: angleCodes } },
+          include: { instructionDoc: { select: { pdfPath: true } } },
+        })
+      : [];
+    const angleByCode = new Map(angleRows.map((a) => [a.code, a]));
+    const angleDocs = angleCodes.map((code) => ({
+      code,
+      instructionPdfUrl: angleByCode.get(code)?.instructionDoc?.pdfPath ?? null,
+    }));
+
     return {
       cycle: {
         id: cycle.id,
@@ -751,13 +798,15 @@ export class WorkCycleService {
         code: wt.code,
         totalQty: wt.totalQty,
         hasAngles: wt.hasAngles,
-        composition: this.asStringArray(wt.composition),
+        composition,
         angleCodes: this.asStringArray(wt.angleCodes),
         parts: (wt.partsPayload as unknown) ?? null,
         instructionPage: wt.instructionPage,
         instructionPdfUrl: wt.instructionDoc?.pdfPath ?? null,
         instructionTitle: wt.instructionDoc?.title ?? null,
         connectionPdfUrl: wt.connectionDoc?.pdfPath ?? null,
+        glass,
+        angleDocs,
       },
       stationProgress: cycle.stationProgress.map((sp) => ({
         stationId: sp.stationId,
@@ -917,6 +966,84 @@ export class WorkCycleService {
     return this.getCycle(projectId, workCycleId);
   }
 
+  /** Edit one glass panel (code / kind) and reroute to gluing when launched. */
+  async updateCycleGlassPanel(
+    projectId: string,
+    workCycleId: string,
+    panelOrder: number,
+    dto: { code: string; kind: 'WINDOW' | 'FIXED' },
+  ) {
+    const cycle = await this.prisma.workCycle.findFirst({
+      where: { id: workCycleId, projectId },
+      include: {
+        windowType: { select: { code: true, hasAngles: true } },
+      },
+    });
+    if (!cycle) throw new NotFoundException('Work cycle not found');
+    if (cycle.status === WorkCycleStatus.COMPLETED) {
+      throw new BadRequestException('A completed unit can no longer be edited');
+    }
+
+    const glass = await updateGlassPanel(
+      projectId,
+      cycle.windowType.code,
+      panelOrder,
+      { code: dto.code, kind: dto.kind },
+    );
+
+    if (cycle.status !== WorkCycleStatus.DRAFT) {
+      const project = await this.prisma.projectOrder.findUnique({
+        where: { id: projectId },
+        select: { angleSourcing: true },
+      });
+      if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+      const chain = this.stationChain(project, {
+        hasAngles: cycle.windowType.hasAngles,
+      });
+      await this.rerouteCycle(workCycleId, chain, new Set([4]));
+    }
+
+    return { glass };
+  }
+
+  /** Delete one glass panel and reroute to gluing when launched. */
+  async deleteCycleGlassPanel(
+    projectId: string,
+    workCycleId: string,
+    panelOrder: number,
+  ) {
+    const cycle = await this.prisma.workCycle.findFirst({
+      where: { id: workCycleId, projectId },
+      include: {
+        windowType: { select: { code: true, hasAngles: true } },
+      },
+    });
+    if (!cycle) throw new NotFoundException('Work cycle not found');
+    if (cycle.status === WorkCycleStatus.COMPLETED) {
+      throw new BadRequestException('A completed unit can no longer be edited');
+    }
+
+    const glass = await deleteGlassPanel(
+      projectId,
+      cycle.windowType.code,
+      panelOrder,
+    );
+
+    if (cycle.status !== WorkCycleStatus.DRAFT) {
+      const project = await this.prisma.projectOrder.findUnique({
+        where: { id: projectId },
+        select: { angleSourcing: true },
+      });
+      if (!project) throw new NotFoundException(`Project ${projectId} not found`);
+      const chain = this.stationChain(project, {
+        hasAngles: cycle.windowType.hasAngles,
+      });
+      await this.rerouteCycle(workCycleId, chain, new Set([4]));
+    }
+
+    return { glass };
+  }
+
   /**
    * Reset the station(s) that own an edited component (and everything downstream
    * on the linear line) so the unit is re-produced from there. The laser (#8) is
@@ -984,6 +1111,60 @@ export class WorkCycleService {
     }
     // WorkCycle + all children cascade from the window type.
     await this.prisma.windowType.delete({ where: { id: cycle.windowTypeId } });
+  }
+
+  /**
+   * Re-read the elevation drawing when stored composition is incomplete (legacy
+   * text-parser stored only unique labels like WINDOW + SHADOW_BOX).
+   */
+  private async refreshCompositionIfNeeded(
+    wt: {
+      id: string;
+      code: string;
+      instructionPage: number | null;
+      composition: unknown;
+      instructionDoc: { pdfPath: string | null } | null;
+    },
+    projectId: string,
+  ): Promise<string[]> {
+    const current = this.asStringArray(wt.composition);
+    if (!this.compositionNeedsVisionRefresh(current)) return current;
+    if (!this.anthropic || !wt.instructionDoc?.pdfPath) return current;
+
+    const filename = wt.instructionDoc.pdfPath.split('/').pop()?.trim();
+    if (!filename) return current;
+
+    try {
+      const buffer = await readFile(join(ensureProjectDocsUploadDir(), filename));
+      const drawingPage = wt.instructionPage ?? 0;
+      const extracted = await extractWindowGlassFromPdf(
+        buffer,
+        drawingPage,
+        this.anthropic,
+        this.anthropicModel,
+      );
+      if (extracted.compositionTopDown.length < 4) return current;
+
+      const bottomUp = [...extracted.compositionTopDown].reverse();
+      await this.prisma.windowType.update({
+        where: { id: wt.id, projectId },
+        data: { composition: bottomUp as unknown as Prisma.InputJsonValue },
+      });
+      this.logger.log(
+        `Refreshed composition for ${wt.code}: ${bottomUp.length} bands`,
+      );
+      return bottomUp;
+    } catch (err) {
+      this.logger.warn(
+        `Composition refresh failed for ${wt.code}: ${err instanceof Error ? err.message : err}`,
+      );
+      return current;
+    }
+  }
+
+  /** Legacy parser rows lack spandrel repeats — fewer than four bands needs vision. */
+  private compositionNeedsVisionRefresh(composition: string[]): boolean {
+    return composition.length < 4;
   }
 
   /** Coerce a stored JSON value into a string array. */

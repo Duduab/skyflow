@@ -533,7 +533,29 @@ export interface PlanningPdfUploadResponse {
     createdAt: string;
   };
   parse: Record<string, unknown>;
+  /**
+   * Set when the heavy part of the upload (PDF render + Claude Vision) was
+   * handed off to a background job instead of running inline — `preview`
+   * below reflects the state BEFORE that job finishes; poll `getProcessingJob`
+   * with this id and re-fetch the preview once it's DONE.
+   */
+  jobId?: string | null;
   preview: PlanningPdfPreviewDto;
+}
+
+export type ProcessingJobStatus = 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED';
+
+export interface ProcessingJobDto {
+  id: string;
+  kind: 'ELEVATION_PDF' | 'WINDOW_TYPE_PDF';
+  status: ProcessingJobStatus;
+  progress: number;
+  progressMessage: string | null;
+  error: string | null;
+  result: unknown;
+  projectId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type ElevationCellKind = 'SPANDREL' | 'UNIT';
@@ -1076,6 +1098,7 @@ export interface WorkCycle {
   targetQty: number;
   dailyTargetQty: number | null;
   dailyTargetHours: number | null;
+  scheduledStartAt: string | null;
   currentStationId: number | null;
   openedAt: string | null;
   completedAt: string | null;
@@ -1122,6 +1145,8 @@ export interface WorkCycleWindowDataDto {
   instructionPdfUrl: string | null;
   instructionTitle: string | null;
   connectionPdfUrl: string | null;
+  glass?: GlassPanelDto[];
+  angleDocs?: { code: string; instructionPdfUrl: string | null }[];
 }
 
 /** תשובת פרטי היחידה: נתונים ממופים + מסע התחנות (התקדמות + יומן). */

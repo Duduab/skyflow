@@ -19,6 +19,10 @@ import {
   sanitizeWindowPartsInput,
   type WindowPartsDto,
 } from '../common/window-parts.util';
+import { mapWithConcurrency } from '../common/concurrency.util';
+
+/** Max windows processed concurrently when a single PDF describes several units. */
+const WINDOW_PIPELINE_CONCURRENCY = 2;
 
 /**
  * Turns the four planning PDFs (window instructions, quantities, ANG) into the
@@ -57,52 +61,62 @@ export class WindowPlanningService {
     // ANG codes live inside the drawing (not the text layer) → read them with vision.
     const visionCodes = await this.detectAnglesFromDrawings(buffer, parsed.windows);
 
-    let sortOrder = 0;
     const allAngleCodes = new Set<string>();
-    for (let i = 0; i < parsed.windows.length; i += 1) {
-      const win = parsed.windows[i];
-      const merged = [
-        ...new Set([...(win.angleCodes ?? []), ...(visionCodes[i] ?? [])]),
-      ];
-      merged.forEach((c) => allAngleCodes.add(c));
-      const hasAngles = merged.length > 0;
-      const parts = await this.detectPartsFromDrawings(buffer, win.pages ?? []);
-      const partsData = parts.sections.length
-        ? (parts as unknown as Prisma.InputJsonValue)
-        : undefined;
-      const windowType = await this.prisma.windowType.upsert({
-        where: { projectId_code: { projectId, code: win.code } },
-        update: {
-          instructionDocId: documentId,
-          instructionPage: win.startPage,
-          composition: win.composition as unknown as Prisma.InputJsonValue,
-          hasAngles,
-          angleCodes: merged as unknown as Prisma.InputJsonValue,
-          setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
-          ...(partsData ? { partsPayload: partsData } : {}),
-        },
-        create: {
-          projectId,
-          code: win.code,
-          instructionDocId: documentId,
-          instructionPage: win.startPage,
-          composition: win.composition as unknown as Prisma.InputJsonValue,
-          hasAngles,
-          angleCodes: merged as unknown as Prisma.InputJsonValue,
-          setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
-          ...(partsData ? { partsPayload: partsData } : {}),
-          sortOrder: sortOrder++,
-        },
-        select: { id: true },
-      });
-      await this.detectAndStoreGlass(
-        projectId,
-        win.code,
-        buffer,
-        win.startPage ?? (win.pages?.[0] ?? 0),
-      );
-      await this.workCycles.syncCycleStations(projectId, windowType.id);
-    }
+    // Windows are independent units — process a few concurrently (bounded, so
+    // we don't fire off unbounded parallel Claude calls for a large sheet),
+    // and within each window run the parts + glass vision passes together.
+    await mapWithConcurrency(
+      parsed.windows,
+      WINDOW_PIPELINE_CONCURRENCY,
+      async (win, i) => {
+        const merged = [
+          ...new Set([...(win.angleCodes ?? []), ...(visionCodes[i] ?? [])]),
+        ];
+        merged.forEach((c) => allAngleCodes.add(c));
+        const hasAngles = merged.length > 0;
+        const drawingPage = win.startPage ?? (win.pages?.[0] ?? 0);
+
+        const [parts, compositionFromDrawing] = await Promise.all([
+          this.detectPartsFromDrawings(buffer, win.pages ?? []),
+          this.detectAndStoreGlass(projectId, win.code, buffer, drawingPage),
+        ]);
+        const partsData = parts.sections.length
+          ? (parts as unknown as Prisma.InputJsonValue)
+          : undefined;
+        const composition =
+          compositionFromDrawing ??
+          (win.composition.length ? win.composition : null);
+        const windowType = await this.prisma.windowType.upsert({
+          where: { projectId_code: { projectId, code: win.code } },
+          update: {
+            instructionDocId: documentId,
+            instructionPage: win.startPage,
+            ...(composition
+              ? { composition: composition as unknown as Prisma.InputJsonValue }
+              : {}),
+            hasAngles,
+            angleCodes: merged as unknown as Prisma.InputJsonValue,
+            setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
+            ...(partsData ? { partsPayload: partsData } : {}),
+          },
+          create: {
+            projectId,
+            code: win.code,
+            instructionDocId: documentId,
+            instructionPage: win.startPage,
+            composition: (composition ??
+              win.composition) as unknown as Prisma.InputJsonValue,
+            hasAngles,
+            angleCodes: merged as unknown as Prisma.InputJsonValue,
+            setsPayload: win.setLabels as unknown as Prisma.InputJsonValue,
+            ...(partsData ? { partsPayload: partsData } : {}),
+            sortOrder: i,
+          },
+          select: { id: true },
+        });
+        await this.workCycles.syncCycleStations(projectId, windowType.id);
+      },
+    );
 
     // Pre-create the required ANG rows so the wizard/laser know what must be uploaded,
     // even before the ANG PDFs themselves arrive.
@@ -126,34 +140,47 @@ export class WindowPlanningService {
     windowTypeId: string,
     documentId: string,
     buffer: Buffer,
+    onProgress?: (progress: number, message?: string) => void | Promise<void>,
   ): Promise<{ anglesDetected: number }> {
+    const report = onProgress ?? (() => undefined);
     const wt = await this.prisma.windowType.findFirst({
       where: { id: windowTypeId, projectId },
     });
     if (!wt) throw new NotFoundException('Window type not found');
 
+    await report(10, 'PLANNING_PDF.PROGRESS_PARSING');
     const parsed = await parseWindowInstructionsPdf(buffer);
     // A per-unit file describes one window — use the first detected block if any.
     const win = parsed.windows[0];
     const pages = win?.pages ?? [0];
-    const [visionCodes = []] = await this.detectAnglesFromDrawings(buffer, [
-      { pages },
+    const drawingPage = win?.startPage ?? pages[0] ?? 0;
+
+    await report(25, 'PLANNING_PDF.PROGRESS_VISION');
+    // ANG codes, the set/part tables, and the glass panels are three
+    // independent vision passes over the same buffer — this is the dominant
+    // cost of this endpoint, so run them concurrently instead of one after
+    // another (was: render+5 calls, then render+5 calls, then render+1 call).
+    const [[visionCodes = []], parts, compositionFromDrawing] = await Promise.all([
+      this.detectAnglesFromDrawings(buffer, [{ pages }]),
+      this.detectPartsFromDrawings(buffer, pages),
+      this.detectAndStoreGlass(projectId, wt.code, buffer, drawingPage),
     ]);
+    await report(70, 'PLANNING_PDF.PROGRESS_SAVING');
+
     const merged = [...new Set([...(win?.angleCodes ?? []), ...visionCodes])];
     const existingCodes = (Array.isArray(wt.angleCodes) ? wt.angleCodes : []) as string[];
     const angleCodes = merged.length ? merged : existingCodes;
-
-    // Set/part tables (profiles/seals/accessories) live on the sheet's later
-    // page(s) as a raster drawing → read them with vision, same as ANG codes.
-    const parts = await this.detectPartsFromDrawings(buffer, pages);
+    const composition =
+      compositionFromDrawing ??
+      (win?.composition?.length ? win.composition : null);
 
     await this.prisma.windowType.update({
       where: { id: windowTypeId },
       data: {
         instructionDocId: documentId,
         instructionPage: win?.startPage ?? 0,
-        ...(win?.composition?.length
-          ? { composition: win.composition as unknown as Prisma.InputJsonValue }
+        ...(composition
+          ? { composition: composition as unknown as Prisma.InputJsonValue }
           : {}),
         ...(win?.setLabels?.length
           ? { setsPayload: win.setLabels as unknown as Prisma.InputJsonValue }
@@ -166,19 +193,16 @@ export class WindowPlanningService {
       },
     });
 
-    await this.detectAndStoreGlass(
-      projectId,
-      wt.code,
-      buffer,
-      win?.startPage ?? pages[0] ?? 0,
-    );
+    // Independent follow-ups (angle rows, elevation-cell linking, station
+    // chain sync) — run concurrently rather than sequentially.
+    await Promise.all([
+      this.ensureRequiredAngles(projectId, merged),
+      this.linkElevationCellsToWindowTypes(projectId),
+      // Prepare station chain for assignment; cycle stays DRAFT until launched in step 3.
+      this.workCycles.syncCycleStations(projectId, windowTypeId),
+    ]);
 
-    await this.ensureRequiredAngles(projectId, merged);
-    await this.linkElevationCellsToWindowTypes(projectId);
-
-    // Prepare station chain for assignment; cycle stays DRAFT until launched in step 3.
-    await this.workCycles.syncCycleStations(projectId, windowTypeId);
-
+    await report(100, 'PLANNING_PDF.PROGRESS_DONE');
     return { anglesDetected: merged.length };
   }
 
@@ -262,28 +286,38 @@ export class WindowPlanningService {
     windowTypeCode: string,
     buffer: Buffer,
     drawingPage: number,
-  ): Promise<void> {
-    if (!this.anthropic) return;
+  ): Promise<string[] | null> {
+    if (!this.anthropic) return null;
     try {
-      const panels = await extractWindowGlassFromPdf(
+      const extracted = await extractWindowGlassFromPdf(
         buffer,
         drawingPage,
         this.anthropic,
         this.anthropicModel,
       );
-      if (panels.length) {
-        saveGlassPanelsForWindowType(projectId, windowTypeCode, panels);
+      if (extracted.glass.length) {
+        await saveGlassPanelsForWindowType(
+          projectId,
+          windowTypeCode,
+          extracted.glass,
+        );
       }
+      if (extracted.compositionTopDown.length) {
+        return [...extracted.compositionTopDown].reverse();
+      }
+      return null;
     } catch (err) {
       this.logger.warn(
         `Glass vision detection failed for ${windowTypeCode}: ${err instanceof Error ? err.message : err}`,
       );
+      return null;
     }
   }
 
   /**
    * Create an Angle row (code only) for each required code that doesn't exist yet.
    * Existing rows (qty/instructionDoc from an uploaded ANG PDF) are left untouched.
+   * Batched into a single createMany instead of one round-trip per code.
    */
   private async ensureRequiredAngles(
     projectId: string,
@@ -296,13 +330,17 @@ export class WindowPlanningService {
     });
     const existingCodes = new Set(existing.map((a) => a.code));
     let nextSort = existing.reduce((m, a) => Math.max(m, a.sortOrder + 1), 0);
-    for (const code of codes) {
-      if (existingCodes.has(code)) continue;
-      await this.prisma.angle.create({
-        data: { projectId, code, qty: 0, sortOrder: nextSort++ },
-      });
-      existingCodes.add(code);
-    }
+    const toCreate = [...new Set(codes)].filter((c) => !existingCodes.has(c));
+    if (!toCreate.length) return;
+    await this.prisma.angle.createMany({
+      data: toCreate.map((code) => ({
+        projectId,
+        code,
+        qty: 0,
+        sortOrder: nextSort++,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   /** Quantities PDF → WindowType totals + FacadeQuantity + ProductionStage + StageQuantity. */
@@ -312,58 +350,77 @@ export class WindowPlanningService {
   ): Promise<{ windowTypes: number; facades: number; stages: number }> {
     const parsed = await parseQuantitiesPdf(buffer);
 
-    // ensure a WindowType exists for every column code, set totalQty
-    let sortOrder = 0;
+    // Ensure a WindowType exists for every column code, set totalQty. Each
+    // code is independent of the others, so upsert them concurrently instead
+    // of one round-trip after another.
     const codeToId = new Map<string, string>();
-    for (const code of parsed.windowTypes) {
-      const total = parsed.totals[code] ?? 0;
-      const wt = await this.prisma.windowType.upsert({
-        where: { projectId_code: { projectId, code } },
-        update: { totalQty: total },
-        create: { projectId, code, totalQty: total, sortOrder: sortOrder++ },
-      });
-      codeToId.set(code, wt.id);
-      // Seed a DRAFT cycle per window; it flips to OPEN once instructions arrive.
-      await this.workCycles.ensureDraftCycle(projectId, wt.id, total);
-    }
+    await Promise.all(
+      parsed.windowTypes.map(async (code, idx) => {
+        const total = parsed.totals[code] ?? 0;
+        const wt = await this.prisma.windowType.upsert({
+          where: { projectId_code: { projectId, code } },
+          update: { totalQty: total },
+          create: { projectId, code, totalQty: total, sortOrder: idx },
+        });
+        codeToId.set(code, wt.id);
+        // Seed a DRAFT cycle per window; it flips to OPEN once instructions arrive.
+        await this.workCycles.ensureDraftCycle(projectId, wt.id, total);
+      }),
+    );
 
-    // facade quantities (replace)
+    // facade quantities (replace) — collect rows and insert in one batch.
     await this.prisma.facadeQuantity.deleteMany({
       where: { windowType: { projectId } },
     });
-    let facadeRows = 0;
+    const facadeQuantityRows: {
+      windowTypeId: string;
+      facadeLabel: string;
+      qty: number;
+    }[] = [];
     for (const facade of parsed.facades) {
       for (const [code, qty] of Object.entries(facade.qtys)) {
         const wtId = codeToId.get(code);
         if (!wtId || !qty) continue;
-        await this.prisma.facadeQuantity.create({
-          data: { windowTypeId: wtId, facadeLabel: facade.label, qty },
+        facadeQuantityRows.push({
+          windowTypeId: wtId,
+          facadeLabel: facade.label,
+          qty,
         });
-        facadeRows += 1;
       }
     }
+    if (facadeQuantityRows.length) {
+      await this.prisma.facadeQuantity.createMany({ data: facadeQuantityRows });
+    }
 
-    // stages (replace) — capture code→id to attach facades by stage
+    // stages (replace) — capture code→id to attach facades by stage. Stage
+    // rows are created concurrently; their quantities are batched afterwards.
     await this.prisma.productionStage.deleteMany({ where: { projectId } });
-    let stageSort = 0;
     const stageCodeToId = new Map<string, string>();
-    for (const stage of parsed.stages) {
-      const created = await this.prisma.productionStage.create({
-        data: {
-          projectId,
-          code: stage.code,
-          colorHex: stage.colorHex,
-          sortOrder: stageSort++,
-        },
-      });
-      stageCodeToId.set(stage.code, created.id);
-      for (const [code, qty] of Object.entries(stage.qtys)) {
-        const wtId = codeToId.get(code);
-        if (!wtId || !qty) continue;
-        await this.prisma.stageQuantity.create({
-          data: { stageId: created.id, windowTypeId: wtId, qty },
+    const stageQuantityRows: {
+      stageId: string;
+      windowTypeId: string;
+      qty: number;
+    }[] = [];
+    await Promise.all(
+      parsed.stages.map(async (stage, idx) => {
+        const created = await this.prisma.productionStage.create({
+          data: {
+            projectId,
+            code: stage.code,
+            colorHex: stage.colorHex,
+            sortOrder: idx,
+          },
         });
-      }
+        stageCodeToId.set(stage.code, created.id);
+        for (const [code, qty] of Object.entries(stage.qtys)) {
+          const wtId = codeToId.get(code);
+          if (!wtId || !qty) continue;
+          stageQuantityRows.push({ stageId: created.id, windowTypeId: wtId, qty });
+        }
+      }),
+    );
+    if (stageQuantityRows.length) {
+      await this.prisma.stageQuantity.createMany({ data: stageQuantityRows });
     }
 
     // facades (replace) — each sub-facade belongs to a single stage (by color)
@@ -377,31 +434,31 @@ export class WindowPlanningService {
       priorFacades.map((f) => [f.label, f.elevationDocId]),
     );
     await this.prisma.facade.deleteMany({ where: { projectId } });
-    let facadeSort = 0;
-    for (const facade of parsed.facades) {
+    const facadeCreateRows = parsed.facades.map((facade, idx) => {
       const total =
         facade.total ??
         Object.values(facade.qtys).reduce((s, q) => s + q, 0);
-      await this.prisma.facade.create({
-        data: {
-          projectId,
-          label: facade.label,
-          groupKey: facade.label.split('-')[0],
-          direction: facade.direction,
-          totalQty: total,
-          stageId: facade.stageCode
-            ? (stageCodeToId.get(facade.stageCode) ?? null)
-            : null,
-          elevationDocId: priorElevationByLabel.get(facade.label) ?? null,
-          sortOrder: facadeSort++,
-        },
-      });
+      return {
+        projectId,
+        label: facade.label,
+        groupKey: facade.label.split('-')[0],
+        direction: facade.direction,
+        totalQty: total,
+        stageId: facade.stageCode
+          ? (stageCodeToId.get(facade.stageCode) ?? null)
+          : null,
+        elevationDocId: priorElevationByLabel.get(facade.label) ?? null,
+        sortOrder: idx,
+      };
+    });
+    if (facadeCreateRows.length) {
+      await this.prisma.facade.createMany({ data: facadeCreateRows });
     }
 
     await this.linkElevationCellsToWindowTypes(projectId);
     return {
       windowTypes: parsed.windowTypes.length,
-      facades: facadeRows,
+      facades: facadeQuantityRows.length,
       stages: parsed.stages.length,
     };
   }
@@ -413,31 +470,47 @@ export class WindowPlanningService {
     buffer: Buffer,
   ): Promise<{ anglesFound: number }> {
     const parsed = await parseAnglePdf(buffer);
-    let sortOrder = 0;
-    for (const angle of parsed.angles) {
-      await this.prisma.angle.upsert({
-        where: { projectId_code: { projectId, code: angle.code } },
-        update: {
-          qty: angle.qty,
-          instructionDocId: documentId,
-          instructionPage: angle.page,
-        },
-        create: {
-          projectId,
-          code: angle.code,
-          qty: angle.qty,
-          instructionDocId: documentId,
-          instructionPage: angle.page,
-          sortOrder: sortOrder++,
-        },
-      });
-    }
+    const existing = await this.prisma.angle.findMany({
+      where: { projectId },
+      select: { code: true, sortOrder: true },
+    });
+    const existingSort = new Map(existing.map((a) => [a.code, a.sortOrder]));
+    let nextSort = existing.reduce((m, a) => Math.max(m, a.sortOrder + 1), 0);
+    // Each code is an independent upsert — run them concurrently.
+    await Promise.all(
+      parsed.angles.map((angle) => {
+        const sortOrder = existingSort.has(angle.code)
+          ? existingSort.get(angle.code)!
+          : nextSort++;
+        return this.prisma.angle.upsert({
+          where: { projectId_code: { projectId, code: angle.code } },
+          update: {
+            qty: angle.qty,
+            instructionDocId: documentId,
+            instructionPage: angle.page,
+          },
+          create: {
+            projectId,
+            code: angle.code,
+            qty: angle.qty,
+            instructionDocId: documentId,
+            instructionPage: angle.page,
+            sortOrder,
+          },
+        });
+      }),
+    );
     return { anglesFound: parsed.angles.length };
   }
 
   /**
    * Match elevation cells to window types by the window-type code found in the
    * cell text (74-1-03A). Sets windowTypeCode + windowTypeId on each cell.
+   *
+   * Cells are grouped by their resolved (code, windowTypeId) pair and updated
+   * with one `updateMany` per group instead of one `update` per cell — for a
+   * facade with hundreds of cells this turns hundreds of round-trips into a
+   * handful (one per distinct window-type code).
    */
   async linkElevationCellsToWindowTypes(projectId: string): Promise<number> {
     const windowTypes = await this.prisma.windowType.findMany({
@@ -452,17 +525,37 @@ export class WindowPlanningService {
       select: { id: true, code: true, items: true },
     });
 
-    let linked = 0;
+    const groups = new Map<
+      string,
+      { code: string; wtId: string | null; ids: string[] }
+    >();
     for (const cell of cells) {
       const code = this.extractWindowCode(cell.code, cell.items);
       if (!code) continue;
-      const wtId = codeToId.get(code);
-      await this.prisma.elevationCell.update({
-        where: { id: cell.id },
-        data: { windowTypeCode: code, windowTypeId: wtId ?? null },
-      });
-      if (wtId) linked += 1;
+      const wtId = codeToId.get(code) ?? null;
+      const key = `${code}::${wtId ?? ''}`;
+      const group = groups.get(key);
+      if (group) {
+        group.ids.push(cell.id);
+      } else {
+        groups.set(key, { code, wtId, ids: [cell.id] });
+      }
     }
+
+    if (!groups.size) return 0;
+
+    await this.prisma.$transaction(
+      [...groups.values()].map((g) =>
+        this.prisma.elevationCell.updateMany({
+          where: { id: { in: g.ids } },
+          data: { windowTypeCode: g.code, windowTypeId: g.wtId },
+        }),
+      ),
+    );
+
+    const linked = [...groups.values()]
+      .filter((g) => g.wtId)
+      .reduce((sum, g) => sum + g.ids.length, 0);
     this.logger.log(
       `Linked ${linked} elevation cells to window types for project ${projectId}`,
     );

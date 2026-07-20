@@ -27,7 +27,11 @@
               @if (isRowUploading(w.id, 'WINDOW_INSTRUCTION_PDF')) {
                 <span class="pdf-panel__upload-cta">
                   <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                  <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
+                  @if (rowJobProgress(w.id, 'WINDOW_INSTRUCTION_PDF') !== null) {
+                    <span>{{ 'PLANNING_PDF.PROCESSING_PROGRESS' | translate: { percent: rowJobProgress(w.id, 'WINDOW_INSTRUCTION_PDF') } }}</span>
+                  } @else {
+                    <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
+                  }
                 </span>
               } @else {
                 <span class="pdf-panel__upload-cta">
@@ -443,7 +447,11 @@
                       @if (uploadingGroupKey() === g.key) {
                         <span class="pdf-panel__upload-cta">
                           <span class="material-symbols-outlined pdf-panel__upload-icon" aria-hidden="true">upload</span>
-                          <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
+                          @if (groupJobProgress(g.key) !== null) {
+                            <span>{{ 'PLANNING_PDF.PROCESSING_PROGRESS' | translate: { percent: groupJobProgress(g.key) } }}</span>
+                          } @else {
+                            <span>{{ 'PLANNING_PDF.UPLOADING' | translate }}</span>
+                          }
                         </span>
                       } @else {
                         <span class="pdf-panel__upload-cta">
@@ -898,6 +906,7 @@
           [uploadingDocKey]="uploadingRowKey()"
           (docUpload)="onMapDocUpload($event)"
           (launchRequested)="onLaunchUnit($event)"
+          (unitDetailsRequested)="onMapUnitDetails($event)"
         />
       </div>
     </div>

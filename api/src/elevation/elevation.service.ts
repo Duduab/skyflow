@@ -10,7 +10,7 @@ import {
   NotificationKind,
   SkyflowRole,
 } from '@prisma/client';
-import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import { mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkCycleService } from '../work-cycles/work-cycle.service';
@@ -21,6 +21,7 @@ import {
   type RenderedCell,
   type SectionMeta,
 } from './elevation-render.js';
+import { filterElevationItems } from './elevation-text.util.js';
 
 /** Station id whose manager (SITE_MANAGER) installs on site. */
 const SITE_STATION_ID = 7;
@@ -34,9 +35,9 @@ export function elevationMapStorageDir(mapId: string): string {
   return join(process.cwd(), 'storage', 'elevation-maps', mapId);
 }
 
-export function ensureElevationMapDir(mapId: string): string {
+export async function ensureElevationMapDir(mapId: string): Promise<string> {
   const dir = elevationMapStorageDir(mapId);
-  mkdirSync(dir, { recursive: true });
+  await mkdir(dir, { recursive: true });
   return dir;
 }
 
@@ -81,9 +82,12 @@ export class ElevationService {
     fileBuffer: Buffer;
     /** When set, the map belongs to a single facade group (S / N5 / W2 ...). */
     facadeGroup?: string | null;
-  }): Promise<void> {
+    /** Optional progress callback (0-100) — used by the background job worker. */
+    onProgress?: (progress: number, message?: string) => void | Promise<void>;
+  }): Promise<{ mapId: string; cellCount: number }> {
     const { projectId, documentId, title, fileBuffer } = params;
     const facadeGroup = params.facadeGroup ?? null;
+    const report = params.onProgress ?? (() => undefined);
 
     // carry over previously completed cells (by code); scope to the same facade
     // group when known so repeated codes across groups don't collide.
@@ -108,21 +112,27 @@ export class ElevationService {
     });
 
     try {
+      await report(10, 'ELEVATION.PROGRESS_RENDERING');
       const rendered = await renderElevation(fileBuffer);
-      const dir = ensureElevationMapDir(map.id);
-      const pages: PageMeta[] = [];
+      const dir = await ensureElevationMapDir(map.id);
 
-      for (const page of rendered.pages) {
-        const fileName = `page-${page.pageIndex}.png`;
-        writeFileSync(join(dir, fileName), page.pngBuffer);
-        pages.push({
-          pageIndex: page.pageIndex,
-          imageUrl: `/api/elevation-maps/${map.id}/${fileName}`,
-          width: page.width,
-          height: page.height,
-          sections: page.sections,
-        });
-      }
+      await report(55, 'ELEVATION.PROGRESS_SAVING_PAGES');
+      // Writing each page's PNG is independent I/O — do it off the event loop
+      // and in parallel instead of one blocking writeFileSync per page.
+      const pages: PageMeta[] = await Promise.all(
+        rendered.pages.map(async (page) => {
+          const fileName = `page-${page.pageIndex}.png`;
+          await writeFile(join(dir, fileName), page.pngBuffer);
+          return {
+            pageIndex: page.pageIndex,
+            imageUrl: `/api/elevation-maps/${map.id}/${fileName}`,
+            width: page.width,
+            height: page.height,
+            sections: page.sections,
+          };
+        }),
+      );
+      pages.sort((a, b) => a.pageIndex - b.pageIndex);
 
       const cellRows = rendered.pages.flatMap((page) =>
         page.cells.map((c: RenderedCell) => {
@@ -144,6 +154,7 @@ export class ElevationService {
         }),
       );
 
+      await report(85, 'ELEVATION.PROGRESS_LINKING_CELLS');
       if (cellRows.length) {
         await this.prisma.elevationCell.createMany({ data: cellRows });
       }
@@ -160,6 +171,8 @@ export class ElevationService {
       this.logger.log(
         `Elevation map ${map.id} ready: ${cellRows.length} cells, ${pages.length} page(s)`,
       );
+      await report(100, 'ELEVATION.PROGRESS_DONE');
+      return { mapId: map.id, cellCount: cellRows.length };
     } catch (err) {
       this.logger.error(
         `Elevation analysis failed for project ${projectId}: ${String(err)}`,
@@ -168,6 +181,7 @@ export class ElevationService {
         where: { id: map.id },
         data: { status: 'FAILED', error: String(err).slice(0, 1000) },
       });
+      throw err;
     }
   }
 
@@ -313,7 +327,9 @@ export class ElevationService {
       code: c.code,
       floor: c.floor,
       kind: c.kind,
-      items: (Array.isArray(c.items) ? c.items : []) as string[],
+      items: filterElevationItems(
+        (Array.isArray(c.items) ? c.items : []) as string[],
+      ),
       bbox: c.bbox as { x: number; y: number; w: number; h: number },
       status: c.status,
       doneAt: c.doneAt?.toISOString() ?? null,
@@ -540,13 +556,15 @@ export class ElevationService {
           .filter((id): id is string => !!id),
       ),
     ];
-    for (const wtId of windowTypeIds) {
-      await this.workCycles.recomputeCompletionFromElevation(
-        projectId,
-        wtId,
-        user.userId,
-      );
-    }
+    await Promise.all(
+      windowTypeIds.map((wtId) =>
+        this.workCycles.recomputeCompletionFromElevation(
+          projectId,
+          wtId,
+          user.userId,
+        ),
+      ),
+    );
 
     if (done && res.count > 0) {
       const project = await this.prisma.projectOrder.findUnique({
@@ -574,13 +592,18 @@ export class ElevationService {
       where: { documentId },
       select: { id: true },
     });
-    for (const m of maps) {
-      try {
-        rmSync(elevationMapStorageDir(m.id), { recursive: true, force: true });
-      } catch {
-        /* ignore fs cleanup errors */
-      }
-    }
+    await Promise.all(
+      maps.map(async (m) => {
+        try {
+          await rm(elevationMapStorageDir(m.id), {
+            recursive: true,
+            force: true,
+          });
+        } catch {
+          /* ignore fs cleanup errors */
+        }
+      }),
+    );
     await this.prisma.elevationMap.deleteMany({ where: { documentId } });
   }
 }

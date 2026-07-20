@@ -605,9 +605,16 @@
 .sf-desk-header__notif-list {
   list-style: none;
   margin: 0;
-  padding: 0.25rem;
+  padding: 0.45rem 0.35rem;
   max-height: 26rem;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sf-desk-header__notif-list > li {
+  padding-block: 0.15rem;
 }
 
 .sf-desk-header__notif-item {
@@ -617,7 +624,7 @@
   gap: 0.65rem;
   width: 100%;
   text-align: start;
-  padding: 0.6rem 0.7rem;
+  padding: 0.75rem 0.7rem;
   border: none;
   border-radius: var(--sf-radius);
   background: transparent;

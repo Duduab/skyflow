@@ -114,20 +114,24 @@
   top: 0.85rem;
   inset-inline-end: 0.85rem;
   z-index: 2;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.35rem;
-  height: 2.35rem;
-  padding: 0 0.45rem;
-  border-radius: var(--sf-radius);
-  font-size: 1.15rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.94);
-  background: rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow: var(--sf-shadow-inset);
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--brief-accent, #558fc3);
+  opacity: 0.9;
+  box-shadow:
+    rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset,
+    rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+  pointer-events: none;
+
+  skyflow-mat-icon,
+  .sf-mat-icon {
+    color: var(--brief-accent, #558fc3);
+  }
 }
 
 .station-brief__hero-content {

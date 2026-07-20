@@ -252,6 +252,8 @@ model ProjectOrder {
   @@index([planningSawsManagerUserId])
   @@index([projectManagerUserId])
   @@index([createdByUserId])
+  @@index([status])
+  @@index([flowStatus, updatedAt])
 }
 
 /// עובדים משובצים לתחנת מסורים (1) מתכנון
@@ -267,6 +269,7 @@ model ProjectPlanningSawsWorker {
 
   @@unique([projectId, userId])
   @@index([projectId])
+  @@index([userId])
 }
 
 /// שורת תכנון (יחידה / הוראת חלון) מתוך קובץ תפ״י
@@ -389,6 +392,7 @@ model StationLog {
 
   @@index([projectId, stationId])
   @@index([workCycleId])
+  @@index([workerId, createdAt])
 }
 
 model ScrapReport {
@@ -716,6 +720,8 @@ model ManufacturingPlan {
   s3Url       String
   bomData     Json
   createdAt   DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 /// סבב עבודה — יחידת ייצור פר סוג-חלון (74-1-12A) בפרויקט. נפתח כשמעלים הוראות ייצור,
@@ -732,6 +738,8 @@ model WorkCycle {
   dailyTargetQty        Int?
   /// מסגרת זמן ליעד (שעות; null = חישוב אוטומטי בלבד)
   dailyTargetHours      Float?
+  /// תזמון עתידי — מתי מתוכנן להתחיל את הסבב (null = מיידי)
+  scheduledStartAt      DateTime?
   /// התחנה שבה הסבב נמצא כעת (1–8)
   currentStationId      Int?
   openedAt              DateTime?
@@ -891,4 +899,42 @@ model Notification {
 
   @@index([recipientUserId, readAt])
   @@index([recipientUserId, createdAt(sort: Desc)])
+}
+
+/// סוג עבודת עיבוד ברקע — קובע אילו handler מריץ אותה
+enum ProcessingJobKind {
+  ELEVATION_PDF
+  WINDOW_TYPE_PDF
+}
+
+enum ProcessingJobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+/// תור עיבוד מבוסס-DB לזרימות העלאה כבדות (מפת חזית / הוראות ייצור ליחידה):
+/// ה-endpoint שומר את הקובץ ויוצר שורה כאן, ומחזיר תשובה מיידית ל-client;
+/// worker נפרד (polling בתוך אותו תהליך) צורך את השורות וקורא ל-service
+/// הקיים, ומעדכן progress/result כדי שהלקוח יוכל לסקור סטטוס.
+model ProcessingJob {
+  id              String              @id @default(uuid())
+  kind            ProcessingJobKind
+  status          ProcessingJobStatus @default(PENDING)
+  progress        Int                 @default(0)
+  progressMessage String?             @db.VarChar(200)
+  projectId       String
+  /// refs לרשומות/קבצים שנוצרו כבר לפני התור (documentId, windowTypeId, filename…)
+  payload         Json
+  result          Json?
+  error           String?
+  attempts        Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  startedAt       DateTime?
+  finishedAt      DateTime?
+
+  @@index([status, createdAt])
+  @@index([projectId])
 }

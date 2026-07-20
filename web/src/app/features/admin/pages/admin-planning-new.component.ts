@@ -1,13 +1,24 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import { concatMap, finalize, take } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
+import { catchError, concatMap, finalize, map, take } from 'rxjs/operators';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 import { ApiService } from '../../../core/api.service';
+import { CurrentUserService } from '../../../core/current-user.service';
 import {
   AssemblyWindowPartSection,
   EditWorkCycleWindowBody,
+  ElevationCellDto,
   PlanningAssigneeOptionDto,
   PlanningDraftListItemDto,
   ProjectAngleSourcing,
@@ -17,13 +28,17 @@ import {
   WorkCycle,
   WorkCycleAssignmentInput,
   WorkCycleDetailsDto,
+  WorkCycleStationProgress,
   WorkCycleStatus,
+  GlassPanelDto,
 } from '../../../core/skyflow.models';
 import {
   planningStation1ManagerSectionKey,
+  stationDisplayNumber,
   stationLabelKey,
   stationMatIcon,
   stationMatIconFilled,
+  stationVisualTokens,
   workerFlowSequence,
 } from '../../../core/station-presentation';
 import { PlanningPdfPanelComponent } from '../planning/planning-pdf-panel.component';
@@ -35,6 +50,7 @@ import { UiSelectOption } from '../../../shared/ui-select/ui-select.types';
 
 type WizardStep = 1 | 2 | 3;
 type UnitStatusFilter = 'all' | WorkCycleStatus;
+type UnitEditTab = 'source' | 'glass' | 'angles' | 'parts';
 
 interface WizardCardOption<T extends string> {
   value: T;
@@ -66,12 +82,17 @@ export interface PlanningSuccessSnapshot {
   ],
   templateUrl: './admin-planning-new.component.html',
   styleUrl: './admin-planning-new.component.scss',
+  // All state is signals/computed — OnPush skips redundant re-checks on this
+  // large wizard while still updating on every signal change.
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminPlanningNewComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly currentUser = inject(CurrentUserService);
 
   readonly loading = signal(true);
   readonly listError = signal<string | null>(null);
@@ -94,6 +115,15 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly selectedProjectId = signal<string | null>(null);
   readonly selectedFlow = signal<ProjectFlowStatus | null>(null);
   readonly selectedName = signal<string | null>(null);
+
+  /** כותרת ה-H1: שם הפרויקט משלב 2 ואילך, אחרת "פרויקט חדש". */
+  readonly heroProjectName = computed(() => {
+    if (this.step() <= 1) return null;
+    const name =
+      this.selectedName()?.trim() || this.newProjectName().trim();
+    return name.length >= 2 ? name : null;
+  });
+
   readonly successModalOpen = signal(false);
   readonly successSnapshot = signal<PlanningSuccessSnapshot | null>(null);
 
@@ -115,6 +145,8 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly cycleDailyTarget = signal<number | null>(null);
   /** מסגרת זמן ליעד (שעות; null = חישוב אוטומטי). */
   readonly cycleDailyTargetHours = signal<number | null>(null);
+  /** תזמון עתידי לסבב הנבחר (ערך datetime-local; null = התחלה מיידית). */
+  readonly cycleScheduledStart = signal<string | null>(null);
   /** stationId → מנהל תחנה שנבחר לסבב הנבחר. */
   readonly cycleStationManager = signal<Record<number, string | null>>({});
   /** stationId → עובדים שנבחרו לסבב הנבחר. */
@@ -202,7 +234,12 @@ export class AdminPlanningNewComponent implements OnInit {
           if (draftId) {
             const pick = rows.find((r) => r.id === draftId);
             if (pick) {
-              this.resumeDraft(pick);
+              // Already on this project — refresh sidebar metadata only; keep wizard step/tab.
+              if (this.selectedProjectId() === pick.id) {
+                this.applyPick(pick);
+              } else {
+                this.resumeDraft(pick);
+              }
             } else if (this.selectedProjectId() !== draftId) {
               // Not in the drafts list (e.g. already in production) — fetch it
               // directly so the planner can add more production instructions.
@@ -537,6 +574,31 @@ export class AdminPlanningNewComponent implements OnInit {
     const stationIds = (this.selectedCycle()?.stationProgress ?? []).map(
       (p) => p.stationId,
     );
+    return this.stationIdsInFlowOrder(stationIds);
+  }
+
+  /** סדר תחנות לפי זרימת ייצור (לייזר אחרי CNC, לא לפי ID פנימי). */
+  stationProgressInFlowOrder(
+    stationProgress: WorkCycleStationProgress[],
+  ): WorkCycleStationProgress[] {
+    const order = this.stationIdsInFlowOrder(
+      stationProgress.map((p) => p.stationId),
+    );
+    const byId = new Map(stationProgress.map((p) => [p.stationId, p]));
+    return order
+      .map((id) => byId.get(id))
+      .filter((p): p is WorkCycleStationProgress => !!p);
+  }
+
+  stationDisplayNumberForProgress(
+    stationId: number,
+    stationProgress: WorkCycleStationProgress[],
+  ): number {
+    const laserActive = stationProgress.some((p) => p.stationId === 8);
+    return stationDisplayNumber(stationId, laserActive);
+  }
+
+  private stationIdsInFlowOrder(stationIds: number[]): number[] {
     const stationSet = new Set(stationIds);
     const productionOrder = workerFlowSequence(stationSet.has(8));
 
@@ -573,6 +635,7 @@ export class AdminPlanningNewComponent implements OnInit {
     this.selectedCycleId.set(c.id);
     this.cycleDailyTarget.set(c.dailyTargetQty ?? null);
     this.cycleDailyTargetHours.set(c.dailyTargetHours ?? null);
+    this.cycleScheduledStart.set(this.isoToLocalInput(c.scheduledStartAt));
     const managers: Record<number, string | null> = {};
     const workers: Record<number, string[]> = {};
     for (const p of c.stationProgress) {
@@ -631,6 +694,33 @@ export class AdminPlanningNewComponent implements OnInit {
     return (this.cycleStationWorkers()[stationId] ?? []).includes(id);
   }
 
+  /** מספר העובדים שנבחרו לתחנה (למונה בכותרת השיבוץ). */
+  cycleStationWorkerCount(stationId: number): number {
+    return (this.cycleStationWorkers()[stationId] ?? []).length;
+  }
+
+  /** יעד ייצור מולא — כמות ושעות (לא אוטומטי). */
+  isCyclePlanComplete(): boolean {
+    const qty = this.cycleDailyTarget();
+    const hours = this.cycleDailyTargetHours();
+    return qty != null && qty > 0 && hours != null && hours > 0;
+  }
+
+  /** לפחות עובד אחד משובץ לתחנה. */
+  isCycleStationMapped(stationId: number): boolean {
+    return this.cycleStationWorkerCount(stationId) > 0;
+  }
+
+  /** מוכן להוצאה לפועל — יעד מולא וכל התחנות עם עובדים. */
+  canLaunchSelectedCycle(): boolean {
+    if (!this.isCyclePlanComplete()) return false;
+    const stations = this.stationsForSelectedCycle();
+    return (
+      stations.length > 0 &&
+      stations.every((st) => this.isCycleStationMapped(st))
+    );
+  }
+
   toggleCycleStationWorker(stationId: number, id: string): void {
     this.cycleStationWorkers.update((cur) => {
       const list = cur[stationId] ?? [];
@@ -659,6 +749,45 @@ export class AdminPlanningNewComponent implements OnInit {
     );
   }
 
+  onCycleScheduledStartInput(ev: Event): void {
+    const raw = (ev.target as HTMLInputElement).value;
+    this.cycleScheduledStart.set(raw.trim().length ? raw : null);
+  }
+
+  clearCycleScheduledStart(): void {
+    this.cycleScheduledStart.set(null);
+  }
+
+  /** האם התזמון שנבחר הוא בעתיד (משפיע על תצוגת התקציר). */
+  isCycleScheduledFuture(): boolean {
+    const iso = this.localInputToIso(this.cycleScheduledStart());
+    return !!iso && new Date(iso).getTime() > Date.now();
+  }
+
+  /** מינימום לשדה datetime-local — הרגע הנוכחי בשעון המקומי. */
+  cycleScheduleMin(): string {
+    return this.isoToLocalInput(new Date().toISOString()) ?? '';
+  }
+
+  /** ISO → ערך datetime-local מקומי (YYYY-MM-DDTHH:mm). */
+  private isoToLocalInput(iso: string | null): string | null {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate(),
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /** ערך datetime-local מקומי → ISO לשליחה לשרת (null אם ריק/לא תקין). */
+  private localInputToIso(v: string | null): string | null {
+    if (!v) return null;
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
+
   private buildCycleAssignments(cycle: WorkCycle): WorkCycleAssignmentInput[] {
     const managers = this.cycleStationManager();
     const workers = this.cycleStationWorkers();
@@ -683,11 +812,18 @@ export class AdminPlanningNewComponent implements OnInit {
     this.workCyclesError.set(null);
     const target = this.cycleDailyTarget();
     const targetHours = this.cycleDailyTargetHours();
+    const scheduledStart = this.localInputToIso(this.cycleScheduledStart());
     this.api
       .setWorkCycleAssignments(pid, cycle.id, assignments)
       .pipe(
         concatMap(() =>
-          this.api.setWorkCycleDailyTarget(pid, cycle.id, target, targetHours),
+          this.api.setWorkCycleDailyTarget(
+            pid,
+            cycle.id,
+            target,
+            targetHours,
+            scheduledStart,
+          ),
         ),
         take(1),
         finalize(() => this.cycleSaving.set(false)),
@@ -705,14 +841,24 @@ export class AdminPlanningNewComponent implements OnInit {
   launchSelectedCycle(): void {
     const pid = this.selectedProjectId();
     const cycle = this.selectedCycle();
-    if (!pid || !cycle || cycle.status !== 'DRAFT') return;
+    if (!pid || !cycle || cycle.status !== 'DRAFT' || !this.canLaunchSelectedCycle()) {
+      return;
+    }
     const assignments = this.buildCycleAssignments(cycle);
     this.cycleLaunching.set(true);
     this.workCyclesError.set(null);
     const target = this.cycleDailyTarget();
     const targetHours = this.cycleDailyTargetHours();
+    const scheduledStart = this.localInputToIso(this.cycleScheduledStart());
     this.api
-      .launchWorkCycle(pid, cycle.id, assignments, target, targetHours)
+      .launchWorkCycle(
+        pid,
+        cycle.id,
+        assignments,
+        target,
+        targetHours,
+        scheduledStart,
+      )
       .pipe(
         take(1),
         finalize(() => this.cycleLaunching.set(false)),
@@ -809,6 +955,7 @@ export class AdminPlanningNewComponent implements OnInit {
     this.selectedCycleId.set(null);
     this.cycleDailyTarget.set(null);
     this.cycleDailyTargetHours.set(null);
+    this.cycleScheduledStart.set(null);
     this.cycleStationManager.set({});
     this.cycleStationWorkers.set({});
     this.workCyclesError.set(null);
@@ -836,30 +983,256 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly detailsLoading = signal(false);
   readonly detailsError = signal<string | null>(null);
   readonly details = signal<WorkCycleDetailsDto | null>(null);
+  readonly detailsElevationCell = signal<ElevationCellDto | null>(null);
+  readonly detailsReturnStationId = signal<number | null>(null);
+  readonly detailsDefectReason = signal('');
+  readonly detailsReturnBusy = signal(false);
 
-  openUnitDetails(c: WorkCycle): void {
+  readonly detailsCanReturn = computed(
+    () =>
+      this.currentUser.isAdmin() || this.currentUser.isSiteManager(),
+  );
+
+  readonly detailsReturnStationIds = computed((): number[] => {
+    const d = this.details();
+    if (!d) return [1, 2, 3, 4, 5, 6, 7];
+    const laserActive =
+      d.windowType.hasAngles &&
+      d.stationProgress.some((p) => p.stationId === 8);
+    return workerFlowSequence(laserActive);
+  });
+
+  openUnitDetails(c: WorkCycle, elevationCell?: ElevationCellDto | null): void {
     const pid = this.selectedProjectId();
     if (!pid) return;
     this.details.set(null);
     this.detailsError.set(null);
+    this.detailsElevationCell.set(elevationCell ?? null);
+    this.detailsReturnStationId.set(null);
+    this.detailsDefectReason.set('');
     this.detailsLoading.set(true);
     this.detailsOpen.set(true);
-    this.api
-      .getWorkCycleDetails(pid, c.id)
+
+    const cell$ = elevationCell
+      ? of(elevationCell)
+      : this.api.getElevationMap(pid).pipe(
+          map((res) => this.findElevationCell(res.cells ?? [], c.windowTypeId)),
+          catchError(() => of(null)),
+        );
+
+    forkJoin({
+      details: this.api.getWorkCycleDetails(pid, c.id),
+      cell: cell$,
+    })
       .pipe(
         take(1),
         finalize(() => this.detailsLoading.set(false)),
       )
       .subscribe({
-        next: (d) => this.details.set(d),
+        next: ({ details, cell }) => {
+          this.details.set(details);
+          if (cell) this.detailsElevationCell.set(cell);
+        },
         error: () => this.detailsError.set('PLANNING_NEW.UNIT_DETAILS_FAILED'),
       });
   }
 
+  /** From elevation map when unit already has instruction PDF. */
+  onUnitDetailsFromMap(e: { cell: ElevationCellDto }): void {
+    const pid = this.selectedProjectId();
+    if (!pid) return;
+    const windowTypeId = e.cell.windowTypeId;
+    if (!windowTypeId) return;
+
+    const open = (cycle: WorkCycle | undefined) => {
+      if (cycle) this.openUnitDetails(cycle, e.cell);
+      else {
+        this.detailsOpen.set(true);
+        this.detailsLoading.set(false);
+        this.detailsError.set('PLANNING_NEW.UNIT_DETAILS_FAILED');
+      }
+    };
+
+    const existing = this.workCycles().find((c) => c.windowTypeId === windowTypeId);
+    if (existing) {
+      open(existing);
+      return;
+    }
+
+    this.detailsOpen.set(true);
+    this.detailsLoading.set(true);
+    this.detailsError.set(null);
+    this.api
+      .getWorkCycles(pid)
+      .pipe(
+        take(1),
+        finalize(() => this.detailsLoading.set(false)),
+      )
+      .subscribe({
+        next: (cycles) => {
+          this.workCycles.set(cycles);
+          open(cycles.find((c) => c.windowTypeId === windowTypeId));
+        },
+        error: () => this.detailsError.set('PLANNING_NEW.UNIT_DETAILS_FAILED'),
+      });
+  }
+
+  private findElevationCell(
+    cells: ElevationCellDto[],
+    windowTypeId: string,
+  ): ElevationCellDto | null {
+    return cells.find((c) => c.windowTypeId === windowTypeId) ?? null;
+  }
+
+  chooseDetailsReturnStation(stationId: number): void {
+    if (!this.detailsCanReturn()) return;
+    this.detailsReturnStationId.set(
+      this.detailsReturnStationId() === stationId ? null : stationId,
+    );
+    this.detailsDefectReason.set('');
+  }
+
+  onDetailsDefectReasonInput(ev: Event): void {
+    this.detailsDefectReason.set((ev.target as HTMLTextAreaElement).value);
+  }
+
+  submitDetailsReturn(): void {
+    const pid = this.selectedProjectId();
+    const cell = this.detailsElevationCell();
+    const stationId = this.detailsReturnStationId();
+    const reason = this.detailsDefectReason().trim();
+    if (
+      !pid ||
+      !cell ||
+      stationId == null ||
+      !this.detailsCanReturn() ||
+      this.detailsReturnBusy() ||
+      reason.length < 2
+    ) {
+      return;
+    }
+    this.detailsReturnBusy.set(true);
+    this.api
+      .reportElevationDefect(pid, cell.id, stationId, reason)
+      .pipe(
+        take(1),
+        finalize(() => this.detailsReturnBusy.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          const defect = { returnedToStationId: stationId, reason };
+          this.detailsElevationCell.set({
+            ...cell,
+            status: 'PENDING',
+            defect,
+          });
+          this.detailsReturnStationId.set(null);
+          this.detailsDefectReason.set('');
+          this.refreshDetailsAfterElevationAction();
+        },
+        error: () => this.detailsError.set('ELEVATION_MAP.MARK_FAILED'),
+      });
+  }
+
+  completeDetailsElevationCell(): void {
+    const pid = this.selectedProjectId();
+    const cell = this.detailsElevationCell();
+    if (!pid || !cell || !this.detailsCanReturn() || this.detailsReturnBusy()) {
+      return;
+    }
+    const done = cell.status !== 'DONE';
+    this.detailsReturnBusy.set(true);
+    this.api
+      .markElevationCells(pid, [cell.id], done)
+      .pipe(
+        take(1),
+        finalize(() => this.detailsReturnBusy.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.detailsElevationCell.set({
+            ...cell,
+            status: done ? 'DONE' : 'PENDING',
+            doneAt: done ? new Date().toISOString() : null,
+            doneBy: done ? this.currentUser.displayName() : null,
+          });
+          this.refreshDetailsAfterElevationAction();
+        },
+        error: () => this.detailsError.set('ELEVATION_MAP.MARK_FAILED'),
+      });
+  }
+
+  private refreshDetailsAfterElevationAction(): void {
+    const pid = this.selectedProjectId();
+    const d = this.details();
+    if (!pid || !d) return;
+    this.api
+      .getWorkCycleDetails(pid, d.cycle.id)
+      .pipe(take(1))
+      .subscribe({
+        next: (fresh) => this.details.set(fresh),
+      });
+  }
+
+  detailsStationIcon(stationId: number): string {
+    return stationMatIcon(stationId);
+  }
+
+  detailsStationIconFilled(stationId: number): boolean {
+    return stationMatIconFilled(stationId);
+  }
+
+  detailsStationIconStyle(stationId: number): Record<string, string> {
+    const t = stationVisualTokens(this.selectedVariantOrder(), stationId);
+    return { '--unit-details-station-accent': t.accent };
+  }
+
   closeUnitDetails(): void {
+    this.closeUnitDetailsPdf();
     this.detailsOpen.set(false);
     this.details.set(null);
     this.detailsError.set(null);
+    this.detailsElevationCell.set(null);
+    this.detailsReturnStationId.set(null);
+    this.detailsDefectReason.set('');
+  }
+
+  readonly unitDetailsPdfUrl = signal<string | null>(null);
+  readonly unitDetailsPdfCode = signal<string | null>(null);
+  readonly unitDetailsPdfPage = signal<number | null>(null);
+
+  openUnitDetailsPdf(
+    url: string | null,
+    code: string,
+    instructionPage: number | null,
+  ): void {
+    const u = url?.trim();
+    if (!u?.length) return;
+    this.unitDetailsPdfCode.set(code);
+    const page =
+      instructionPage != null && instructionPage >= 0 ? instructionPage + 1 : null;
+    this.unitDetailsPdfPage.set(page);
+    this.unitDetailsPdfUrl.set(u);
+  }
+
+  closeUnitDetailsPdf(): void {
+    this.unitDetailsPdfUrl.set(null);
+    this.unitDetailsPdfCode.set(null);
+    this.unitDetailsPdfPage.set(null);
+  }
+
+  isInstructionImageUrl(url: string | null | undefined): boolean {
+    const path = (url ?? '').split('#')[0]?.split('?')[0] ?? '';
+    return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(path);
+  }
+
+  unitDetailsPdfSafeUrl(url: string): SafeResourceUrl {
+    const path = url.split('#')[0] ?? url;
+    const page = this.unitDetailsPdfPage();
+    const pageFrag = page && page > 0 ? `page=${page}&` : '';
+    return this.sanitizer.bypassSecurityTrustResourceUrl(
+      `${path}#${pageFrag}toolbar=0&navpanes=0&scrollbar=0&view=FitH`,
+    );
   }
 
   /** יומן הדיווחים של תחנה מסוימת (מתוך פרטי היחידה). */
@@ -882,9 +1255,54 @@ export class AdminPlanningNewComponent implements OnInit {
   readonly editHasAngles = signal(false);
   readonly editComposition = signal<string[]>([]);
   readonly editAngleCodes = signal<string[]>([]);
+  readonly editGlass = signal<GlassPanelDto[]>([]);
+  readonly editGlassPanelOrder = signal<number | null>(null);
+  readonly glassEditDraft = signal<{ code: string; kind: GlassPanelDto['kind'] }>({
+    code: '',
+    kind: 'WINDOW',
+  });
+  readonly editGlassSaving = signal(false);
+  readonly editAngleDocs = signal<{ code: string; instructionPdfUrl: string | null }[]>([]);
+  readonly editAngleUploadingCode = signal<string | null>(null);
   readonly editSections = signal<AssemblyWindowPartSection[]>([]);
   readonly editCompDraft = signal('');
   readonly editAngleDraft = signal('');
+  readonly editTab = signal<UnitEditTab>('source');
+
+  readonly editTabs = computed(() => {
+    const tabs: {
+      id: UnitEditTab;
+      icon: string;
+      labelKey: string;
+      stationId?: number;
+    }[] = [
+      {
+        id: 'source',
+        icon: 'description',
+        labelKey: 'PLANNING_NEW.UNIT_EDIT_TAB_SOURCE',
+      },
+      {
+        id: 'glass',
+        icon: 'window',
+        labelKey: 'PLANNING_NEW.UNIT_EDIT_TAB_GLASS',
+        stationId: 4,
+      },
+    ];
+    if (this.editHasAngles()) {
+      tabs.push({
+        id: 'angles',
+        icon: 'square_foot',
+        labelKey: 'PLANNING_NEW.UNIT_EDIT_TAB_ANGLES',
+        stationId: 8,
+      });
+    }
+    tabs.push({
+      id: 'parts',
+      icon: 'grid_view',
+      labelKey: 'PLANNING_NEW.UNIT_EDIT_TAB_PARTS',
+    });
+    return tabs;
+  });
   private editOriginal: {
     totalQty: number;
     hasAngles: boolean;
@@ -928,9 +1346,13 @@ export class AdminPlanningNewComponent implements OnInit {
     this.editHasAngles.set(wt.hasAngles);
     this.editComposition.set([...wt.composition]);
     this.editAngleCodes.set([...wt.angleCodes]);
+    this.editGlass.set([...(wt.glass ?? [])]);
+    this.editGlassPanelOrder.set(null);
+    this.editAngleDocs.set([...(wt.angleDocs ?? [])]);
     this.editSections.set(sections);
     this.editCompDraft.set('');
     this.editAngleDraft.set('');
+    this.editTab.set('source');
     this.editOriginal = {
       totalQty: wt.totalQty,
       hasAngles: wt.hasAngles,
@@ -946,6 +1368,8 @@ export class AdminPlanningNewComponent implements OnInit {
     this.editWindowTypeId.set(null);
     this.editError.set(null);
     this.editOriginal = null;
+    this.editTab.set('source');
+    this.editGlassPanelOrder.set(null);
   }
 
   onEditQtyInput(ev: Event): void {
@@ -954,7 +1378,14 @@ export class AdminPlanningNewComponent implements OnInit {
   }
 
   toggleEditHasAngles(): void {
-    this.editHasAngles.update((v) => !v);
+    this.editHasAngles.update((v) => {
+      const next = !v;
+      if (!next) {
+        this.editAngleCodes.set([]);
+        if (this.editTab() === 'angles') this.editTab.set('glass');
+      }
+      return next;
+    });
   }
 
   onEditCompDraft(ev: Event): void {
@@ -972,6 +1403,212 @@ export class AdminPlanningNewComponent implements OnInit {
     this.editComposition.update((list) => list.filter((_, idx) => idx !== i));
   }
 
+  updateEditComposition(i: number, ev: Event): void {
+    const value = (ev.target as HTMLInputElement).value;
+    this.editComposition.update((list) => {
+      const next = [...list];
+      if (next[i] !== undefined) next[i] = value;
+      return next;
+    });
+  }
+
+  compositionIcon(label: string): string {
+    const u = label.toUpperCase();
+    if (u.includes('SHADOW')) return 'view_compact_alt';
+    if (u.includes('WINDOW')) return 'window';
+    if (u.includes('FIXED') || u.includes('GLASS')) return 'crop_square';
+    if (u.includes('SPANDREL')) return 'texture';
+    return 'layers';
+  }
+
+  /** Stored bottom-to-top; display top-to-bottom like the elevation drawing. */
+  compositionStackDisplay(composition: string[]): string[] {
+    return [...composition].reverse();
+  }
+
+  compositionLayerKind(
+    label: string,
+  ): 'spandrel' | 'window' | 'fixed' | 'shadow' | 'other' {
+    const u = label.toUpperCase();
+    if (u.includes('SPANDREL') || u.startsWith('SP-')) return 'spandrel';
+    if (u.includes('SHADOW')) return 'shadow';
+    if (u.includes('WINDOW')) return 'window';
+    if (u.includes('FIXED') || label.includes('קבוע')) return 'fixed';
+    return 'other';
+  }
+
+  compositionLayerLabelKey(label: string): string {
+    switch (this.compositionLayerKind(label)) {
+      case 'spandrel':
+        return 'ELEVATION_MAP.SPANDREL';
+      case 'window':
+        return 'WORKER.GLU_GLASS_WINDOW';
+      case 'fixed':
+        return 'WORKER.GLU_GLASS_FIXED';
+      case 'shadow':
+        return 'PLANNING_NEW.UNIT_COMP_SHADOW_BOX';
+      default:
+        return label;
+    }
+  }
+
+  compositionLayerUsesTranslate(label: string): boolean {
+    return this.compositionLayerKind(label) !== 'other';
+  }
+
+  glassKindKey(kind: GlassPanelDto['kind']): string {
+    return kind === 'WINDOW'
+      ? 'WORKER.GLU_GLASS_WINDOW'
+      : 'WORKER.GLU_GLASS_FIXED';
+  }
+
+  glassImageSrc(panel: GlassPanelDto, windowTypeCode?: string): string {
+    const path = panel.imagePath?.trim();
+    if (path?.startsWith('/planning-glass/')) return path;
+    const pid = this.selectedProjectId();
+    const wt =
+      windowTypeCode ??
+      (this.editWindowCode() ||
+        this.details()?.windowType.code ||
+        '');
+    if (!pid || !wt) return path ?? '';
+    const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]+/g, '_');
+    return `/planning-glass/${pid}/${safe(wt)}-${safe(panel.code)}-${panel.order}.png`;
+  }
+
+  onGlassImgError(panel: GlassPanelDto, ev: Event, windowTypeCode?: string): void {
+    const img = ev.target as HTMLImageElement;
+    const pid = this.selectedProjectId();
+    const wt =
+      windowTypeCode ??
+      (this.editWindowCode() ||
+        this.details()?.windowType.code ||
+        '');
+    if (!pid || !wt) return;
+    const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]+/g, '_');
+    const fallback = `/planning-glass/${pid}/${safe(wt)}-${safe(panel.code)}-${panel.order}.png`;
+    if (img.src.endsWith(fallback)) {
+      img.style.visibility = 'hidden';
+      return;
+    }
+    img.src = fallback;
+  }
+
+  startGlassPanelEdit(panel: GlassPanelDto): void {
+    this.editGlassPanelOrder.set(panel.order);
+    this.glassEditDraft.set({ code: panel.code, kind: panel.kind });
+  }
+
+  cancelGlassPanelEdit(): void {
+    this.editGlassPanelOrder.set(null);
+  }
+
+  onGlassEditCode(ev: Event): void {
+    this.glassEditDraft.update((d) => ({
+      ...d,
+      code: (ev.target as HTMLInputElement).value,
+    }));
+  }
+
+  setGlassEditKind(kind: GlassPanelDto['kind']): void {
+    this.glassEditDraft.update((d) => ({ ...d, kind }));
+  }
+
+  saveGlassPanelEdit(order: number): void {
+    const pid = this.selectedProjectId();
+    const cycleId = this.editCycleId();
+    const draft = this.glassEditDraft();
+    const code = draft.code.trim();
+    if (!pid || !cycleId || !code) return;
+    this.editGlassSaving.set(true);
+    this.editError.set(null);
+    this.api
+      .updateWorkCycleGlassPanel(pid, cycleId, order, {
+        code,
+        kind: draft.kind,
+      })
+      .pipe(
+        take(1),
+        finalize(() => this.editGlassSaving.set(false)),
+      )
+      .subscribe({
+        next: (res) => {
+          this.editGlass.set([...res.glass]);
+          this.editGlassPanelOrder.set(null);
+        },
+        error: () => this.editError.set('PLANNING_NEW.UNIT_EDIT_GLASS_UPDATE_FAILED'),
+      });
+  }
+
+  deleteGlassPanel(panel: GlassPanelDto): void {
+    const pid = this.selectedProjectId();
+    const cycleId = this.editCycleId();
+    if (!pid || !cycleId) return;
+    if (!confirm(this.translate.instant('PLANNING_NEW.UNIT_EDIT_GLASS_DELETE_CONFIRM'))) {
+      return;
+    }
+    this.editGlassSaving.set(true);
+    this.editError.set(null);
+    this.api
+      .deleteWorkCycleGlassPanel(pid, cycleId, panel.order)
+      .pipe(
+        take(1),
+        finalize(() => this.editGlassSaving.set(false)),
+      )
+      .subscribe({
+        next: (res) => {
+          this.editGlass.set([...res.glass]);
+          if (this.editGlassPanelOrder() === panel.order) {
+            this.editGlassPanelOrder.set(null);
+          }
+        },
+        error: () => this.editError.set('PLANNING_NEW.UNIT_EDIT_GLASS_DELETE_FAILED'),
+      });
+  }
+
+  angleDocUrl(code: string): string | null {
+    return (
+      this.editAngleDocs().find((a) => a.code === code)?.instructionPdfUrl ??
+      null
+    );
+  }
+
+  isEditAngleUploading(code: string): boolean {
+    return this.editAngleUploadingCode() === code;
+  }
+
+  onEditAnglePdfSelected(code: string, fileList: FileList | null): void {
+    const file = fileList?.[0];
+    const pid = this.selectedProjectId();
+    const wtId = this.editWindowTypeId();
+    const cycleId = this.editCycleId();
+    if (!file || !pid || !wtId || !cycleId) return;
+    this.editAngleUploadingCode.set(code);
+    this.editError.set(null);
+    this.api
+      .uploadWindowTypePdf(pid, wtId, file, 'ANGLE_INSTRUCTION_PDF')
+      .pipe(
+        concatMap(() => this.api.getWorkCycleDetails(pid, cycleId)),
+        take(1),
+        finalize(() => this.editAngleUploadingCode.set(null)),
+      )
+      .subscribe({
+        next: (d) => {
+          this.editAngleDocs.set([...(d.windowType.angleDocs ?? [])]);
+          this.editAngleCodes.set([...d.windowType.angleCodes]);
+        },
+        error: () => this.editError.set('PLANNING_NEW.UNIT_EDIT_ANGLE_UPLOAD_FAILED'),
+      });
+  }
+
+  sectionStationKey(sec: AssemblyWindowPartSection): number {
+    return sec.key === 'PROFILES' ? 1 : 3;
+  }
+
+  selectEditTab(tab: UnitEditTab): void {
+    this.editTab.set(tab);
+  }
+
   onEditAngleDraft(ev: Event): void {
     this.editAngleDraft.set((ev.target as HTMLInputElement).value);
   }
@@ -985,6 +1622,15 @@ export class AdminPlanningNewComponent implements OnInit {
 
   removeEditAngleCode(i: number): void {
     this.editAngleCodes.update((list) => list.filter((_, idx) => idx !== i));
+  }
+
+  updateEditAngleCode(i: number, ev: Event): void {
+    const value = (ev.target as HTMLInputElement).value;
+    this.editAngleCodes.update((list) => {
+      const next = [...list];
+      if (next[i] !== undefined) next[i] = value;
+      return next;
+    });
   }
 
   updateEditCell(

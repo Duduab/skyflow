@@ -19,6 +19,7 @@ import {
   PlanningPdfKind,
   PlanningPdfPreviewDto,
   PlanningPdfUploadResponse,
+  ProcessingJobDto,
   ProjectDocumentDto,
   ProjectDocumentKind,
   ProjectAngleSourcing,
@@ -43,6 +44,8 @@ import {
   WorkCycleAssignmentInput,
   WorkCycleDetailsDto,
   EditWorkCycleWindowBody,
+  GlassPanelDto,
+  GlassPanelKind,
   StationWorkCycleRow,
   WorkerProjectCycle,
   TrackingResponse,
@@ -661,6 +664,13 @@ export class ApiService {
     );
   }
 
+  /** Poll status/progress of a background upload-processing job (elevation/window-type PDF). */
+  getProcessingJob(jobId: string): Observable<ProcessingJobDto> {
+    return this.http.get<ProcessingJobDto>(
+      `${this.base}/processing-jobs/${encodeURIComponent(jobId)}`,
+    );
+  }
+
   /** שמירת מיפוי חלקים שנערך ידנית ע"י המתכנן ליחידה — מחזיר תצוגה מקדימה מעודכנת */
   saveWindowTypeParts(
     projectId: string,
@@ -769,12 +779,13 @@ export class ApiService {
     cycleId: string,
     dailyTargetQty: number | null,
     dailyTargetHours: number | null,
+    scheduledStartAt: string | null = null,
   ): Observable<WorkCycle> {
     return this.http.post<WorkCycle>(
       `${this.base}/projects/${encodeURIComponent(
         projectId,
       )}/work-cycles/${encodeURIComponent(cycleId)}/daily-target`,
-      { dailyTargetQty, dailyTargetHours },
+      { dailyTargetQty, dailyTargetHours, scheduledStartAt },
     );
   }
 
@@ -784,12 +795,13 @@ export class ApiService {
     assignments: WorkCycleAssignmentInput[],
     dailyTargetQty: number | null,
     dailyTargetHours: number | null,
+    scheduledStartAt: string | null = null,
   ): Observable<WorkCycle> {
     return this.http.post<WorkCycle>(
       `${this.base}/projects/${encodeURIComponent(
         projectId,
       )}/work-cycles/${encodeURIComponent(cycleId)}/launch`,
-      { assignments, dailyTargetQty, dailyTargetHours },
+      { assignments, dailyTargetQty, dailyTargetHours, scheduledStartAt },
     );
   }
 
@@ -816,6 +828,34 @@ export class ApiService {
         projectId,
       )}/work-cycles/${encodeURIComponent(cycleId)}`,
       body,
+    );
+  }
+
+  /** עדכון פאנל זכוכית בודד (קוד / סוג). */
+  updateWorkCycleGlassPanel(
+    projectId: string,
+    cycleId: string,
+    order: number,
+    body: { code: string; kind: GlassPanelKind },
+  ): Observable<{ glass: GlassPanelDto[] }> {
+    return this.http.patch<{ glass: GlassPanelDto[] }>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/work-cycles/${encodeURIComponent(cycleId)}/glass-panels/${order}`,
+      body,
+    );
+  }
+
+  /** מחיקת פאנל זכוכית בודד. */
+  deleteWorkCycleGlassPanel(
+    projectId: string,
+    cycleId: string,
+    order: number,
+  ): Observable<{ glass: GlassPanelDto[] }> {
+    return this.http.delete<{ glass: GlassPanelDto[] }>(
+      `${this.base}/projects/${encodeURIComponent(
+        projectId,
+      )}/work-cycles/${encodeURIComponent(cycleId)}/glass-panels/${order}`,
     );
   }
 

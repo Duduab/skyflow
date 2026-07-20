@@ -938,7 +938,7 @@ export class StationsService {
       orderBy: { sortOrder: 'asc' },
       include: { instructionDoc: { select: { pdfPath: true } } },
     });
-    const glassManifest = loadGlassManifest(projectId);
+    const glassManifest = await loadGlassManifest(projectId);
     return windowTypes.map((w) => ({
       code: w.code,
       totalQty: w.totalQty,

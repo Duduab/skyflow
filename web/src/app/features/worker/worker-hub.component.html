@@ -120,9 +120,15 @@
             <span
               class="station-card__index"
               [class.station-card__index--done]="prog.percent >= 100"
-              dir="ltr"
               aria-hidden="true"
-              >{{ displayNumber(s.id) }}</span>
+            >
+              <skyflow-mat-icon
+                [icon]="stationIcon(s.id)"
+                [size]="26"
+                [weight]="600"
+                [filled]="stationIconFilled(s.id)"
+              />
+            </span>
 
             <div class="station-card__hero" aria-hidden="true">
               <div class="station-card__hero-bg"></div>
@@ -178,12 +184,12 @@
               <h2 class="station-card__headline">
                 {{ s.id | stationLabel: order | translate }}
               </h2>
-              @if (stationManagers()[s.id]; as mgr) {
-                <p class="station-card__mgr">
+              <p class="station-card__mgr">
+                @if (stationManagers()[s.id]; as mgr) {
                   {{ 'WORKER_HUB.STATION_MANAGER_LABEL' | translate }}:
                   {{ mgr.firstName }} {{ mgr.lastName }}
-                </p>
-              }
+                }
+              </p>
               <p class="station-card__desc">
                 {{ stationDescKeyFor(s.id) | translate }}
               </p>

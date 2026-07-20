@@ -73,7 +73,14 @@
         <div class="station-brief__hero-bg"></div>
         <div class="station-brief__hero-grid"></div>
         <div class="station-brief__hero-glow"></div>
-        <span class="station-brief__index" dir="ltr">{{ displayNumber() }}</span>
+        <span class="station-brief__index" aria-hidden="true">
+          <skyflow-mat-icon
+            [icon]="stationIcon(stationId)"
+            [size]="26"
+            [weight]="600"
+            [filled]="cyclesSectionIconFilled()"
+          />
+        </span>
         <div class="station-brief__hero-content">
           <p class="station-brief__eyebrow">
             {{ stationId | stationLabel: ctx.order | translate }}

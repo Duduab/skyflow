@@ -2,6 +2,10 @@ import { createCanvas, type Canvas } from '@napi-rs/canvas';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type Anthropic from '@anthropic-ai/sdk';
 import { correctPartDescription } from '../../common/window-parts.util';
+import { mapWithConcurrency } from '../../common/concurrency.util';
+
+/** Max simultaneous Claude calls per page's image set (full page + tiles). */
+const VISION_CONCURRENCY = 3;
 
 /**
  * Reads the "set" tables (profiles / seals / accessories) from the window
@@ -384,13 +388,20 @@ export async function extractWindowPartsFromPdf(
       const page = await doc.getPage(pageIndex + 1);
       const master = await renderMasterCanvas(page);
       const images = buildPageImageSet(master);
-      for (const img of images) {
-        let parsed: { title: string; rows: WindowPartRow[] }[] = [];
-        try {
-          parsed = await detectSectionsOnImage(img, anthropic, model);
-        } catch {
-          continue; // one failed crop shouldn't sink the rest
-        }
+      // Each image (full page + tiles) is an independent Claude call — run
+      // them with bounded concurrency instead of one after another.
+      const perImageResults = await mapWithConcurrency(
+        images,
+        VISION_CONCURRENCY,
+        async (img) => {
+          try {
+            return await detectSectionsOnImage(img, anthropic, model);
+          } catch {
+            return []; // one failed crop shouldn't sink the rest
+          }
+        },
+      );
+      for (const parsed of perImageResults) {
         for (const sec of parsed) {
           const key = classifySection(sec.title);
           let agg = sections.get(key);

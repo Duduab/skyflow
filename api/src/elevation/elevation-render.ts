@@ -1,5 +1,6 @@
 import { createCanvas } from '@napi-rs/canvas';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { filterElevationItems } from './elevation-text.util.js';
 
 export type ElevationCellKindValue = 'SPANDREL' | 'UNIT';
 
@@ -322,9 +323,10 @@ async function renderOnePage(
     const inside = frags
       .filter((f) => f.cx >= c.minx && f.cx <= c.maxx && f.y >= c.miny && f.y <= c.maxy)
       .map((f) => fixRtl(f.str));
-    const items = uniquePreserveOrder(inside);
+    const rawItems = uniquePreserveOrder(inside);
+    const code = pickPrimaryCode(rawItems);
+    const items = filterElevationItems(rawItems);
     if (!items.length) continue;
-    const code = pickPrimaryCode(items);
     bandCells.push({
       code,
       floor: code ? extractFloor(code) : null,
@@ -481,14 +483,16 @@ function buildAnchorCells(frags: Frag[], W: number, H: number): RenderedCell[] {
       if (y1 - y0 < 0.008) continue;
       const x0 = Math.max(0, b.left);
       const x1 = Math.min(1, b.right);
-      const items = uniquePreserveOrder(
-        frags
-          .filter((f) => {
-            const fx = f.cx / W;
-            const fy = f.y / H;
-            return fx >= x0 && fx <= x1 && fy >= y0 && fy <= y1;
-          })
-          .map((f) => fixRtl(f.str)),
+      const items = filterElevationItems(
+        uniquePreserveOrder(
+          frags
+            .filter((f) => {
+              const fx = f.cx / W;
+              const fy = f.y / H;
+              return fx >= x0 && fx <= x1 && fy >= y0 && fy <= y1;
+            })
+            .map((f) => fixRtl(f.str)),
+        ),
       );
       cells.push({
         code: a.code,

@@ -9,7 +9,16 @@
         <div class="planning-new__hero-shine" aria-hidden="true"></div>
         <div class="planning-new__hero-content">
           <span class="planning-new__badge">{{ 'PLANNING_NEW.BADGE' | translate }}</span>
-          <h1 class="planning-new__title">{{ 'PLANNING_NEW.TITLE' | translate }}</h1>
+          <h1
+            class="planning-new__title"
+            [class.planning-new__title--project]="!!heroProjectName()"
+          >
+            @if (heroProjectName(); as projectName) {
+              {{ projectName }}
+            } @else {
+              {{ 'PLANNING_NEW.TITLE' | translate }}
+            }
+          </h1>
           <p class="planning-new__lead">{{ 'PLANNING_NEW.WIZARD_LEAD' | translate }}</p>
 
           <nav
@@ -443,6 +452,7 @@
             (planningApproved)="onPlanningApproved()"
             (wizardContinue)="goStep3()"
             (wizardLaunchUnit)="onLaunchUnit($event)"
+            (unitDetailsRequested)="onUnitDetailsFromMap($event)"
           />
         </div>
       }
@@ -473,9 +483,15 @@
             class="planning-wizard__station-tile"
             role="tab"
             [class.planning-wizard__station-tile--active]="activeAssignStationId() === st"
+            [class.planning-wizard__station-tile--mapped]="isCycleStationMapped(st)"
             [attr.aria-selected]="activeAssignStationId() === st"
             (click)="selectAssignStation(st)"
           >
+            @if (isCycleStationMapped(st)) {
+              <span class="planning-wizard__station-tile-check" aria-hidden="true">
+                <span class="material-symbols-outlined">check</span>
+              </span>
+            }
             <span class="planning-wizard__station-tile-icon" aria-hidden="true">
               <skyflow-mat-icon
                 [icon]="stationIconFor(st)"
@@ -489,150 +505,211 @@
         }
       </div>
 
-      <div class="planning-wizard__daily-target planning-wizard__daily-target--modal">
-        <div class="planning-wizard__daily-target-row">
-          <label class="planning-wizard__daily-target-field" for="cycle-daily-target-modal">
-            <span class="planning-wizard__daily-target-label">{{
-              'PLANNING_NEW.WIZARD_DAILY_TARGET_QTY' | translate
-            }}</span>
-            <input
-              id="cycle-daily-target-modal"
-              type="number"
-              min="0"
-              inputmode="numeric"
-              class="planning-wizard__daily-target-input"
-              [value]="cycleDailyTarget() ?? ''"
-              (input)="onCycleDailyTargetInput($event)"
-              [placeholder]="'PLANNING_NEW.WIZARD_DAILY_TARGET_AUTO' | translate"
-            />
+      <section class="planning-wizard__plan-card">
+        <header class="planning-wizard__plan-head">
+          <span class="planning-wizard__plan-icon" aria-hidden="true">
+            <skyflow-mat-icon icon="speed" [size]="20" [weight]="600" [filled]="true" />
+          </span>
+          <div class="planning-wizard__plan-head-text">
+            <h4 class="planning-wizard__plan-title">{{ 'PLANNING_NEW.WIZARD_PLAN_TITLE' | translate }}</h4>
+            <p class="planning-wizard__plan-desc">{{ 'PLANNING_NEW.WIZARD_PLAN_DESC' | translate }}</p>
+          </div>
+        </header>
+
+        <div class="planning-wizard__plan-metrics">
+          <label class="planning-wizard__plan-field" for="cycle-daily-target-modal">
+            <span class="planning-wizard__plan-field-icon" aria-hidden="true">
+              <skyflow-mat-icon icon="inventory_2" [size]="18" [weight]="600" />
+            </span>
+            <span class="planning-wizard__plan-field-body">
+              <span class="planning-wizard__plan-field-label">{{
+                'PLANNING_NEW.WIZARD_DAILY_TARGET_QTY' | translate
+              }}</span>
+              <span class="planning-wizard__plan-field-input">
+                <input
+                  id="cycle-daily-target-modal"
+                  type="number"
+                  min="0"
+                  inputmode="numeric"
+                  [value]="cycleDailyTarget() ?? ''"
+                  (input)="onCycleDailyTargetInput($event)"
+                  [placeholder]="'PLANNING_NEW.WIZARD_DAILY_TARGET_AUTO' | translate"
+                />
+                <em class="planning-wizard__plan-field-unit">{{ 'PLANNING_NEW.WIZARD_PLAN_UNIT_QTY' | translate }}</em>
+              </span>
+            </span>
           </label>
-          <label class="planning-wizard__daily-target-field" for="cycle-daily-target-hours-modal">
-            <span class="planning-wizard__daily-target-label">{{
-              'PLANNING_NEW.WIZARD_DAILY_TARGET_HOURS' | translate
-            }}</span>
-            <input
-              id="cycle-daily-target-hours-modal"
-              type="number"
-              min="0.25"
-              max="24"
-              step="0.25"
-              inputmode="decimal"
-              class="planning-wizard__daily-target-input"
-              [value]="cycleDailyTargetHours() ?? ''"
-              (input)="onCycleDailyTargetHoursInput($event)"
-              [placeholder]="'PLANNING_NEW.WIZARD_DAILY_TARGET_AUTO' | translate"
-            />
+
+          <label class="planning-wizard__plan-field" for="cycle-daily-target-hours-modal">
+            <span class="planning-wizard__plan-field-icon" aria-hidden="true">
+              <skyflow-mat-icon icon="schedule" [size]="18" [weight]="600" />
+            </span>
+            <span class="planning-wizard__plan-field-body">
+              <span class="planning-wizard__plan-field-label">{{
+                'PLANNING_NEW.WIZARD_DAILY_TARGET_HOURS' | translate
+              }}</span>
+              <span class="planning-wizard__plan-field-input">
+                <input
+                  id="cycle-daily-target-hours-modal"
+                  type="number"
+                  min="0.25"
+                  max="24"
+                  step="0.25"
+                  inputmode="decimal"
+                  [value]="cycleDailyTargetHours() ?? ''"
+                  (input)="onCycleDailyTargetHoursInput($event)"
+                  [placeholder]="'PLANNING_NEW.WIZARD_DAILY_TARGET_AUTO' | translate"
+                />
+                <em class="planning-wizard__plan-field-unit">{{ 'PLANNING_NEW.WIZARD_PLAN_UNIT_HOURS' | translate }}</em>
+              </span>
+            </span>
           </label>
         </div>
-      </div>
+
+        <div
+          class="planning-wizard__plan-schedule"
+          [class.planning-wizard__plan-schedule--active]="isCycleScheduledFuture()"
+        >
+          <span class="planning-wizard__plan-schedule-icon" aria-hidden="true">
+            <skyflow-mat-icon icon="event_upcoming" [size]="18" [weight]="600" [filled]="true" />
+          </span>
+          <div class="planning-wizard__plan-schedule-body">
+            <span class="planning-wizard__plan-schedule-title">{{ 'PLANNING_NEW.WIZARD_SCHEDULE_TITLE' | translate }}</span>
+            <span class="planning-wizard__plan-schedule-desc">
+              @if (isCycleScheduledFuture()) {
+                {{ 'PLANNING_NEW.WIZARD_SCHEDULE_SET' | translate }}
+              } @else {
+                {{ 'PLANNING_NEW.WIZARD_SCHEDULE_DESC' | translate }}
+              }
+            </span>
+          </div>
+          <input
+            id="cycle-schedule-modal"
+            type="datetime-local"
+            class="planning-wizard__plan-schedule-input"
+            [min]="cycleScheduleMin()"
+            [value]="cycleScheduledStart() ?? ''"
+            (input)="onCycleScheduledStartInput($event)"
+          />
+          @if (cycleScheduledStart()) {
+            <button
+              type="button"
+              class="planning-wizard__plan-schedule-clear"
+              (click)="clearCycleScheduledStart()"
+              [attr.aria-label]="'PLANNING_NEW.WIZARD_SCHEDULE_CLEAR' | translate"
+            >
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          }
+        </div>
+      </section>
 
       @if (activeAssignStationId(); as st) {
-        <div class="planning-wizard__station-group">
-          <h4 class="planning-wizard__station-title">{{ stationLabelKeyFor(st) | translate }}</h4>
-
-          <p class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_STATION_MANAGER' | translate }}</p>
-          @if (managerOptionsForStation(st).length === 0) {
-            <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_NO_STATION_MANAGER' | translate }}</p>
-          } @else {
-            <div class="planning-wizard__assignee-grid">
-              <button
-                type="button"
-                class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
-                [class.planning-wizard__assignee-card--selected]="cycleStationManagerId(st) === null"
-                (click)="pickCycleStationManager(st, null)"
-              >
-                <div class="planning-wizard__profile-wrap planning-wizard__profile-wrap--muted" aria-hidden="true">
-                  <div class="planning-wizard__profile-fallback planning-wizard__profile-fallback--empty">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  </div>
-                </div>
-                <div class="planning-wizard__assignee-text">
-                  <span class="planning-wizard__assignee-name">{{ 'PLANNING_NEW.WIZARD_MANAGER_NONE' | translate }}</span>
-                </div>
-              </button>
-              @for (m of managerOptionsForStation(st); track m.id) {
+        <div class="planning-wizard__crew">
+          <div class="planning-wizard__crew-block">
+            <div class="planning-wizard__crew-label">
+              <span class="planning-wizard__crew-label-icon" aria-hidden="true">
+                <skyflow-mat-icon icon="badge" [size]="16" [weight]="600" [filled]="true" />
+              </span>
+              {{ 'PLANNING_NEW.WIZARD_STATION_MANAGER' | translate }}
+            </div>
+            @if (managerOptionsForStation(st).length === 0) {
+              <p class="planning-wizard__crew-empty">{{ 'PLANNING_NEW.WIZARD_NO_STATION_MANAGER' | translate }}</p>
+            } @else {
+              <div class="planning-wizard__people" role="group">
                 <button
                   type="button"
-                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
-                  [class.planning-wizard__assignee-card--selected]="cycleStationManagerId(st) === m.id"
-                  (click)="pickCycleStationManager(st, m.id)"
+                  class="planning-wizard__person planning-wizard__person--none"
+                  [class.planning-wizard__person--on]="cycleStationManagerId(st) === null"
+                  (click)="pickCycleStationManager(st, null)"
                 >
-                  <div class="planning-wizard__profile-wrap" aria-hidden="true">
-                    @if (assigneePhotoVisible(m)) {
-                      <img
-                        class="planning-wizard__profile-img"
-                        [src]="m.photoUrl!"
-                        [alt]="m.firstName + ' ' + m.lastName"
-                        (error)="onAssigneePhotoError(m.id)"
-                      />
-                    } @else {
-                      <div class="planning-wizard__profile-fallback">
-                        <span class="planning-wizard__profile-initials">{{ initialsFor(m) }}</span>
-                      </div>
-                    }
-                  </div>
-                  <div class="planning-wizard__assignee-text">
-                    <span class="planning-wizard__assignee-name">{{ m.firstName }} {{ m.lastName }}</span>
-                  </div>
+                  <span class="planning-wizard__person-avatar planning-wizard__person-avatar--none" aria-hidden="true">
+                    <span class="material-symbols-outlined">person_off</span>
+                  </span>
+                  <span class="planning-wizard__person-name">{{ 'PLANNING_NEW.WIZARD_MANAGER_NONE' | translate }}</span>
                 </button>
-              }
-            </div>
-          }
+                @for (m of managerOptionsForStation(st); track m.id) {
+                  <button
+                    type="button"
+                    class="planning-wizard__person"
+                    [class.planning-wizard__person--on]="cycleStationManagerId(st) === m.id"
+                    (click)="pickCycleStationManager(st, m.id)"
+                  >
+                    <span class="planning-wizard__person-avatar" aria-hidden="true">
+                      @if (assigneePhotoVisible(m)) {
+                        <img
+                          [src]="m.photoUrl!"
+                          [alt]="m.firstName + ' ' + m.lastName"
+                          (error)="onAssigneePhotoError(m.id)"
+                        />
+                      } @else {
+                        <span class="planning-wizard__person-initials">{{ initialsFor(m) }}</span>
+                      }
+                      <span class="planning-wizard__person-check" aria-hidden="true">
+                        <span class="material-symbols-outlined">check</span>
+                      </span>
+                    </span>
+                    <span class="planning-wizard__person-name">{{ m.firstName }} {{ m.lastName }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
 
-          <p class="planning-wizard__assign-subheading">{{ 'PLANNING_NEW.WIZARD_STATION_WORKERS' | translate }}</p>
-          @if (workerOptions().length === 0) {
-            <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.WIZARD_WORKERS_NONE' | translate }}</p>
-          } @else {
-            <div class="planning-wizard__assignee-grid">
-              @for (w of workerOptions(); track w.id) {
-                <button
-                  type="button"
-                  class="planning-wizard__assignee-card planning-wizard__assignee-card--row"
-                  [class.planning-wizard__assignee-card--selected]="isCycleStationWorker(st, w.id)"
-                  (click)="toggleCycleStationWorker(st, w.id)"
-                >
-                  <div class="planning-wizard__profile-wrap" aria-hidden="true">
-                    @if (assigneePhotoVisible(w)) {
-                      <img
-                        class="planning-wizard__profile-img"
-                        [src]="w.photoUrl!"
-                        [alt]="w.firstName + ' ' + w.lastName"
-                        (error)="onAssigneePhotoError(w.id)"
-                      />
-                    } @else {
-                      <div class="planning-wizard__profile-fallback">
-                        <span class="planning-wizard__profile-initials">{{ initialsFor(w) }}</span>
-                      </div>
-                    }
-                  </div>
-                  <div class="planning-wizard__assignee-text">
-                    <span class="planning-wizard__assignee-name">{{ w.firstName }} {{ w.lastName }}</span>
-                  </div>
-                </button>
+          <div class="planning-wizard__crew-block">
+            <div class="planning-wizard__crew-label">
+              <span class="planning-wizard__crew-label-icon" aria-hidden="true">
+                <skyflow-mat-icon icon="groups" [size]="16" [weight]="600" [filled]="true" />
+              </span>
+              {{ 'PLANNING_NEW.WIZARD_STATION_WORKERS' | translate }}
+              @if (cycleStationWorkerCount(st) > 0) {
+                <span class="planning-wizard__crew-count">{{ cycleStationWorkerCount(st) }}</span>
               }
             </div>
-          }
+            @if (workerOptions().length === 0) {
+              <p class="planning-wizard__crew-empty">{{ 'PLANNING_NEW.WIZARD_WORKERS_NONE' | translate }}</p>
+            } @else {
+              <div class="planning-wizard__people" role="group">
+                @for (w of workerOptions(); track w.id) {
+                  <button
+                    type="button"
+                    class="planning-wizard__person"
+                    [class.planning-wizard__person--on]="isCycleStationWorker(st, w.id)"
+                    (click)="toggleCycleStationWorker(st, w.id)"
+                  >
+                    <span class="planning-wizard__person-avatar" aria-hidden="true">
+                      @if (assigneePhotoVisible(w)) {
+                        <img
+                          [src]="w.photoUrl!"
+                          [alt]="w.firstName + ' ' + w.lastName"
+                          (error)="onAssigneePhotoError(w.id)"
+                        />
+                      } @else {
+                        <span class="planning-wizard__person-initials">{{ initialsFor(w) }}</span>
+                      }
+                      <span class="planning-wizard__person-check" aria-hidden="true">
+                        <span class="material-symbols-outlined">check</span>
+                      </span>
+                    </span>
+                    <span class="planning-wizard__person-name">{{ w.firstName }} {{ w.lastName }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
         </div>
       }
 
       <div popup-actions>
-        <skyflow-ui-button
-          variant="ghost"
-          btnClass="planning-wizard__btn"
-          (click)="closeCycleAssignModal()"
-        >
-          {{ 'PLANNING_NEW.WIZARD_UNIT_MODAL_CANCEL' | translate }}
-        </skyflow-ui-button>
         @if (isDraftUnit(sel)) {
           <skyflow-ui-button
             variant="primary"
             btnClass="planning-wizard__btn"
             [loading]="cycleLaunching()"
+            [disabled]="!canLaunchSelectedCycle()"
             (click)="launchSelectedCycle()"
           >
+            <skyflow-mat-icon icon="rocket_launch" [size]="20" [weight]="600" [filled]="true" />
             {{ 'PLANNING_NEW.WIZARD_UNIT_LAUNCH' | translate }}
           </skyflow-ui-button>
         } @else {
@@ -652,10 +729,25 @@
   @if (detailsOpen()) {
     <skyflow-ui-popup
       [open]="true"
+      size="wide"
       (closed)="closeUnitDetails()"
       [title]="('PLANNING_NEW.UNIT_DETAILS_TITLE' | translate) + (details() ? ' · ' + details()!.windowType.code : '')"
       titleId="planning-unit-details-title"
+      panelClass="unit-details-popup"
     >
+      <skyflow-mat-icon
+        popup-icon
+        class="unit-details-popup__icon"
+        icon="visibility"
+        [size]="24"
+        [weight]="400"
+      />
+      @if (details(); as d) {
+        <span
+          popup-header-extra
+          class="unit-details-popup__status planning-wizard__unit-status planning-wizard__unit-status--{{ d.cycle.status }}"
+        >{{ cycleStatusKey(d.cycle.status) | translate }}</span>
+      }
       @if (detailsLoading()) {
         <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.UNIT_DETAILS_LOADING' | translate }}</p>
       } @else if (detailsError(); as ek) {
@@ -663,25 +755,70 @@
       } @else if (details(); as d) {
         <div class="unit-details">
           <div class="unit-details__meta">
-            <span
-              class="planning-wizard__unit-status planning-wizard__unit-status--{{ d.cycle.status }}"
-            >{{ cycleStatusKey(d.cycle.status) | translate }}</span>
-            <span class="unit-details__qty">×{{ d.windowType.totalQty }}</span>
+            <span class="unit-details__qty">
+              {{ 'PLANNING_NEW.UNIT_FIELD_QTY' | translate }}: {{ d.windowType.totalQty }}
+            </span>
             @if (d.windowType.instructionPdfUrl) {
-              <a class="unit-details__pdf" [href]="d.windowType.instructionPdfUrl" target="_blank" rel="noopener">
+              <button
+                type="button"
+                class="unit-details__pdf-btn"
+                (click)="openUnitDetailsPdf(d.windowType.instructionPdfUrl, d.windowType.code, d.windowType.instructionPage)"
+              >
+                <skyflow-mat-icon icon="picture_as_pdf" [size]="16" [weight]="400" aria-hidden="true" />
                 {{ 'PLANNING_NEW.UNIT_DETAILS_OPEN_PDF' | translate }}
-              </a>
+              </button>
             }
           </div>
 
-          @if (d.windowType.composition.length) {
+          @if (d.windowType.composition.length || d.windowType.glass?.length) {
             <section class="unit-details__block">
+              @if (d.windowType.composition.length) {
+                <div
+                  class="unit-details__stack"
+                  [attr.aria-label]="'PLANNING_NEW.UNIT_COMP_STACK_ARIA' | translate"
+                >
+                  @for (layer of compositionStackDisplay(d.windowType.composition); track $index) {
+                    <div
+                      class="unit-details__stack-layer"
+                      [class.unit-details__stack-layer--spandrel]="compositionLayerKind(layer) === 'spandrel'"
+                      [class.unit-details__stack-layer--window]="compositionLayerKind(layer) === 'window'"
+                      [class.unit-details__stack-layer--fixed]="compositionLayerKind(layer) === 'fixed'"
+                      [class.unit-details__stack-layer--shadow]="compositionLayerKind(layer) === 'shadow'"
+                    >
+                      @if (compositionLayerUsesTranslate(layer)) {
+                        <span class="unit-details__stack-label">{{ compositionLayerLabelKey(layer) | translate }}</span>
+                      } @else {
+                        <span class="unit-details__stack-label" dir="ltr">{{ layer }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
               <h4 class="unit-details__block-title">{{ 'PLANNING_NEW.UNIT_FIELD_COMPOSITION' | translate }}</h4>
-              <div class="unit-details__chips">
-                @for (comp of d.windowType.composition; track $index) {
-                  <span class="unit-details__chip" dir="ltr">{{ comp }}</span>
-                }
-              </div>
+              @if (d.windowType.glass?.length) {
+                <div class="unit-details__glass-grid">
+                  @for (g of d.windowType.glass; track g.order) {
+                    <figure
+                      class="unit-details__glass-card"
+                      [class.unit-details__glass-card--window]="g.kind === 'WINDOW'"
+                      [class.unit-details__glass-card--fixed]="g.kind === 'FIXED'"
+                    >
+                      <div class="unit-details__glass-img">
+                        <img
+                          [src]="glassImageSrc(g, d.windowType.code)"
+                          [alt]="g.code"
+                          decoding="async"
+                          (error)="onGlassImgError(g, $event, d.windowType.code)"
+                        />
+                      </div>
+                      <figcaption class="unit-details__glass-cap">
+                        <span class="unit-details__glass-code" dir="ltr">{{ g.code }}</span>
+                        <span class="unit-details__glass-kind">{{ glassKindKey(g.kind) | translate }}</span>
+                      </figcaption>
+                    </figure>
+                  }
+                </div>
+              }
             </section>
           }
 
@@ -705,9 +842,9 @@
                 <tbody>
                   @for (row of sec.rows; track $index) {
                     <tr>
-                      <td dir="ltr">{{ row.partNumber }}</td>
-                      <td>{{ row.description }}</td>
                       <td dir="ltr">{{ row.blockNumber }}</td>
+                      <td>{{ row.description }}</td>
+                      <td dir="ltr">{{ row.partNumber }}</td>
                     </tr>
                   }
                 </tbody>
@@ -718,10 +855,10 @@
           <section class="unit-details__block">
             <h4 class="unit-details__block-title">{{ 'PLANNING_NEW.UNIT_DETAILS_JOURNEY' | translate }}</h4>
             <ul class="unit-journey">
-              @for (sp of d.stationProgress; track sp.stationId) {
+              @for (sp of stationProgressInFlowOrder(d.stationProgress); track sp.stationId) {
                 <li class="unit-journey__station unit-journey__station--{{ sp.status }}">
                   <div class="unit-journey__head">
-                    <span class="unit-journey__num">{{ sp.stationId }}</span>
+                    <span class="unit-journey__num">{{ stationDisplayNumberForProgress(sp.stationId, d.stationProgress) }}</span>
                     <span class="unit-journey__name">{{ stationLabelKeyFor(sp.stationId) | translate }}</span>
                     <span class="unit-journey__badge unit-journey__badge--{{ sp.status }}">
                       {{ 'PLANNING_NEW.STATION_STATUS_' + sp.status | translate }}
@@ -744,167 +881,574 @@
               }
             </ul>
           </section>
+
+          @if (detailsElevationCell(); as cell) {
+            <section class="unit-details__block unit-details__return">
+              <h4 class="unit-details__block-title">{{ 'ELEVATION_MAP.WORK_CYCLE' | translate }}</h4>
+              @if (cell.floor) {
+                <p class="unit-details__return-meta">
+                  <span>{{ 'ELEVATION_MAP.PAGE' | translate }} {{ cell.pageIndex + 1 }}</span>
+                  <span dir="ltr">{{ cell.floor }}</span>
+                  <span
+                    class="unit-details__return-status"
+                    [class.unit-details__return-status--done]="cell.status === 'DONE'"
+                  >
+                    {{
+                      (cell.status === 'DONE'
+                        ? 'ELEVATION_MAP.STATUS_DONE'
+                        : 'ELEVATION_MAP.STATUS_PENDING') | translate
+                    }}
+                  </span>
+                </p>
+              }
+              <div class="unit-details__return-grid">
+                @for (sid of detailsReturnStationIds(); track sid) {
+                  <button
+                    type="button"
+                    class="unit-details__return-station"
+                    [class.unit-details__return-station--selected]="detailsReturnStationId() === sid"
+                    [class.unit-details__return-station--defect]="cell.defect?.returnedToStationId === sid"
+                    [disabled]="!detailsCanReturn()"
+                    (click)="chooseDetailsReturnStation(sid)"
+                  >
+                    <span
+                      class="unit-details__return-station-icon"
+                      [style]="detailsStationIconStyle(sid)"
+                      aria-hidden="true"
+                    >
+                      <skyflow-mat-icon
+                        [icon]="detailsStationIcon(sid)"
+                        [size]="20"
+                        [weight]="600"
+                        [filled]="detailsStationIconFilled(sid)"
+                      />
+                    </span>
+                    <span class="unit-details__return-station-name">{{ 'STATIONS.' + sid | translate }}</span>
+                  </button>
+                }
+              </div>
+
+              @if (cell.defect; as def) {
+                <div class="unit-details__return-defect">
+                  <span class="unit-details__return-defect-badge">{{ 'ELEVATION_MAP.DEFECT_BADGE' | translate }}</span>
+                  {{ 'ELEVATION_MAP.RETURNED_TO' | translate }}:
+                  {{ 'STATIONS.' + def.returnedToStationId | translate }}
+                  <p class="unit-details__return-defect-reason">{{ def.reason }}</p>
+                </div>
+              }
+
+              @if (d.cycle.returnReason && !cell.defect) {
+                <div class="unit-details__return-defect">
+                  <span class="unit-details__return-defect-badge">{{ 'ELEVATION_MAP.DEFECT_BADGE' | translate }}</span>
+                  @if (d.cycle.returnedFromStationId) {
+                    {{ 'ELEVATION_MAP.RETURNED_TO' | translate }}:
+                    {{ 'STATIONS.' + d.cycle.returnedFromStationId | translate }}
+                  }
+                  <p class="unit-details__return-defect-reason">{{ d.cycle.returnReason }}</p>
+                </div>
+              }
+
+              @if (detailsCanReturn()) {
+                @if (detailsReturnStationId() !== null) {
+                  <div class="unit-details__return-form">
+                    <label class="unit-details__return-label" for="unit-details-return-reason">
+                      {{ 'ELEVATION_MAP.RETURN_TO_STATION' | translate }}:
+                      {{ 'STATIONS.' + detailsReturnStationId() | translate }}
+                    </label>
+                    <textarea
+                      id="unit-details-return-reason"
+                      class="unit-details__return-textarea"
+                      rows="3"
+                      [value]="detailsDefectReason()"
+                      (input)="onDetailsDefectReasonInput($event)"
+                      [placeholder]="'ELEVATION_MAP.DEFECT_REASON_PLACEHOLDER' | translate"
+                    ></textarea>
+                    <skyflow-ui-button
+                      variant="primary"
+                      [loading]="detailsReturnBusy()"
+                      [disabled]="detailsDefectReason().trim().length < 2"
+                      [block]="true"
+                      (click)="submitDetailsReturn()"
+                    >
+                      {{ 'ELEVATION_MAP.SEND_DEFECT' | translate }}
+                    </skyflow-ui-button>
+                  </div>
+                } @else {
+                  <skyflow-ui-button
+                    [variant]="cell.status === 'DONE' ? 'secondary' : 'primary'"
+                    [btnClass]="cell.status === 'DONE' ? '' : 'unit-details__complete-btn'"
+                    [loading]="detailsReturnBusy()"
+                    [block]="true"
+                    (click)="completeDetailsElevationCell()"
+                  >
+                    @if (cell.status !== 'DONE') {
+                      <skyflow-mat-icon icon="check" [size]="20" [weight]="600" [filled]="true" />
+                    }
+                    {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.UNMARK' : 'ELEVATION_MAP.COMPLETE') | translate }}
+                  </skyflow-ui-button>
+                  <p class="unit-details__return-hint">{{ 'ELEVATION_MAP.RETURN_HINT' | translate }}</p>
+                }
+              }
+            </section>
+          }
         </div>
       }
-
-      <div popup-actions>
-        <skyflow-ui-button variant="primary" btnClass="planning-wizard__btn" (click)="closeUnitDetails()">
-          {{ 'PLANNING_NEW.UNIT_DETAILS_CLOSE' | translate }}
-        </skyflow-ui-button>
-      </div>
     </skyflow-ui-popup>
+  }
+
+  @if (unitDetailsPdfUrl(); as pdfUrl) {
+    <div
+      class="unit-details-pdf-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="'PLANNING_NEW.UNIT_DETAILS_PDF_TITLE' | translate"
+      (click)="closeUnitDetailsPdf()"
+    >
+      <div class="unit-details-pdf-modal__panel" (click)="$event.stopPropagation()">
+        <header class="unit-details-pdf-modal__head">
+          <div class="unit-details-pdf-modal__titles">
+            <span class="unit-details-pdf-modal__eyebrow">
+              {{ 'PLANNING_NEW.UNIT_DETAILS_PDF_TITLE' | translate }}
+            </span>
+            <span class="unit-details-pdf-modal__code" dir="ltr">{{ unitDetailsPdfCode() }}</span>
+          </div>
+          <button
+            type="button"
+            class="unit-details-pdf-modal__close"
+            (click)="closeUnitDetailsPdf()"
+            [attr.aria-label]="'PLANNING_NEW.UNIT_DETAILS_CLOSE' | translate"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+        @if (isInstructionImageUrl(pdfUrl)) {
+          <img
+            class="unit-details-pdf-modal__image"
+            [src]="pdfUrl"
+            [alt]="unitDetailsPdfCode() ?? ('PLANNING_NEW.UNIT_DETAILS_PDF_TITLE' | translate)"
+          />
+        } @else {
+          <iframe
+            class="unit-details-pdf-modal__frame"
+            [src]="unitDetailsPdfSafeUrl(pdfUrl)"
+            [title]="unitDetailsPdfCode() ?? ('PLANNING_NEW.UNIT_DETAILS_PDF_TITLE' | translate)"
+          ></iframe>
+        }
+      </div>
+    </div>
   }
 
   @if (editOpen()) {
     <skyflow-ui-popup
       [open]="true"
+      size="wide"
       (closed)="closeUnitEdit()"
       [title]="('PLANNING_NEW.UNIT_EDIT_TITLE' | translate) + (editWindowCode() ? ' · ' + editWindowCode() : '')"
       titleId="planning-unit-edit-title"
+      panelClass="unit-edit-popup"
     >
+      <skyflow-mat-icon
+        popup-icon
+        class="unit-edit-popup__icon"
+        icon="edit_note"
+        [size]="24"
+        [weight]="400"
+      />
       @if (editLoading()) {
         <p class="planning-wizard__side-muted">{{ 'PLANNING_NEW.UNIT_DETAILS_LOADING' | translate }}</p>
       } @else {
         <div class="unit-edit">
           <p class="unit-edit__hint">{{ 'PLANNING_NEW.UNIT_EDIT_HINT' | translate }}</p>
 
-          <section class="unit-edit__block">
-            <h4 class="unit-edit__block-title">{{ 'PLANNING_NEW.UNIT_EDIT_REPLACE_PDF' | translate }}</h4>
-            <label class="unit-edit__file">
-              <input
-                type="file"
-                accept="application/pdf"
-                hidden
-                (change)="onEditPdfSelected('WINDOW_INSTRUCTION_PDF', $any($event.target).files)"
-              />
-              <span class="unit-edit__file-btn">
-                @if (editUploading()) {
-                  {{ 'PLANNING_NEW.UNIT_EDIT_UPLOADING' | translate }}
-                } @else {
-                  {{ 'PLANNING_NEW.UNIT_EDIT_CHOOSE_PDF' | translate }}
-                }
-              </span>
-              @if (editInstructionUrl()) {
-                <a class="unit-edit__file-current" [href]="editInstructionUrl()!" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
-                  {{ 'PLANNING_NEW.UNIT_DETAILS_OPEN_PDF' | translate }}
-                </a>
-              }
-            </label>
-            <p class="unit-edit__file-note">{{ 'PLANNING_NEW.UNIT_EDIT_REPLACE_PDF_NOTE' | translate }}</p>
-          </section>
-
-          <div class="unit-edit__divider"><span>{{ 'PLANNING_NEW.UNIT_EDIT_OR_MANUAL' | translate }}</span></div>
-
-          <section class="unit-edit__block unit-edit__block--row">
-            <label class="unit-edit__field">
-              <span class="unit-edit__label">{{ 'PLANNING_NEW.UNIT_FIELD_QTY' | translate }}</span>
-              <input
-                type="number"
-                min="0"
-                inputmode="numeric"
-                class="unit-edit__input"
-                [value]="editTotalQty()"
-                (input)="onEditQtyInput($event)"
-              />
-            </label>
-            <label class="unit-edit__toggle">
-              <input type="checkbox" [checked]="editHasAngles()" (change)="toggleEditHasAngles()" />
-              <span>{{ 'PLANNING_NEW.UNIT_FIELD_HAS_ANGLES' | translate }}</span>
-            </label>
-          </section>
-
-          <section class="unit-edit__block">
-            <h4 class="unit-edit__block-title">
-              {{ 'PLANNING_NEW.UNIT_FIELD_COMPOSITION' | translate }}
-              <em class="unit-edit__route">→ {{ 'STATIONS.4' | translate }}</em>
-            </h4>
-            <div class="unit-edit__chips">
-              @for (comp of editComposition(); track $index) {
-                <span class="unit-edit__chip" dir="ltr">
-                  {{ comp }}
-                  <button type="button" (click)="removeEditComposition($index)" aria-label="remove">×</button>
+          <nav class="unit-edit__tabs" role="tablist" [attr.aria-label]="'PLANNING_NEW.UNIT_EDIT_TABS_ARIA' | translate">
+            @for (tab of editTabs(); track tab.id) {
+              <button
+                type="button"
+                class="unit-edit__tab"
+                role="tab"
+                [class.unit-edit__tab--active]="editTab() === tab.id"
+                [attr.aria-selected]="editTab() === tab.id"
+                (click)="selectEditTab(tab.id)"
+              >
+                <span class="unit-edit__tab-icon" aria-hidden="true">
+                  <skyflow-mat-icon [icon]="tab.icon" [size]="18" [weight]="600" [filled]="true" />
                 </span>
-              }
-            </div>
-            <div class="unit-edit__chip-add">
-              <input
-                type="text"
-                class="unit-edit__input"
-                [value]="editCompDraft()"
-                (input)="onEditCompDraft($event)"
-                (keydown.enter)="addEditComposition(); $event.preventDefault()"
-                [placeholder]="'PLANNING_NEW.UNIT_EDIT_ADD_PLACEHOLDER' | translate"
-              />
-              <button type="button" class="unit-edit__chip-btn" (click)="addEditComposition()">+</button>
-            </div>
-          </section>
-
-          @if (editHasAngles()) {
-            <section class="unit-edit__block">
-              <h4 class="unit-edit__block-title">
-                {{ 'PLANNING_NEW.UNIT_FIELD_ANGLES' | translate }}
-                <em class="unit-edit__route">→ {{ 'STATIONS.8' | translate }}</em>
-              </h4>
-              <div class="unit-edit__chips">
-                @for (code of editAngleCodes(); track $index) {
-                  <span class="unit-edit__chip" dir="ltr">
-                    {{ code }}
-                    <button type="button" (click)="removeEditAngleCode($index)" aria-label="remove">×</button>
-                  </span>
+                <span class="unit-edit__tab-label">{{ tab.labelKey | translate }}</span>
+                @if (tab.stationId) {
+                  <em class="unit-edit__tab-route">→ {{ 'STATIONS.' + tab.stationId | translate }}</em>
                 }
-              </div>
-              <div class="unit-edit__chip-add">
-                <input
-                  type="text"
-                  class="unit-edit__input"
-                  [value]="editAngleDraft()"
-                  (input)="onEditAngleDraft($event)"
-                  (keydown.enter)="addEditAngleCode(); $event.preventDefault()"
-                  [placeholder]="'PLANNING_NEW.UNIT_EDIT_ADD_PLACEHOLDER' | translate"
-                />
-                <button type="button" class="unit-edit__chip-btn" (click)="addEditAngleCode()">+</button>
-              </div>
-            </section>
-          }
-
-          <section class="unit-edit__block">
-            <div class="unit-edit__block-head">
-              <h4 class="unit-edit__block-title">{{ 'PLANNING_NEW.UNIT_EDIT_PARTS' | translate }}</h4>
-              <button type="button" class="unit-edit__link" (click)="addEditSection()">
-                + {{ 'PLANNING_NEW.UNIT_EDIT_ADD_SECTION' | translate }}
               </button>
-            </div>
-            @for (sec of editSections(); track $index; let si = $index) {
-              <div class="unit-edit__section">
-                <div class="unit-edit__section-head">
-                  <input
-                    type="text"
-                    class="unit-edit__input unit-edit__input--title"
-                    [value]="sec.title"
-                    (input)="updateEditSectionTitle(si, $event)"
-                    [placeholder]="'PLANNING_NEW.UNIT_PARTS_SECTION' | translate"
-                  />
-                  <em class="unit-edit__route">→ {{ (sec.key === 'PROFILES' ? 'STATIONS.1' : 'STATIONS.3') | translate }}</em>
-                  <button type="button" class="unit-edit__icon-btn" (click)="removeEditSection(si)" aria-label="remove section">×</button>
-                </div>
-                <table class="unit-edit__table">
-                  <tbody>
-                    @for (row of sec.rows; track $index; let ri = $index) {
-                      <tr>
-                        <td><input type="text" dir="ltr" [value]="row.partNumber" (input)="updateEditCell(si, ri, 'partNumber', $event)" /></td>
-                        <td><input type="text" [value]="row.description" (input)="updateEditCell(si, ri, 'description', $event)" /></td>
-                        <td><input type="text" dir="ltr" [value]="row.blockNumber" (input)="updateEditCell(si, ri, 'blockNumber', $event)" /></td>
-                        <td><button type="button" class="unit-edit__icon-btn" (click)="removeEditRow(si, ri)" aria-label="remove row">×</button></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-                <button type="button" class="unit-edit__link" (click)="addEditRow(si)">
-                  + {{ 'PLANNING_NEW.UNIT_EDIT_ADD_ROW' | translate }}
-                </button>
-              </div>
             }
-          </section>
+          </nav>
+
+          <div class="unit-edit__panel" role="tabpanel">
+            @switch (editTab()) {
+              @case ('source') {
+                <section class="unit-edit__pane unit-edit__pane--source">
+                  <div class="unit-edit__hero-card">
+                    <div class="unit-edit__hero-head">
+                      <span class="unit-edit__hero-icon" aria-hidden="true">
+                        <skyflow-mat-icon icon="picture_as_pdf" [size]="22" [weight]="600" />
+                      </span>
+                      <div>
+                        <h4 class="unit-edit__pane-title">{{ 'PLANNING_NEW.UNIT_EDIT_REPLACE_PDF' | translate }}</h4>
+                        <p class="unit-edit__pane-desc">{{ 'PLANNING_NEW.UNIT_EDIT_REPLACE_PDF_NOTE' | translate }}</p>
+                      </div>
+                    </div>
+                    <label class="unit-edit__file">
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        hidden
+                        (change)="onEditPdfSelected('WINDOW_INSTRUCTION_PDF', $any($event.target).files)"
+                      />
+                      <span class="unit-edit__file-btn">
+                        @if (editUploading()) {
+                          {{ 'PLANNING_NEW.UNIT_EDIT_UPLOADING' | translate }}
+                        } @else {
+                          {{ 'PLANNING_NEW.UNIT_EDIT_CHOOSE_PDF' | translate }}
+                        }
+                      </span>
+                      @if (editInstructionUrl()) {
+                        <a class="unit-edit__file-current" [href]="editInstructionUrl()!" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
+                          {{ 'PLANNING_NEW.UNIT_DETAILS_OPEN_PDF' | translate }}
+                        </a>
+                      }
+                    </label>
+                  </div>
+
+                  <div class="unit-edit__meta-grid">
+                    <label class="unit-edit__meta-card">
+                      <span class="unit-edit__label">{{ 'PLANNING_NEW.UNIT_FIELD_QTY' | translate }}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        inputmode="numeric"
+                        class="unit-edit__input unit-edit__input--lg"
+                        [value]="editTotalQty()"
+                        (input)="onEditQtyInput($event)"
+                      />
+                    </label>
+                    <label class="unit-edit__meta-card unit-edit__meta-card--toggle">
+                      <span class="unit-edit__label">{{ 'PLANNING_NEW.UNIT_FIELD_HAS_ANGLES' | translate }}</span>
+                      <span class="unit-edit__toggle-pill">
+                        <input type="checkbox" [checked]="editHasAngles()" (change)="toggleEditHasAngles()" />
+                        <span>{{ (editHasAngles() ? 'PLANNING_NEW.UNIT_ANGLES_ON' : 'PLANNING_NEW.UNIT_ANGLES_OFF') | translate }}</span>
+                      </span>
+                    </label>
+                  </div>
+                </section>
+              }
+
+              @case ('glass') {
+                <section class="unit-edit__pane">
+                  <div class="unit-edit__pane-head">
+                    <div>
+                      <h4 class="unit-edit__pane-title">{{ 'PLANNING_NEW.UNIT_EDIT_GLASS_PANELS' | translate }}</h4>
+                      <p class="unit-edit__pane-desc">{{ 'PLANNING_NEW.UNIT_EDIT_GLASS_PANELS_DESC' | translate }}</p>
+                    </div>
+                    <span class="unit-edit__station-badge">
+                      <skyflow-mat-icon [icon]="stationIconFor(4)" [size]="16" [weight]="600" [filled]="stationIconFilledFor(4)" />
+                      {{ 'STATIONS.4' | translate }}
+                    </span>
+                  </div>
+
+                  @if (editGlass().length) {
+                    <div class="unit-edit__glass-grid">
+                      @for (g of editGlass(); track g.order) {
+                        <figure
+                          class="unit-edit__glass-card"
+                          [class.unit-edit__glass-card--window]="g.kind === 'WINDOW'"
+                          [class.unit-edit__glass-card--fixed]="g.kind === 'FIXED'"
+                        >
+                          <div class="unit-edit__glass-img">
+                            <img
+                              [src]="glassImageSrc(g)"
+                              [alt]="g.code"
+                              decoding="async"
+                              (error)="onGlassImgError(g, $event)"
+                            />
+                          </div>
+                          <figcaption class="unit-edit__glass-cap">
+                            @if (editGlassPanelOrder() === g.order) {
+                              <div class="unit-edit__glass-edit">
+                                <input
+                                  type="text"
+                                  dir="ltr"
+                                  class="unit-edit__glass-code-inp"
+                                  [value]="glassEditDraft().code"
+                                  (input)="onGlassEditCode($event)"
+                                />
+                                <div class="unit-edit__glass-kind-toggle">
+                                  <button
+                                    type="button"
+                                    class="unit-edit__glass-kind-btn"
+                                    [class.unit-edit__glass-kind-btn--active]="glassEditDraft().kind === 'WINDOW'"
+                                    (click)="setGlassEditKind('WINDOW')"
+                                  >
+                                    {{ 'WORKER.GLU_GLASS_WINDOW' | translate }}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="unit-edit__glass-kind-btn"
+                                    [class.unit-edit__glass-kind-btn--active]="glassEditDraft().kind === 'FIXED'"
+                                    (click)="setGlassEditKind('FIXED')"
+                                  >
+                                    {{ 'WORKER.GLU_GLASS_FIXED' | translate }}
+                                  </button>
+                                </div>
+                                <div class="unit-edit__glass-edit-actions">
+                                  <button
+                                    type="button"
+                                    class="unit-edit__glass-action-btn unit-edit__glass-action-btn--icon-only unit-edit__glass-action-btn--save"
+                                    (click)="saveGlassPanelEdit(g.order)"
+                                    [disabled]="editGlassSaving()"
+                                    [attr.aria-label]="'PLANNING_NEW.UNIT_EDIT_GLASS_SAVE' | translate"
+                                  >
+                                    <span class="material-symbols-outlined unit-edit__glass-action-icon" aria-hidden="true">check</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="unit-edit__glass-action-btn unit-edit__glass-action-btn--icon-only unit-edit__glass-action-btn--cancel"
+                                    (click)="cancelGlassPanelEdit()"
+                                    [attr.aria-label]="'PLANNING_NEW.UNIT_EDIT_GLASS_CANCEL' | translate"
+                                  >
+                                    <span class="material-symbols-outlined unit-edit__glass-action-icon" aria-hidden="true">close</span>
+                                  </button>
+                                </div>
+                              </div>
+                            } @else {
+                              <div class="unit-edit__glass-cap-main">
+                                <div class="unit-edit__glass-cap-text">
+                                  <span class="unit-edit__glass-code" dir="ltr">{{ g.code }}</span>
+                                  <span class="unit-edit__glass-kind">{{ glassKindKey(g.kind) | translate }}</span>
+                                </div>
+                                <div class="unit-edit__glass-cap-actions">
+                                  <button
+                                    type="button"
+                                    class="unit-edit__glass-action-btn unit-edit__glass-action-btn--edit"
+                                    (click)="startGlassPanelEdit(g)"
+                                    [disabled]="editGlassSaving()"
+                                    [attr.aria-label]="'PLANNING_NEW.UNIT_EDIT_GLASS_EDIT' | translate"
+                                  >
+                                    <span class="material-symbols-outlined unit-edit__glass-action-icon" aria-hidden="true">edit</span>
+                                    <span class="unit-edit__glass-action-label">{{ 'PLANNING_NEW.UNIT_EDIT_GLASS_EDIT' | translate }}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="unit-edit__glass-action-btn unit-edit__glass-action-btn--danger"
+                                    (click)="deleteGlassPanel(g)"
+                                    [disabled]="editGlassSaving()"
+                                    [attr.aria-label]="'PLANNING_NEW.UNIT_EDIT_GLASS_DELETE' | translate"
+                                  >
+                                    <span class="material-symbols-outlined unit-edit__glass-action-icon" aria-hidden="true">delete</span>
+                                    <span class="unit-edit__glass-action-label">{{ 'PLANNING_NEW.UNIT_EDIT_GLASS_DELETE' | translate }}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            }
+                          </figcaption>
+                        </figure>
+                      }
+                    </div>
+                  } @else {
+                    <p class="unit-edit__empty">{{ 'PLANNING_NEW.UNIT_EDIT_GLASS_EMPTY' | translate }}</p>
+                  }
+
+                  <div class="unit-edit__subblock">
+                    <h5 class="unit-edit__subblock-title">{{ 'PLANNING_NEW.UNIT_FIELD_COMPOSITION' | translate }}</h5>
+                    <div class="unit-edit__comp-grid">
+                      @for (comp of editComposition(); track $index) {
+                        <div class="unit-edit__comp-card">
+                          <span class="unit-edit__comp-icon" aria-hidden="true">
+                            <skyflow-mat-icon [icon]="compositionIcon(comp)" [size]="20" [weight]="600" />
+                          </span>
+                          <input
+                            type="text"
+                            dir="ltr"
+                            class="unit-edit__comp-input"
+                            [value]="comp"
+                            (input)="updateEditComposition($index, $event)"
+                          />
+                          <button type="button" class="unit-edit__icon-btn" (click)="removeEditComposition($index)" aria-label="remove">
+                            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                    <div class="unit-edit__chip-add">
+                      <button type="button" class="unit-edit__chip-btn" (click)="addEditComposition()">
+                        <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                      </button>
+                      <input
+                        type="text"
+                        class="unit-edit__input"
+                        [value]="editCompDraft()"
+                        (input)="onEditCompDraft($event)"
+                        (keydown.enter)="addEditComposition(); $event.preventDefault()"
+                        [placeholder]="'PLANNING_NEW.UNIT_EDIT_ADD_PLACEHOLDER' | translate"
+                      />
+                    </div>
+                  </div>
+                </section>
+              }
+
+              @case ('angles') {
+                <section class="unit-edit__pane">
+                  <div class="unit-edit__pane-head">
+                    <div>
+                      <h4 class="unit-edit__pane-title">{{ 'PLANNING_NEW.UNIT_FIELD_ANGLES' | translate }}</h4>
+                      <p class="unit-edit__pane-desc">{{ 'PLANNING_NEW.UNIT_EDIT_ANGLES_DESC' | translate }}</p>
+                    </div>
+                    <span class="unit-edit__station-badge">
+                      <skyflow-mat-icon [icon]="stationIconFor(8)" [size]="16" [weight]="600" [filled]="stationIconFilledFor(8)" />
+                      {{ 'STATIONS.8' | translate }}
+                    </span>
+                  </div>
+
+                  <div class="unit-edit__angle-grid">
+                    @for (code of editAngleCodes(); track $index) {
+                      <article class="unit-edit__angle-card">
+                        <div class="unit-edit__angle-visual" aria-hidden="true">
+                          <skyflow-mat-icon icon="square_foot" [size]="20" [weight]="400" />
+                        </div>
+                        <div class="unit-edit__angle-body">
+                          <label class="unit-edit__angle-label">{{ 'PLANNING_PDF.U_ANG' | translate }}</label>
+                          <input
+                            type="text"
+                            dir="ltr"
+                            class="unit-edit__input unit-edit__input--code"
+                            [value]="code"
+                            (input)="updateEditAngleCode($index, $event)"
+                          />
+                          @if (angleDocUrl(code); as url) {
+                            <a class="unit-edit__angle-pdf" [href]="url" target="_blank" rel="noopener">
+                              <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+                              {{ 'PLANNING_NEW.UNIT_EDIT_ANGLE_PDF' | translate }}
+                            </a>
+                          } @else {
+                            <div class="unit-edit__angle-status">
+                              <span class="unit-edit__angle-missing">
+                                <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+                                {{ 'PLANNING_NEW.UNIT_EDIT_ANGLE_NO_PDF' | translate }}
+                              </span>
+                              <label class="unit-edit__angle-upload">
+                                <input
+                                  type="file"
+                                  accept="application/pdf"
+                                  hidden
+                                  (change)="onEditAnglePdfSelected(code, $any($event.target).files)"
+                                />
+                                <span class="unit-edit__angle-upload-btn">
+                                  @if (isEditAngleUploading(code)) {
+                                    {{ 'PLANNING_NEW.UNIT_EDIT_ANGLE_UPLOADING' | translate }}
+                                  } @else {
+                                    <span class="material-symbols-outlined" aria-hidden="true">upload</span>
+                                    {{ 'PLANNING_NEW.UNIT_EDIT_ANGLE_UPLOAD' | translate }}
+                                  }
+                                </span>
+                              </label>
+                            </div>
+                          }
+                        </div>
+                        <button type="button" class="unit-edit__icon-btn unit-edit__icon-btn--card" (click)="removeEditAngleCode($index)" aria-label="remove">
+                          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        </button>
+                      </article>
+                    } @empty {
+                      <p class="unit-edit__empty">{{ 'PLANNING_NEW.UNIT_EDIT_ANGLES_EMPTY' | translate }}</p>
+                    }
+                  </div>
+
+                  <div class="unit-edit__chip-add">
+                    <button type="button" class="unit-edit__chip-btn" (click)="addEditAngleCode()">
+                      <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                    </button>
+                    <input
+                      type="text"
+                      class="unit-edit__input"
+                      dir="ltr"
+                      [value]="editAngleDraft()"
+                      (input)="onEditAngleDraft($event)"
+                      (keydown.enter)="addEditAngleCode(); $event.preventDefault()"
+                      [placeholder]="'PLANNING_NEW.UNIT_EDIT_ADD_ANGLE_PH' | translate"
+                    />
+                  </div>
+                </section>
+              }
+
+              @case ('parts') {
+                <section class="unit-edit__pane">
+                  <div class="unit-edit__pane-head">
+                    <div>
+                      <h4 class="unit-edit__pane-title">{{ 'PLANNING_NEW.UNIT_EDIT_PARTS' | translate }}</h4>
+                      <p class="unit-edit__pane-desc">{{ 'PLANNING_NEW.UNIT_EDIT_PARTS_DESC' | translate }}</p>
+                    </div>
+                    <button type="button" class="unit-edit__link unit-edit__link--btn" (click)="addEditSection()">
+                      <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                      {{ 'PLANNING_NEW.UNIT_EDIT_ADD_SECTION' | translate }}
+                    </button>
+                  </div>
+
+                  @for (sec of editSections(); track $index; let si = $index) {
+                    <div class="unit-edit__section">
+                      <div class="unit-edit__section-head">
+                        <span class="unit-edit__section-icon" aria-hidden="true">
+                          <skyflow-mat-icon
+                            [icon]="stationIconFor(sectionStationKey(sec))"
+                            [size]="18"
+                            [weight]="600"
+                            [filled]="stationIconFilledFor(sectionStationKey(sec))"
+                          />
+                        </span>
+                        <input
+                          type="text"
+                          class="unit-edit__input unit-edit__input--title"
+                          [value]="sec.title"
+                          (input)="updateEditSectionTitle(si, $event)"
+                          [placeholder]="'PLANNING_NEW.UNIT_PARTS_SECTION' | translate"
+                        />
+                        <em class="unit-edit__route">→ {{ 'STATIONS.' + sectionStationKey(sec) | translate }}</em>
+                        <button type="button" class="unit-edit__icon-btn" (click)="removeEditSection(si)" aria-label="remove section">
+                          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                        </button>
+                      </div>
+                      <table class="unit-edit__table">
+                        <thead>
+                          <tr>
+                            <th dir="ltr">{{ 'PLANNING_PDF.PARTS_COL_BLOCK' | translate }}</th>
+                            <th>{{ 'PLANNING_PDF.PARTS_COL_DESC' | translate }}</th>
+                            <th dir="ltr">{{ 'PLANNING_PDF.PARTS_COL_PART' | translate }}</th>
+                            <th aria-hidden="true"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (row of sec.rows; track $index; let ri = $index) {
+                            <tr>
+                              <td><input type="text" dir="ltr" class="unit-edit__cell-inp" [value]="row.blockNumber" (input)="updateEditCell(si, ri, 'blockNumber', $event)" /></td>
+                              <td><input type="text" class="unit-edit__cell-inp" [value]="row.description" (input)="updateEditCell(si, ri, 'description', $event)" /></td>
+                              <td><input type="text" dir="ltr" class="unit-edit__cell-inp" [value]="row.partNumber" (input)="updateEditCell(si, ri, 'partNumber', $event)" /></td>
+                              <td>
+                                <button type="button" class="unit-edit__icon-btn" (click)="removeEditRow(si, ri)" aria-label="remove row">
+                                  <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                                </button>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                      <button type="button" class="unit-edit__link" (click)="addEditRow(si)">
+                        <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                        {{ 'PLANNING_NEW.UNIT_EDIT_ADD_ROW' | translate }}
+                      </button>
+                    </div>
+                  } @empty {
+                    <p class="unit-edit__empty">{{ 'PLANNING_NEW.UNIT_EDIT_PARTS_EMPTY' | translate }}</p>
+                  }
+                </section>
+              }
+            }
+          </div>
 
           @if (editError(); as ek) {
             <p class="planning-wizard__field-err" role="alert">{{ ek | translate }}</p>
@@ -913,16 +1457,14 @@
       }
 
       <div popup-actions>
-        <skyflow-ui-button variant="ghost" btnClass="planning-wizard__btn" (click)="closeUnitEdit()">
-          {{ 'PLANNING_NEW.WIZARD_UNIT_MODAL_CANCEL' | translate }}
-        </skyflow-ui-button>
         <skyflow-ui-button
           variant="primary"
-          btnClass="planning-wizard__btn"
+          btnClass="planning-wizard__btn unit-edit__save-btn"
           [loading]="editSaving()"
           [disabled]="editLoading() || editUploading() || !hasEditChanges()"
           (click)="saveEdit()"
         >
+          <skyflow-mat-icon icon="save" [size]="20" [weight]="600" [filled]="true" />
           {{ 'PLANNING_NEW.UNIT_EDIT_SAVE' | translate }}
         </skyflow-ui-button>
       </div>

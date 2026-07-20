@@ -65,6 +65,7 @@ import {
   StationProgressVm,
 } from './station-progress';
 import { packPhotoRequiredCount, MAX_PACK_PHOTO_SLOTS } from './pack-photo.util';
+import { compressImageFile } from '../../core/image-compression.util';
 import {
   CATALOG_PROFILE_CODES,
   normalizeProfileCode,
@@ -76,7 +77,6 @@ import { StationLabelPipe } from '../../shared/station-label.pipe';
 import { WorkCycleReportCardComponent } from './work-cycle-report-card.component';
 import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import {
-  stationDisplayNumber,
   stationLabelKey,
   stationVisualModifierClass,
   stationVisualStyle,
@@ -456,7 +456,7 @@ export class WorkerTerminalComponent implements OnInit {
       case 6:
         return 'inventory_2';
       case 7:
-        return 'construction';
+        return 'apartment';
       case 8:
         return 'flare';
       default:
@@ -544,17 +544,6 @@ export class WorkerTerminalComponent implements OnInit {
     const selected = this.projectSelection.selectedCycleId();
     if (!selected) return null;
     return visible.find((row) => row.cycleId === selected) ?? null;
-  }
-
-  /** לייזר פעיל בפרויקט (לייזר פנימי עם זוויות). */
-  private laserActive(): boolean {
-    const laser = this.context()?.laserStation;
-    return !!laser && !laser.externalSupplier && laser.angles.length > 0;
-  }
-
-  /** מספר התצוגה של התחנה לעובד — לפי מיקום בזרימה, לא לפי ה-ID הפנימי. */
-  displayNumber(): number {
-    return stationDisplayNumber(this.stationId, this.laserActive());
   }
 
   nextStationId(): number | null {
@@ -1448,14 +1437,15 @@ export class WorkerTerminalComponent implements OnInit {
     this.doc.getElementById('assembly-type-photo-input')?.click();
   }
 
-  onAssemblyTypePhotoSelected(ev: Event): void {
+  async onAssemblyTypePhotoSelected(ev: Event): Promise<void> {
     const input = ev.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
+    const rawFile = input.files?.[0];
+    if (!rawFile) return;
+    input.value = '';
+    const file = await compressImageFile(rawFile);
     this.revokeAssemblyTypeModalPhotoPreview();
     this.assemblyTypeModalPhotoPreviewUrl = URL.createObjectURL(file);
     this.assemblyTypeModalPhotoFile.set(file);
-    input.value = '';
   }
 
   private revokeAssemblyTypeModalPhotoPreview(): void {
@@ -2148,12 +2138,13 @@ export class WorkerTerminalComponent implements OnInit {
 
   async onPackPhotoSelected(ev: Event, slotIndex: number): Promise<void> {
     const input = ev.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const rawFile = input.files?.[0];
     const pid = this.projectSelection.selectedProjectId();
-    if (!file || !pid || this.stationId !== 6) return;
+    if (!rawFile || !pid || this.stationId !== 6) return;
     this.uploadingPackSlot.set(slotIndex);
     this.error.set(null);
     try {
+      const file = await compressImageFile(rawFile);
       const res = await firstValueFrom(
         this.api.postPackPhoto(pid, slotIndex, file),
       );
@@ -2394,12 +2385,13 @@ export class WorkerTerminalComponent implements OnInit {
 
   async onDeliveryFileSelected(ev: Event): Promise<void> {
     const input = ev.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const rawFile = input.files?.[0];
     const pid = this.projectSelection.selectedProjectId();
-    if (!file || !pid || this.stationId !== 7) return;
+    if (!rawFile || !pid || this.stationId !== 7) return;
     this.uploadingDelivery.set(true);
     this.error.set(null);
     try {
+      const file = await compressImageFile(rawFile);
       await firstValueFrom(this.api.postSiteDeliveryNote(pid, file));
       this.tryLoadContext();
       this.showSaveToast();

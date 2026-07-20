@@ -162,7 +162,7 @@ export function stationMatIcon(stationId: number): string {
     case 6:
       return 'inventory_2';
     case 7:
-      return 'construction';
+      return 'apartment';
     case 8:
       return 'flare';
     default:

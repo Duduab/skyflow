@@ -9,13 +9,12 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgStyle } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
-import { forkJoin, interval, of, timer } from 'rxjs';
+import { forkJoin, of, timer } from 'rxjs';
 import {
   catchError,
   distinctUntilChanged,
   filter,
   map,
-  startWith,
   switchMap,
   tap,
 } from 'rxjs/operators';
@@ -24,6 +23,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../../core/api.service';
 import { WorkerContext } from '../../../core/skyflow.models';
 import { LanguageService } from '../../../core/language.service';
+import { visibilityAwareInterval } from '../../../core/visibility-aware-interval';
 import {
   computeStationProgress,
   isStationUnlockedInChain,
@@ -161,8 +161,10 @@ export class AdminProjectLiveComponent implements OnInit {
 
           let firstPollForProject = true;
 
-          return interval(this.pollMs).pipe(
-            startWith(0),
+          // Pauses while the tab is hidden (Page Visibility API) and catches
+          // up immediately when it becomes visible again, instead of hitting
+          // 7 worker-context endpoints every 5s whether anyone is watching.
+          return visibilityAwareInterval(this.pollMs).pipe(
             switchMap(() => {
               const minUi = firstPollForProject ? timer(400) : of(0);
               firstPollForProject = false;

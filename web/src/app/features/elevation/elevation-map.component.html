@@ -2,20 +2,32 @@
   <header class="elev__head" [class.elev__head--embedded]="embedded()">
     <div class="elev__title">
       @if (!embedded()) {
-        <a [routerLink]="backRoute()" class="elev__back">←</a>
+        @if (showFacadePicker()) {
+          <a [routerLink]="backRoute()" class="elev__back" [attr.aria-label]="'COMMON.BACK' | translate">
+            <span class="material-symbols-outlined elev__back-icon" aria-hidden="true">arrow_forward</span>
+          </a>
+        } @else if (facades().length > 1) {
+          <button type="button" class="elev__back" (click)="backToFacadePicker()" [attr.aria-label]="'ELEVATION_MAP.BACK_TO_FACADES' | translate">
+            <span class="material-symbols-outlined elev__back-icon" aria-hidden="true">arrow_forward</span>
+          </button>
+        } @else {
+          <a [routerLink]="backRoute()" class="elev__back" [attr.aria-label]="'COMMON.BACK' | translate">
+            <span class="material-symbols-outlined elev__back-icon" aria-hidden="true">arrow_forward</span>
+          </a>
+        }
       }
       <h1>{{ 'ELEVATION_MAP.TITLE' | translate }}</h1>
-      @if (activeFacadeLabel(); as fl) {
+      @if (!showFacadePicker() && activeFacadeLabel(); as fl) {
         <span class="elev__facade-name" dir="ltr">{{ fl }}</span>
       }
-      @if (map(); as m) {
+      @if (!showFacadePicker() && map(); as m) {
         @if (!embedded()) {
           <span class="elev__doc">{{ m.title }}</span>
         }
       }
     </div>
 
-    @if (progress(); as p) {
+    @if (!showFacadePicker() && progress(); as p) {
       <div class="elev__progress">
         <div class="elev__bar" [attr.aria-valuenow]="p.pct">
           <span class="elev__bar-fill" [style.width.%]="p.pct"></span>
@@ -36,7 +48,7 @@
     }
   </header>
 
-  @if (facades().length && !embedded()) {
+  @if (facades().length > 1 && !embedded() && !showFacadePicker()) {
     <div class="elev__facades" role="tablist" aria-label="facades">
       @for (f of facades(); track f.groupKey) {
         <button
@@ -61,6 +73,43 @@
     <div class="elev__state elev__state--error">
       {{ 'ELEVATION_MAP.LOAD_FAILED' | translate }}
     </div>
+  } @else if (showFacadePicker()) {
+    <p class="elev__pick-hint">{{ 'ELEVATION_MAP.PICK_HINT' | translate }}</p>
+    @for (d of facadesByDirection(); track d.direction) {
+      <div class="elev__pick-dir">
+        <div class="elev__pick-dir-head">
+          <span class="elev__pick-dir-name">{{ directionKey(d.direction) | translate }}</span>
+          <span class="elev__pick-dir-count" dir="ltr">{{ d.groups.length }}</span>
+        </div>
+        <div class="elev__pick-grid">
+          @for (f of d.groups; track f.groupKey) {
+            <button
+              type="button"
+              class="elev__pick-tile"
+              (click)="openFacadeFromPicker(f.groupKey)"
+            >
+              <span class="material-symbols-outlined elev__pick-tile-icon" aria-hidden="true">map</span>
+              <span class="elev__pick-tile-label" dir="ltr">{{ f.label }}</span>
+              @if (f.progress) {
+                <span class="elev__pick-tile-progress" dir="ltr">
+                  {{ f.progress.done }}/{{ f.progress.total }} · {{ f.progress.pct }}%
+                </span>
+              }
+              @if (f.status === 'PROCESSING') {
+                <span class="elev__pick-tile-status elev__pick-tile-status--busy">
+                  {{ 'ELEVATION_MAP.PROCESSING' | translate }}
+                </span>
+              } @else if (f.status === 'FAILED') {
+                <span class="elev__pick-tile-status elev__pick-tile-status--fail">
+                  {{ 'ELEVATION_MAP.FAILED' | translate }}
+                </span>
+              }
+              <span class="elev__pick-tile-cta">{{ 'ELEVATION_MAP.OPEN_MAP' | translate }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
   } @else if (!map()) {
     <div class="elev__state">{{ 'ELEVATION_MAP.NO_MAP' | translate }}</div>
   } @else if (map()?.status === 'PROCESSING') {
@@ -93,13 +142,12 @@
         </div>
       }
 
-      <div class="elev__legend">
-        @if ((progress()?.spandrel?.total ?? 0) > 0) {
+      @if ((progress()?.spandrel?.total ?? 0) > 0) {
+        <div class="elev__legend">
           <span class="elev__lg elev__lg--unit">{{ 'ELEVATION_MAP.UNIT' | translate }}</span>
           <span class="elev__lg elev__lg--spandrel">{{ 'ELEVATION_MAP.SPANDREL' | translate }}</span>
-        }
-        <span class="elev__lg elev__lg--done">{{ 'ELEVATION_MAP.DONE' | translate }}</span>
-      </div>
+        </div>
+      }
 
       <div class="elev__zoom">
         <button (click)="zoomOut()" aria-label="zoom out">−</button>
@@ -130,17 +178,43 @@
     }
 
     @if (windowTypeCodes().length) {
-      <div class="elev__wtypes">
-        @for (wt of windowTypeCodes(); track wt) {
+      <div class="elev__wtypes-bar">
+        <div class="elev__wtypes-head">
+          <span class="elev__wtypes-label">
+            <span class="material-symbols-outlined elev__wtypes-icon" aria-hidden="true">window</span>
+            {{ 'ELEVATION_MAP.WINDOW_TYPE' | translate }}
+          </span>
+          <span class="elev__wtypes-count" dir="ltr">{{ windowTypeCodes().length }}</span>
+        </div>
+        <div
+          class="elev__wtypes"
+          role="tablist"
+          [attr.aria-label]="'ELEVATION_MAP.WINDOW_TYPE' | translate"
+        >
           <button
-            class="elev__wtype"
-            [ngClass]="{ 'is-active': windowTypeFilter() === wt }"
-            (click)="setWindowType(wt)"
-            dir="ltr"
+            type="button"
+            class="elev__wtype elev__wtype--all"
+            role="tab"
+            [ngClass]="{ 'is-active': !windowTypeFilter() }"
+            [attr.aria-selected]="!windowTypeFilter()"
+            (click)="setWindowType('')"
           >
-            {{ wt }}
+            {{ 'ELEVATION_MAP.ALL_WINDOW_TYPES' | translate }}
           </button>
-        }
+          @for (wt of windowTypeCodes(); track wt) {
+            <button
+              type="button"
+              class="elev__wtype"
+              role="tab"
+              [ngClass]="{ 'is-active': windowTypeFilter() === wt }"
+              [attr.aria-selected]="windowTypeFilter() === wt"
+              (click)="setWindowType(wt)"
+              dir="ltr"
+            >
+              {{ wt }}
+            </button>
+          }
+        </div>
       </div>
     }
 
@@ -234,7 +308,7 @@
                   </div>
                   <ul class="elev__tip-items">
                     @for (it of hc.items; track $index) {
-                      <li>{{ it }}</li>
+                      <li [class.is-code]="isWindowTypeCode(it)">{{ it }}</li>
                     }
                   </ul>
                 </div>
@@ -400,7 +474,18 @@
               [disabled]="!canEdit()"
               (click)="chooseReturnStation(sid)"
             >
-              <span class="elev__stationsq-num">{{ sid }}</span>
+              <span
+                class="elev__stationsq-icon"
+                [style]="stationIconStyle(sid)"
+                aria-hidden="true"
+              >
+                <skyflow-mat-icon
+                  [icon]="stationIcon(sid)"
+                  [size]="20"
+                  [weight]="600"
+                  [filled]="stationIconFilled(sid)"
+                />
+              </span>
               <span class="elev__stationsq-name">{{ 'STATIONS.' + sid | translate }}</span>
             </button>
           }
@@ -443,11 +528,20 @@
           } @else {
             <skyflow-ui-button
               [variant]="cell.status === 'DONE' ? 'secondary' : 'primary'"
+              [btnClass]="cell.status === 'DONE' ? '' : 'elev__complete-btn'"
               [loading]="busy()"
               [block]="true"
               (click)="completeCell()"
             >
-              {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.UNMARK' : 'ELEVATION_MAP.COMPLETED') | translate }}
+              @if (cell.status !== 'DONE') {
+                <skyflow-mat-icon
+                  icon="check"
+                  [size]="20"
+                  [weight]="600"
+                  [filled]="true"
+                />
+              }
+              {{ (cell.status === 'DONE' ? 'ELEVATION_MAP.UNMARK' : 'ELEVATION_MAP.COMPLETE') | translate }}
             </skyflow-ui-button>
             <p class="elev__cycle-hint">{{ 'ELEVATION_MAP.RETURN_HINT' | translate }}</p>
           }
@@ -456,7 +550,9 @@
         @if (cell.items.length) {
           <h4 class="elev__items-title">{{ 'ELEVATION_MAP.ITEMS' | translate }} ({{ cell.items.length }})</h4>
           <ul class="elev__items">
-            @for (it of cell.items; track $index) { <li>{{ it }}</li> }
+            @for (it of cell.items; track $index) {
+              <li [class.is-code]="isWindowTypeCode(it)">{{ it }}</li>
+            }
           </ul>
         }
       </div>

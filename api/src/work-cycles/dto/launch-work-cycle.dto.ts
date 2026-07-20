@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsInt,
+  IsISO8601,
   IsNumber,
   IsOptional,
   Max,
@@ -26,4 +27,8 @@ export class LaunchWorkCycleDto {
   @Min(0.25)
   @Max(24)
   dailyTargetHours?: number | null;
+
+  @IsOptional()
+  @IsISO8601()
+  scheduledStartAt?: string | null;
 }

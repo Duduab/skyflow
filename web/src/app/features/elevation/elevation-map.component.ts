@@ -1,5 +1,6 @@
 import { NgClass } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
@@ -22,9 +23,16 @@ import {
   ElevationFacadeOptionDto,
   ElevationMapResponse,
   ElevationProgressDto,
+  FacadeDirection,
   PlanningPdfKind,
   WindowTypePreviewDto,
 } from '../../core/skyflow.models';
+import {
+  stationMatIcon,
+  stationMatIconFilled,
+  stationVisualTokens,
+} from '../../core/station-presentation';
+import { MatIconComponent } from '../../shared/mat-icon/mat-icon.component';
 import { UiButtonComponent } from '../../shared/ui-button.component';
 
 /** Per-unit document set shown inside the cell popup (planning/embedded mode). */
@@ -37,9 +45,12 @@ export interface ElevationCellDocUpload {
 @Component({
   selector: 'skyflow-elevation-map',
   standalone: true,
-  imports: [NgClass, RouterLink, TranslateModule, UiButtonComponent],
+  imports: [NgClass, RouterLink, TranslateModule, MatIconComponent, UiButtonComponent],
   templateUrl: './elevation-map.component.html',
   styleUrl: './elevation-map.component.scss',
+  // All state is signals/computed — OnPush skips redundant re-checks on this
+  // grid's hundreds of cells while still updating on every signal change.
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ElevationMapComponent implements OnInit {
   private readonly api = inject(ApiService);
@@ -76,6 +87,8 @@ export class ElevationMapComponent implements OnInit {
   readonly docUpload = output<ElevationCellDocUpload>();
   /** Emitted when the planner launches the unit to production (→ wizard step 3). */
   readonly launchRequested = output<{ windowTypeId: string; code: string }>();
+  /** Embedded planner: cell already has instructions — open full unit-details instead. */
+  readonly unitDetailsRequested = output<{ cell: ElevationCellDto }>();
 
   /** Unit docs can be edited whenever the map is embedded in the planner. */
   readonly docsEditable = computed(() => this.embedded() || this.canEdit());
@@ -128,6 +141,21 @@ export class ElevationMapComponent implements OnInit {
     () => !!this.activeCellDocs()?.instructionPdfUrl,
   );
 
+  /** Resolve preview docs for a map cell (embedded planning). */
+  private cellWindowTypeDoc(cell: ElevationCellDto): WindowTypePreviewDto | null {
+    const docs = this.windowTypeDocs();
+    if (!docs.length) return null;
+    return (
+      docs.find((w) => cell.windowTypeId && w.id === cell.windowTypeId) ??
+      docs.find((w) => cell.windowTypeCode && w.code === cell.windowTypeCode) ??
+      null
+    );
+  }
+
+  cellHasInstructionPdf(cell: ElevationCellDto): boolean {
+    return !!this.cellWindowTypeDoc(cell)?.instructionPdfUrl;
+  }
+
   /** Launch the unit to production and hand off to wizard step 3. */
   launchUnit(): void {
     const docs = this.activeCellDocs();
@@ -148,6 +176,38 @@ export class ElevationMapComponent implements OnInit {
   /** קבוצות חזיתות עם מפה — בורר החזיתות בתצוגת ההתקנה */
   readonly facades = signal<ElevationFacadeOptionDto[]>([]);
   readonly selectedFacadeGroup = signal<string | null>(null);
+
+  /**
+   * When the project has several facade maps, show a tile grid first (like
+   * project-control) instead of jumping straight into the first map.
+   * Embedded / single-facade views skip this and open the map directly.
+   */
+  readonly facadePickerOpen = signal(false);
+
+  private readonly DIRECTION_ORDER: FacadeDirection[] = [
+    'SOUTH',
+    'NORTH',
+    'WEST',
+    'EAST',
+  ];
+
+  readonly facadesByDirection = computed(
+    (): { direction: FacadeDirection; groups: ElevationFacadeOptionDto[] }[] => {
+      const list = this.facades();
+      return this.DIRECTION_ORDER.map((direction) => ({
+        direction,
+        groups: list.filter((f) => f.direction === direction),
+      })).filter((d) => d.groups.length > 0);
+    },
+  );
+
+  readonly showFacadePicker = computed(
+    () => !this.embedded() && this.facadePickerOpen() && this.facades().length > 1,
+  );
+
+  directionKey(dir: FacadeDirection): string {
+    return `PLANNING_PDF.DIR_${dir}`;
+  }
 
   @ViewChild('canvas') canvasRef?: ElementRef<HTMLElement>;
 
@@ -245,6 +305,7 @@ export class ElevationMapComponent implements OnInit {
     const embedded = this.embeddedProjectId();
     if (embedded) {
       this.projectId.set(embedded);
+      this.facadePickerOpen.set(false);
       this.selectedFacadeGroup.set(this.embeddedGroup());
       this.load();
       return;
@@ -263,12 +324,26 @@ export class ElevationMapComponent implements OnInit {
       return;
     }
     this.projectId.set(id);
+    this.facadePickerOpen.set(true);
     this.load();
+  }
+
+  /** Open a facade map from the tile grid (install / worker flow). */
+  openFacadeFromPicker(groupKey: string): void {
+    this.facadePickerOpen.set(false);
+    this.selectFacade(groupKey);
+  }
+
+  /** Return from a single facade map to the all-facades grid. */
+  backToFacadePicker(): void {
+    this.facadePickerOpen.set(true);
+    this.activeCell.set(null);
+    this.clearSelection();
   }
 
   /** Switch to another facade group's map (per-group elevation flow). */
   selectFacade(groupKey: string): void {
-    if (this.selectedFacadeGroup() === groupKey) return;
+    if (this.selectedFacadeGroup() === groupKey && !this.facadePickerOpen()) return;
     this.selectedFacadeGroup.set(groupKey);
     this.pageIndex.set(0);
     this.floorFilter.set('');
@@ -293,8 +368,12 @@ export class ElevationMapComponent implements OnInit {
           this.map.set(res.map);
           this.cells.set(res.cells ?? []);
           this.progress.set(res.progress ?? null);
-          this.facades.set(res.facades ?? []);
+          const facadeList = res.facades ?? [];
+          this.facades.set(facadeList);
           this.selectedFacadeGroup.set(res.selectedFacadeGroup ?? null);
+          if (this.embedded() || facadeList.length <= 1) {
+            this.facadePickerOpen.set(false);
+          }
           const codes =
             res.windowTypeCodes && res.windowTypeCodes.length
               ? [...res.windowTypeCodes]
@@ -315,8 +394,16 @@ export class ElevationMapComponent implements OnInit {
     return this.selectedIds().has(id);
   }
 
-  /** לחיצה על מלבן חלון — פותחת את חלון סבב העבודה. */
+  /** לחיצה על מלבן חלון — פותחת פרטי יחידה (אם יש PDF) או פופאפ העלאה/הוצאה. */
   onCellClick(cell: ElevationCellDto): void {
+    if (
+      this.embedded() &&
+      !this.installMode() &&
+      this.cellHasInstructionPdf(cell)
+    ) {
+      this.unitDetailsRequested.emit({ cell });
+      return;
+    }
     this.activeCell.set(cell);
     this.returnStationId.set(null);
     this.defectReason.set('');
@@ -381,7 +468,11 @@ export class ElevationMapComponent implements OnInit {
   }
 
   setWindowType(code: string): void {
-    this.windowTypeFilter.set(this.windowTypeFilter() === code ? '' : code);
+    if (!code) {
+      this.windowTypeFilter.set('');
+    } else {
+      this.windowTypeFilter.set(this.windowTypeFilter() === code ? '' : code);
+    }
     this.activeCell.set(null);
     this.clearSelection();
   }
@@ -458,7 +549,7 @@ export class ElevationMapComponent implements OnInit {
       });
   }
 
-  /** כפתור "הושלם" — מסמן את היחידה כבוצעה (ירוק) או מבטל. */
+  /** כפתור "השלם" — מסמן את היחידה כבוצעה או מבטל. */
   completeCell(): void {
     const cell = this.activeCell();
     if (!cell || !this.canEdit() || this.busy()) return;
@@ -559,5 +650,22 @@ export class ElevationMapComponent implements OnInit {
       spandrel: count('SPANDREL'),
       unit: count('UNIT'),
     });
+  }
+
+  isWindowTypeCode(value: string): boolean {
+    return /^\d{2}-\d-\d{2}[A-Z]?$/.test(value.trim());
+  }
+
+  stationIcon(stationId: number): string {
+    return stationMatIcon(stationId);
+  }
+
+  stationIconFilled(stationId: number): boolean {
+    return stationMatIconFilled(stationId);
+  }
+
+  stationIconStyle(stationId: number): Record<string, string> {
+    const t = stationVisualTokens(null, stationId);
+    return { '--elev-station-accent': t.accent };
   }
 }

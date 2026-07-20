@@ -151,7 +151,7 @@
         <button
           type="button"
           class="sf-bottom-nav__center"
-          [class.is-active]="stationsMenuOpen()"
+          [class.is-active]="stationsMenuOpen() || isWorkerRoute()"
           [attr.aria-expanded]="stationsMenuOpen()"
           [attr.aria-label]="'BOTTOM_NAV.STATIONS' | translate"
           [title]="'BOTTOM_NAV.STATIONS' | translate"
@@ -195,7 +195,7 @@
           <button
             type="button"
             class="sf-bottom-nav__item sf-bottom-nav__item--soft-active"
-            [class.is-active]="stationsMenuOpen() || isWorkerHubRoute()"
+            [class.is-active]="stationsMenuOpen() || isWorkerRoute()"
             [attr.aria-expanded]="stationsMenuOpen()"
             [attr.aria-label]="'BOTTOM_NAV.STATIONS' | translate"
             [title]="'BOTTOM_NAV.STATIONS' | translate"

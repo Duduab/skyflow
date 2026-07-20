@@ -8,8 +8,8 @@ import { finalize } from 'rxjs/operators';
 import { ApiService } from '../../core/api.service';
 import { CurrentUserService } from '../../core/current-user.service';
 import {
+  ElevationFacadeOptionDto,
   FacadeDirection,
-  FacadeGroupPreviewDto,
   PlanningPdfPreviewDto,
   TrackingBeatDto,
   TrackingPhase,
@@ -85,6 +85,7 @@ export class ProjectControlComponent implements OnInit {
   /* ---- mapping tab ---- */
   readonly preview = signal<PlanningPdfPreviewDto | null>(null);
   readonly previewLoading = signal(false);
+  readonly previewError = signal<string | null>(null);
 
   readonly rows = computed(() => this.data()?.rows ?? []);
 
@@ -155,23 +156,35 @@ export class ProjectControlComponent implements OnInit {
 
   setTab(tab: ControlTab): void {
     this.activeTab.set(tab);
-    if (
-      (tab === 'mapping' || tab === 'map') &&
-      !this.preview() &&
-      !this.previewLoading()
-    ) {
+    if (tab === 'mapping' && !this.preview() && !this.previewLoading()) {
       this.loadPreview();
+    }
+    if (tab === 'map') {
+      this.loadElevationFacades();
     }
   }
 
   private loadPreview(): void {
     this.previewLoading.set(true);
+    this.previewError.set(null);
     this.api
       .getPlanningPdfPreview(this.projectId())
       .pipe(finalize(() => this.previewLoading.set(false)))
       .subscribe({
-        next: (p) => this.preview.set(p),
-        error: () => this.preview.set(null),
+        next: (p) => {
+          this.preview.set(p);
+          this.previewError.set(null);
+        },
+        error: (err) => {
+          this.preview.set(null);
+          this.previewError.set(
+            err?.status === 403
+              ? 'FORBIDDEN'
+              : err?.status === 404
+                ? 'LOAD_ERROR'
+                : 'LOAD_ERROR',
+          );
+        },
       });
   }
 
@@ -183,12 +196,14 @@ export class ProjectControlComponent implements OnInit {
     'EAST',
   ];
 
-  /** קבוצות החזית שהועלתה להן מפה, מקובצות לפי כיוון — בורר תצוגת ההתקנה. */
-  readonly facadeGroupsByDirection = computed(
-    (): { direction: FacadeDirection; groups: FacadeGroupPreviewDto[] }[] => {
-      const groups = (this.preview()?.facadeGroups ?? []).filter(
-        (g) => !!g.elevationPdfUrl,
-      );
+  /** Analyzed elevation maps — same source as the standalone elevation-map page. */
+  readonly elevationFacades = signal<ElevationFacadeOptionDto[]>([]);
+  readonly elevationMapLoading = signal(false);
+
+  /** קבוצות החזית עם מפה מנותחת, מקובצות לפי כיוון — בורר תצוגת ההתקנה. */
+  readonly elevationFacadesByDirection = computed(
+    (): { direction: FacadeDirection; groups: ElevationFacadeOptionDto[] }[] => {
+      const groups = this.elevationFacades();
       return this.DIRECTION_ORDER.map((direction) => ({
         direction,
         groups: groups.filter((g) => g.direction === direction),
@@ -196,7 +211,22 @@ export class ProjectControlComponent implements OnInit {
     },
   );
 
-  readonly hasFacadeMaps = computed(() => this.facadeGroupsByDirection().length > 0);
+  readonly hasFacadeMaps = computed(
+    () => this.elevationFacadesByDirection().length > 0,
+  );
+
+  private loadElevationFacades(): void {
+    const id = this.projectId();
+    if (!id || this.elevationMapLoading()) return;
+    this.elevationMapLoading.set(true);
+    this.api
+      .getElevationMap(id)
+      .pipe(finalize(() => this.elevationMapLoading.set(false)))
+      .subscribe({
+        next: (res) => this.elevationFacades.set(res.facades ?? []),
+        error: () => this.elevationFacades.set([]),
+      });
+  }
 
   directionKey(dir: FacadeDirection): string {
     return `PLANNING_PDF.DIR_${dir}`;
@@ -214,6 +244,7 @@ export class ProjectControlComponent implements OnInit {
   closeGroupMap(): void {
     this.mapModalGroup.set(null);
     this.load();
+    this.loadElevationFacades();
   }
 
   stageColor(code: string): string {

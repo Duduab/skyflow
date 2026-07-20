@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -16,6 +17,7 @@ import { Roles } from '../auth/roles.decorator.js';
 import { WorkCycleService } from './work-cycle.service';
 import { LaunchWorkCycleDto } from './dto/launch-work-cycle.dto';
 import { EditWorkCycleWindowDto } from './dto/edit-work-cycle.dto';
+import { UpdateGlassPanelDto } from './dto/update-glass-panel.dto';
 import {
   SetWorkCycleAssignmentsDto,
   SetWorkCycleDailyTargetDto,
@@ -64,6 +66,29 @@ export class WorkCycleController {
     return this.workCycles.editCycleWindow(projectId, cycleId, dto);
   }
 
+  /** Update one glass panel (code / window vs fixed). */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Patch(':cycleId/glass-panels/:order')
+  updateGlassPanel(
+    @Param('projectId') projectId: string,
+    @Param('cycleId') cycleId: string,
+    @Param('order', ParseIntPipe) order: number,
+    @Body() dto: UpdateGlassPanelDto,
+  ) {
+    return this.workCycles.updateCycleGlassPanel(projectId, cycleId, order, dto);
+  }
+
+  /** Delete one glass panel. */
+  @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
+  @Delete(':cycleId/glass-panels/:order')
+  deleteGlassPanel(
+    @Param('projectId') projectId: string,
+    @Param('cycleId') cycleId: string,
+    @Param('order', ParseIntPipe) order: number,
+  ) {
+    return this.workCycles.deleteCycleGlassPanel(projectId, cycleId, order);
+  }
+
   /** Delete a draft unit (window type + cascade). */
   @Roles(SkyflowRole.ADMIN, SkyflowRole.PLANNING)
   @Delete(':cycleId')
@@ -101,6 +126,7 @@ export class WorkCycleController {
       cycleId,
       dto.dailyTargetQty ?? null,
       dto.dailyTargetHours ?? null,
+      dto.scheduledStartAt ? new Date(dto.scheduledStartAt) : null,
     );
   }
 
@@ -119,6 +145,7 @@ export class WorkCycleController {
       dto.assignments ?? [],
       dto.dailyTargetQty ?? null,
       dto.dailyTargetHours ?? null,
+      dto.scheduledStartAt ? new Date(dto.scheduledStartAt) : null,
       req.user?.userId ?? null,
     );
   }
